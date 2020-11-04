@@ -1,0 +1,17 @@
+shader TransformSignalFloat4ToFloat4 : Float4ToFloat4
+{
+
+    compose ComputeFloat4 frequency;
+    compose ComputeFloat4 domainOffset;
+    compose ComputeFloat4 amplitude;
+    compose ComputeFloat4 center;
+
+    compose Float4ToFloat4 signal;
+
+    override float4 Compute(float4 p)
+    {
+        p = p * frequency.Compute() + domainOffset.Compute();
+        return signal.Compute(p) * amplitude.Compute() + center.Compute();
+        //TODO add bias and inflection controls
+    }
+};

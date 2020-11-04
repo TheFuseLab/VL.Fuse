@@ -1,0 +1,14 @@
+shader NormalsChecker : ComputeBool, NormalStream
+{
+    compose ComputeFloat3 Direction;
+    compose ComputeFloat Threshold;
+
+    override bool Compute()
+    {
+        float3 normal = streams.meshNormal;
+        float3 direction = Direction.Compute();
+        float threshold = Threshold.Compute();
+
+        return dot(normal, direction) > threshold;
+    }
+};
