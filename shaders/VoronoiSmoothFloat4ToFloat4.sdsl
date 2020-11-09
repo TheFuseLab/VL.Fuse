@@ -1,37 +1,72 @@
-shader VoronoiFloat2ToFloat2 : ComputeFloat2
+// The MIT License
+// Copyright © 2014 Inigo Quilez
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// Smooth Voronoi - avoiding aliasing, by replacing the usual min() function, which is
+// discontinuous, with a smooth version. That can help preventing some aliasing, and also
+// provides with more artistic control of the final procedural textures/models.
+
+// More Voronoi shaders:
+//
+// Exact edges:  https://www.shadertoy.com/view/ldl3W8
+// Hierarchical: https://www.shadertoy.com/view/Xll3zX
+// Smooth:       https://www.shadertoy.com/view/ldB3zc
+// Voronoise:    https://www.shadertoy.com/view/Xd23Dh
+
+shader VoronoiSmoothFloat4ToFloat4 : Float4ToFloat4
 {
 
-    float2 hash(float2 p ) {
+    float2 hash2(float2 p ) {
 	    p=float2(
 		    dot(p,float2(127.1, 311.7)),
 		    dot(p,float2(269.5, 183.3))
 	    );
 
-	    return frac(sin(p) * 18.5453);
+	    return frac(sin(p) * 43758.5453);
     }
 
-    override float2 Compute(float2 x)
-    {
-        
-        float2 n = floor(x);
-	    float2 f = frac(x);
+	float3 hash3(float3 x){
+        x = float3(
+            dot(x, float3(127.1, 311.7,  74.7)),
+            dot(x, float3(269.5, 183.3, 246.1)),
+            dot(x, float3(113.5, 271.9, 124.6))
+        );
 
-	    float3 m = 8;
+        return frac(sin(x) * 43758.5453123);
+    }
 
-	    for( int j =-1; j <= 1; j++ )
-	    for( int i =-1; i <= 1; i++ ){
-		    float2 b = float2( i, j );
-		    float2 o = hash( n + b );
-		    float2 r = b - f + o;
-		    float  d = dot( r, r );
-		    
-            if( d < m.x )
-			    m = float3( d, o );
-        }
+	
+	float hash1( float n ) {
+		return frac(sin(n)*43758.5453);
+	}
 
-        //return hash(n);
-	    return float2( sqrt(m.x), m.y+m.z )  ;
+	compose ComputeFloat Smoothness; 
 
-       // return hash(x);
+    // returns closest, second closest, and cell id
+    override float4 Compute(float4 x){
+        float3 n = floor( x.xyz );
+    	float3 f = frac( x.xyz );
+		float w = Smoothness.Compute();
+
+		float4 m = float4( 8.0, 0.0, 0.0, 0.0 );
+        for( int k=-1; k<=1; k++ )
+    	for( int j=-2; j<=2; j++ )
+    	for( int i=-2; i<=2; i++ )
+    	{
+        	float3 g = float3(i,j ,k);
+        	float3 o = hash3( n + g );
+		
+        	// distance to cell		
+			float d = length(g - f + o);
+		
+        	// do the smoth min for colors and distances		
+			float col = hash1(dot(n+g,float3(7.0,113.0, 271.9)));
+			float h = smoothstep( 0.0, 1.0, 0.5 + 0.5*(m.x-d)/w );
+		
+	    	m.x = lerp( m.x, d, h ) - h*(1.0-h)*w/(1.0+3.0*w); // distance
+			m.y = lerp( m.y, col, h ) - h*(1.0-h)*w/(1.0+3.0*w); // color
+    	}
+	
+		return m.yxzw;
     }
 };
