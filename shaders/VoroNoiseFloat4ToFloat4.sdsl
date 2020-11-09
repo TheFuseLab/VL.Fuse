@@ -1,0 +1,41 @@
+// The MIT License
+// Copyright © 2014 Inigo Quilez
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// adapted from IQ's 2d voronoise:
+// http://www.iquilezles.org/www/articles/voronoise/voronoise.htm
+
+
+shader VoroNoiseFloat4ToFloat4 : Float4ToFloat4, Hash
+{
+
+	compose ComputeFloat U; 
+	compose ComputeFloat V; 
+
+    // returns closest, second closest, and cell id
+    override float4 Compute(float4 x){
+
+   		float3 p = floor(x);
+		float3 f = frac(x);
+
+		float u = U.Compute();
+		float v = V.Compute();
+
+		float s = 1.0 + 31.0 * v;
+    	float va = 0.0;
+    	float wt = 0.0;
+    
+		for (int k=-2; k<=1; k++)
+    	for (int j=-2; j<=1; j++)
+    	for (int i=-2; i<=1; i++) {
+        	float3 g = float3(float(i), float(j), float(k));
+        	float3 o = hash33(p + g) * float3(u,u,1.0);
+        	float3 r = g - f + o + 0.5;
+        	float d = dot(r, r);
+        	float w = pow(1.0 - smoothstep(0.0, 1.414, sqrt(d)), s);
+        	va += o.z * w;
+        	wt += w;
+     	}
+    	 return va / wt;
+    }
+};

@@ -1,14 +1,5 @@
-shader VoronoiFloat2ToFloat2 : ComputeFloat2
+shader VoronoiFloat2ToFloat2 : ComputeFloat2, Hash
 {
-
-    float2 hash(float2 p ) {
-	    p=float2(
-		    dot(p,float2(127.1, 311.7)),
-		    dot(p,float2(269.5, 183.3))
-	    );
-
-	    return frac(sin(p) * 18.5453);
-    }
 
     override float2 Compute(float2 x)
     {
@@ -21,7 +12,7 @@ shader VoronoiFloat2ToFloat2 : ComputeFloat2
 	    for( int j =-1; j <= 1; j++ )
 	    for( int i =-1; i <= 1; i++ ){
 		    float2 b = float2( i, j );
-		    float2 o = hash( n + b );
+		    float2 o = hash22( n + b );
 		    float2 r = b - f + o;
 		    float  d = dot( r, r );
 		    

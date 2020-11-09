@@ -1,16 +1,6 @@
-shader VoronoiFloat4 : ComputeFloat4
+shader VoronoiFloat4 : ComputeFloat4, Hash
 {
     compose ComputeFloat4 Value;
-
-    float3 hash(float3 x){
-        x = float3(
-            dot(x, float3(127.1, 311.7,  74.7)),
-            dot(x, float3(269.5, 183.3, 246.1)),
-            dot(x, float3(113.5, 271.9, 124.6))
-        );
-
-        return frac(sin(x) * 43758.5453123);
-    }
 
     // returns closest, second closest, and cell id
     override float4 Compute()
@@ -28,7 +18,7 @@ shader VoronoiFloat4 : ComputeFloat4
         for(int j=-1; j<=1; j++ )
         for(int i=-1; i<=1; i++ ){
             float3 b = float3(i, j, k);
-            float3 o = hash( n + b );
+            float3 o = hash33( n + b );
             float3 r = b - f + o;
             float  d = dot( r, r );
 
