@@ -1,0 +1,26 @@
+azeno
+@CeeYaa:matrix.org: indeed it does
+azeno
+@texone do I understand correctly that you're generating shader classes in memory and want to use those in other shaders?
+azeno
+if so you can have a look here: https://github.com/vvvv/VL.Devices.DeckLink/blob/master/src/VL.Devices.DeckLink/VideoIn.cs#L603 - those temp file hacks shouldn't be necessary anymore since https://github.com/stride3d/stride/pull/843
+the trick is to install a temporary effect compiler with an in-memory file provider - we can think of adding that to VL.Stride itself
+
+another source you maybe interested in is how we make shaders beside a VL document visible to the effect compiler, for that see
+https://github.com/vvvv/VL.Stride/blob/develop/packages/VL.Stride.Runtime/src/Games/VLGame.cs#L47 - which again installs a custom file provider, but this time for the whole lifetime of the game
+https://github.com/vvvv/VL.Stride/blob/ae1e60d0d6b7247332cd1748d2af442b7936b32b/packages/VL.Stride.Runtime/src/Rendering/EffectSystemExtensions.cs#L19 - called by effect node factory to make paths visible
+still if you're only dealing with in-memory shader classes and want those to be in scope to the effect system it would be nice to have a cleaner approach
+azeno
+another alternative would be effectCompiler.shaderMixinParser.SourceManager.AddShaderSource("MyShader", "MyShaderSourceCode")
+but for that you'd need to modify Stride a little so you get access to the shaderMixinParser
+you could hack around it by retrieving the shaderMixinParser via reflection
+texone
+azeno: Thanks for input I look into it
+tebjan
+Having a nice extension method in the Stride API would be the best, I think
+azeno
+so you don't need to change Stride before actually trying the approach
+tebjan
+So everyone can just create and add a shader on the fly
+texone
+@tebjan that would be awesome
