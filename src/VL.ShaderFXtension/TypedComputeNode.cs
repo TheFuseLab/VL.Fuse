@@ -10,7 +10,7 @@ namespace VL.ShaderFXtension
     public class TypedComputeNode<T> :ComputeValue<T>
     {
         public TypedComputeNode(Func<ShaderGeneratorContext, MaterialComputeColorKeys, ShaderClassCode> getShaderSource,
-            IEnumerable<KeyValuePair<string, Var<T>>> inputs)
+            IEnumerable<KeyValuePair<string, IComputeValue<T>>> inputs)
         {
             Inputs = inputs?.Where(input => !string.IsNullOrWhiteSpace(input.Key) && input.Value != null).ToList();
             GetShaderSource = getShaderSource;
@@ -18,7 +18,7 @@ namespace VL.ShaderFXtension
 
         public Func<ShaderGeneratorContext, MaterialComputeColorKeys, ShaderClassCode> GetShaderSource { get; }
 
-        public IEnumerable<KeyValuePair<string, Var<T>>> Inputs { get; }
+        public IEnumerable<KeyValuePair<string, IComputeValue<T>>> Inputs { get; }
 
         //public ParameterCollection Parameters => parameters;
         public ShaderClassCode ShaderClass { get; private set; }
