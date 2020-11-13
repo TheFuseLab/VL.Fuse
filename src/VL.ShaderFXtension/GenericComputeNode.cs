@@ -23,9 +23,7 @@ namespace VL.ShaderFXtension
 
         public IEnumerable<KeyValuePair<string, IComputeValue<TIn>>> Inputs { get; }
 
-        public ShaderClassCode ShaderClass => shaderClass;
-
-        ShaderClassCode shaderClass;
+        public ShaderClassCode ShaderClass { get; private set; }
 
         public string ResultType()
         {
@@ -34,22 +32,19 @@ namespace VL.ShaderFXtension
 
         public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
-            shaderClass = GetShaderSource(context, baseKeys);
+            ShaderClass = GetShaderSource(context, baseKeys);
 
             //compose if necessary
-            if (Inputs != null && Inputs.Any())
+            if (Inputs == null || !Inputs.Any()) return ShaderClass;
+            var mixin = ShaderClass.CreateMixin();
+
+            foreach (var input in Inputs)
             {
-                var mixin = shaderClass.CreateMixin();
-
-                foreach (var input in Inputs)
-                {
-                    mixin.AddComposition(input.Value, input.Key, context, baseKeys);
-                }
-
-                return mixin;
+                mixin.AddComposition(input.Value, input.Key, context, baseKeys);
             }
 
-            return shaderClass;
+            return mixin;
+
         }
 
         public override IEnumerable<IComputeNode> GetChildren(object context = null)
@@ -66,7 +61,7 @@ namespace VL.ShaderFXtension
 
         public override string ToString()
         {
-            return shaderClass?.ToString() ?? GetType().ToString();
+            return ShaderClass?.ToString() ?? GetType().ToString();
         }
     }
 }
