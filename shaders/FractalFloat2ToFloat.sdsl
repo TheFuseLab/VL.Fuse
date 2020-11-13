@@ -1,0 +1,41 @@
+shader FractalFloat4ToFloat4 : Float4ToFloat4
+{
+
+    compose ComputeFloat gain;
+    compose ComputeFloat octaves;
+    compose ComputeFloat lacunarity;
+
+    compose Float4ToFloat4 signal;
+
+    override float4 Compute(float4 p)
+    {
+        float myScale = 1;
+        float myGain = gain.Compute();
+        float myOctaves = octaves.Compute();
+        float myLacunarity = lacunarity.Compute();
+
+	    float myFallOff = myGain;
+
+	    int iOctaves = int(floor(myOctaves)); 
+	    float4 myResult = 0.;  
+	    float myAmp = 0.;
+	
+	    for(int i = 0; i < iOctaves;i++){
+		    float4 noiseVal = signal.Compute(p * myScale); 
+		    myResult += noiseVal * myFallOff;
+		    myAmp += myFallOff;
+		    myFallOff *= myGain;
+		    myScale *= myLacunarity;
+	    }
+	    float myBlend = myOctaves - float(iOctaves);
+	
+	    myResult += signal.Compute(p * myScale) * myFallOff * myBlend;    
+	    myAmp += myFallOff * myBlend;
+	
+	    if(myAmp > 0.0){
+		    myResult /= myAmp;
+	    }
+ 
+	    return myResult;
+    }
+};
