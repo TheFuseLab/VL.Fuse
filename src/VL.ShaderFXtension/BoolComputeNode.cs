@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Stride.Rendering.Materials;
 using Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
-    public class TypedComputeNode<T> : GenericComputeNode<T, T>
+    public class BoolComputeNode<T> : GenericComputeNode<T,float>
     {
-        public TypedComputeNode(Func<ShaderGeneratorContext, MaterialComputeColorKeys, ShaderClassCode> getShaderSource,
+        public BoolComputeNode(Func<ShaderGeneratorContext, MaterialComputeColorKeys, ShaderClassCode> getShaderSource,
             IEnumerable<KeyValuePair<string, IComputeValue<T>>> inputs) : base(getShaderSource, inputs)
         {
         }
