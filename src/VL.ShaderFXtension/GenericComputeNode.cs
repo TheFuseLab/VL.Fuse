@@ -25,11 +25,6 @@ namespace VL.ShaderFXtension
 
         public ShaderClassCode ShaderClass { get; private set; }
 
-        public string ResultType()
-        {
-            return ShaderFXUtils.GetNameForType(this.GetType().GenericTypeArguments[1]);
-        }
-
         public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
             ShaderClass = GetShaderSource(context, baseKeys);
@@ -49,13 +44,12 @@ namespace VL.ShaderFXtension
 
         public override IEnumerable<IComputeNode> GetChildren(object context = null)
         {
-            if (Inputs != null)
+            if (Inputs == null) yield break;
+            
+            foreach (var item in Inputs)
             {
-                foreach (var item in Inputs)
-                {
-                    if (item.Value != null)
-                        yield return item.Value;
-                }
+                if (item.Value != null)
+                    yield return item.Value;
             }
         }
 
