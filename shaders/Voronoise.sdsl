@@ -6,8 +6,16 @@
 // http://www.iquilezles.org/www/articles/voronoise/voronoise.htm
 
 
-shader VoroNoise : Hash
+shader Voronoise 
 {
+	///  3 out, 3 in...
+    float3 hash33(float3 p3)
+    {
+        p3 = frac(p3 * float3(.1031, .1030, .0973));
+        p3 += dot(p3, p3.yxz+19.19);
+        return frac((p3.xxy + p3.yxx)*p3.zyx);
+
+    }
 
 	float voronoise2D(float2 x, float u, float v ){
 		float k = 1.0+63.0*pow(1.0-v,6.0);
