@@ -6,7 +6,7 @@ namespace VL.ShaderFXtension
 {
     public class ShaderTemplateEvaluator
     {
-        public static string Evaluate(string theShaderTemplate, Dictionary<string,string> theKeys)
+        public static string Evaluate(string theShaderTemplate, IDictionary<string,string> theKeys)
         {
             return Regex.Replace(
                 theShaderTemplate, 
