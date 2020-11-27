@@ -6,7 +6,7 @@
 // http://www.iquilezles.org/www/articles/voronoise/voronoise.htm
 
 
-shader Voronoise 
+shader Voronoise : Hash
 {
 	///  3 out, 3 in...
     float3 hash33(float3 p3)
@@ -32,7 +32,7 @@ shader Voronoise
 			float2  o = hash33( p + g )*float3(u,u,1.0);
 			vec2  d = g - f + o.xy;
 			float w = pow(1.0 - smoothstep(0.0, 1.414, length(d)), k );
-			a += vec2(o.z*w,w);
+			a += float2(o.z*w,w);
 		}
 		
 		return a.x/a.y;
