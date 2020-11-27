@@ -17,6 +17,10 @@ namespace VL.ShaderFXtension
             public static void ConstrainTypesByEnumerable<T>(T input, IEnumerable<T> input2)
             {
             }
+            
+            public static void ConstrainTypesByDictionary<T>(T input, IDictionary<string,T> input2)
+            {
+            }
 
             public static void ConstrainTypesByFunction<T1, T2>(Funk1In1Out<T1, T2> funk, Var<T1> inputT1, Var<T2> inputT2)
             {
@@ -44,6 +48,11 @@ namespace VL.ShaderFXtension
                 return ShaderFXUtils.GetNameForType<T1>();
             }
             public static string VarType<T1>(IEnumerable<Var<T1>> var)
+            {
+                return ShaderFXUtils.GetNameForType<T1>();
+            }
+            
+            public static string VarType<T1>(IDictionary<string,Var<T1>> var)
             {
                 return ShaderFXUtils.GetNameForType<T1>();
             }
