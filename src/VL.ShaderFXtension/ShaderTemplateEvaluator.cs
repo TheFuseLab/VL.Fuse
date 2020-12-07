@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Stride.Animations;
+using Stride.Rendering.Materials;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {

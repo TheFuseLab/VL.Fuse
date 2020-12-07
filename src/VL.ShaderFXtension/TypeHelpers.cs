@@ -1,7 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using Stride.Core.Mathematics;
+using Stride.Graphics;
 using VL.Stride.Shaders.ShaderFX;
 using VL.Stride.Shaders.ShaderFX.Functions;
+using Buffer = System.Buffer;
 
 namespace VL.ShaderFXtension
 {
@@ -41,6 +45,34 @@ namespace VL.ShaderFXtension
                 inputType = ShaderFXUtils.GetNameForType<T1>();
                 outputType = ShaderFXUtils.GetNameForType<T2>();
                 signature = inputType + "To" + outputType;
+            }
+            
+            static Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
+
+            static TypeHelpers()
+            {
+                KnownTypes.Add(typeof(float), "Float");
+                KnownTypes.Add(typeof(int), "Int");
+                KnownTypes.Add(typeof(uint), "UInt");
+                KnownTypes.Add(typeof(bool), "Bool");
+            }
+
+            public static string GetNameForType<T>()
+            {
+                return GetNameForType(typeof(T));        
+            }
+
+            public static string GetNameForType(Type t)
+            {
+                if (KnownTypes.TryGetValue(t, out var result))
+                    return result;
+
+                throw new NotImplementedException("No name defined for type: " + t.Name);
+            }
+            
+            public static string GetType<T1>(T1 var)
+            {
+                return ShaderFXUtils.GetNameForType<T1>();
             }
             
             public static string VarType<T1>(Var<T1> var)
