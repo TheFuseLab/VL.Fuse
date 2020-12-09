@@ -8,14 +8,7 @@
 
 shader Voronoise : Hash
 {
-	///  3 out, 3 in...
-    float3 hash33(float3 p3)
-    {
-        p3 = frac(p3 * float3(.1031, .1030, .0973));
-        p3 += dot(p3, p3.yxz+19.19);
-        return frac((p3.xxy + p3.yxx)*p3.zyx);
-
-    }
+	
 
 	float voronoise2D(float2 x, float u, float v ){
 		float k = 1.0+63.0*pow(1.0-v,6.0);
@@ -29,8 +22,8 @@ shader Voronoise : Hash
 		for( int x=-2; x<=2; x++ )
 		{
 			float2 g = float2( x, y );
-			float2  o = hash33( p + g )*float3(u,u,1.0);
-			vec2  d = g - f + o.xy;
+			float3  o = hash32( p + g )*float3(u,u,1.0);
+			float2  d = g - f + o.xy;
 			float w = pow(1.0 - smoothstep(0.0, 1.414, length(d)), k );
 			a += float2(o.z*w,w);
 		}
