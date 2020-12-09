@@ -47,12 +47,20 @@ namespace VL.ShaderFXtension
                 signature = inputType + "To" + outputType;
             }
             
+            
             static Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
 
             static TypeHelpers()
             {
                 KnownTypes.Add(typeof(float), "Float");
+                KnownTypes.Add(typeof(Vector2), "Float2");
+                KnownTypes.Add(typeof(Vector3), "Float3");
+                KnownTypes.Add(typeof(Vector4), "Float4");
+                KnownTypes.Add(typeof(Matrix), "Matrix");
                 KnownTypes.Add(typeof(int), "Int");
+                KnownTypes.Add(typeof(Int2), "Int2");
+                KnownTypes.Add(typeof(Int3), "Int3");
+                KnownTypes.Add(typeof(Int4), "Int4");
                 KnownTypes.Add(typeof(uint), "UInt");
                 KnownTypes.Add(typeof(bool), "Bool");
             }

@@ -1,10 +1,10 @@
 ﻿namespace VL.ShaderFXtension
 {
-    public class GPUValue<T> : AbstractGPUValue
+    public class GpuValue<T> : AbstractGpuValue
     {
-        private string name;
+        protected string name;
 
-        public GPUValue(string theName)
+        public GpuValue(string theName)
         {
             name = theName;
         }

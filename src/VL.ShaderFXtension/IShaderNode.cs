@@ -8,7 +8,9 @@ namespace VL.ShaderFXtension
     {
         string SourceCode();
 
-        void BuildSource(StringBuilder theBuilder);
+        void BuildSource(StringBuilder theBuilder, HashSet<int> theHashs);
         void BuildDeclarations(Dictionary<int,string> theBuilder);
+        void GetInputs(HashSet<IGPUInput> theInputs);
+        void GetMixins(HashSet<string> theMixins);
     }
 }

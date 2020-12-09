@@ -1,23 +1,31 @@
 ﻿using System.Collections.Generic;
 using Stride.Core.Extensions;
+using Stride.Core;
+using Stride.Rendering;
+using Stride.Graphics;
+using Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension{
 
-    public class GPUInput<T> : ShaderNode
+    public class GPUInput<T> : ShaderNode, IGPUInput where T : struct 
     {
         private const string DeclarationTemplate = 
-@"    [Link(""${inputName}"")]
-    stage ${inputType} ${inputName};";
+@"        [Link(""${inputName}"")]
+        stage ${inputType} ${inputName};";
+
+        private ValueParameterKey<T> _valueParameterKey;
 
         public GPUInput()
         {
-            Output = new GPUValue<T>("input");
+            Output = new GpuValue<T>("input");
+            
+            _valueParameterKey = new ValueParameterKey<T>(Output.ID);
             
             Setup(
                 "", 
-                new Dictionary<string, AbstractGPUValue>(), 
-                new Dictionary<string, AbstractGPUValue> {{"input", Output}}
+                new Dictionary<string, AbstractGpuValue>(), 
+                new Dictionary<string, AbstractGpuValue> {{"input", Output}}
                 );
             
             Declaration = ShaderTemplateEvaluator.Evaluate(
@@ -29,9 +37,14 @@ namespace VL.ShaderFXtension{
                 });
         }
 
+        public void SetParameterValue(ParameterCollection theCollection)
+        {
+            theCollection.Set(_valueParameterKey, Value);
+        }
+
         public override string Declaration { get; }
 
-        public GPUValue<T> Output { get; }
+        public GpuValue<T> Output { get; }
 
         public T Value { get; set; }
     }

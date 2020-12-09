@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
@@ -9,11 +10,11 @@ namespace VL.ShaderFXtension
     {
         private const string ShaderCode = "${resultType} ${resultName} = ${Call};";
 
-        public GPUValue<T> Output { get; }
+        public GpuValue<T> Output { get; }
 
-        public OperatorNode(IEnumerable<AbstractGPUValue> inputs, string theOperator) : base()
+        public OperatorNode(IEnumerable<AbstractGpuValue> inputs, string theOperator) : base()
         {
-            Output = new GPUValue<T>("result");
+            Output = new GpuValue<T>("result");
 
             var gpuValues = inputs.ToList();
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
@@ -22,10 +23,10 @@ namespace VL.ShaderFXtension
                 {"resultType",TypeHelpers.GetNameForType<T>().ToLower()},
                 {"Call",BuildCall(gpuValues,theOperator)}
             });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues),new Dictionary<string, AbstractGPUValue> {{"result", Output}});
+           Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues),new Dictionary<string, AbstractGpuValue> {{"result", Output}});
         }
 
-        private static string BuildCall(IEnumerable<AbstractGPUValue> inputs, string theOperator)
+        private static string BuildCall(IEnumerable<AbstractGpuValue> inputs, string theOperator)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>

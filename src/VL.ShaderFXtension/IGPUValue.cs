@@ -1,6 +1,6 @@
 ﻿namespace VL.ShaderFXtension
 {
-    public abstract class AbstractGPUValue
+    public abstract class AbstractGpuValue
     {
         public abstract string SourceCode();
 

@@ -4,7 +4,7 @@ namespace VL.ShaderFXtension
 {
     public class AddNode<T> :OperatorNode<T>
     {
-        public AddNode(IEnumerable<GPUValue<T>> inputs) : base(inputs, "+")
+        public AddNode(IEnumerable<GpuValue<T>> inputs) : base(inputs, "+")
         {
         }
     }
