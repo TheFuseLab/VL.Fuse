@@ -3,33 +3,55 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
+using Stride.Core.Mathematics;
 using VL.Lib.Collections;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
     public abstract class ShaderNode : IShaderNode
     {
         private string _sourceCode;
-        private Dictionary<string, AbstractGpuValue> _ins;
+        protected Dictionary<string, AbstractGpuValue> _ins;
         private Dictionary<string, AbstractGpuValue> _outs;
-        
-        
 
-        protected ShaderNode()
+
+        protected ShaderNode(string theId)
         {
-            
+            ID = theId;
         }
 
         protected void Setup(string theSourceCode, Dictionary<string, AbstractGpuValue> theIns, Dictionary<string, AbstractGpuValue> theOuts)
         {
             _sourceCode = theSourceCode;
             _ins = theIns;
+            _ins.ForEach(input =>
+            {
+                if (!(input.Value is AbstractConstantValue)) return;
+                switch (input.Value)
+                {
+                    case ConstantValue<float> _:
+                        References.Add(input.Key, new GPUReference<float>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector2> _:
+                        References.Add(input.Key, new GPUReference<Vector2>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector3> _:
+                        References.Add(input.Key, new GPUReference<Vector3>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector4> _:
+                        References.Add(input.Key, new GPUReference<Vector4>(this, input.Key));
+                        break;
+                }
+            });
             _outs = theOuts;
             _outs.ForEach(output =>
             {
                 output.Value.ParentNode = this;
             });
         }
+
+        public Dictionary<string, AbstractGPUReference> References { get; set; } = new Dictionary<string, AbstractGPUReference>();
 
         public virtual string Declaration => "";
 
@@ -46,6 +68,21 @@ namespace VL.ShaderFXtension
             {
                 theStringBuilder.AppendLine("        " + _sourceCode);
             }
+        }
+
+        public virtual string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
+        {
+            return "";
+        }
+        
+        public virtual string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
+        {
+            return "";
+        }
+        
+        public virtual string ReferenceSignature(Dictionary<string,AbstractGpuValue> theReplacements)
+        {
+            return "";
         }
         
         public string SourceCode()
@@ -102,6 +139,8 @@ namespace VL.ShaderFXtension
             });
             theMixins.AddRange(MixIns);
         }
+
+        public string ID { get; }
 
         public string Mixins()
         {

@@ -10,7 +10,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<Vector4> Output { get; }
         
-        public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base()
+        public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base("Float4Join")
         {
             Output = new GpuValue<Vector4>("result");
 

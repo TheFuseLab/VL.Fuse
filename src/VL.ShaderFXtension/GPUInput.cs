@@ -16,7 +16,7 @@ namespace VL.ShaderFXtension{
 
         private ValueParameterKey<T> _valueParameterKey;
 
-        public GPUInput()
+        public GPUInput(): base("Input")
         {
             Output = new GpuValue<T>("input");
             

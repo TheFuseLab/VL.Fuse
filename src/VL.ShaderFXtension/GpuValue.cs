@@ -1,5 +1,13 @@
 ﻿namespace VL.ShaderFXtension
 {
+    public abstract class AbstractGpuValue
+    {
+
+        public abstract string ID { get; }
+
+        public ShaderNode ParentNode { get; set; }
+    }
+    
     public class GpuValue<T> : AbstractGpuValue
     {
         protected string name;
@@ -8,10 +16,6 @@
         {
             name = theName;
         }
-        public override string SourceCode()
-        {
-            return "";
-        }
 
         public void ConstrainType()
         {
@@ -19,8 +23,6 @@
         }
 
         public override string ID => name + "_" + GetHashCode();
-
-
-        public override IShaderNode ParentNode { get; set; }
+        
     }
 }

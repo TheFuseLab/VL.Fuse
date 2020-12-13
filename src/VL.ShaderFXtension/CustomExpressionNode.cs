@@ -11,7 +11,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<T> Output { get; }
 
-        public CustomExpressionNode(Dictionary<string,AbstractGpuValue> inputs, string theTemplate, Dictionary<string,string> theParameters) : base()
+        public CustomExpressionNode(Dictionary<string,AbstractGpuValue> inputs, string theTemplate, Dictionary<string,string> theParameters) : base("expression")
         {
             Output = new GpuValue<T>("result");
 

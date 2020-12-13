@@ -6,9 +6,9 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
-    public class IntrinsicFunctionNode<T> : CustomFunctionNode<T>
+    public class IntrinsicFunctionNode<T> : FunctionNode<T>
     {
-        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> inputs, string theFunction) : base(inputs, theFunction, new List<string>())
+        public IntrinsicFunctionNode(Dictionary<string,AbstractGpuValue> inputs, string theFunction) : base(inputs, theFunction, new List<string>())
         {
             
         }

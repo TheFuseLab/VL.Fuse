@@ -12,7 +12,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<T> Output { get; }
 
-        public OperatorNode(IEnumerable<AbstractGpuValue> inputs, string theOperator) : base()
+        public OperatorNode(IEnumerable<AbstractGpuValue> inputs, string theOperator) : base("Operator")
         {
             Output = new GpuValue<T>("result");
 

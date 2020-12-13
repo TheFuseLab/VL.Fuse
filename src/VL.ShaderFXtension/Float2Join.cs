@@ -9,7 +9,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<Vector2> Output { get; }
         
-        public Float2Join(GpuValue<float> x, GpuValue<float> y) : base()
+        public Float2Join(GpuValue<float> x, GpuValue<float> y) : base("float2Join")
         {
             Output = new GpuValue<Vector2>("result");
 

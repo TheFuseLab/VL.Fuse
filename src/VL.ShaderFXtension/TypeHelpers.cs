@@ -47,6 +47,36 @@ namespace VL.ShaderFXtension
                 signature = inputType + "To" + outputType;
             }
             
+            static Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>();
+
+            public static string GetDefaultForType<T>(T theValue)
+            {
+                if (typeof(T) == typeof(float)) return theValue.ToString();
+                if (typeof(T) == typeof(Vector2))
+                {
+                    var vec2 = (Vector2) Convert.ChangeType(theValue, typeof(Vector2));
+                    return $"float2({vec2.X},{vec2.Y})";
+                }
+                if (typeof(T) == typeof(Vector3))
+                {
+                    var vec3 = (Vector3) Convert.ChangeType(theValue, typeof(Vector3));
+                    return $"float3({vec3.X},{vec3.Y},{vec3.Z})";
+                }
+                if (typeof(T) == typeof(Vector4))
+                {
+                    var vec4 = (Vector4) Convert.ChangeType(theValue, typeof(Vector4));
+                    return $"float4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
+                }
+                return GetDefaultForType(typeof(T));        
+            }
+
+            public static string GetDefaultForType(Type t)
+            {
+                if (TypeDefaults.TryGetValue(t, out var result))
+                    return result;
+
+                throw new NotImplementedException("No name defined for type: " + t.Name);
+            }
             
             static Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
 
@@ -63,6 +93,18 @@ namespace VL.ShaderFXtension
                 KnownTypes.Add(typeof(Int4), "Int4");
                 KnownTypes.Add(typeof(uint), "UInt");
                 KnownTypes.Add(typeof(bool), "Bool");
+                
+                TypeDefaults.Add(typeof(float), "0.0");
+                TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");
+                TypeDefaults.Add(typeof(Vector3), "float3(0.0, 0.0, 0.0)");
+                TypeDefaults.Add(typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)");
+                TypeDefaults.Add(typeof(Matrix), "Matrix");
+                TypeDefaults.Add(typeof(int), "Int");
+                TypeDefaults.Add(typeof(Int2), "Int2");
+                TypeDefaults.Add(typeof(Int3), "Int3");
+                TypeDefaults.Add(typeof(Int4), "Int4");
+                TypeDefaults.Add(typeof(uint), "UInt");
+                TypeDefaults.Add(typeof(bool), "Bool");
             }
 
             public static string GetNameForType<T>()
@@ -76,6 +118,38 @@ namespace VL.ShaderFXtension
                     return result;
 
                 throw new NotImplementedException("No name defined for type: " + t.Name);
+            }
+
+            public static string GetType(AbstractGPUReference theReference)
+            {
+                switch (theReference)
+                {
+                    case GPUReference<float> _:
+                        return "Float";
+                    case GPUReference<Vector2> _:
+                        return "Float2";
+                    case GPUReference<Vector3> _:
+                        return "Float3";
+                    case GPUReference<Vector4> _:
+                        return "Float4";
+                }
+                throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
+            }
+            
+            public static string GetType(AbstractGpuValue theReference)
+            {
+                switch (theReference)
+                {
+                    case GpuValue<float> _:
+                        return "Float";
+                    case GpuValue<Vector2> _:
+                        return "Float2";
+                    case GpuValue<Vector3> _:
+                        return "Float3";
+                    case GpuValue<Vector4> _:
+                        return "Float4";
+                }
+                throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
             }
             
             public static string GetType<T1>(T1 var)
@@ -93,6 +167,20 @@ namespace VL.ShaderFXtension
             }
             
             public static string VarType<T1>(IDictionary<string,Var<T1>> var)
+            {
+                return ShaderFXUtils.GetNameForType<T1>();
+            }
+            
+            public static string VarType<T1>(GetVar<T1> var)
+            {
+                return ShaderFXUtils.GetNameForType<T1>();
+            }
+            public static string VarType<T1>(IEnumerable<GetVar<T1>> var)
+            {
+                return ShaderFXUtils.GetNameForType<T1>();
+            }
+            
+            public static string VarType<T1>(IDictionary<string,GetVar<T1>> var)
             {
                 return ShaderFXUtils.GetNameForType<T1>();
             }

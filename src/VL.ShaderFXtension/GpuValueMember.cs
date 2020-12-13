@@ -12,7 +12,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<TOut> Output { get; }
 
-        public GpuValueMember(GpuValue<TIn> theInput, string theMember) : base()
+        public GpuValueMember(GpuValue<TIn> theInput, string theMember) : base("Member")
         {
             Output = new GpuValue<TOut>("member");
 

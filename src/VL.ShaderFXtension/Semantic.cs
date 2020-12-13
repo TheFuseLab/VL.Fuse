@@ -6,7 +6,7 @@ namespace VL.ShaderFXtension
     {
         public GpuValue<T> Output { get; }
         
-        public Semantic (string theSemantic)
+        public Semantic (string theSemantic) : base("Semantic")
         {
             Output = new SemanticValue<T>(theSemantic);
             Setup(
