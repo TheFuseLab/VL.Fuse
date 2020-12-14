@@ -6,9 +6,9 @@ namespace VL.ShaderFXtension
 {
     public static class ShaderNodesUtil
     {
-        public static Dictionary<string,AbstractGpuValue> BuildInputs(IEnumerable<AbstractGpuValue> inputs)
+        public static OrderedDictionary<string,AbstractGpuValue> BuildInputs(IEnumerable<AbstractGpuValue> inputs)
         {
-            var inputsDict = new Dictionary<string,AbstractGpuValue>();
+            var inputsDict = new OrderedDictionary<string,AbstractGpuValue>();
             var c = 0;
             inputs.ForEach(input =>
             {
@@ -18,9 +18,9 @@ namespace VL.ShaderFXtension
             return inputsDict;
         }
         
-        public static Dictionary<string,AbstractGpuValue> BuildInputs(params AbstractGpuValue[] inputs)
+        public static OrderedDictionary<string,AbstractGpuValue> BuildInputs(params AbstractGpuValue[] inputs)
         {
-            var inputsDict = new Dictionary<string,AbstractGpuValue>();
+            var inputsDict = new OrderedDictionary<string,AbstractGpuValue>();
             var c = 0;
             inputs.ForEach(input =>
             {

@@ -17,7 +17,7 @@ namespace VL.ShaderFXtension
 
         private string _myFunction;
 
-        public FunctionNode(Dictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins) : base(theFunctionName)
+        public FunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins) : base(theFunctionName)
         {
             _myFunction = theFunctionName;
             Output = new GpuValue<T>("result");
@@ -31,7 +31,7 @@ namespace VL.ShaderFXtension
                 {"function",theFunctionName},
                 {"arguments",BuildArguments(inputs)}
             });
-            Setup(sourceCode, inputs,new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, inputs,new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
 
         public override string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
@@ -65,7 +65,7 @@ namespace VL.ShaderFXtension
             return stringBuilder.ToString();
         }
         
-        public override string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
+        public override string ReferenceCallArguments(Dictionary<string,AbstractGpuValue> theReplacements)
         {
             var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
             theReplacements.ForEach(kv => myCopy.Remove(kv.Key));
@@ -76,6 +76,23 @@ namespace VL.ShaderFXtension
                 if (input.Value == null) return;
                 if (input.Value is GPUReferenceOverride) return;
                 stringBuilder.Append(input.Key+Math.Abs(input.GetHashCode()));
+                stringBuilder.Append(", ");
+            });
+            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            return stringBuilder.ToString();
+        }
+        
+        public override string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
+        {
+            var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
+            theReplacements.ForEach(kv => myCopy.Remove(kv.Key));
+            
+            var stringBuilder = new StringBuilder();
+            myCopy.ForEach(input =>
+            {
+                if (input.Value == null) return;
+                if (input.Value is GPUReferenceOverride) return;
+                stringBuilder.Append(input.Value.ID);
                 stringBuilder.Append(", ");
             });
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
@@ -102,7 +119,7 @@ namespace VL.ShaderFXtension
             return stringBuilder.ToString();
         }
 
-        private static string BuildArguments(Dictionary<string,AbstractGpuValue> inputs)
+        private static string BuildArguments(OrderedDictionary<string,AbstractGpuValue> inputs)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>

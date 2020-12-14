@@ -31,6 +31,11 @@ namespace VL.ShaderFXtension
                 
             }
             
+            public static void ConstrainTypes<T>(GPUReference<T> inputT1, GpuValue<T> inputT2)
+            {
+                
+            }
+            
             public static (string inputType, string outputType) FunkTypes<T1, T2>(Funk1In1Out<T1, T2> funk)
             {
                 return (
@@ -69,6 +74,8 @@ namespace VL.ShaderFXtension
                 }
                 return GetDefaultForType(typeof(T));        
             }
+            
+            
 
             public static string GetDefaultForType(Type t)
             {

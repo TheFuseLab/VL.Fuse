@@ -8,20 +8,20 @@ namespace VL.ShaderFXtension
     public class FBMNode<TIn, TOut> : ShaderNode
     {
         private const string ShaderCode = @"
-${resultType} fbmRidge${signature}${id}(${argumentType} p, ${referenceSignature}){{
+${resultType} fbmRidge${signature}${id}(${argumentType} p, ${referenceSignature}){
     ${resultType} noiseVal = abs(${referenceCall} - 0.5) * 2; 
     noiseVal = 1. - noiseVal;
     noiseVal = pow(noiseVal , 10.);
     return noiseVal;
 }
 
-${resultType} fbmTurbulence${signature}${id}(${argumentType} p, ${referenceSignature}){{
+${resultType} fbmTurbulence${signature}${id}(${argumentType} p, ${referenceSignature}){
     ${resultType} noiseVal = abs(${referenceCall} - 0.5) * 2; 
     noiseVal = pow(noiseVal , 1.);
     return noiseVal;
 }
 
-${resultType} fbmStandard${signature}${id}(${argumentType} p, ${referenceSignature}){{
+${resultType} fbmStandard${signature}${id}(${argumentType} p, ${referenceSignature}){
     return ${referenceCall};
 }
 
@@ -54,47 +54,69 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
     }
 };";
 
+        public string ShaderCall;
         public GpuValue<TOut> Output { get; }
-        
-        public FBMNode(GPUReference<TIn> theReference, IEnumerable<AbstractGpuValue> inputs, FractalType theType = FractalType.Standard) : base("fbm")
+
+        private GPUReference<TIn> _myReference;
+        private FractalType _myType;
+
+        public FBMNode(GPUReference<TIn> theReference, OrderedDictionary<string, AbstractGpuValue> inputs,
+            FractalType theType = FractalType.Standard) : base("fbm")
         {
+            _myReference = theReference;
+            _myType = theType;
             Output = new GpuValue<TOut>("result");
 
             var gpuValues = inputs.ToList();
-            var replacement = new Dictionary<string, AbstractGpuValue>
-                {{theReference.ArguemntKey, new GPUReferenceOverride("p")}};
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
-            {
-                {"resultName", Output.ID},
-                {"resultType",TypeHelpers.GetNameForType<TOut>().ToLower()},
-                {"argumentType",TypeHelpers.GetNameForType<TIn>().ToLower()},
-                {"signature",$"{TypeHelpers.GetNameForType<TIn>()}To{TypeHelpers.GetNameForType<TOut>()}"},
-                {"id",theReference.ParentNode.ID},
-                {"referenceCall", theReference.ParentNode.ReferenceCall(replacement)},
-                {"referenceSignature", theReference.ParentNode.ReferenceSignature(replacement)},
-                {"referenceArguments", theReference.ParentNode.ReferenceArguments(replacement)},
-                {"fbmType", theType.ToString()}
-            });
-            Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues),new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+
+            var sourceCode =
+                ShaderTemplateEvaluator.Evaluate("${resultType} ${resultName} = fbm${signature}${id}(${arguments});",
+                    new Dictionary<string, string>
+                    {
+                        {"resultName", Output.ID},
+                        {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
+                        {"signature", $"{TypeHelpers.GetNameForType<TIn>()}To{TypeHelpers.GetNameForType<TOut>()}"},
+                        {"id", _myReference.ParentNode.ID},
+                        {"arguments", BuildArguments(inputs)}
+                    });
+            Setup(sourceCode, inputs, new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
 
-        private void BuildReference()
-        {
-            
-        }
-
-        private static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
+        private string BuildArguments(OrderedDictionary<string, AbstractGpuValue> inputs)
         {
             var stringBuilder = new StringBuilder();
+            var replacement = new Dictionary<string, AbstractGpuValue>
+                {{_myReference.ArguemntKey, new GPUReferenceOverride("p")}};
             inputs.ForEach(input =>
             {
-                if (input == null) return;
-                stringBuilder.Append(input.ID);
+                if (input.Value == null) return;
+                stringBuilder.Append(input.Value.ID);
                 stringBuilder.Append(", ");
             });
-            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            stringBuilder.Append(_myReference.ParentNode.ReferenceArguments(replacement));
+            if (stringBuilder.Length > 2) stringBuilder.Remove(stringBuilder.Length - 2, 2);
             return stringBuilder.ToString();
         }
-        
+
+        public override string Functions
+        {
+            get
+            {
+                var replacement = new Dictionary<string, AbstractGpuValue>
+                    {{_myReference.ArguemntKey, new GPUReferenceOverride("p")}};
+                return ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+                {
+                    {"resultName", Output.ID},
+                    {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
+                    {"argumentType", TypeHelpers.GetNameForType<TIn>().ToLower()},
+                    {"signature", $"{TypeHelpers.GetNameForType<TIn>()}To{TypeHelpers.GetNameForType<TOut>()}"},
+                    {"id", _myReference.ParentNode.ID},
+                    {"referenceCall", _myReference.ParentNode.ReferenceCall(replacement)},
+                    {"referenceSignature", _myReference.ParentNode.ReferenceSignature(replacement)},
+                    {"referenceArguments", _myReference.ParentNode.ReferenceCallArguments(replacement)},
+                    {"fbmType", _myType.ToString()}
+                });
+            }
+        }
     }
 }

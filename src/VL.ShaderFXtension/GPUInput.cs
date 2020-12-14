@@ -24,8 +24,8 @@ namespace VL.ShaderFXtension{
             
             Setup(
                 "", 
-                new Dictionary<string, AbstractGpuValue>(), 
-                new Dictionary<string, AbstractGpuValue> {{"input", Output}}
+                new OrderedDictionary<string, AbstractGpuValue>(), 
+                new OrderedDictionary<string, AbstractGpuValue> {{"input", Output}}
                 );
             
             Declaration = ShaderTemplateEvaluator.Evaluate(

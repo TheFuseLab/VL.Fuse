@@ -12,8 +12,8 @@ namespace VL.ShaderFXtension
     public abstract class ShaderNode : IShaderNode
     {
         private string _sourceCode;
-        protected Dictionary<string, AbstractGpuValue> _ins;
-        private Dictionary<string, AbstractGpuValue> _outs;
+        protected OrderedDictionary<string, AbstractGpuValue> _ins;
+        private OrderedDictionary<string, AbstractGpuValue> _outs;
 
 
         protected ShaderNode(string theId)
@@ -21,13 +21,12 @@ namespace VL.ShaderFXtension
             ID = theId;
         }
 
-        protected void Setup(string theSourceCode, Dictionary<string, AbstractGpuValue> theIns, Dictionary<string, AbstractGpuValue> theOuts)
+        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, OrderedDictionary<string, AbstractGpuValue> theOuts)
         {
             _sourceCode = theSourceCode;
             _ins = theIns;
             _ins.ForEach(input =>
             {
-                if (!(input.Value is AbstractConstantValue)) return;
                 switch (input.Value)
                 {
                     case ConstantValue<float> _:
@@ -54,6 +53,8 @@ namespace VL.ShaderFXtension
         public Dictionary<string, AbstractGPUReference> References { get; set; } = new Dictionary<string, AbstractGPUReference>();
 
         public virtual string Declaration => "";
+        
+        public virtual string Functions => "";
 
         public virtual IEnumerable<string> MixIns => new List<string>();
 
@@ -75,11 +76,14 @@ namespace VL.ShaderFXtension
             return "";
         }
         
+        public virtual string ReferenceCallArguments(Dictionary<string,AbstractGpuValue> theReplacements)
+        {
+            return "";
+        }
         public virtual string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
         {
             return "";
         }
-        
         public virtual string ReferenceSignature(Dictionary<string,AbstractGpuValue> theReplacements)
         {
             return "";

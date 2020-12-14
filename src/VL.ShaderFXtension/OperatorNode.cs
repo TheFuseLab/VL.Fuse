@@ -23,7 +23,7 @@ namespace VL.ShaderFXtension
                 {"resultType",TypeHelpers.GetNameForType<T>().ToLower()},
                 {"Call",BuildCall(gpuValues,theOperator)}
             });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues),new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+           Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
 
         private static string BuildCall(IEnumerable<AbstractGpuValue> inputs, string theOperator)

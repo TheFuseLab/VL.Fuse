@@ -23,7 +23,7 @@ namespace VL.ShaderFXtension
                 {"input",theInput.ID},
                 {"member",theMember}
             });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(theInput),new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+           Setup(sourceCode, ShaderNodesUtil.BuildInputs(theInput),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
     }
 }

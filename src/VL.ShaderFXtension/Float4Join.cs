@@ -22,7 +22,7 @@ namespace VL.ShaderFXtension
                 {"z", z == null ? "0" : z.ID},
                 {"w", w == null ? "1" : w.ID}
             });
-            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z,w),new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z,w),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
     }
 }

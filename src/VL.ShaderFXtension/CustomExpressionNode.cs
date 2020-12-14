@@ -11,7 +11,7 @@ namespace VL.ShaderFXtension
 
         public GpuValue<T> Output { get; }
 
-        public CustomExpressionNode(Dictionary<string,AbstractGpuValue> inputs, string theTemplate, Dictionary<string,string> theParameters) : base("expression")
+        public CustomExpressionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theTemplate, OrderedDictionary<string,string> theParameters) : base("expression")
         {
             Output = new GpuValue<T>("result");
 
@@ -27,7 +27,7 @@ namespace VL.ShaderFXtension
             inputs.ForEach(input => myKeyMap.Add(input.Key, input.Value.ID));
             
             var sourceCode = ShaderTemplateEvaluator.Evaluate(theTemplate, myKeyMap);
-           Setup(sourceCode, inputs,new Dictionary<string, AbstractGpuValue> {{"result", Output}});
+           Setup(sourceCode, inputs,new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
         }
 
        

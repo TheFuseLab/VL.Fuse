@@ -11,8 +11,8 @@ namespace VL.ShaderFXtension
             Output = new SemanticValue<T>(theSemantic);
             Setup(
                 "", 
-                new Dictionary<string, AbstractGpuValue>(), 
-                new Dictionary<string, AbstractGpuValue> {{"semantic", Output}}
+                new OrderedDictionary<string, AbstractGpuValue>(), 
+                new OrderedDictionary<string, AbstractGpuValue> {{"semantic", Output}}
             );
         }
     }
