@@ -7,6 +7,110 @@ namespace VL.ShaderFXtension
 {
     public class TestGraph
     {
+        public static void TestInputs()
+        {
+            var gpuValue0 = new GPUInput<float>();
+            var gpuValue1 = new GPUInput<float>();
+
+            var add = new AddNode<float>(new List<GpuValue<float>>
+                {gpuValue0.Output, gpuValue1.Output, gpuValue0.Output});
+
+            var gpuValue2 = new GPUInput<float>();
+            var add2 = new AddNode<float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output});
+
+            var sin = new IntrinsicFunctionNode<float>(
+                new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
+                "sin");
+            Console.WriteLine(sin.SourceCode());
+
+            sin.Inputs().ForEach(input => Console.WriteLine(input.ID));
+        }
+
+        public static void TestDeclarations()
+        {
+            var gpuValue0 = new GPUInput<float>();
+            var gpuValue1 = new GPUInput<float>();
+
+            var add = new AddNode<float>(new List<GpuValue<float>>
+                {gpuValue0.Output, gpuValue1.Output, gpuValue0.Output});
+
+            var gpuValue2 = new GPUInput<float>();
+            var add2 = new AddNode<float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output});
+            Console.WriteLine(add2.Declarations());
+        }
+
+        public static void TestMixins()
+        {
+            var gpuValue0 = new GPUInput<float>();
+            Console.WriteLine(gpuValue0.Declaration);
+            
+            var customFunction = new FunctionNode<Vector2>(
+                new OrderedDictionary<string, AbstractGpuValue>
+                {
+                    {"x", new ConstantValue<Vector2>(0.5f)}, 
+                    {"u", gpuValue0.Output},
+                    {"v", gpuValue0.Output}
+                },
+                "voronoise2D",
+                new List<string> {"Voronoise", "Hash"}
+            );
+            Console.WriteLine(customFunction.MixIns());
+            Console.WriteLine(customFunction.SourceCode());
+            Console.WriteLine(customFunction.References.Count);
+        }
+
+        public static void TestFunctions()
+        {
+            
+            var gpuValue0 = new GPUInput<float>();
+            var gpuValue1 = new GPUInput<float>();
+            var gpuValue2 = new GPUInput<float>();
+            var texCoord = new Semantic<Vector2>("TexCoord");
+            
+            var add = new AddNode<float>(new List<GpuValue<float>>
+                {gpuValue0.Output, gpuValue1.Output, gpuValue0.Output});
+            
+            var sin = new IntrinsicFunctionNode<float>(
+                new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
+                "sin");
+            
+            var customFunction = new FunctionNode<Vector2>(
+                new OrderedDictionary<string, AbstractGpuValue>
+                {
+                    {"x", new ConstantValue<Vector2>(0.5f)}, 
+                    {"u", gpuValue0.Output},
+                    {"v", gpuValue0.Output}
+                },
+                "voronoise2D",
+                new List<string> {"Voronoise", "Hash"}
+            );
+            var myReference = customFunction.References["x"];
+            var fbm = new FBMNode<Vector2, float>((GPUReference<Vector2>) myReference,
+                new OrderedDictionary<string, AbstractGpuValue>
+                {
+                    {"x", texCoord.Output}, 
+                    {"gain", new ConstantValue<float>(0.5f)}, 
+                    {"octaves", new ConstantValue<float>(0.5f)}, 
+                    {"lacunarity", sin.Output}
+                });
+            var sin2 = new IntrinsicFunctionNode<float>(
+                new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
+                "sin");
+            Console.WriteLine(sin2.SourceCode());
+            Console.WriteLine(sin2.Functions());
+            Console.WriteLine(sin2.MixIns());
+        }
+
+        public static void TestFloat4Join()
+        {
+            var gpuValue0 = new GPUInput<float>();
+            var gpuValue1 = new GPUInput<float>();
+            var gpuValue2 = new GPUInput<float>();
+            var gpuValue3 = new GPUInput<float>();
+            var join = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, gpuValue3.Output);
+            Console.WriteLine(join.Functions());
+        }
+
         public static void Main()
         {
             var gpuValue0 = new GPUInput<float>();
@@ -50,7 +154,7 @@ namespace VL.ShaderFXtension
                 "voronoise2D",
                 new List<string> {"Voronoise", "Hash"}
             );
-            Console.WriteLine(customFunction.Mixins());
+            Console.WriteLine(customFunction.MixIns());
             Console.WriteLine(customFunction.SourceCode());
             Console.WriteLine(customFunction.References.Count);
 
@@ -64,10 +168,16 @@ namespace VL.ShaderFXtension
                     {"x", texCoord.Output}, 
                     {"gain", new ConstantValue<float>(0.5f)}, 
                     {"octaves", new ConstantValue<float>(0.5f)}, 
-                    {"lacunarity", new ConstantValue<float>(0.5f)}
+                    {"lacunarity", sin.Output}
                 });
-            Console.WriteLine(fbm.Functions);
+            Console.WriteLine(fbm.Functions());
             Console.WriteLine(fbm.SourceCode());
+            
+            var sin2 = new IntrinsicFunctionNode<float>(
+                new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
+                "sin");
+            Console.WriteLine(sin2.SourceCode());
+            Console.WriteLine(sin2.Functions());
         }
     }
 }

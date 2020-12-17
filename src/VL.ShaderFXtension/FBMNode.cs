@@ -32,27 +32,26 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
     float myFallOff = gain;
 
     int iOctaves = int(floor(octaves)); 
-    ${argumentType} myResult = 0.;  
+    ${resultType} myResult = 0.;  
     float myAmp = 0.;
 
-    for(int i = 0; i < iOctaves;i++){{
-        myResult += ${fbmType}${signature}${id}(p * myScale,${referenceArguments}) * myFallOff;
+    for(int i = 0; i < iOctaves;i++){
+        myResult += fbm${fbmType}${signature}${id}(p * myScale,${referenceArguments}) * myFallOff;
         myAmp += myFallOff;
         myFallOff *= gain;
         myScale *= lacunarity;
     }
 
     float myBlend = octaves - float(iOctaves);
-    myResult += ${fbmType}(p * myScale) * myFallOff * myBlend;    
+    myResult += fbm${fbmType}${signature}${id}(p * myScale,${referenceArguments}) * myFallOff * myBlend;    
     myAmp += myFallOff * myBlend;
     
-    if(myAmp > 0.0){{
+    if(myAmp > 0.0){
         myResult /= myAmp;
     }
  
     return myResult;
-    }
-};";
+}";
 
         public string ShaderCall;
         public GpuValue<TOut> Output { get; }
@@ -60,14 +59,14 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
         private GPUReference<TIn> _myReference;
         private FractalType _myType;
 
-        public FBMNode(GPUReference<TIn> theReference, OrderedDictionary<string, AbstractGpuValue> inputs,
+        public FBMNode(GPUReference<TIn> theReference, 
+            OrderedDictionary<string, AbstractGpuValue> inputs,
             FractalType theType = FractalType.Standard) : base("fbm")
         {
             _myReference = theReference;
             _myType = theType;
             Output = new GpuValue<TOut>("result");
-
-            var gpuValues = inputs.ToList();
+            inputs.Add("function", theReference);
 
             var sourceCode =
                 ShaderTemplateEvaluator.Evaluate("${resultType} ${resultName} = fbm${signature}${id}(${arguments});",
@@ -90,15 +89,35 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
             inputs.ForEach(input =>
             {
                 if (input.Value == null) return;
+                if (input.Value is AbstractGPUReference) return;
                 stringBuilder.Append(input.Value.ID);
                 stringBuilder.Append(", ");
             });
-            stringBuilder.Append(_myReference.ParentNode.ReferenceArguments(replacement));
-            if (stringBuilder.Length > 2) stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            var myReferenceArguments = _myReference.ParentNode.ReferenceArguments(replacement);
+            if (!myReferenceArguments.IsNullOrEmpty())
+            {
+                stringBuilder.Append(myReferenceArguments);
+            }
+            else
+            {
+                if (stringBuilder.Length > 2) stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            }
             return stringBuilder.ToString();
         }
+/*
+        public override IEnumerable<string> MixIn
+        {
 
-        public override string Functions
+            get
+            {
+                var result = new List<string>(base.MixIn);
+                result.AddRange(_myReference.ParentNode.MixIn);
+                return result;
+            }
+        }
+        */
+
+        public override string Function
         {
             get
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
@@ -53,23 +54,13 @@ namespace VL.ShaderFXtension
         public Dictionary<string, AbstractGPUReference> References { get; set; } = new Dictionary<string, AbstractGPUReference>();
 
         public virtual string Declaration => "";
+        public virtual string Function => "";
+
+        public virtual IEnumerable<string> MixIn => new List<string>();
         
-        public virtual string Functions => "";
+        public string ID { get; }
 
-        public virtual IEnumerable<string> MixIns => new List<string>();
-
-        public void BuildSource(StringBuilder theStringBuilder, HashSet<int> theHashs)
-        {
-            _ins.ForEach(input =>
-            {
-                if (input.Value?.ParentNode == null) return;
-                input.Value.ParentNode.BuildSource(theStringBuilder, theHashs);
-            });
-            if (!_sourceCode.IsNullOrEmpty() && theHashs.Add(GetHashCode()))
-            {
-                theStringBuilder.AppendLine("        " + _sourceCode);
-            }
-        }
+        
 
         public virtual string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
         {
@@ -88,72 +79,74 @@ namespace VL.ShaderFXtension
         {
             return "";
         }
-        
+       
         public string SourceCode()
         {
             var myStringBuilder = new StringBuilder();
-            BuildSource(myStringBuilder, new HashSet<int>());
+            var myHashes = new HashSet<int>();
+            ShaderNode  myOut = null;
+            Trees.ITraverseCommand  myOut2 = null;
+            Trees.ReadOnlyTreeNode.Traverse(this, n =>
+            {
+                if (!(n is ShaderNode input)) return Trees.TraverseAllChilds;
+                if (!_sourceCode.IsNullOrEmpty() && myHashes.Add(input.GetHashCode()))
+                {
+                    myStringBuilder.Insert(0,"        " + input._sourceCode + System.Environment.NewLine);
+                }
+
+                return Trees.TraverseAllChilds;
+            }, out myOut, out myOut2);
             
             return myStringBuilder.ToString();
         }
 
-        public void BuildDeclarations(Dictionary<int,string> theCBuffer)
-        {
-            _ins.ForEach(input =>
-            {
-                if (input.Value?.ParentNode == null) return;
-                input.Value.ParentNode.BuildDeclarations(theCBuffer);
-            });
-            if(!Declaration.IsNullOrEmpty() && !theCBuffer.ContainsKey(GetHashCode()))theCBuffer.Add(GetHashCode(),Declaration);
-        }
-        
         public string Declarations()
         {
-            var myDeclarationBuilder = new Dictionary<int, string>();
-            BuildDeclarations(myDeclarationBuilder);
-            
+            var result = new HashSet<ShaderNode>();
             var myDeclarations = new StringBuilder();
-            myDeclarationBuilder.ForEach(decl => myDeclarations.AppendLine(decl.Value));
-            return myDeclarations.ToString();
-        }
-        
-        public void GetInputs(HashSet<IGPUInput> theInputs)
-        {
-            _ins.ForEach(input =>
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if (input.Value?.ParentNode == null) return;
-                input.Value.ParentNode.GetInputs(theInputs);
+                if (!(n is ShaderNode input)) return;
+                if (!input.Declaration.IsNullOrEmpty() && result.Add(input))
+                    myDeclarations.AppendLine(input.Declaration);
             });
-            if(this is IGPUInput)theInputs.Add((IGPUInput)this);
+            return myDeclarations.ToString();
         }
 
         public List<IGPUInput> Inputs()
         {
             var result = new HashSet<IGPUInput>();
-            GetInputs(result);
-            return result.ToList();
-        } 
-        
-        public void GetMixins(HashSet<string> theMixins)
-        {
-            _ins.ForEach(input =>
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if (input.Value?.ParentNode == null) return;
-                input.Value.ParentNode.GetMixins(theMixins);
+                if(n is IGPUInput input)result.Add(input);
             });
-            theMixins.AddRange(MixIns);
+            return result.ToList();
         }
 
-        public string ID { get; }
-
-        public string Mixins()
+        public string MixIns()
         {
             var result = new HashSet<string>();
-            GetMixins(result);
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is ShaderNode input)result.AddRange(input.MixIn);
+            });
+            
             var myBuilder = new StringBuilder();
             result.ForEach(mixin => myBuilder.Append(","+mixin));
             return myBuilder.ToString();
-        } 
+            
+        }
+
+        public string Functions(){
+       
+            var result = new HashSet<string>();
+            var myBuilder = new StringBuilder();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is ShaderNode input && result.Add(input.Function))myBuilder.Append(input.Function);
+            });
+            return myBuilder.ToString();
+        }
 
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
         {

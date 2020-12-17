@@ -38,6 +38,7 @@ namespace VL.ShaderFXtension
         {
             var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
             theReplacements.ForEach(kv => myCopy[kv.Key] = kv.Value);
+            
             return ShaderTemplateEvaluator.Evaluate(
                 ShaderCall,
                 new Dictionary<string, string>
@@ -132,6 +133,6 @@ namespace VL.ShaderFXtension
             return stringBuilder.ToString();
         }
         
-        public override IEnumerable<string> MixIns => _myMixins;
+        public override IEnumerable<string> MixIn => _myMixins;
     }
 }
