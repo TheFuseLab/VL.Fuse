@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
@@ -120,7 +119,7 @@ namespace VL.ShaderFXtension
             {
                 if(n is IGPUInput input)result.Add(input);
             });
-            return result.ToList();
+            return System.Linq.Enumerable.ToList(result);
         }
 
         public string MixIns()

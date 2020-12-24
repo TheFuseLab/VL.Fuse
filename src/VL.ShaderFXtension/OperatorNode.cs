@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using VL.Stride.Shaders.ShaderFX;
@@ -16,7 +15,7 @@ namespace VL.ShaderFXtension
         {
             Output = new GpuValue<T>("result");
 
-            var gpuValues = inputs.ToList();
+            var gpuValues = System.Linq.Enumerable.ToList(inputs);
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
             {
                 {"resultName", Output.ID},

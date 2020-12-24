@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using VL.Stride.Shaders.ShaderFX;
@@ -14,8 +13,6 @@ namespace VL.ShaderFXtension
         public CustomExpressionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theTemplate, OrderedDictionary<string,string> theParameters) : base("expression")
         {
             Output = new GpuValue<T>("result");
-
-            var gpuValues = inputs.ToList();
 
             var myKeyMap = new Dictionary<string, string>
             {
