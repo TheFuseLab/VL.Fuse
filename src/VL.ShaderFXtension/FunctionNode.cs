@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 
@@ -23,7 +22,6 @@ namespace VL.ShaderFXtension
             Output = new GpuValue<T>("result");
             _myMixins = theMixins;
 
-            var gpuValues = inputs.ToList().Select(k => k.Value);
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
             {
                 {"resultName", Output.ID},
