@@ -1,4 +1,4 @@
-﻿namespace VL.ShaderFXtension
+﻿﻿namespace VL.ShaderFXtension
 {
     public abstract class AbstractGPUReference: AbstractGpuValue
     {
@@ -22,7 +22,7 @@
     public class GPUReference<T> : AbstractGPUReference
     {
         
-        public GPUReference(ShaderNode theParent, string theKey) : base(theKey)
+        public GPUReference(AbstractShaderNode theParent, string theKey) : base(theKey)
         {
             ParentNode = theParent;
         }

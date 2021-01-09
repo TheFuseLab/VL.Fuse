@@ -5,7 +5,7 @@
 
         public abstract string ID { get; }
 
-        public ShaderNode ParentNode { get; set; }
+        public AbstractShaderNode ParentNode { get; set; }
     }
     
     public class GpuValue<T> : AbstractGpuValue
@@ -23,6 +23,8 @@
         }
 
         public override string ID => name + "_" + GetHashCode();
-        
+
     }
+    
+    
 }

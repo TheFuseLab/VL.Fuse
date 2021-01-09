@@ -4,7 +4,7 @@ using Stride.Core.Extensions;
 
 namespace VL.ShaderFXtension
 {
-    public class FBMNode<TIn, TOut> : ShaderNode
+    public class FBMNode<TIn, TOut> : ShaderNode<TOut>
     {
         private const string ShaderCode = @"
 ${resultType} fbmRidge${signature}${id}(${argumentType} p, ${referenceSignature}){
@@ -52,11 +52,8 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
     return myResult;
 }";
 
-        public string ShaderCall;
-        public GpuValue<TOut> Output { get; }
-
-        private GPUReference<TIn> _myReference;
-        private FractalType _myType;
+        private readonly GPUReference<TIn> _myReference;
+        private readonly FractalType _myType;
 
         public FBMNode(GPUReference<TIn> theReference, 
             OrderedDictionary<string, AbstractGpuValue> inputs,
@@ -64,7 +61,6 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
         {
             _myReference = theReference;
             _myType = theType;
-            Output = new GpuValue<TOut>("result");
             inputs.Add("function", theReference);
 
             var sourceCode =
@@ -77,7 +73,7 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
                         {"id", _myReference.ParentNode.ID},
                         {"arguments", BuildArguments(inputs)}
                     });
-            Setup(sourceCode, inputs, new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, inputs);
         }
 
         private string BuildArguments(OrderedDictionary<string, AbstractGpuValue> inputs)
@@ -103,26 +99,16 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
             }
             return stringBuilder.ToString();
         }
-/*
-        public override IEnumerable<string> MixIn
-        {
 
-            get
-            {
-                var result = new List<string>(base.MixIn);
-                result.AddRange(_myReference.ParentNode.MixIn);
-                return result;
-            }
-        }
-        */
-
-        public override string Function
+        public override IDictionary<string,string> Functions
         {
             get
             {
-                var replacement = new Dictionary<string, AbstractGpuValue>
-                    {{_myReference.ArguemntKey, new GPUReferenceOverride("p")}};
-                return ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+                var replacement = new Dictionary<string, AbstractGpuValue> {{_myReference.ArguemntKey, new GPUReferenceOverride("p")}};
+                return new Dictionary<string, string>() {
+                {
+                    "fbm"+Output.ID,
+                    ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
                 {
                     {"resultName", Output.ID},
                     {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
@@ -133,7 +119,7 @@ ${resultType} fbm${signature}${id}(${argumentType} p,float gain, float octaves, 
                     {"referenceSignature", _myReference.ParentNode.ReferenceSignature(replacement)},
                     {"referenceArguments", _myReference.ParentNode.ReferenceCallArguments(replacement)},
                     {"fbmType", _myType.ToString()}
-                });
+                })} };
             }
         }
     }

@@ -6,11 +6,9 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
-    public class GpuValueMember<TIn, TOut> : ShaderNode
+    public class GpuValueMember<TIn, TOut> : ShaderNode<TOut>
     {
         private const string ShaderCode = "${resultType} ${resultName} = ${input}.${member};";
-
-        public GpuValue<TOut> Output { get; }
 
         public GpuValueMember(GpuValue<TIn> theInput, string theMember) : base("Member")
         {
@@ -23,7 +21,7 @@ namespace VL.ShaderFXtension
                 {"input",theInput.ID},
                 {"member",theMember}
             });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(theInput),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
+           Setup(sourceCode, ShaderNodesUtil.BuildInputs(theInput));
         }
     }
 }

@@ -1,18 +1,15 @@
-﻿using System.Collections.Generic;
+﻿﻿using System.Collections.Generic;
 using System.Linq;
 using Stride.Core.Mathematics;
 
 namespace VL.ShaderFXtension
 {
-    public class Float4Join : ShaderNode
+    public class Float4Join : ShaderNode<Vector4>
     {
         private const string ShaderCode = "float4 ${resultName} = float4(${x},${y},${z},${w});";
 
-        public GpuValue<Vector4> Output { get; }
-        
         public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base("Float4Join")
         {
-            Output = new GpuValue<Vector4>("result");
 
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
             {
@@ -22,7 +19,7 @@ namespace VL.ShaderFXtension
                 {"z", z == null ? "0" : z.ID},
                 {"w", w == null ? "1" : w.ID}
             });
-            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z,w),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z,w));
         }
     }
 }

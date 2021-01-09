@@ -4,15 +4,12 @@ using Stride.Core.Mathematics;
 
 namespace VL.ShaderFXtension
 {
-    public class Float3Join : ShaderNode
+    public class Float3Join : ShaderNode<Vector3>
     {
         private const string ShaderCode = "float3 ${resultName} = float3(${x},${y},${z});";
 
-        public GpuValue<Vector3> Output { get; }
-        
         public Float3Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z) : base("Float3Join")
         {
-            Output = new GpuValue<Vector3>("result");
 
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
             {
@@ -21,7 +18,7 @@ namespace VL.ShaderFXtension
                 {"y", y == null ? "0" : y.ID},
                 {"z", z == null ? "0" : z.ID}
             });
-            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z),new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z));
         }
     }
 }

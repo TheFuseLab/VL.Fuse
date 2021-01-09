@@ -1,61 +1,38 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+ using System.Diagnostics;
+ using System.Text;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 using VL.Lib.Collections;
-using VL.Stride.Shaders.ShaderFX;
 
-namespace VL.ShaderFXtension
+ namespace VL.ShaderFXtension
 {
-    public abstract class ShaderNode : IShaderNode
+    public interface IShaderNode: Trees.IReadOnlyTreeNode
     {
-        private string _sourceCode;
-        protected OrderedDictionary<string, AbstractGpuValue> _ins;
-        private OrderedDictionary<string, AbstractGpuValue> _outs;
+
+        string ID { get;  }
+    }
+    
+    public abstract class AbstractShaderNode : IShaderNode
+    {
+        protected string _sourceCode;
+        protected OrderedDictionary<string, AbstractGpuValue> Ins;
 
 
-        protected ShaderNode(string theId)
+        protected AbstractShaderNode(string theId)
         {
             ID = theId;
         }
 
-        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, OrderedDictionary<string, AbstractGpuValue> theOuts)
-        {
-            _sourceCode = theSourceCode;
-            _ins = theIns;
-            _ins.ForEach(input =>
-            {
-                switch (input.Value)
-                {
-                    case ConstantValue<float> _:
-                        References.Add(input.Key, new GPUReference<float>(this, input.Key));
-                        break;
-                    case ConstantValue<Vector2> _:
-                        References.Add(input.Key, new GPUReference<Vector2>(this, input.Key));
-                        break;
-                    case ConstantValue<Vector3> _:
-                        References.Add(input.Key, new GPUReference<Vector3>(this, input.Key));
-                        break;
-                    case ConstantValue<Vector4> _:
-                        References.Add(input.Key, new GPUReference<Vector4>(this, input.Key));
-                        break;
-                }
-            });
-            _outs = theOuts;
-            _outs.ForEach(output =>
-            {
-                output.Value.ParentNode = this;
-            });
-        }
+        
 
         public Dictionary<string, AbstractGPUReference> References { get; set; } = new Dictionary<string, AbstractGPUReference>();
 
         public virtual string Declaration => "";
-        public virtual string Function => "";
+        public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
 
-        public virtual IEnumerable<string> MixIn => new List<string>();
+        public virtual IEnumerable<string> MixIns => new List<string>();
         
         public string ID { get; }
 
@@ -78,34 +55,49 @@ namespace VL.ShaderFXtension
         {
             return "";
         }
+
+        private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        {
+            Children.ForEach(child =>
+            {
+                if (!(child is AbstractShaderNode input)) return;
+               
+                ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
+            });
+            if (!_sourceCode.IsNullOrEmpty() && theHashes.Add(GetHashCode()))
+            {
+                theSourceBuilder.Append("        " + _sourceCode + Environment.NewLine);
+            }
+        }
        
         public string SourceCode()
         {
             var myStringBuilder = new StringBuilder();
             var myHashes = new HashSet<int>();
-            ShaderNode  myOut = null;
-            Trees.ITraverseCommand  myOut2 = null;
+
+            BuildSource(myStringBuilder, myHashes);
+            /*
             Trees.ReadOnlyTreeNode.Traverse(this, n =>
             {
                 if (!(n is ShaderNode input)) return Trees.TraverseAllChilds;
                 if (!_sourceCode.IsNullOrEmpty() && myHashes.Add(input.GetHashCode()))
                 {
-                    myStringBuilder.Insert(0,"        " + input._sourceCode + System.Environment.NewLine);
+                    myStringBuilder.Insert(0,"        " + input._sourceCode + Environment.NewLine);
                 }
 
                 return Trees.TraverseAllChilds;
-            }, out myOut, out myOut2);
-            
+            }, out _, out _);
+            */
             return myStringBuilder.ToString();
         }
 
         public string Declarations()
         {
-            var result = new HashSet<ShaderNode>();
+            var result = new HashSet<AbstractShaderNode>();
             var myDeclarations = new StringBuilder();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if (!(n is ShaderNode input)) return;
+                if (!(n is AbstractShaderNode input)) return;
                 if (!input.Declaration.IsNullOrEmpty() && result.Add(input))
                     myDeclarations.AppendLine(input.Declaration);
             });
@@ -122,12 +114,12 @@ namespace VL.ShaderFXtension
             return System.Linq.Enumerable.ToList(result);
         }
 
-        public string MixIns()
+        public string BuildMixIns()
         {
             var result = new HashSet<string>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if(n is ShaderNode input)result.AddRange(input.MixIn);
+                if(n is AbstractShaderNode input)result.AddRange(input.MixIns);
             });
             
             var myBuilder = new StringBuilder();
@@ -136,13 +128,19 @@ namespace VL.ShaderFXtension
             
         }
 
-        public string Functions(){
+        public string BuildFunctions(){
        
             var result = new HashSet<string>();
             var myBuilder = new StringBuilder();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if(n is ShaderNode input && result.Add(input.Function))myBuilder.Append(input.Function);
+                if (!(n is AbstractShaderNode input)) return;
+                
+                input.Functions?.ForEach(kv =>
+                {
+                    if(result.Add(kv.Key))myBuilder.Append(kv.Value);
+                });
+                
             });
             return myBuilder.ToString();
         }
@@ -152,12 +150,53 @@ namespace VL.ShaderFXtension
             get
             {
                 var result = new List<Trees.IReadOnlyTreeNode>();
-                _ins.ForEach(input =>
+                
+                Ins.ForEach(input =>
                 {
-                    if(input.Value.ParentNode != null)result.Add(input.Value.ParentNode);
+                    if(input.Value?.ParentNode != null)result.Add(input.Value.ParentNode);
                 });
                 return result;
             }
+        }
+
+        
+    }
+    
+    public class ShaderNode<T> : AbstractShaderNode
+    {
+        public  GpuValue<T> Output { get; protected set; }
+        public  ConstantValue<T> Default { get; protected set; }
+
+        protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
+        {
+            Default = theDefault ?? new ConstantValue<T>(0);
+            Output = new GpuValue<T>(outputName);
+        }
+        
+        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns)
+        {
+            _sourceCode = theSourceCode;
+            Ins = theIns;
+            Ins.ForEach(input =>
+            {
+                switch (input.Value)
+                {
+                    case ConstantValue<float> _:
+                        References.Add(input.Key, new GPUReference<float>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector2> _:
+                        References.Add(input.Key, new GPUReference<Vector2>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector3> _:
+                        References.Add(input.Key, new GPUReference<Vector3>(this, input.Key));
+                        break;
+                    case ConstantValue<Vector4> _:
+                        References.Add(input.Key, new GPUReference<Vector4>(this, input.Key));
+                        break;
+                }
+            });
+           
+            Output.ParentNode = this;
         }
     }
 }

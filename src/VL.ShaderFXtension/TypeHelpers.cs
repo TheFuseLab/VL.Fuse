@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿﻿using System;
+ using System.Collections.Generic;
 using Stride.Core.Mathematics;
-using Stride.Graphics;
-using VL.Stride.Shaders.ShaderFX;
+ using Stride.Graphics;
+ using VL.Stride.Shaders.ShaderFX;
 using VL.Stride.Shaders.ShaderFX.Functions;
-using Buffer = System.Buffer;
 
-namespace VL.ShaderFXtension
+ namespace VL.ShaderFXtension
 {
     
         public static class TypeHelpers
@@ -57,6 +55,9 @@ namespace VL.ShaderFXtension
             public static string GetDefaultForType<T>(T theValue)
             {
                 if (typeof(T) == typeof(float)) return theValue.ToString();
+                if (typeof(T) == typeof(bool)) return theValue.ToString().ToLower();
+                if (typeof(T) == typeof(int)) return theValue.ToString();
+                
                 if (typeof(T) == typeof(Vector2))
                 {
                     var vec2 = (Vector2) Convert.ChangeType(theValue, typeof(Vector2));
@@ -93,6 +94,7 @@ namespace VL.ShaderFXtension
                 KnownTypes.Add(typeof(Vector2), "Float2");
                 KnownTypes.Add(typeof(Vector3), "Float3");
                 KnownTypes.Add(typeof(Vector4), "Float4");
+                KnownTypes.Add(typeof(Color4), "Float4");
                 KnownTypes.Add(typeof(Matrix), "Matrix");
                 KnownTypes.Add(typeof(int), "Int");
                 KnownTypes.Add(typeof(Int2), "Int2");
@@ -100,18 +102,21 @@ namespace VL.ShaderFXtension
                 KnownTypes.Add(typeof(Int4), "Int4");
                 KnownTypes.Add(typeof(uint), "UInt");
                 KnownTypes.Add(typeof(bool), "Bool");
+                KnownTypes.Add(typeof(Texture), "Texture");
+                KnownTypes.Add(typeof(SamplerState), "Sampler");
                 
                 TypeDefaults.Add(typeof(float), "0.0");
                 TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");
                 TypeDefaults.Add(typeof(Vector3), "float3(0.0, 0.0, 0.0)");
                 TypeDefaults.Add(typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)");
+                TypeDefaults.Add(typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)");
                 TypeDefaults.Add(typeof(Matrix), "Matrix");
-                TypeDefaults.Add(typeof(int), "Int");
+                TypeDefaults.Add(typeof(int), "0");
                 TypeDefaults.Add(typeof(Int2), "Int2");
                 TypeDefaults.Add(typeof(Int3), "Int3");
                 TypeDefaults.Add(typeof(Int4), "Int4");
-                TypeDefaults.Add(typeof(uint), "UInt");
-                TypeDefaults.Add(typeof(bool), "Bool");
+                TypeDefaults.Add(typeof(uint), "0");
+                TypeDefaults.Add(typeof(bool), "true");
             }
 
             public static string GetNameForType<T>()
@@ -139,6 +144,12 @@ namespace VL.ShaderFXtension
                         return "Float3";
                     case GPUReference<Vector4> _:
                         return "Float4";
+                    case GPUReference<Color4> _:
+                        return "Float4";
+                    case GPUReference<bool> _:
+                        return "Bool";
+                    case GPUReference<int> _:
+                        return "Int";
                 }
                 throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
             }
@@ -155,6 +166,12 @@ namespace VL.ShaderFXtension
                         return "Float3";
                     case GpuValue<Vector4> _:
                         return "Float4";
+                    case GPUReference<Color4> _:
+                        return "Float4";
+                    case GpuValue<bool> _:
+                        return "Bool";
+                    case GpuValue<int> _:
+                        return "Int";
                 }
                 throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
             }

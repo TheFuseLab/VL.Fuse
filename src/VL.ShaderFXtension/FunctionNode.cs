@@ -1,26 +1,24 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Stride.Core.Extensions;
 
 namespace VL.ShaderFXtension
 {
-    public class FunctionNode<T> : ShaderNode
+    public class FunctionNode<T> : ShaderNode<T>
     {
         private const string ShaderCall = "${function}(${arguments})";
         private const string ShaderCode = "${resultType} ${resultName} = "+ShaderCall+";";
 
-        private IEnumerable<string> _myMixins = new List<string>();
+        private readonly string _myFunction;
 
-        public GpuValue<T> Output { get; }
-
-        private string _myFunction;
-
-        public FunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins) : base(theFunctionName)
+        public FunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins, OrderedDictionary<string,string> theFunctions = null) : base(theFunctionName)
         {
             _myFunction = theFunctionName;
+            MixIns = theMixins;
+            Functions = theFunctions;
+            
             Output = new GpuValue<T>("result");
-            _myMixins = theMixins;
 
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
             {
@@ -29,12 +27,12 @@ namespace VL.ShaderFXtension
                 {"function",theFunctionName},
                 {"arguments",BuildArguments(inputs)}
             });
-            Setup(sourceCode, inputs,new OrderedDictionary<string, AbstractGpuValue> {{"result", Output}});
+            Setup(sourceCode, inputs);
         }
 
         public override string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
         {
-            var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
+            var myCopy = new Dictionary<string,AbstractGpuValue>(Ins);
             theReplacements.ForEach(kv => myCopy[kv.Key] = kv.Value);
             
             return ShaderTemplateEvaluator.Evaluate(
@@ -48,7 +46,7 @@ namespace VL.ShaderFXtension
 
         public override string ReferenceSignature(Dictionary<string,AbstractGpuValue> theReplacements)
         {
-            var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
+            var myCopy = new Dictionary<string,AbstractGpuValue>(Ins);
             theReplacements.ForEach(kv => myCopy.Remove(kv.Key));
             
             var stringBuilder = new StringBuilder();
@@ -66,7 +64,7 @@ namespace VL.ShaderFXtension
         
         public override string ReferenceCallArguments(Dictionary<string,AbstractGpuValue> theReplacements)
         {
-            var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
+            var myCopy = new Dictionary<string,AbstractGpuValue>(Ins);
             theReplacements.ForEach(kv => myCopy.Remove(kv.Key));
             
             var stringBuilder = new StringBuilder();
@@ -83,7 +81,7 @@ namespace VL.ShaderFXtension
         
         public override string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
         {
-            var myCopy = new Dictionary<string,AbstractGpuValue>(_ins);
+            var myCopy = new Dictionary<string,AbstractGpuValue>(Ins);
             theReplacements.ForEach(kv => myCopy.Remove(kv.Key));
             
             var stringBuilder = new StringBuilder();
@@ -131,6 +129,8 @@ namespace VL.ShaderFXtension
             return stringBuilder.ToString();
         }
         
-        public override IEnumerable<string> MixIn => _myMixins;
+        public override IEnumerable<string> MixIns { get; }
+
+        public override IDictionary<string, string> Functions { get; }
     }
 }

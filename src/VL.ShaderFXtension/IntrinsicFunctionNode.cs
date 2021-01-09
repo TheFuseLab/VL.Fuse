@@ -8,7 +8,7 @@ namespace VL.ShaderFXtension
 {
     public class IntrinsicFunctionNode<T> : FunctionNode<T>
     {
-        public IntrinsicFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction) : base(inputs, theFunction, new List<string>())
+        public IntrinsicFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction) : base(inputs, theFunction, new List<string>(), new OrderedDictionary<string, string>())
         {
             
         }
