@@ -1,0 +1,1 @@
+xcopy .\src\VL.ShaderFXtension\bin\Debug\VL.ShaderFXtension.dll .\lib\VL.ShaderFXtension.dll /Y
