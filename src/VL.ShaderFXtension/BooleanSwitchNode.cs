@@ -12,10 +12,7 @@ namespace VL.ShaderFXtension
         ${resultName} = ${inFalse};
     }
         ";
-        
-        private const string DefaultShaderCode = @"
-    ${resultType} ${resultName} = ${default};
-        ";
+
         public BooleanSwitchNode(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, ConstantValue<T> theDefault) : base( "expression", theDefault)
         {
             var myIns = new OrderedDictionary<string, AbstractGpuValue>() {{"check", inCheck}, {"inFalse", inFalse}, {"inTrue", inTrue}};

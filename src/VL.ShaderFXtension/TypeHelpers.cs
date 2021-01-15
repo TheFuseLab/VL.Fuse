@@ -85,8 +85,8 @@ using VL.Stride.Shaders.ShaderFX.Functions;
 
                 throw new NotImplementedException("No name defined for type: " + t.Name);
             }
-            
-            static Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
+
+            private static readonly Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
 
             static TypeHelpers()
             {
@@ -102,8 +102,8 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                 KnownTypes.Add(typeof(Int4), "Int4");
                 KnownTypes.Add(typeof(uint), "UInt");
                 KnownTypes.Add(typeof(bool), "Bool");
-                KnownTypes.Add(typeof(Texture), "Texture");
-                KnownTypes.Add(typeof(SamplerState), "Sampler");
+               // KnownTypes.Add(typeof(Texture), "Texture");
+               // KnownTypes.Add(typeof(SamplerState), "Sampler");
                 
                 TypeDefaults.Add(typeof(float), "0.0");
                 TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");
@@ -129,7 +129,7 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                 if (KnownTypes.TryGetValue(t, out var result))
                     return result;
 
-                throw new NotImplementedException("No name defined for type: " + t.Name);
+                throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
             }
 
             public static string GetType(AbstractGPUReference theReference)

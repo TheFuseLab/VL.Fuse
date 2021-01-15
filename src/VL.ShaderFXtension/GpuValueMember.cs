@@ -10,18 +10,32 @@ namespace VL.ShaderFXtension
     {
         private const string ShaderCode = "${resultType} ${resultName} = ${input}.${member};";
 
-        public GpuValueMember(GpuValue<TIn> theInput, string theMember) : base("Member")
+        public GpuValueMember(GpuValue<TIn> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
         {
             Output = new GpuValue<TOut>("member");
 
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+            var myCode = ShaderCode;
+            if (theInput == null)
             {
-                {"resultName", Output.ID},
-                {"resultType",TypeHelpers.GetNameForType<TOut>().ToLower()},
-                {"input",theInput.ID},
-                {"member",theMember}
-            });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(theInput));
+                var myKeyMap = new Dictionary<string, string>
+                {
+                    {"resultName", Output.ID},
+                    {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
+                    {"default", theDefault.ID}
+                };
+                myCode = ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, myKeyMap);
+            }
+            else
+            {
+                myCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+                {
+                    {"resultName", Output.ID},
+                    {"resultType",TypeHelpers.GetNameForType<TOut>().ToLower()},
+                    {"input",theInput.ID},
+                    {"member",theMember}
+                });
+            }
+           Setup(myCode, ShaderNodesUtil.BuildInputs(theInput));
         }
     }
 }

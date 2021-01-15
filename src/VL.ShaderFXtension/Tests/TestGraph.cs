@@ -20,7 +20,7 @@ namespace VL.ShaderFXtension
 
             var sin = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
-                "sin");
+                "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin.SourceCode());
 
             sin.Inputs().ForEach(input => Console.WriteLine(input.ID));
@@ -52,7 +52,8 @@ namespace VL.ShaderFXtension
                     {"v", gpuValue0.Output}
                 },
                 "voronoise2D",
-                new List<string> {"Voronoise", "Hash"}
+                new List<string> {"Voronoise", "Hash"}, 
+                new ConstantValue<Vector2>(0)
             );
             Console.WriteLine(customFunction.BuildMixIns());
             Console.WriteLine(customFunction.SourceCode());
@@ -89,7 +90,7 @@ namespace VL.ShaderFXtension
             
             var sin = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
-                "sin");
+                "sin", new ConstantValue<float>(0));
             
             var customFunction = new FunctionNode<Vector2>(
                 new OrderedDictionary<string, AbstractGpuValue>
@@ -99,8 +100,11 @@ namespace VL.ShaderFXtension
                     {"v", gpuValue0.Output}
                 },
                 "voronoise2D",
-                new List<string> {"Voronoise", "Hash"}
+                new List<string> {"Voronoise", "Hash"},
+                new ConstantValue<Vector2>(0),
+                new OrderedDictionary<string, string>(){{"bla", "${resultType} bla"}}
             );
+            Console.WriteLine(customFunction.BuildFunctions());
             var myReference = customFunction.References["x"];
             var fbm = new FBMNode<Vector2, float>((GPUReference<Vector2>) myReference,
                 new OrderedDictionary<string, AbstractGpuValue>
@@ -112,7 +116,7 @@ namespace VL.ShaderFXtension
                 });
             var sin2 = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
-                "sin");
+                "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin2.SourceCode());
             Console.WriteLine(sin2.BuildFunctions());
             Console.WriteLine(sin2.BuildMixIns());
@@ -177,7 +181,7 @@ namespace VL.ShaderFXtension
 
             var sin = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
-                "sin");
+                "sin", new ConstantValue<float>(0));
             Console.WriteLine(add2.SourceCode());
             Console.WriteLine(sin.SourceCode());
             Console.WriteLine(add2.Declarations());
@@ -203,7 +207,7 @@ namespace VL.ShaderFXtension
                     {"v", gpuValue0.Output}
                 },
                 "voronoise2D",
-                new List<string> {"Voronoise", "Hash"}
+                new List<string> {"Voronoise", "Hash"}, new ConstantValue<Vector2>(0)
             );
             Console.WriteLine(customFunction.BuildMixIns());
             Console.WriteLine(customFunction.SourceCode());
@@ -226,7 +230,7 @@ namespace VL.ShaderFXtension
             
             var sin2 = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
-                "sin");
+                "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin2.SourceCode());
             Console.WriteLine(sin2.BuildFunctions());
         }

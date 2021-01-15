@@ -24,13 +24,18 @@
                  new Dictionary<string, string>
                  {
                      {"inputName", Output.ID},
-                     {"inputType",TypeHelpers.GetNameForType<T>().ToLower()}
+                     {"inputType",TypeName()}
                  });
          }
 
          public abstract void SetParameterValue(ParameterCollection theCollection);
 
          public override string Declaration { get; }
+
+         public virtual string TypeName()
+         {
+             return TypeHelpers.GetNameForType<T>().ToLower();
+         }
 
          public T Value { get; set; }
      }
@@ -40,6 +45,11 @@
          public TextureInput() : base("TextureInput")
          {
              _parameterKey = new ObjectParameterKey<Texture>(Output.ID);
+         }
+
+         public override string TypeName()
+         {
+             return "Texture2D  ";
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)
@@ -53,6 +63,11 @@
          public SamplerInput(string theName) : base("SamplerInput")
          {
              _parameterKey = new ObjectParameterKey<SamplerState>(Output.ID);
+         }
+         
+         public override string TypeName()
+         {
+             return "SamplerState ";
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)

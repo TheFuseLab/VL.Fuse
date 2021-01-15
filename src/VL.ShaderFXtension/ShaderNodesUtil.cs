@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 
@@ -28,6 +29,19 @@ namespace VL.ShaderFXtension
                 c++;
             });
             return inputsDict;
+        }
+        
+        public static string BuildArguments(OrderedDictionary<string,AbstractGpuValue> inputs)
+        {
+            var stringBuilder = new StringBuilder();
+            inputs.ForEach(input =>
+            {
+                if (input.Value == null) return;
+                stringBuilder.Append(input.Value.ID);
+                stringBuilder.Append(", ");
+            });
+            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            return stringBuilder.ToString();
         }
 
         public static string BuildResult(GpuValue<Vector4> theValue)

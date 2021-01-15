@@ -12,22 +12,50 @@ namespace VL.ShaderFXtension
 
         private readonly string _myFunction;
 
-        public FunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins, OrderedDictionary<string,string> theFunctions = null) : base(theFunctionName)
+        public FunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunctionName, IEnumerable<string> theMixins, ConstantValue<T> theDefault, OrderedDictionary<string,string> theFunctions = null) : base(theFunctionName, theDefault)
         {
-            _myFunction = theFunctionName;
+            _myFunction = ShaderTemplateEvaluator.Evaluate(theFunctionName, new Dictionary<string, string>
+            {
+                {"resultType",TypeHelpers.GetNameForType<T>().ToLower()}
+            });
             MixIns = theMixins;
-            Functions = theFunctions;
+            Functions = new Dictionary<string, string>();
+            theFunctions.ForEach(kv => {
+                Functions.Add(kv.Key + TypeHelpers.GetNameForType<T>().ToLower(), ShaderTemplateEvaluator.Evaluate(kv.Value, new Dictionary<string, string>
+                {
+                    {"resultType",TypeHelpers.GetNameForType<T>().ToLower()}
+                }));
+            });
             
             Output = new GpuValue<T>("result");
-
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+            var hasNullValue = false;
+            inputs.ForEach(kv =>
             {
-                {"resultName", Output.ID},
-                {"resultType",TypeHelpers.GetNameForType<T>().ToLower()},
-                {"function",theFunctionName},
-                {"arguments",BuildArguments(inputs)}
+                if (kv.Value == null) hasNullValue = true;
             });
-            Setup(sourceCode, inputs);
+            
+            var myCode = ShaderCode;
+            if (hasNullValue)
+            {
+                var myKeyMap = new Dictionary<string, string>
+                {
+                    {"resultName", Output.ID},
+                    {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                    {"default", theDefault.ID}
+                };
+                myCode = ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, myKeyMap);
+            }
+            else
+            {
+                myCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+                {
+                    {"resultName", Output.ID},
+                    {"resultType",TypeHelpers.GetNameForType<T>().ToLower()},
+                    {"function",theFunctionName},
+                    {"arguments",BuildArguments(inputs)}
+                });
+            }
+            Setup(myCode, inputs);
         }
 
         public override string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)

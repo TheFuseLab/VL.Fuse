@@ -166,6 +166,10 @@ using VL.Lib.Collections;
     {
         public  GpuValue<T> Output { get; protected set; }
         public  ConstantValue<T> Default { get; protected set; }
+        
+        protected const string DefaultShaderCode = @"
+    ${resultType} ${resultName} = ${default};
+        ";
 
         protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
         {

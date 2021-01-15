@@ -10,9 +10,6 @@ namespace VL.ShaderFXtension
     ${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoord}); 
         ";
         
-        private const string DefaultShaderCode = @"
-    ${resultType} ${resultName} = ${default};
-        ";
         public SampleTextureNode(GpuValue<Texture> theTexture, GpuValue<SamplerState> theSampler, GpuValue<Vector2> theTexCoords, ConstantValue<Vector4> theDefault) : base( "sampleTexture", theDefault)
         {
             var myIns = new OrderedDictionary<string, AbstractGpuValue>() {{"texture", theTexture}, {"sampler", theSampler}, {"texCoords", theTexCoords}};

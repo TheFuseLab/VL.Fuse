@@ -1,16 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Stride.Core.Extensions;
-using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
-    public class IntrinsicFunctionNode<T> : ShaderNode<T>
+    public class CustomFunctionNode<T>: ShaderNode<T>
     {
         private const string ShaderCode = "${resultType} ${resultName} = ${function}(${arguments});";
         
-        public IntrinsicFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, ConstantValue<T> theDefault) : base(theFunction, theDefault)
+        public CustomFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, string theCodeTemplate, ConstantValue<T> theDefault) : base(theFunction, theDefault)
         {
             
             var hasNullValue = false;
