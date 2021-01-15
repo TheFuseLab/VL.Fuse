@@ -73,6 +73,14 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                     var vec4 = (Vector4) Convert.ChangeType(theValue, typeof(Vector4));
                     return $"float4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
                 }
+                if (typeof(T) == typeof(SamplerState))
+                {
+                    return "Sampler";
+                }
+                if (typeof(T) == typeof(Texture))
+                {
+                    return "Texture0";
+                }
                 return GetDefaultForType(typeof(T));        
             }
             
@@ -102,8 +110,8 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                 KnownTypes.Add(typeof(Int4), "Int4");
                 KnownTypes.Add(typeof(uint), "UInt");
                 KnownTypes.Add(typeof(bool), "Bool");
-               // KnownTypes.Add(typeof(Texture), "Texture");
-               // KnownTypes.Add(typeof(SamplerState), "Sampler");
+                KnownTypes.Add(typeof(Texture), "Texture");
+                KnownTypes.Add(typeof(SamplerState), "Sampler");
                 
                 TypeDefaults.Add(typeof(float), "0.0");
                 TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");
@@ -174,6 +182,17 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                         return "Int";
                 }
                 throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
+            }
+            
+            public static string GetDimension<T>(GpuValue<T> theValue)
+            {
+                if (typeof(T) == typeof(float)) return "1";
+                if (typeof(T) == typeof(Vector2)) return "2";
+                if (typeof(T) == typeof(Vector3)) return "3";
+                if (typeof(T) == typeof(Vector4)) return "4";
+                if (typeof(T) == typeof(Color4)) return "4";
+
+                return "0";
             }
             
             public static string GetType<T1>(T1 var)

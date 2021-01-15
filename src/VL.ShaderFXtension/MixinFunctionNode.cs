@@ -1,16 +1,15 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Stride.Core.Extensions;
-using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
-    public class IntrinsicFunctionNode<T> : ShaderNode<T>
+    public class MixinFunctionNode<T> : ShaderNode<T>
     {
-        
-        public IntrinsicFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, ConstantValue<T> theDefault) : base(theFunction, theDefault)
+
+        public MixinFunctionNode(OrderedDictionary<string, AbstractGpuValue> inputs, string theFunction, ConstantValue<T> theDefault, IEnumerable<string> theMixins) : base(theFunction, theDefault)
         {
+            MixIns = theMixins;
+
             const string shaderCode = "${resultType} ${resultName} = ${function}(${arguments});";
             var valueMap = new Dictionary<string, string>
             {
@@ -19,7 +18,6 @@ namespace VL.ShaderFXtension
             };
             Setup(shaderCode, inputs, valueMap);
         }
-        
-        
+        public sealed override IEnumerable<string> MixIns { get; }
     }
 }

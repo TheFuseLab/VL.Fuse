@@ -1,46 +1,34 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stride.Core.Extensions;
-using VL.Stride.Shaders.ShaderFX;
 
 namespace VL.ShaderFXtension
 {
     public class OperatorNode<TIn, TOut> : ShaderNode<TOut>
     {
-        private const string ShaderCode = "${resultType} ${resultName} = ${Call};";
 
-        public OperatorNode(IEnumerable<GpuValue<TIn>> inputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
+        public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
         {
-            var gpuValues = System.Linq.Enumerable.ToList(inputs);
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+            var abstractGpuValues = theInputs.ToList();
+            
+            const string shaderCode = "${resultType} ${resultName} = ${Call};";
+            var inputs = ShaderNodesUtil.BuildInputs(abstractGpuValues);
+            var valueMap = new OrderedDictionary<string,string>
             {
-                {"resultName", Output.ID},
-                {"resultType",TypeHelpers.GetNameForType<TOut>().ToLower()},
-                {"Call",BuildCall(gpuValues,theOperator)}
-            });
-           Setup(sourceCode, ShaderNodesUtil.BuildInputs(gpuValues));
+                {"Call",BuildCall(abstractGpuValues,theOperator)}
+            };
+           Setup(shaderCode, inputs, valueMap);
         }
 
         public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, ConstantValue<TOut> theDefault, string theOperator) :
             this(new List<GpuValue<TIn>> {input0, input1}, theDefault, theOperator){
         }
 
-        private string BuildCall(IEnumerable<AbstractGpuValue> inputs, string theOperator)
+        private static string BuildCall(List<GpuValue<TIn>> inputs, string theOperator)
         {
-            var abstractGpuValues = inputs.ToList();
-            var hasNullValue = false;
-            abstractGpuValues.ForEach(input =>
-            {
-                if (input == null) hasNullValue = true;
-            });
-            if (hasNullValue)
-            {
-                return Default.ID;
-            }
             
             var stringBuilder = new StringBuilder();
-            abstractGpuValues.ForEach(input =>
+            inputs.ForEach(input =>
             {
                 if (input == null) return;
                 stringBuilder.Append(input.ID);

@@ -6,16 +6,13 @@ namespace VL.ShaderFXtension
     {
         public AssignNode(GpuValue<T> theTarget, GpuValue<T> theSource) : base("Assign")
         {
-            var myKeyMap = new Dictionary<string, string>
+            const string shaderCode = "${target} = ${source};";
+            var inputs = new OrderedDictionary<string, AbstractGpuValue>()
             {
-                {"targetName", theTarget.ID},
-                {"sourceName", theSource.ID}
+                {"target", theTarget}, 
+                {"source", theSource}
             };
-
-            //Output = theTarget;
-            var myIns = new OrderedDictionary<string, AbstractGpuValue>() {{"target", theTarget}, {"source", theSource}};
-            var sourceCode = ShaderTemplateEvaluator.Evaluate("${targetName} = ${sourceName};", myKeyMap);
-            Setup(sourceCode,myIns);
+            Setup(shaderCode, inputs);
         }
     }
 }

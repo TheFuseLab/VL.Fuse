@@ -1,6 +1,7 @@
 ﻿﻿using System;
 using System.Collections.Generic;
  using System.Diagnostics;
+ using System.Linq;
  using System.Text;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
@@ -104,12 +105,12 @@ using VL.Lib.Collections;
             return myDeclarations.ToString();
         }
 
-        public List<IGPUInput> Inputs()
+        public List<IGpuInput> Inputs()
         {
-            var result = new HashSet<IGPUInput>();
+            var result = new HashSet<IGpuInput>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if(n is IGPUInput input)result.Add(input);
+                if(n is IGpuInput input)result.Add(input);
             });
             return System.Linq.Enumerable.ToList(result);
         }
@@ -167,19 +168,52 @@ using VL.Lib.Collections;
         public  GpuValue<T> Output { get; protected set; }
         public  ConstantValue<T> Default { get; protected set; }
         
-        protected const string DefaultShaderCode = @"
-    ${resultType} ${resultName} = ${default};
-        ";
+        protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
 
         protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
         {
             Default = theDefault ?? new ConstantValue<T>(0);
             Output = new GpuValue<T>(outputName);
         }
-        
-        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns)
+
+        private Dictionary<string, string> CreateTemplateMap()
         {
-            _sourceCode = theSourceCode;
+            return new Dictionary<string, string>
+            {
+                {"resultName", Output.ID},
+                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"default", Default.ID}
+            };
+        }
+
+        private string GenerateDefaultSource()
+        {
+            return ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, CreateTemplateMap());
+        }
+
+        public virtual string GenerateSource(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        {
+            var myCode = theSourceCode;
+            
+            if (ShaderNodesUtil.HasNullValue(theIns))
+            {
+                return GenerateDefaultSource();
+            }
+
+            var templateMap = CreateTemplateMap();
+            theIns.ForEach(kv => templateMap.Add(kv.Key, kv.Value.ID));
+
+            if (theCustomValues != null)
+            {
+                theCustomValues.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
+            }
+            
+            return ShaderTemplateEvaluator.Evaluate(theSourceCode, templateMap);
+        }
+        
+        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        {
+            _sourceCode = GenerateSource(theSourceCode, theIns, theCustomValues);
             Ins = theIns;
             Ins.ForEach(input =>
             {

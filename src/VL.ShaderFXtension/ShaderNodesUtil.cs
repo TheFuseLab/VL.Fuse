@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
@@ -48,5 +49,10 @@ namespace VL.ShaderFXtension
         {
             return "return " + theValue.ID;
         }
+        public static  bool HasNullValue<T1,T2>(IDictionary<T1,T2> theMap)
+        {
+            return theMap.Any(kv => kv.Value == null);
+        }
+        
     }
 }

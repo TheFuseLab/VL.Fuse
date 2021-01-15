@@ -64,10 +64,11 @@ namespace VL.ShaderFXtension
         {
             var gpuValue0 = new GPUInput<float>();
             var gpuValue1 = new GPUInput<float>();
-            var add = new OperatorNode<float, float>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<float>(0),"+");
+            var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
+            var operatorNodeWithNull = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output, null},new ConstantValue<float>(0),"+");
             
-            
-            Console.WriteLine(add.SourceCode());
+            Console.WriteLine(operatorNode.SourceCode());
+            Console.WriteLine(operatorNodeWithNull.SourceCode());
         }
         
         public static void TestHallo()
@@ -79,7 +80,6 @@ namespace VL.ShaderFXtension
 
         public static void TestFunctions()
         {
-            
             var gpuValue0 = new GPUInput<float>();
             var gpuValue1 = new GPUInput<float>();
             var gpuValue2 = new GPUInput<float>();
@@ -122,14 +122,67 @@ namespace VL.ShaderFXtension
             Console.WriteLine(sin2.BuildMixIns());
         }
 
-        public static void TestFloat4Join()
+        public static void TestCustomFunctions()
+        {
+            
+            var Base = new GPUInput<Vector3>();
+            var Blend = new GPUInput<Vector3>();
+            var Opacity = new GPUInput<Vector3>();
+            
+            var inputs = new OrderedDictionary<string, AbstractGpuValue>
+            {
+                {"Base", Base.Output},
+                {"Blend", Blend.Output},
+                {"Opacity", Opacity.Output},
+            };
+            var template = @"
+        ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacity)
+        {
+            ${resultType} result1 = 1.0 - 2.0 * (1.0 - Base) * (1.0 - Blend);
+            ${resultType} result2 = 2.0 * Base * Blend;
+            ${resultType} zeroOrOne = step(Blend, 0.5);
+            ${resultType} Out = result2 * zeroOrOne + (1 - zeroOrOne) * result1;
+            return lerp(Base, Out, Opacity);
+        }
+";
+            
+            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight", template, new ConstantValue<Vector4>(0), new List<string>());
+            
+            Console.WriteLine(customFunction.SourceCode());
+            Console.WriteLine(customFunction.BuildFunctions());
+        }
+
+        public static void TestFloatJoins()
         {
             var gpuValue0 = new GPUInput<float>();
             var gpuValue1 = new GPUInput<float>();
             var gpuValue2 = new GPUInput<float>();
             var gpuValue3 = new GPUInput<float>();
-            var join = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, gpuValue3.Output);
-            Console.WriteLine(join.BuildFunctions());
+            
+            var join2 = new Float2Join(gpuValue0.Output, gpuValue1.Output);
+            Console.WriteLine(join2.SourceCode());
+            var join2Null = new Float2Join(gpuValue0.Output, null);
+            Console.WriteLine(join2Null.SourceCode());
+            
+            var join3 = new Float3Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output);
+            Console.WriteLine(join3.SourceCode());
+            var join3Null = new Float3Join(gpuValue0.Output, gpuValue1.Output, null);
+            Console.WriteLine(join3Null.SourceCode());
+            
+            var join4 = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, gpuValue3.Output);
+            Console.WriteLine(join4.SourceCode());
+            var join4Null = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, null);
+            Console.WriteLine(join4Null.SourceCode());
+        }
+
+        public static void TestMember()
+        {
+            var texCoord = new Semantic<Vector2>("TexCoord");
+            var member = new GpuValueMember<Vector2, float>(texCoord.Output, "x");
+            Console.WriteLine(member.SourceCode());
+            
+            var memberNull = new GpuValueMember<Vector2, float>(null, "x");
+            Console.WriteLine(memberNull.SourceCode());
         }
         
         public static void TestTraversal()
@@ -195,9 +248,6 @@ namespace VL.ShaderFXtension
             var texCoord = new Semantic<Vector2>("TexCoord");
             var add3 = new AddNode<Vector2>(new List<GpuValue<Vector2>> {texCoord.Output, texCoord.Output});
             Console.WriteLine(add3.SourceCode());
-
-            var member = new GpuValueMember<Vector2, float>(texCoord.Output, "x");
-            Console.WriteLine(member.SourceCode());
 
             var customFunction = new FunctionNode<Vector2>(
                 new OrderedDictionary<string, AbstractGpuValue>

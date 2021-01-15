@@ -6,20 +6,18 @@ namespace VL.ShaderFXtension
 {
     public class Float4Join : ShaderNode<Vector4>
     {
-        private const string ShaderCode = "float4 ${resultName} = float4(${x},${y},${z},${w});";
 
         public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base("Float4Join")
         {
-
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>
+            const string shaderCode = "float4 ${resultName} = float4(${x},${y},${z},${w});";
+            var inputs = new OrderedDictionary<string, AbstractGpuValue>
             {
-                {"resultName", Output.ID},
-                {"x", x == null ? "0" : x.ID},
-                {"y", y == null ? "0" : y.ID},
-                {"z", z == null ? "0" : z.ID},
-                {"w", w == null ? "1" : w.ID}
-            });
-            Setup(sourceCode, ShaderNodesUtil.BuildInputs(x,y,z,w));
+                {"x", x ?? new ConstantValue<float>(0)},
+                {"y", y ?? new ConstantValue<float>(0)},
+                {"z", z ?? new ConstantValue<float>(0)},
+                {"w", w ?? new ConstantValue<float>(1)}
+            };
+            Setup(shaderCode, inputs);
         }
     }
 }

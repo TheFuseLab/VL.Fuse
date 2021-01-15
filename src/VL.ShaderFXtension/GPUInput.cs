@@ -5,14 +5,19 @@
 
  namespace VL.ShaderFXtension{
 
-     public abstract class AbstractInput<T, ParameterKeyType> : ShaderNode<T>, IGPUInput where ParameterKeyType : ParameterKey<T>
+     public interface IGpuInput : IShaderNode
+     {
+         void SetParameterValue(ParameterCollection theCollection);
+     }
+     
+     public abstract class AbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
      {
         
          private const string DeclarationTemplate = @"
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
 
-         protected ParameterKeyType _parameterKey;
+         protected TParameterKeyType _parameterKey;
 
          public AbstractInput(string theName): base(theName, null,"input")
          {
@@ -28,7 +33,6 @@
                  });
          }
 
-         public abstract void SetParameterValue(ParameterCollection theCollection);
 
          public override string Declaration { get; }
 
@@ -38,9 +42,10 @@
          }
 
          public T Value { get; set; }
+         public abstract void SetParameterValue(ParameterCollection theCollection);
      }
 
-     public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGPUInput 
+     public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGpuInput 
      {
          public TextureInput() : base("TextureInput")
          {
@@ -58,7 +63,7 @@
          }
      }
      
-     public class SamplerInput: AbstractInput<SamplerState, ObjectParameterKey<SamplerState>>, IGPUInput 
+     public class SamplerInput: AbstractInput<SamplerState, ObjectParameterKey<SamplerState>>, IGpuInput 
      {
          public SamplerInput(string theName) : base("SamplerInput")
          {
@@ -76,7 +81,7 @@
          }
      }
      
-    public class GPUInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGPUInput where T : struct 
+    public class GPUInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
     {
 
         public GPUInput(): base("GPUInput")
