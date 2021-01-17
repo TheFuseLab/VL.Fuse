@@ -1,9 +1,9 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 
-namespace VL.ShaderFXtension
+namespace VL.ShaderFXtension.Tests
 {
     public class TestGraph
     {
@@ -146,7 +146,7 @@ namespace VL.ShaderFXtension
         }
 ";
             
-            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight", template, new ConstantValue<Vector4>(0), new List<string>());
+            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight", template, new ConstantValue<Vector4>(0), new List<string>(), null);
             
             Console.WriteLine(customFunction.SourceCode());
             Console.WriteLine(customFunction.BuildFunctions());

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Stride.Core.Extensions;
 
 namespace VL.ShaderFXtension
@@ -26,11 +27,12 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
     public class CustomFunctionNode<T>: ShaderNode<T>
     {
         
-        public CustomFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, string theCodeTemplate, ConstantValue<T> theDefault, IEnumerable<string> theMixins, IDictionary<string,string> theFunctionValues = null) : base(theFunction, theDefault)
+        public CustomFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, string theCodeTemplate, ConstantValue<T> theDefault, IEnumerable<string> theMixins, IDictionary<string, string> theDelegateFunctions, IDictionary<string,string> theFunctionValues = null) : base(theFunction, theDefault)
         {
             var signature = theFunction + TypeHelpers.GetNameForType<T>();
             MixIns = theMixins;
             Functions = new Dictionary<string, string>();
+            theDelegateFunctions?.ForEach(kv => Functions.Add(kv));
 
             var functionValueMap = new Dictionary<string, string>
             {
@@ -38,8 +40,8 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
                 {"signature", signature}
             };
             theFunctionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
-            Functions.Add(signature, ShaderTemplateEvaluator.Evaluate(theCodeTemplate, functionValueMap));
-            
+            Functions.Add(signature, ShaderTemplateEvaluator.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
+
             const string shaderCode = "${resultType} ${resultName} = ${function}(${arguments});";
             var valueMap = new Dictionary<string, string>
             {

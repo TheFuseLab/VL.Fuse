@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace VL.ShaderFXtension
+namespace VL.ShaderFXtension.Tests
 {
     public class TestControl
     {
