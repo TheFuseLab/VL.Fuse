@@ -1,0 +1,46 @@
+shader Color{
+    const float eps = 0.0000001;
+
+
+    float4 hsv2rgb(float4 col)
+    {
+        float3 rgb = clamp( abs(mod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+        return float4(col.z * mix( float3(1.0), rgb, col.y), col.w);
+    }
+
+    // Smooth HSV to RGB conversion 
+    float4 hsv2rgb_smooth(float4 col)
+    {
+        float3 rgb = clamp( abs(mod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
+        rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
+        return float4(col.z * mix( float3(1.0), rgb, col.y), col.w);
+    }
+
+    float4 hsl2rgb(float4 col )
+    {
+        float3 rgb = clamp( abs(mod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
+        return float4(col.z + col.y * (rgb - 0.5) * (1.0 - abs(2.0 * col.z - 1.0)), col.w);
+    }
+
+    float4 rgb2hsv(float4 col)
+    {
+        float4 k = float4(0.0, -1.0 / 3.0, 2.0/3.0, -1.0);
+        float4 p = mix(float4(col.zy, k.wz), float4(col.yz, k.xy), (col.z<col.y) ? 1.0 : 0.0);
+        float4 q = mix(float4(p.xyw, col.x), float4(col.x, p.yzx), (p.x<col.x) ? 1.0 : 0.0);
+        float d = q.x - min(q.w, q.y);
+        return float4(abs(q.z + (q.w - q.y) / (6.0*d+eps)), d / (q.x+eps), q.x), col.w);
+    }
+
+    float4 rgb2hsl(float4 col )
+    {
+        float minc = min( col.r, min(col.g, col.b) );
+        float maxc = max( col.r, max(col.g, col.b) );
+        float3  mask = step(col.grr,col.rgb) * step(col.bbg,col.rgb);
+        float3 h = mask * (float3(0.0,2.0,4.0) + (col.gbr-col.brg)/(maxc-minc + eps)) / 6.0;
+        return float4( 
+            fract( 1.0 + h.x + h.y + h.z ),              // H
+            (maxc-minc)/(1.0-abs(minc+maxc-1.0) + eps),  // S
+            (minc+maxc)*0.5 ,                            // L
+            col.w);                                     
+    }
+}
