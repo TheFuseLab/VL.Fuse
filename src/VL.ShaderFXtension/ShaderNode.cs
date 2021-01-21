@@ -37,7 +37,7 @@ using VL.Lib.Collections;
         
         public string ID { get; }
 
-        
+        public string SourceCode => _sourceCode;
 
         public virtual string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
         {
@@ -71,7 +71,7 @@ using VL.Lib.Collections;
             }
         }
        
-        public string SourceCode()
+        public string BuildSourceCode()
         {
             var myStringBuilder = new StringBuilder();
             var myHashes = new HashSet<int>();

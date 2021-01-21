@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Stride.Core.Extensions;
 
 namespace VL.ShaderFXtension
@@ -27,28 +28,49 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
     public class CustomFunctionNode<T>: ShaderNode<T>
     {
         
-        public CustomFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, string theCodeTemplate, ConstantValue<T> theDefault, IEnumerable<string> theMixins, IDictionary<string, string> theDelegateFunctions, IDictionary<string,string> theFunctionValues = null) : base(theFunction, theDefault)
+        public CustomFunctionNode(OrderedDictionary<string,AbstractGpuValue> inputs, string theFunction, string theCodeTemplate, ConstantValue<T> theDefault, IEnumerable<string> theArguments = null, IEnumerable<string> theMixins = null, IDictionary<string,string> theFunctionValues = null) : base(theFunction, theDefault)
         {
             var signature = theFunction + TypeHelpers.GetNameForType<T>();
-            MixIns = theMixins;
+            MixIns = theMixins??new List<string>();
             Functions = new Dictionary<string, string>();
-            theDelegateFunctions?.ForEach(kv => Functions.Add(kv));
 
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                 {"signature", signature}
             };
+            inputs.ForEach(input =>
+            {
+                if (input.Value == null) return;
+                var inputType =  input.Value.ParentNode.GetType();
+                if (inputType.GetGenericTypeDefinition() == typeof(DelegateNode<>))
+                {
+                    var DelegateNode = input.Value.ParentNode as IDelegateNode;
+                    functionValueMap.Add(input.Key, DelegateNode.FunctionName);
+                }
+            });
             theFunctionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
             Functions.Add(signature, ShaderTemplateEvaluator.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
 
-            const string shaderCode = "${resultType} ${resultName} = ${function}(${arguments});";
+            var shaderCode = "${resultType} ${resultName} = ${function}(" +  BuildArguments(theArguments??inputs.Keys) +");";
             var valueMap = new Dictionary<string, string>
             {
-                {"function", signature},
-                {"arguments", ShaderNodesUtil.BuildArguments(inputs)}
+                {"function", signature}
             };
             Setup(shaderCode, inputs, valueMap);
+        }
+        
+        public static string BuildArguments(IEnumerable<string> theArguments)
+        {
+            var stringBuilder = new StringBuilder();
+            theArguments.ForEach(input =>
+            {
+                if (input == null) return;
+                stringBuilder.Append("${"+input+"}");
+                stringBuilder.Append(", ");
+            });
+            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            return stringBuilder.ToString();
         }
         
         public sealed override IDictionary<string, string> Functions { get; }

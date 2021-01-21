@@ -21,7 +21,7 @@ namespace VL.ShaderFXtension.Tests
             var sin = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
                 "sin", new ConstantValue<float>(0));
-            Console.WriteLine(sin.SourceCode());
+            Console.WriteLine(sin.BuildSourceCode());
 
             sin.Inputs().ForEach(input => Console.WriteLine(input.ID));
         }
@@ -56,7 +56,7 @@ namespace VL.ShaderFXtension.Tests
                 new ConstantValue<Vector2>(0)
             );
             Console.WriteLine(customFunction.BuildMixIns());
-            Console.WriteLine(customFunction.SourceCode());
+            Console.WriteLine(customFunction.BuildSourceCode());
             Console.WriteLine(customFunction.References.Count);
         }
 
@@ -67,8 +67,8 @@ namespace VL.ShaderFXtension.Tests
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
             var operatorNodeWithNull = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output, null},new ConstantValue<float>(0),"+");
             
-            Console.WriteLine(operatorNode.SourceCode());
-            Console.WriteLine(operatorNodeWithNull.SourceCode());
+            Console.WriteLine(operatorNode.BuildSourceCode());
+            Console.WriteLine(operatorNodeWithNull.BuildSourceCode());
         }
         
         public static void TestHallo()
@@ -117,7 +117,7 @@ namespace VL.ShaderFXtension.Tests
             var sin2 = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
                 "sin", new ConstantValue<float>(0));
-            Console.WriteLine(sin2.SourceCode());
+            Console.WriteLine(sin2.BuildSourceCode());
             Console.WriteLine(sin2.BuildFunctions());
             Console.WriteLine(sin2.BuildMixIns());
         }
@@ -135,7 +135,7 @@ namespace VL.ShaderFXtension.Tests
                 {"Blend", Blend.Output},
                 {"Opacity", Opacity.Output},
             };
-            var template = @"
+            const string template = @"
         ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacity)
         {
             ${resultType} result1 = 1.0 - 2.0 * (1.0 - Base) * (1.0 - Blend);
@@ -146,9 +146,9 @@ namespace VL.ShaderFXtension.Tests
         }
 ";
             
-            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight", template, new ConstantValue<Vector4>(0), new List<string>(), null);
+            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, new ConstantValue<Vector4>(0), new List<string>(){"Base","Blend","Opacity"}, new List<string>(), null);
             
-            Console.WriteLine(customFunction.SourceCode());
+            Console.WriteLine(customFunction.BuildSourceCode());
             Console.WriteLine(customFunction.BuildFunctions());
         }
 
@@ -160,29 +160,29 @@ namespace VL.ShaderFXtension.Tests
             var gpuValue3 = new GPUInput<float>();
             
             var join2 = new Float2Join(gpuValue0.Output, gpuValue1.Output);
-            Console.WriteLine(join2.SourceCode());
+            Console.WriteLine(join2.BuildSourceCode());
             var join2Null = new Float2Join(gpuValue0.Output, null);
-            Console.WriteLine(join2Null.SourceCode());
+            Console.WriteLine(join2Null.BuildSourceCode());
             
             var join3 = new Float3Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output);
-            Console.WriteLine(join3.SourceCode());
+            Console.WriteLine(join3.BuildSourceCode());
             var join3Null = new Float3Join(gpuValue0.Output, gpuValue1.Output, null);
-            Console.WriteLine(join3Null.SourceCode());
+            Console.WriteLine(join3Null.BuildSourceCode());
             
             var join4 = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, gpuValue3.Output);
-            Console.WriteLine(join4.SourceCode());
+            Console.WriteLine(join4.BuildSourceCode());
             var join4Null = new Float4Join(gpuValue0.Output, gpuValue1.Output, gpuValue2.Output, null);
-            Console.WriteLine(join4Null.SourceCode());
+            Console.WriteLine(join4Null.BuildSourceCode());
         }
 
         public static void TestMember()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
             var member = new GpuValueMember<Vector2, float>(texCoord.Output, "x");
-            Console.WriteLine(member.SourceCode());
+            Console.WriteLine(member.BuildSourceCode());
             
             var memberNull = new GpuValueMember<Vector2, float>(null, "x");
-            Console.WriteLine(memberNull.SourceCode());
+            Console.WriteLine(memberNull.BuildSourceCode());
         }
         
         public static void TestTraversal()
@@ -202,7 +202,7 @@ namespace VL.ShaderFXtension.Tests
             
             var add1 = new OperatorNode<float, float>(memberX.Output, memberY1.Output,new ConstantValue<float>(0),"+");
             
-            Console.WriteLine(add1.SourceCode());
+            Console.WriteLine(add1.BuildSourceCode());
         }
 
         public static void TestAssign()
@@ -216,7 +216,7 @@ namespace VL.ShaderFXtension.Tests
             
             var assign = new AssignNode<Vector2>(add.Output, add2.Output);
             
-            Console.WriteLine(assign.SourceCode());
+            Console.WriteLine(assign.BuildSourceCode());
         }
 
         public static void Main()
@@ -235,19 +235,19 @@ namespace VL.ShaderFXtension.Tests
             var sin = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
                 "sin", new ConstantValue<float>(0));
-            Console.WriteLine(add2.SourceCode());
-            Console.WriteLine(sin.SourceCode());
+            Console.WriteLine(add2.BuildSourceCode());
+            Console.WriteLine(sin.BuildSourceCode());
             Console.WriteLine(add2.Declarations());
 
             sin.Inputs().ForEach(Console.WriteLine);
             var inputs = new OrderedDictionary<string, AbstractGpuValue> {{"in", gpuValue0.Output}};
             var customExpression = new CustomExpressionNode<float>(inputs, "${resultType} ${resultName} = -1 * ${in};",
                 new OrderedDictionary<string, string>());
-            Console.WriteLine(customExpression.SourceCode());
+            Console.WriteLine(customExpression.BuildSourceCode());
 
             var texCoord = new Semantic<Vector2>("TexCoord");
             var add3 = new AddNode<Vector2>(new List<GpuValue<Vector2>> {texCoord.Output, texCoord.Output});
-            Console.WriteLine(add3.SourceCode());
+            Console.WriteLine(add3.BuildSourceCode());
 
             var customFunction = new FunctionNode<Vector2>(
                 new OrderedDictionary<string, AbstractGpuValue>
@@ -260,7 +260,7 @@ namespace VL.ShaderFXtension.Tests
                 new List<string> {"Voronoise", "Hash"}, new ConstantValue<Vector2>(0)
             );
             Console.WriteLine(customFunction.BuildMixIns());
-            Console.WriteLine(customFunction.SourceCode());
+            Console.WriteLine(customFunction.BuildSourceCode());
             Console.WriteLine(customFunction.References.Count);
 
 
@@ -276,12 +276,12 @@ namespace VL.ShaderFXtension.Tests
                     {"lacunarity", sin.Output}
                 });
             Console.WriteLine(fbm.BuildFunctions());
-            Console.WriteLine(fbm.SourceCode());
+            Console.WriteLine(fbm.BuildSourceCode());
             
             var sin2 = new IntrinsicFunctionNode<float>(
                 new OrderedDictionary<string, AbstractGpuValue> {{"val1", fbm.Output}, {"val2", gpuValue2.Output}},
                 "sin", new ConstantValue<float>(0));
-            Console.WriteLine(sin2.SourceCode());
+            Console.WriteLine(sin2.BuildSourceCode());
             Console.WriteLine(sin2.BuildFunctions());
         }
     }

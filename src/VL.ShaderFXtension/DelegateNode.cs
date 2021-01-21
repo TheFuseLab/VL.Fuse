@@ -69,7 +69,7 @@ namespace VL.ShaderFXtension
     public class DelegateParameter<T> : ShaderNode<T>
     {
 
-        public DelegateParameter(string theName): base(theName, null,"delegate")
+        public DelegateParameter(string theName, GpuValue<T> theType): base(theName, null,"delegate")
         {
             Output = new DelegateValue<T>(theName);
         }
@@ -82,8 +82,13 @@ namespace VL.ShaderFXtension
 
        
     }
+    
+    public interface IDelegateNode
+    {
+        string FunctionName { get;  }
+    }
 
-    public class DelegateNode<T> : ShaderNode<T> 
+    public class DelegateNode<T> : ShaderNode<T> ,IDelegateNode
     {
         public DelegateNode(AbstractGpuValue theDelegate, OrderedDictionary<string,AbstractGpuValue> theParameters, bool theUseInTemplate, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
         {
@@ -96,7 +101,7 @@ namespace VL.ShaderFXtension
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                 {"functionName", FunctionName},
                 {"arguments", DelegateUtil.BuildArguments(theParameters)},
-                {"functionImplementation", theDelegate.ParentNode.SourceCode()},
+                {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
 
@@ -106,7 +111,7 @@ ${functionImplementation}
 }";
             Functions.Add(FunctionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             
-            var shaderCode = (!theUseInTemplate ? "${resultType} ${resultName}" : "") + " = ${functionName}(${arguments});";
+            var shaderCode = !theUseInTemplate ? "${resultType} ${resultName} = ${functionName}(${arguments});" : "";
             var valueMap = new Dictionary<string, string>
             {
                 {"functionName", FunctionName},
@@ -140,7 +145,7 @@ ${functionImplementation}
                 {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
                 {"functionName", functionName},
                 {"arguments", DelegateUtil.BuildArgumentsWithId(inputs)},
-                {"functionImplementation", delegateNode.ParentNode.SourceCode()},
+                {"functionImplementation", delegateNode.ParentNode.BuildSourceCode()},
                 {"result", delegateNode.ID}
             };
 

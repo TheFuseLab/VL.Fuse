@@ -184,15 +184,15 @@ using VL.Stride.Shaders.ShaderFX.Functions;
                 throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
             }
             
-            public static string GetDimension<T>(GpuValue<T> theValue)
+            public static int GetDimension<T>(GpuValue<T> theValue)
             {
-                if (typeof(T) == typeof(float)) return "1";
-                if (typeof(T) == typeof(Vector2)) return "2";
-                if (typeof(T) == typeof(Vector3)) return "3";
-                if (typeof(T) == typeof(Vector4)) return "4";
-                if (typeof(T) == typeof(Color4)) return "4";
+                if (typeof(T) == typeof(float)) return 1;
+                if (typeof(T) == typeof(Vector2)) return 2;
+                if (typeof(T) == typeof(Vector3)) return 3;
+                if (typeof(T) == typeof(Vector4)) return 4;
+                if (typeof(T) == typeof(Color4)) return 4;
 
-                return "0";
+                return 0;
             }
             
             public static string GetType<T1>(T1 var)
