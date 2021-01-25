@@ -199,21 +199,7 @@ using VL.Stride.Shaders.ShaderFX.Functions;
             {
                 return ShaderFXUtils.GetNameForType<T1>();
             }
-   
-            public static string VarType<T1>(SetVar<T1> var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-            public static string VarType<T1>(IEnumerable<SetVar<T1>> var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-            
-            public static string VarType<T1>(IDictionary<string,SetVar<T1>> var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-            
+
             public static string VarType<T1>(GetVar<T1> var)
             {
                 return ShaderFXUtils.GetNameForType<T1>();
