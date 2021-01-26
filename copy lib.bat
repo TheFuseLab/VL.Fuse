@@ -1,1 +1,1 @@
-xcopy .\src\VL.ShaderFXtension\bin\Debug\VL.ShaderFXtension.dll .\lib\VL.ShaderFXtension.dll /Y
+xcopy .\src\Fuse\bin\Debug\Fuse.dll .\lib\Fuse.dll /Y
