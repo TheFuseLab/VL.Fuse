@@ -1,16 +1,20 @@
-﻿namespace Fuse
+﻿using System.Collections.Generic;
+
+namespace Fuse
 {
     public class AssignNode<T> : ShaderNode<T>
     {
         public AssignNode(GpuValue<T> theTarget, GpuValue<T> theSource) : base("Assign")
         {
-            const string shaderCode = "${target} = ${source};";
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>()
-            {
-                {"target", theTarget}, 
-                {"source", theSource}
-            };
-            Setup(shaderCode, inputs);
+            
+            Setup("${target} = ${source};", 
+                new List<AbstractGpuValue>{theTarget,theSource},
+                new Dictionary<string, string>()
+                {
+                    {"target", theTarget.ID}, 
+                    {"source", theSource.ID}
+                }
+            );
         }
     }
 }

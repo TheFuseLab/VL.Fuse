@@ -8,16 +8,16 @@ namespace Fuse
     {
 
         public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
-        {
+        { 
             var abstractGpuValues = theInputs.ToList();
             
-            const string shaderCode = "${resultType} ${resultName} = ${Call};";
-            var inputs = ShaderNodesUtil.BuildInputs(abstractGpuValues);
-            var valueMap = new OrderedDictionary<string,string>
-            {
-                {"Call",BuildCall(abstractGpuValues,theOperator)}
-            };
-           Setup(shaderCode, inputs, valueMap);
+            Setup(
+               "${resultType} ${resultName} = ${Call};", 
+               abstractGpuValues, 
+               new Dictionary<string,string>
+               {
+                   {"Call",BuildCall(abstractGpuValues,theOperator)}
+               });
         }
 
         public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, ConstantValue<TOut> theDefault, string theOperator) :

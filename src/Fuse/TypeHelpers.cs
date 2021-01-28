@@ -11,42 +11,23 @@ namespace Fuse
         public static class TypeHelpers
         {
             
-
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypes<T>(T input, T input2, T input3, T input4)
             {
             }
-            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypesByEnumerable<T>(T input, IEnumerable<T> input2)
             {
             }
-            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypesByDictionary<T>(T input, IDictionary<string,T> input2)
             {
             }
-/*
-            public static void ConstrainTypesByFunction<T1, T2>(Funk1In1Out<T1, T2> funk, SetVar<T1> inputT1, SetVar<T2> inputT2)
-            {
-                
-            }
-            */
 
-            public static (string inputType, string outputType) FunkTypes<T1, T2>(Funk1In1Out<T1, T2> funk)
-            {
-                return (
-                    ShaderFXUtils.GetNameForType<T1>(),
-                    ShaderFXUtils.GetNameForType<T2>()
-                );
-            }
-            
-            public static void FunkTypes<T1, T2>(Funk1In1Out<T1, T2> funk, out string inputType, out string outputType, out string signature)
-            {
-
-                inputType = ShaderFXUtils.GetNameForType<T1>();
-                outputType = ShaderFXUtils.GetNameForType<T2>();
-                signature = inputType + "To" + outputType;
-            }
-            
-            static Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>();
+            private static readonly Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>();
 
             public static string GetDefaultForType<T>(T theValue)
             {
@@ -155,6 +136,8 @@ namespace Fuse
                 throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
             }
             
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global
             public static int GetDimension<T>(GpuValue<T> theValue)
             {
                 if (typeof(T) == typeof(float)) return 1;
@@ -165,22 +148,9 @@ namespace Fuse
 
                 return 0;
             }
-            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global
             public static string GetType<T1>(T1 var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-
-            public static string VarType<T1>(GetVar<T1> var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-            public static string VarType<T1>(IEnumerable<GetVar<T1>> var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
-            }
-            
-            public static string VarType<T1>(IDictionary<string,GetVar<T1>> var)
             {
                 return ShaderFXUtils.GetNameForType<T1>();
             }

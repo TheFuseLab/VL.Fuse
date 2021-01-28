@@ -18,7 +18,7 @@ namespace Fuse.Tests
             var add2 = new OperatorNode<float, float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
 
             var sin = new IntrinsicFunctionNode<float>(
-                new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
+                new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin.BuildSourceCode());
 
@@ -43,15 +43,15 @@ namespace Fuse.Tests
             Console.WriteLine(gpuValue0.Declaration);
             
             var customFunction = new MixinFunctionNode<Vector2>(
-                new OrderedDictionary<string, AbstractGpuValue>
+                new List<AbstractGpuValue>
                 {
-                    {"x", new ConstantValue<Vector2>(0.5f)}, 
-                    {"u", gpuValue0.Output},
-                    {"v", gpuValue0.Output}
+                    new ConstantValue<Vector2>(0.5f), 
+                    gpuValue0.Output,
+                    gpuValue0.Output
                 },
                 "voronoise2D", 
                 new ConstantValue<Vector2>(0),
-                new List<string> {"Voronoise", "Hash"}
+                "Voronoise"
             );
             Console.WriteLine(customFunction.BuildMixIns());
             Console.WriteLine(customFunction.BuildSourceCode());
@@ -82,11 +82,11 @@ namespace Fuse.Tests
             var Blend = new GPUInput<Vector3>();
             var Opacity = new GPUInput<Vector3>();
             
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>
+            var inputs = new List<AbstractGpuValue>
             {
-                {"Base", Base.Output},
-                {"Blend", Blend.Output},
-                {"Opacity", Opacity.Output},
+                Base.Output,
+                Blend.Output,
+                Opacity.Output,
             };
             const string template = @"
         ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacity)
@@ -99,7 +99,7 @@ namespace Fuse.Tests
         }
 ";
             
-            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, new ConstantValue<Vector4>(0), new List<string>(){"Base","Blend","Opacity"}, new List<string>(), null);
+            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, new ConstantValue<Vector4>(0));
             
             Console.WriteLine(customFunction.BuildSourceCode());
             Console.WriteLine(customFunction.BuildFunctions());
@@ -184,7 +184,7 @@ namespace Fuse.Tests
             var add2 = new OperatorNode<float,float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
 
             var sin = new IntrinsicFunctionNode<float>(
-                new OrderedDictionary<string, AbstractGpuValue> {{"val1", add.Output}, {"val2", gpuValue2.Output}},
+                new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(add2.BuildSourceCode());
             Console.WriteLine(sin.BuildSourceCode());
@@ -197,15 +197,15 @@ namespace Fuse.Tests
             Console.WriteLine(add3.BuildSourceCode());
 
             var customFunction = new MixinFunctionNode<Vector2>(
-                new OrderedDictionary<string, AbstractGpuValue>
+                new List<AbstractGpuValue>
                 {
-                    {"x", new ConstantValue<Vector2>(0.5f)}, 
-                    {"u", gpuValue0.Output},
-                    {"v", gpuValue0.Output}
+                    new ConstantValue<Vector2>(0.5f), 
+                    gpuValue0.Output,
+                    gpuValue0.Output
                 },
                 "voronoise2D",
                 new ConstantValue<Vector2>(0),
-                new List<string> {"Voronoise", "Hash"}
+                "Voronoise"
             );
             Console.WriteLine(customFunction.BuildMixIns());
             Console.WriteLine(customFunction.BuildSourceCode());

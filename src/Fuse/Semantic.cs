@@ -1,4 +1,6 @@
-﻿namespace Fuse
+﻿using System.Collections.Generic;
+
+namespace Fuse
 {
     public class SemanticValue <T>: GpuValue<T>
     {
@@ -14,7 +16,7 @@
         public Semantic (string theSemantic) : base("Semantic")
         {
             Output = new SemanticValue<T>(theSemantic);
-            Setup("", new OrderedDictionary<string, AbstractGpuValue>() );
+            Setup("", new List<AbstractGpuValue>() );
         }
     }
 }

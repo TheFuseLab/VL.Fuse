@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
-using Stride.Core.Mathematics;
 using VL.Lib.Collections;
 
 namespace Fuse
@@ -16,7 +16,7 @@ namespace Fuse
     public abstract class AbstractShaderNode : IShaderNode
     {
         protected string _sourceCode;
-        protected OrderedDictionary<string, AbstractGpuValue> Ins;
+        protected IEnumerable<AbstractGpuValue> Ins;
 
 
         protected AbstractShaderNode(string theId)
@@ -27,29 +27,11 @@ namespace Fuse
         public virtual string Declaration => "";
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
 
-        public virtual IEnumerable<string> MixIns => new List<string>();
+        public virtual List<string> MixIns => new List<string>();
         
         public string ID { get; }
 
         public string SourceCode => _sourceCode;
-
-        public virtual string ReferenceCall(Dictionary<string,AbstractGpuValue> theReplacements)
-        {
-            return "";
-        }
-        
-        public virtual string ReferenceCallArguments(Dictionary<string,AbstractGpuValue> theReplacements)
-        {
-            return "";
-        }
-        public virtual string ReferenceArguments(Dictionary<string,AbstractGpuValue> theReplacements)
-        {
-            return "";
-        }
-        public virtual string ReferenceSignature(Dictionary<string,AbstractGpuValue> theReplacements)
-        {
-            return "";
-        }
 
         private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
@@ -59,9 +41,9 @@ namespace Fuse
                
                 ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
             });
-            if (!_sourceCode.IsNullOrEmpty() && theHashes.Add(GetHashCode()))
+            if (!SourceCode.IsNullOrEmpty() && theHashes.Add(GetHashCode()))
             {
-                theSourceBuilder.Append("        " + _sourceCode + Environment.NewLine);
+                theSourceBuilder.Append("        " + SourceCode + Environment.NewLine);
             }
         }
        
@@ -71,18 +53,7 @@ namespace Fuse
             var myHashes = new HashSet<int>();
 
             BuildSource(myStringBuilder, myHashes);
-            /*
-            Trees.ReadOnlyTreeNode.Traverse(this, n =>
-            {
-                if (!(n is ShaderNode input)) return Trees.TraverseAllChilds;
-                if (!_sourceCode.IsNullOrEmpty() && myHashes.Add(input.GetHashCode()))
-                {
-                    myStringBuilder.Insert(0,"        " + input._sourceCode + Environment.NewLine);
-                }
-
-                return Trees.TraverseAllChilds;
-            }, out _, out _);
-            */
+            
             return myStringBuilder.ToString();
         }
 
@@ -106,7 +77,17 @@ namespace Fuse
             {
                 if(n is IGpuInput input)result.Add(input);
             });
-            return System.Linq.Enumerable.ToList(result);
+            return result.ToList();
+        }
+        
+        public List<IDelegateParameter> Delegates()
+        {
+            var result = new HashSet<IDelegateParameter>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is IDelegateParameter input)result.Add(input);
+            });
+            return result.ToList();
         }
 
         public string BuildMixIns()
@@ -120,7 +101,16 @@ namespace Fuse
             var myBuilder = new StringBuilder();
             result.ForEach(mixin => myBuilder.Append(","+mixin));
             return myBuilder.ToString();
-            
+        }
+        
+        public List<string> MixinList()
+        {
+            var result = new List<string>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is AbstractShaderNode input)result.AddRange(input.MixIns);
+            });
+            return result;
         }
 
         public string BuildFunctions(){
@@ -133,11 +123,32 @@ namespace Fuse
                 
                 input.Functions?.ForEach(kv =>
                 {
-                    if(result.Add(kv.Key))myBuilder.Append(kv.Value);
+                    if (!result.Add(kv.Key)) return;
+                    
+                    myBuilder.Append(kv.Value);
+                    myBuilder.AppendLine();
                 });
                 
             });
             return myBuilder.ToString();
+        }
+        
+        public Dictionary<string,string> FunctionMap(){
+       
+            var result = new Dictionary<string,string>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input)) return;
+                
+                input.Functions?.ForEach(kv =>
+                {
+                    if (result.ContainsKey(kv.Key)) return;
+                    
+                    result.Add(kv.Key, kv.Value);
+                });
+                
+            });
+            return result;
         }
 
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
@@ -148,12 +159,13 @@ namespace Fuse
                 
                 Ins.ForEach(input =>
                 {
-                    if(input.Value?.ParentNode != null)result.Add(input.Value.ParentNode);
+                    if(input?.ParentNode != null)result.Add(input.ParentNode);
                 });
                 return result;
             }
         }
 
+        
         
     }
     
@@ -185,9 +197,8 @@ namespace Fuse
             return ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        public virtual string GenerateSource(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected virtual string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
-            var myCode = theSourceCode;
             
             if (ShaderNodesUtil.HasNullValue(theIns))
             {
@@ -195,20 +206,16 @@ namespace Fuse
             }
 
             var templateMap = CreateTemplateMap();
-            theIns.ForEach(kv => templateMap.Add(kv.Key, kv.Value.ID));
+            theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
 
-            if (theCustomValues != null)
-            {
-                theCustomValues.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
-            }
-            
             return ShaderTemplateEvaluator.Evaluate(theSourceCode, templateMap);
         }
         
-        protected void Setup(string theSourceCode, OrderedDictionary<string, AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected void Setup(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
-            _sourceCode = GenerateSource(theSourceCode, theIns, theCustomValues);
-            Ins = theIns;
+            var abstractGpuValues = theIns.ToList();
+            _sourceCode = GenerateSource(theSourceCode, abstractGpuValues, theCustomValues);
+            Ins = abstractGpuValues;
             Output.ParentNode = this;
         }
     }

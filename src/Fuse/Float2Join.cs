@@ -1,4 +1,5 @@
-﻿using Stride.Core.Mathematics;
+﻿using System.Collections.Generic;
+using Stride.Core.Mathematics;
 
 namespace Fuse
 {
@@ -7,13 +8,18 @@ namespace Fuse
 
         public Float2Join(GpuValue<float> x, GpuValue<float> y) : base("float2Join")
         {
-            const string shaderCode = "float2 ${resultName} = float2(${x},${y});";
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>
-            {
-                {"x", x ?? new ConstantValue<float>(0)},
-                {"y", y ?? new ConstantValue<float>(0)}
-            };
-            Setup(shaderCode, inputs);
+            x = x ?? new ConstantValue<float>(0);
+            y = y ?? new ConstantValue<float>(0);
+            
+            Setup(
+                "float2 ${resultName} = float2(${x},${y});", 
+                new List<AbstractGpuValue>{x,y},
+                new Dictionary<string, string>
+                {
+                    {"x", x.ID},
+                    {"y", y.ID}
+                }
+            );
         }
     }
 }

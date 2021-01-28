@@ -8,24 +8,24 @@ namespace Fuse.Tests
     {
         public static void TestDelegateFunction()
         {
-            var delegate0 = new DelegateParameter<float>("x", new ConstantValue<float>(0));
-            var delegate1 = new DelegateParameter<float>("y", new ConstantValue<float>(0));
+            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
+            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0));
             
             var gpuValue0 = new GPUInput<float>();
             var gpuValue1 = new GPUInput<float>();
             
             var sin2 = new IntrinsicFunctionNode<float>(
-                new OrderedDictionary<string, AbstractGpuValue> {{"val1", delegate0.Output}},
+                new List< AbstractGpuValue> {delegate0.Output},
                 "sin", new ConstantValue<float>(0));
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new DelegateNode<float>(operatorNode.Output, new OrderedDictionary<string, AbstractGpuValue> {{"x",gpuValue0.Output}, {"y",gpuValue1.Output}}, false);
+            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, false);
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             Console.WriteLine(delegateNode.BuildFunctions());
             Console.WriteLine(delegateNode.BuildSourceCode());
             
-            var delegateNodeTemplate = new DelegateNode<float>(operatorNode.Output, new OrderedDictionary<string, AbstractGpuValue> {{"x",delegate0.Output}, {"y",delegate1.Output}}, true);
+            var delegateNodeTemplate = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {delegate0.Output,delegate1.Output}, true);
             
             Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
             Console.WriteLine(delegateNodeTemplate.BuildFunctions());
@@ -34,25 +34,25 @@ namespace Fuse.Tests
         
         public static void TestDelegateShaderFunction()
         {
-            var delegate0 = new DelegateParameter<float>("x", new ConstantValue<float>(0));
-            var delegate1 = new DelegateParameter<float>("y", new ConstantValue<float>(0));
+            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
+            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0));
             
             var gpuValue0 = new GPUInput<float>();
             var gpuValue1 = new GPUInput<float>();
             
             var sin2 = new IntrinsicFunctionNode<float>(
-                new OrderedDictionary<string, AbstractGpuValue> {{"val1", delegate0.Output}},
+                new List<AbstractGpuValue> {delegate0.Output},
                 "sin", new ConstantValue<float>(0));
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new DelegateShaderNode<float>(operatorNode.Output, new OrderedDictionary<string, AbstractGpuValue> {{"x",gpuValue0.Output}, {"y",gpuValue1.Output}}, false);
+            var delegateNode = new DelegateShaderNode<float>(operatorNode.Output, new List<AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, false);
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             Console.WriteLine(delegateNode.ShaderCode);
             Console.WriteLine(delegateNode.BuildFunctions());
             Console.WriteLine(delegateNode.BuildSourceCode());
             
-            var delegateNodeTemplate = new DelegateShaderNode<float>(operatorNode.Output, new OrderedDictionary<string, AbstractGpuValue> {{"x",delegate0.Output}, {"y",delegate1.Output}}, true);
+            var delegateNodeTemplate = new DelegateShaderNode<float>(operatorNode.Output, new List<AbstractGpuValue> {delegate0.Output,delegate1.Output}, true);
             
             Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
             Console.WriteLine(delegateNode.ShaderCode);
@@ -62,24 +62,38 @@ namespace Fuse.Tests
 
         public static void TestTemplateDelegateFunction()
         {
-            var offset = new DelegateParameter<Vector2>("offset", new ConstantValue<Vector2>(0));
-            var cellDistanceIns = new OrderedDictionary<string, AbstractGpuValue>
-            {
-                {"offset", offset.Output}
-            };
+            var offset = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
 
-            var cellDistanceCode = @"float get(float2 offset)
-        {
-            return  sqrt(dot( offset, offset ));
-        }";
+            const string cellDistanceCode = @"float get(float2 offset)
+ {
+    return  sqrt(dot( offset, offset ));
+}";
             
-            var cellDistance = new CustomFunctionNode<float>(cellDistanceIns, "cellDistance",cellDistanceCode, new ConstantValue<float>(0), new List<string>(){"x"}, new List<string>(), null);
+            var cellDistance = new CustomFunctionNode<float>(
+                new List<AbstractGpuValue> {offset.Output}, 
+                "cellDistance",
+                cellDistanceCode, 
+                new ConstantValue<float>(0)
+            );
+            
+            
+            var f1f2 = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
+            const string cellFunctionCode = @"float get(float2 offset)
+{
+    return  sqrt(dot( offset, offset ));
+}";
+            
+            var cellFunction = new CustomFunctionNode<float>(
+                new List<AbstractGpuValue> {f1f2.Output}, 
+                "cellFunction",
+                cellFunctionCode, 
+                new ConstantValue<float>(0)
+            );
             
             var x = new GPUInput<Vector2>();
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>
+            var inputs = new List<AbstractGpuValue>
             {
-                {"x", x.Output},
-                {"cellDistance", cellDistance.Output}
+                x.Output
             };
             var worleyCode = @"
 float ${signature}(float2 p)
@@ -113,9 +127,86 @@ float ${signature}(float2 p)
     
     return ${cellFunction}(float2(f1, f2));
 }";
-            var customFunction = new CustomFunctionNode<float>(inputs, "worley",worleyCode, new ConstantValue<float>(0), new List<string>(){"x"}, new List<string>(), null);
+            var customFunction = new CustomFunctionNode<float>(
+                new List<AbstractGpuValue> {x.Output}, 
+                "worley",
+                worleyCode, 
+                new ConstantValue<float>(0),  
+                new Dictionary<string, AbstractGpuValue>
+                {
+                    {"cellDistance",cellDistance.Output},
+                    {"cellFunction",cellFunction.Output}
+                }
+            );
             Console.WriteLine(customFunction.BuildFunctions());
             Console.WriteLine(customFunction.BuildSourceCode());
+        }
+
+        public static void TestFBM()
+        {
+            var noiseDelegateParameter = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
+            var noiseFunction = new MixinFunctionNode<float>(
+                new List<AbstractGpuValue>(){noiseDelegateParameter.Output}, 
+                "gradientNoise12",
+                new ConstantValue<float>(0),
+                "GradientNoise"
+                );
+            var fbmTypeCode =@"${resultType} ${signature}(${argumentType} p){
+    return ${noise}(p);
+}";
+            var fbmTypeDelegateParameter = new DelegateParameter<float>(new ConstantValue<float>(0));
+            var fbmTypeFunction = new CustomFunctionNode<float>(
+                new List<AbstractGpuValue>(){fbmTypeDelegateParameter.Output}, 
+                "fbmType",
+                fbmTypeCode,
+                new ConstantValue<float>(0),
+                new Dictionary<string, AbstractGpuValue>
+                {
+                    {"noise",noiseFunction.Output}
+                }
+            );
+
+            var fbmCode = @"${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity)
+{
+
+    float myScale = 1;
+    float myFallOff = gain;
+
+    int iOctaves = int(floor(octaves)); 
+    ${resultType} myResult = 0.;  
+    float myAmp = 0.;
+
+    for(int i = 0; i < iOctaves;i++){
+        myResult += ${fbmType}(p * myScale) * myFallOff;
+        myAmp += myFallOff;
+        myFallOff *= gain;
+        myScale *= lacunarity;
+    }
+
+    float myBlend = octaves - float(iOctaves);
+    myResult += ${fbmType}(p * myScale) * myFallOff * myBlend;    
+    myAmp += myFallOff * myBlend;
+    
+    if(myAmp > 0.0){
+        myResult /= myAmp;
+    }
+ 
+    return myResult;
+}";
+            var gpuValue0 = new GPUInput<Vector2>();
+            var fbmFunction = new CustomFunctionNode<float>(
+                new List<AbstractGpuValue>(){gpuValue0.Output}, 
+                "fbm",
+                fbmCode,
+                new ConstantValue<float>(0),
+                new Dictionary<string, AbstractGpuValue>
+                {
+                    {"fbmType",fbmTypeFunction.Output}
+                }
+            );
+            
+            Console.WriteLine(fbmFunction.BuildFunctions());
+            Console.WriteLine(fbmFunction.BuildSourceCode());
         }
 
         public static void TestDelegate1Function()
@@ -126,7 +217,7 @@ float ${signature}(float2 p)
                 param =>
                 {
                     return new IntrinsicFunctionNode<float>(
-                        new OrderedDictionary<string, AbstractGpuValue> {{"val1", param}},
+                        new List<AbstractGpuValue> {param},
                         "sin",
                         new ConstantValue<float>(0)).Output;
                 }, 
@@ -137,12 +228,12 @@ float ${signature}(float2 p)
             Console.WriteLine(delegateNode.BuildFunctions());
             Console.WriteLine(delegateNode.BuildSourceCode());
             
-            var delegate0 = new DelegateParameter<float>("x", new ConstantValue<float>(0));
+            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
             var delegateNodeTemplate = new Delegate1Node<float,float>(
                 param =>
                 {
                     return new IntrinsicFunctionNode<float>(
-                        new OrderedDictionary<string, AbstractGpuValue> {{"val1", param}},
+                        new List<AbstractGpuValue> {param},
                         "sin",
                         new ConstantValue<float>(0)).Output;
                 }, 

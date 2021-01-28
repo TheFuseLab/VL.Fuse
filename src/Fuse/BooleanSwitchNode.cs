@@ -1,4 +1,6 @@
-﻿namespace Fuse
+﻿using System.Collections.Generic;
+
+namespace Fuse
 {
     public class BooleanSwitchNode<T> : ShaderNode<T>
     {
@@ -13,13 +15,15 @@
             ${resultName} = ${inFalse};
         }
         ";
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>()
-            {
-                {"check", inCheck},
-                {"inFalse", inFalse},
-                {"inTrue", inTrue}
-            };
-            Setup(shaderCode, inputs);
+            
+            Setup(shaderCode, 
+                new List<AbstractGpuValue>(){inCheck,inFalse,inTrue},
+                new Dictionary<string, string>()
+                {
+                    {"check", inCheck.ID},
+                    {"inFalse", inFalse.ID},
+                    {"inTrue", inTrue.ID}
+                });
         }
     }
 }

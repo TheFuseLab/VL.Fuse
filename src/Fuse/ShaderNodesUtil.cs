@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
@@ -8,51 +9,35 @@ namespace Fuse
 {
     public static class ShaderNodesUtil
     {
-        public static OrderedDictionary<string,AbstractGpuValue> BuildInputs(IEnumerable<AbstractGpuValue> inputs)
-        {
-            var inputsDict = new OrderedDictionary<string,AbstractGpuValue>();
-            var c = 0;
-            inputs.ForEach(input =>
-            {
-                inputsDict.Add("val" + c,input);
-                c++;
-            });
-            return inputsDict;
-        }
         
-        public static OrderedDictionary<string,AbstractGpuValue> BuildInputs(params AbstractGpuValue[] inputs)
-        {
-            var inputsDict = new OrderedDictionary<string,AbstractGpuValue>();
-            var c = 0;
-            inputs.ForEach(input =>
-            {
-                inputsDict.Add("val" + c,input);
-                c++;
-            });
-            return inputsDict;
-        }
-        
-        public static string BuildArguments(OrderedDictionary<string,AbstractGpuValue> inputs)
+        public static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>
             {
-                if (input.Value == null) return;
-                stringBuilder.Append(input.Value.ID);
+                if (input == null) return;
+                stringBuilder.Append(input.ID);
                 stringBuilder.Append(", ");
             });
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
             return stringBuilder.ToString();
         }
 
-        public static string BuildResult(GpuValue<Vector4> theValue)
+        public static  bool HasNullValue<T>(IEnumerable<T> theSequence)
         {
-            return "return " + theValue.ID;
+            return theSequence.Any(value => value == null);
         }
-        public static  bool HasNullValue<T1,T2>(IDictionary<T1,T2> theMap)
+
+        public static string IndentCode(string theCode)
         {
-            return theMap.Any(kv => kv.Value == null);
+            var lines = theCode.Split(
+                new[] { Environment.NewLine },
+                StringSplitOptions.None
+            );
+            
+            var myStringBuilder = new StringBuilder();
+            lines.ForEach(line=>myStringBuilder.AppendLine("    " + line));
+            return myStringBuilder.ToString();
         }
-        
     }
 }

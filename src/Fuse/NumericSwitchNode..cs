@@ -16,19 +16,11 @@ ${cases}
         ";
         public NumericSwitchNode(GpuValue<int> theCheck, IEnumerable<GpuValue<T>> inputs, GpuValue<T> theDefault) : base("numericSwitch")
         {
-
-            
-            
-            var myIns = new OrderedDictionary<string, AbstractGpuValue>();
-            var c = 0;
             var abstractGpuValues = inputs.ToList();
-            abstractGpuValues.ForEach(input => {
-                myIns.Add("val" + c, input);
-                c++;
-            });
+            var myIns = new List<AbstractGpuValue>(abstractGpuValues);
             if (theDefault != null)
             {
-                myIns.Add("default" + c, theDefault);
+                myIns.Add(theDefault);
             }
             
             var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"cases", BuildCases(abstractGpuValues, theDefault)}});

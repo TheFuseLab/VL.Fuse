@@ -25,6 +25,4 @@
         public override string ID => name + "_" + GetHashCode();
 
     }
-    
-    
 }

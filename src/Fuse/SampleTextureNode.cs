@@ -1,4 +1,5 @@
-﻿using Stride.Core.Mathematics;
+﻿using System.Collections.Generic;
+using Stride.Core.Mathematics;
 using Stride.Graphics;
 
 namespace Fuse
@@ -7,16 +8,17 @@ namespace Fuse
     {
         public SampleTextureNode(GpuValue<Texture> theTexture, GpuValue<SamplerState> theSampler, GpuValue<Vector2> theTexCoords, ConstantValue<Vector4> theDefault) : base( "sampleTexture", theDefault)
         {
-            const string shaderCode = "${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoords});";
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>()
-            {
-                {"texture", theTexture}, 
-                {"sampler", theSampler}, 
-                {"texCoords", theTexCoords}
-            };
-            
-            Setup(shaderCode, inputs);
-            
+            Setup(
+                "${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoords});",
+                new List<AbstractGpuValue>() {theTexture, theSampler, theTexCoords},
+                new Dictionary<string, string>()
+                {
+                    {"texture", theTexture.ID}, 
+                    {"sampler", theSampler.ID}, 
+                    {"texCoords", theTexCoords.ID}
+                }
+            );
+
         }
     }
 }

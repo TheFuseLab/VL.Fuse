@@ -4,10 +4,10 @@ using Stride.Rendering;
 
 namespace Fuse{
 
-     public interface IGpuInput : IShaderNode
-     {
-         void SetParameterValue(ParameterCollection theCollection);
-     }
+    public interface IGpuInput : IShaderNode
+    {
+        void SetParameterValue(ParameterCollection theCollection);
+    }
      
      public abstract class AbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
      {
@@ -21,7 +21,7 @@ namespace Fuse{
          public AbstractInput(string theName): base(theName, null,"input")
          {
             
-             Setup("", new OrderedDictionary<string, AbstractGpuValue>());
+             Setup("", new List<AbstractGpuValue>());
             
              Declaration = ShaderTemplateEvaluator.Evaluate(
                  DeclarationTemplate, 

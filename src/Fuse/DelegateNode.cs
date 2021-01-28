@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Engine;
@@ -67,12 +68,21 @@ namespace Fuse
 
     }
     
-    public class DelegateParameter<T> : ShaderNode<T>
+    public interface IDelegateParameter : IShaderNode
+    {
+        string TypeName();
+
+        string Name();
+    }
+    
+    public class DelegateParameter<T> : ShaderNode<T> , IDelegateParameter
     {
 
-        public DelegateParameter(string theName, GpuValue<T> theType): base(theName, null,"delegate")
+        public DelegateParameter(GpuValue<T> theType,  GpuValue<T> theOverride = null, int id = 0): base("delegate", null,"delegate")
         {
-            Output = new DelegateValue<T>(theName);
+            Output = theOverride??new DelegateValue<T>("val"+GetHashCode());
+            Output.ParentNode = this;
+            Ins = new List<AbstractGpuValue>();
         }
 
 
@@ -81,7 +91,10 @@ namespace Fuse
             return TypeHelpers.GetNameForType<T>().ToLower();
         }
 
-       
+        public string Name()
+        {
+            return Output.ID;
+        }
     }
     
     public interface IDelegateNode
@@ -91,17 +104,25 @@ namespace Fuse
 
     public class DelegateNode<T> : ShaderNode<T> ,IDelegateNode
     {
-        public DelegateNode(AbstractGpuValue theDelegate, OrderedDictionary<string,AbstractGpuValue> theParameters, bool theUseInTemplate, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
+        public DelegateNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, bool theUseInTemplate, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
         {
             FunctionName = "delegateFunction" + GetHashCode();
             
             Functions = new Dictionary<string, string>();
+            
+            var myParameterMap = new Dictionary<string, AbstractGpuValue>();
+            var c = 0;
+            var abstractGpuValues = theParameters.ToList();
+            abstractGpuValues.ForEach(parameter =>
+            {
+                myParameterMap.Add("val" + c++, parameter);
+            });
 
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                 {"functionName", FunctionName},
-                {"arguments", DelegateUtil.BuildArguments(theParameters)},
+                {"arguments", DelegateUtil.BuildArguments(myParameterMap)},
                 {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
@@ -116,9 +137,14 @@ ${functionImplementation}
             var valueMap = new Dictionary<string, string>
             {
                 {"functionName", FunctionName},
-                {"arguments", DelegateUtil.BuildCallWithId(theParameters)},
+                {"arguments", DelegateUtil.BuildCallWithId(myParameterMap)},
             };
-            Setup(shaderCode, theParameters, valueMap);
+            Setup(shaderCode, abstractGpuValues, valueMap);
+        }
+
+        public DelegateNode() : base("Delegate")
+        {
+            
         }
         
         public string FunctionName { get;  }
@@ -129,16 +155,25 @@ ${functionImplementation}
     public class DelegateShaderNode<T> : ShaderNode<T> ,IDelegateNode
     {
         
-        public DelegateShaderNode(AbstractGpuValue theDelegate, OrderedDictionary<string,AbstractGpuValue> theParameters, bool theUseInTemplate, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
+        public DelegateShaderNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, bool theUseInTemplate, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
         {
             FunctionName = "delegateFunction" + GetHashCode();
             
             Functions = new Dictionary<string, string>();
+            
+            var myParameterMap = new Dictionary<string, AbstractGpuValue>();
+            var c = 0;
+            var abstractGpuValues = theParameters.ToList();
+            abstractGpuValues.ForEach(parameter =>
+            {
+                myParameterMap.Add("val" + c++, parameter);
+            });
+            
             var shaderValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                 {"functionName", FunctionName},
-                {"arguments", DelegateUtil.BuildArguments(theParameters)},
+                {"arguments", DelegateUtil.BuildArguments(myParameterMap)},
                 {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
@@ -161,10 +196,10 @@ ${functionImplementation}
             var valueMap = new Dictionary<string, string>
             {
                 {"functionName", FunctionName},
-                {"arguments", DelegateUtil.BuildCallWithId(theParameters)},
+                {"arguments", DelegateUtil.BuildCallWithId(myParameterMap)},
                 {"ShaderID", ShaderName}
             };
-            Setup(shaderCallCode, theParameters, valueMap);
+            Setup(shaderCallCode, abstractGpuValues, valueMap);
         }
 
         public void RegisterShader(Game theGame)
@@ -187,20 +222,29 @@ ${functionImplementation}
         
         public Delegate1Node(Delegate1 theDelegate, GpuValue<TIn> theParameter, bool theUseInTemplate, ConstantValue<TOut> theDefault = null) : base("Delegate", theDefault)
         {
-            var inputs = new OrderedDictionary<string, AbstractGpuValue>()
+            var inputs = new List<AbstractGpuValue>()
             {
-                {"in0", theParameter}
+                theParameter
             };
             
             var functionName = "delegateFunction" + GetHashCode();
             
             Functions = new Dictionary<string, string>();
+            
+            var myParameterMap = new Dictionary<string, AbstractGpuValue>();
+            var c = 0;
+            var abstractGpuValues = inputs.ToList();
+            abstractGpuValues.ForEach(parameter =>
+            {
+                myParameterMap.Add("val" + c++, parameter);
+            });
+            
             var delegateNode = theDelegate(theParameter);
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<TOut>().ToLower()},
                 {"functionName", functionName},
-                {"arguments", DelegateUtil.BuildArgumentsWithId(inputs)},
+                {"arguments", DelegateUtil.BuildArgumentsWithId(myParameterMap)},
                 {"functionImplementation", delegateNode.ParentNode.BuildSourceCode()},
                 {"result", delegateNode.ID}
             };
@@ -215,7 +259,7 @@ ${functionImplementation}
             var valueMap = new Dictionary<string, string>
             {
                 {"functionName", functionName},
-                {"arguments", DelegateUtil.BuildCallWithId(inputs)},
+                {"arguments", DelegateUtil.BuildCallWithId(myParameterMap)},
             };
             Setup(shaderCode, inputs, valueMap);
         }

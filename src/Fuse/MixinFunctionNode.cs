@@ -1,22 +1,26 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Fuse
 {
     public class MixinFunctionNode<T> : ShaderNode<T>
     {
 
-        public MixinFunctionNode(OrderedDictionary<string, AbstractGpuValue> inputs, string theFunction, ConstantValue<T> theDefault, IEnumerable<string> theMixins) : base(theFunction, theDefault)
+        public MixinFunctionNode(IEnumerable<AbstractGpuValue> inputs, string theFunction, ConstantValue<T> theDefault, string theMixin) : base(theFunction, theDefault)
         {
-            MixIns = theMixins;
+            MixIns = new List<string>(){theMixin};
 
-            const string shaderCode = "${resultType} ${resultName} = ${function}(${arguments});";
-            var valueMap = new Dictionary<string, string>
-            {
-                {"function", theFunction},
-                {"arguments", ShaderNodesUtil.BuildArguments(inputs)}
-            };
-            Setup(shaderCode, inputs, valueMap);
+            var abstractGpuValues = inputs.ToList();
+          
+            Setup(
+                "${resultType} ${resultName} = ${function}(${arguments});", 
+                abstractGpuValues, 
+                new Dictionary<string, string> {
+                    {"function", theFunction},
+                    {"arguments", ShaderNodesUtil.BuildArguments(abstractGpuValues)}
+                }
+            );
         }
-        public sealed override IEnumerable<string> MixIns { get; }
+        public sealed override List<string> MixIns { get; }
     }
 }
