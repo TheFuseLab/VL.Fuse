@@ -1,6 +1,6 @@
-﻿namespace Fuse
+﻿namespace Fuse.noise
 {
-    public enum FractalType
+    public enum FBMType
     {
         Standard,
         Ridge,
