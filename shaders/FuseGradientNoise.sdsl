@@ -8,7 +8,7 @@
 // info here: http://iquilezles.org/www/articles/gradientnoise/gradientnoise.htm
 
 
-shader GradientNoise : Hash
+shader FuseGradientNoise : FuseHash
 {
 	
     float gradientNoise11(float p){
@@ -17,8 +17,8 @@ shader GradientNoise : Hash
 	
 		float u = f * f * (3.0 - 2.0 * f);
 
-		return  lerp( dot( hash11( i + 0.0), f - 0.0 ), 
-                      dot( hash11( i + 1.0), f - 1.0 ), u);
+		return  lerp( dot( hash11( i + 0.0) * 2.0 - 1.0, f - 0.0 ), 
+                      dot( hash11( i + 1.0) * 2.0 - 1.0, f - 1.0 ), u);
 	}
 
     float gradientNoise12(float2 p){
@@ -27,20 +27,13 @@ shader GradientNoise : Hash
 	
 		float2 u = f * f * (3.0 - 2.0 * f);
 
-        return lerp(lerp(dot(hash22( i + float2(0.0,0.0) ), f - float2(0.0,0.0) ), 
-                         dot(hash22( i + float2(1.0,0.0) ), f - float2(1.0,0.0) ), u.x),
-                    lerp(dot(hash22( i + float2(0.0,1.0) ), f - float2(0.0,1.0) ), 
-                         dot(hash22( i + float2(1.0,1.0) ), f - float2(1.0,1.0) ), u.x), u.y);
+        return lerp(lerp(dot(hash22( i + float2(0.0,0.0) ) * 2.0 - 1.0, f - float2(0.0,0.0) ), 
+                         dot(hash22( i + float2(1.0,0.0) ) * 2.0 - 1.0, f - float2(1.0,0.0) ), u.x),
+                    lerp(dot(hash22( i + float2(0.0,1.0) ) * 2.0 - 1.0, f - float2(0.0,1.0) ), 
+                         dot(hash22( i + float2(1.0,1.0) ) * 2.0 - 1.0, f - float2(1.0,1.0) ), u.x), u.y);
 	}
 
-	float3 hash333( float3 p ) // replace this by something better
-{
-	p = float3( dot(p,float3(127.1,311.7, 74.7)),
-			  dot(p,float3(269.5,183.3,246.1)),
-			  dot(p,float3(113.5,271.9,124.6)));
-
-	return -1.0 + 2.0*frac(sin(p)*43758.5453123);
-}
+	
 
     float gradientNoise13(float3 p){
 		float3 i = floor(p);
@@ -48,14 +41,14 @@ shader GradientNoise : Hash
 
 		float3 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ), f - float3(0.0,0.0,0.0) ), 
-                               dot( hash33( i + float3(1.0,0.0,0.0) ), f - float3(1.0,0.0,0.0) ), u.x),
-                         lerp( dot( hash33( i + float3(0.0,1.0,0.0) ), f - float3(0.0,1.0,0.0) ), 
-                               dot( hash33( i + float3(1.0,1.0,0.0) ), f - float3(1.0,1.0,0.0) ), u.x), u.y),
-                    lerp(lerp( dot( hash33( i + float3(0.0,0.0,1.0) ), f - float3(0.0,0.0,1.0) ), 
-                               dot( hash33( i + float3(1.0,0.0,1.0) ), f - float3(1.0,0.0,1.0) ), u.x),
-                         lerp( dot( hash33( i + float3(0.0,1.0,1.0) ), f - float3(0.0,1.0,1.0) ), 
-                               dot( hash33( i + float3(1.0,1.0,1.0) ), f - float3(1.0,1.0,1.0) ), u.x), u.y), u.z );
+		return lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,0.0) ), 
+                               dot( hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,0.0) ), u.x),
+                         lerp( dot( hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,0.0) ), 
+                               dot( hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,0.0) ), u.x), u.y),
+                    lerp(lerp( dot( hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,1.0) ), 
+                               dot( hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,1.0) ), u.x),
+                         lerp( dot( hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,1.0) ), 
+                               dot( hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,1.0) ), u.x), u.y), u.z );
 	}
 
     float gradientNoise14(float4 p){
@@ -64,22 +57,22 @@ shader GradientNoise : Hash
 
 		float4 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,0) ), f - float4(0,0,0,0) ), 
-							   	   dot(hash44(i + float4(1,0,0,0) ), f - float4(1,0,0,0) ), u.x),
-					          lerp(dot(hash44(i + float4(0,1,0,0) ), f - float4(0,1,0,0) ), 
-							       dot(hash44(i + float4(1,1,0,0) ), f - float4(1,1,0,0) ), u.x),u.y),
-			             lerp(lerp(dot(hash44(i + float4(0,0,1,0) ), f - float4(0,0,1,0) ), 
-							       dot(hash44(i + float4(1,0,1,0) ), f - float4(1,0,1,0) ), u.x),
-					          lerp(dot(hash44(i + float4(0,1,1,0) ), f - float4(0,1,1,0) ), 
-							       dot(hash44(i + float4(1,1,1,0) ), f - float4(1,1,1,0) ), u.x),u.y),u.z),
-				    lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,1) ), f - float4(0,0,0,1) ), 
-							       dot(hash44(i + float4(1,0,0,1) ), f - float4(1,0,0,1) ), u.x),
-					          lerp(dot(hash44(i + float4(0,1,0,1) ), f - float4(0,1,0,1) ), 
-							       dot(hash44(i + float4(1,1,0,1) ), f - float4(1,1,0,1) ), u.x),u.y),
-			             lerp(lerp(dot(hash44(i + float4(0,0,1,1) ), f - float4(0,0,1,1) ), 
-							       dot(hash44(i + float4(1,0,1,1) ), f - float4(1,0,1,1) ), u.x),
-					          lerp(dot(hash44(i + float4(0,1,1,1) ), f - float4(0,1,1,1) ), 
-							       dot(hash44(i + float4(1,1,1,1) ), f - float4(1,1,1,1) ), u.x),u.y),u.z),u.w);
+		return lerp(lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,0) ) * 2.0 - 1.0, f - float4(0,0,0,0) ), 
+							   	   dot(hash44(i + float4(1,0,0,0) ) * 2.0 - 1.0, f - float4(1,0,0,0) ), u.x),
+					          lerp(dot(hash44(i + float4(0,1,0,0) ) * 2.0 - 1.0, f - float4(0,1,0,0) ), 
+							       dot(hash44(i + float4(1,1,0,0) ) * 2.0 - 1.0, f - float4(1,1,0,0) ), u.x),u.y),
+			             lerp(lerp(dot(hash44(i + float4(0,0,1,0) ) * 2.0 - 1.0, f - float4(0,0,1,0) ), 
+							       dot(hash44(i + float4(1,0,1,0) ) * 2.0 - 1.0, f - float4(1,0,1,0) ), u.x),
+					          lerp(dot(hash44(i + float4(0,1,1,0) ) * 2.0 - 1.0, f - float4(0,1,1,0) ), 
+							       dot(hash44(i + float4(1,1,1,0) ) * 2.0 - 1.0, f - float4(1,1,1,0) ), u.x),u.y),u.z),
+				    lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,1) ) * 2.0 - 1.0, f - float4(0,0,0,1) ), 
+							       dot(hash44(i + float4(1,0,0,1) ) * 2.0 - 1.0, f - float4(1,0,0,1) ), u.x),
+					          lerp(dot(hash44(i + float4(0,1,0,1) ) * 2.0 - 1.0, f - float4(0,1,0,1) ), 
+							       dot(hash44(i + float4(1,1,0,1) ) * 2.0 - 1.0, f - float4(1,1,0,1) ), u.x),u.y),
+			             lerp(lerp(dot(hash44(i + float4(0,0,1,1) ) * 2.0 - 1.0, f - float4(0,0,1,1) ), 
+							       dot(hash44(i + float4(1,0,1,1) ) * 2.0 - 1.0, f - float4(1,0,1,1) ), u.x),
+					          lerp(dot(hash44(i + float4(0,1,1,1) ) * 2.0 - 1.0, f - float4(0,1,1,1) ), 
+							       dot(hash44(i + float4(1,1,1,1) ) * 2.0 - 1.0, f - float4(1,1,1,1) ), u.x),u.y),u.z),u.w);
 	}
 
     float3 gradientNoise32(float2 p){
@@ -96,10 +89,10 @@ shader GradientNoise : Hash
 		float2 du = 6.0 * f * (1.0 - f);
 	#endif    
 		
-		float2 ga = hash22(i + float2(0.0,0.0));
-		float2 gb = hash22(i + float2(1.0,0.0));
-		float2 gc = hash22(i + float2(0.0,1.0));
-		float2 gd = hash22(i + float2(1.0,1.0));
+		float2 ga = hash22(i + float2(0.0,0.0)) * 2.0 - 1.0;
+		float2 gb = hash22(i + float2(1.0,0.0)) * 2.0 - 1.0;
+		float2 gc = hash22(i + float2(0.0,1.0)) * 2.0 - 1.0;
+		float2 gd = hash22(i + float2(1.0,1.0)) * 2.0 - 1.0;
 		
 		float va = dot( ga, f - float2(0.0,0.0) );
         float vb = dot( gb, f - float2(1.0,0.0) );
@@ -127,14 +120,14 @@ shader GradientNoise : Hash
 		
 		
 		// gradients
-    float3 ga = hash33( i + float3(0.0,0.0,0.0) );
-    float3 gb = hash33( i + float3(1.0,0.0,0.0) );
-    float3 gc = hash33( i + float3(0.0,1.0,0.0) );
-    float3 gd = hash33( i + float3(1.0,1.0,0.0) );
-    float3 ge = hash33( i + float3(0.0,0.0,1.0) );
-	float3 gf = hash33( i + float3(1.0,0.0,1.0) );
-    float3 gg = hash33( i + float3(0.0,1.0,1.0) );
-    float3 gh = hash33( i + float3(1.0,1.0,1.0) );
+    float3 ga = hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0;
+    float3 gb = hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0;
+    float3 gc = hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0;
+    float3 gd = hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0;
+    float3 ge = hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0;
+	float3 gf = hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0;
+    float3 gg = hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0;
+    float3 gh = hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0;
     
     // projections
     float va = dot( ga, f - float3(0.0,0.0,0.0) );
