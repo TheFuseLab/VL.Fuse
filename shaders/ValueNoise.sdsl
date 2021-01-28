@@ -24,7 +24,7 @@ shader ValueNoise : Hash
 {
 	
 
-    float valueNoiseFloatToFloat(float p){
+    float valueNoise11(float p){
 		float i = floor(p);
     	float f = frac(p);
 	
@@ -33,7 +33,7 @@ shader ValueNoise : Hash
 		return  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
 	}
 
-    float valueNoiseFloat2ToFloat(float2 p){
+    float valueNoise12(float2 p){
 		float2 i = floor(p);
     	float2 f = frac(p);
 	
@@ -45,7 +45,7 @@ shader ValueNoise : Hash
 						 hash12(i + float2(1.0,1.0)), u.x), u.y);
 	}
 
-    float valueNoiseFloat3ToFloat(float3 p){
+    float valueNoise13(float3 p){
 		float3 i = floor(p);
 		float3 f = frac(p);
 
@@ -61,7 +61,7 @@ shader ValueNoise : Hash
 							  hash13(i + float3(1,1,1)),u.x),u.y),u.z);
 	}
 
-    float valueNoiseFloat4ToFloat(float4 p){
+    float valueNoise14(float4 p){
 		float4 i = floor(p);
 		float4 f = frac(p);
 
@@ -85,7 +85,7 @@ shader ValueNoise : Hash
 							       hash14(i + float4(1,1,1,1)),u.x),u.y),u.z),u.w);
 	}
 
-    float3 valueNoiseFloat2ToFloat3(float2 p){
+    float3 valueNoise32(float2 p){
 		float2 i = floor(p);
 		float2 f = frac(p);
 		
@@ -113,7 +113,7 @@ shader ValueNoise : Hash
 					du*(u.yx*(va-vb-vc+vd) + float2(vb,vc) - va) );     // derivative       
 	}
 
-	float4 valueNoiseFloat3ToFloat4(float3 p){
+	float4 valueNoise43(float3 p){
 		float3 i = floor(p);
 		float3 f = frac(p);
 		
@@ -152,44 +152,44 @@ shader ValueNoise : Hash
 								k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
 	}
 
-	float2 valueNoiseFloatToFloat2(float x){
-		return valueNoiseFloat2ToFloat3(float2(x,0)).xy;
+	float2 valueNoise21(float x){
+		return valueNoise32(float2(x,0)).xy;
 	}
 
-	float2 valueNoiseFloat2ToFloat2(float2 x){
-		return valueNoiseFloat2ToFloat3(x).xy;
+	float2 valueNoise22(float2 x){
+		return valueNoise32(x).xy;
 	}
 
-	float2 valueNoiseFloat3ToFloat2(float3 x){
-		return valueNoiseFloat3ToFloat4(x).xy;
+	float2 valueNoise23(float3 x){
+		return valueNoise43(x).xy;
 	}
 
-	float2 valueNoiseFloat4ToFloat2(float4 x){
-		return valueNoiseFloat3ToFloat4(x.xyz).xy;
+	float2 valueNoise24(float4 x){
+		return valueNoise43(x.xyz).xy;
 	}
 
-	float3 valueNoiseFloatToFloat3(float x){
-		return valueNoiseFloat3ToFloat4(float3(x,0,0)).xyz;
+	float3 valueNoise31(float x){
+		return valueNoise32(float2(x,0)).xyz;
 	}
 
-	float3 valueNoiseFloat3ToFloat3(float3 x){
-		return valueNoiseFloat3ToFloat4(x).xyz;
+	float3 valueNoise33(float3 x){
+		return valueNoise43(x).xyz;
 	}
 
-	float3 valueNoiseFloat4ToFloat3(float4 x){
-		return valueNoiseFloat3ToFloat4(x.xyz).xyz;
+	float3 valueNoise34(float4 x){
+		return valueNoise43(x.xyz).xyz;
 	}
 
-	float4 valueNoiseFloatToFloat4(float x){
-		return valueNoiseFloat3ToFloat4(float3(x,0,0));
+	float4 valueNoise41(float x){
+		return valueNoise43(float3(x,0,0));
 	}
 
-	float4 valueNoiseFloat2ToFloat4(float2 x){
-		return valueNoiseFloat3ToFloat4(float3(x.xy,0));
+	float4 valueNoise42(float2 x){
+		return valueNoise43(float3(x.x,x.y,0));
 	}
 
-	float4 valueNoiseFloat4ToFloat4(float4 x){
-		return valueNoiseFloat3ToFloat4(x.xyz)*0.5;
+	float4 valueNoise44(float4 x){
+		return valueNoise43(x.xyz)*0.5;
 	}
 
 };
