@@ -70,6 +70,18 @@ namespace Fuse
             return myDeclarations.ToString();
         }
 
+        public List<string> DeclarationList()
+        {
+            var result = new List<string>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input)) return;
+                if (!input.Declaration.IsNullOrEmpty())
+                    result.Add(input.Declaration);
+            });
+            return result;
+        }
+
         public List<IGpuInput> Inputs()
         {
             var result = new HashSet<IGpuInput>();
@@ -164,34 +176,15 @@ namespace Fuse
                 return result;
             }
         }
-
         
-        
-    }
-    
-    public class ShaderNode<T> : AbstractShaderNode
-    {
-        public  GpuValue<T> Output { get; protected set; }
-        public  ConstantValue<T> Default { get; protected set; }
         
         protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
-
-        protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
+        
+        protected virtual Dictionary<string, string> CreateTemplateMap()
         {
-            Default = theDefault ?? new ConstantValue<T>(0);
-            Output = new GpuValue<T>(outputName);
+            return new Dictionary<string, string>();
         }
-
-        private Dictionary<string, string> CreateTemplateMap()
-        {
-            return new Dictionary<string, string>
-            {
-                {"resultName", Output.ID},
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                {"default", Default.ID}
-            };
-        }
-
+        
         private string GenerateDefaultSource()
         {
             return ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, CreateTemplateMap());
@@ -211,6 +204,29 @@ namespace Fuse
             return ShaderTemplateEvaluator.Evaluate(theSourceCode, templateMap);
         }
         
+    }
+    
+    public class ShaderNode<T> : AbstractShaderNode
+    {
+        public  GpuValue<T> Output { get; protected set; }
+        public  ConstantValue<T> Default { get; protected set; }
+
+        protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
+        {
+            Default = theDefault ?? new ConstantValue<T>(0);
+            Output = new GpuValue<T>(outputName);
+        }
+
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>
+            {
+                {"resultName", Output.ID},
+                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"default", Default.ID}
+            };
+        }
+
         protected void Setup(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
             var abstractGpuValues = theIns.ToList();

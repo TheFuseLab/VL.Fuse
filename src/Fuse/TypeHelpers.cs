@@ -140,13 +140,24 @@ namespace Fuse
             // ReSharper disable once UnusedMember.Global
             public static int GetDimension<T>(GpuValue<T> theValue)
             {
-                if (typeof(T) == typeof(float)) return 1;
-                if (typeof(T) == typeof(Vector2)) return 2;
-                if (typeof(T) == typeof(Vector3)) return 3;
-                if (typeof(T) == typeof(Vector4)) return 4;
-                if (typeof(T) == typeof(Color4)) return 4;
+                return GetDimension(typeof(T));
+            }
+            
+            public static int GetDimension(Type theType)
+            {
+                if (theType == typeof(float)) return 1;
+                if (theType == typeof(Vector2)) return 2;
+                if (theType == typeof(Vector3)) return 3;
+                if (theType == typeof(Vector4)) return 4;
+                if (theType == typeof(Color4)) return 4;
 
                 return 0;
+            }
+
+            public static GpuValue<TOut> AdaptiveSignature<TIn,TOut>(string thePrepend, GpuValue<TIn> theValue, out string theSignature)
+            {
+                theSignature = thePrepend + GetDimension(typeof(TOut)) + GetDimension(typeof(TIn));
+                return null;
             }
             // USED BY VL
             // ReSharper disable once UnusedMember.Global

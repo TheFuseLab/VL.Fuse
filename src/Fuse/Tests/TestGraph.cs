@@ -25,6 +25,31 @@ namespace Fuse.Tests
             sin.Inputs().ForEach(input => Console.WriteLine(input.ID));
         }
 
+        public static void TestDrawShaderGraph()
+        {
+            var gpuValue0 = new GPUInput<float>();
+            var gpuValue1 = new GPUInput<float>();
+
+            var add = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
+
+            var gpuValue2 = new GPUInput<float>();
+            var add2 = new OperatorNode<float, float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
+
+            var sin = new IntrinsicFunctionNode<float>(
+                new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
+                "sin", new ConstantValue<float>(0));
+            var DrawShader = new DrawShader(
+                new Dictionary<string, AbstractGpuValue>
+                {
+                    {"ShadingPosition", sin.Output}
+                }, 
+                new Dictionary<string, AbstractGpuValue>
+                {
+                    {"ColorTarget", sin.Output}
+                });
+            Console.WriteLine(DrawShader.ShaderCode);
+        }
+
         public static void TestDeclarations()
         {
             var gpuValue0 = new GPUInput<float>();

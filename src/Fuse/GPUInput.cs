@@ -8,6 +8,28 @@ namespace Fuse{
     {
         void SetParameterValue(ParameterCollection theCollection);
     }
+    
+    public class DefaultInputValue <T>: GpuValue<T>
+    {
+        public DefaultInputValue(string theName) : base(theName)
+        {
+        }
+        
+        public override string ID => name;
+    }
+
+    public class DefaultInput<T> : ShaderNode<T>, IGpuInput
+    {
+        public DefaultInput(string theName) : base(theName, null, "defaultInput")
+        {
+            Output = new DefaultInputValue<T>(theName);
+            Setup("", new List<AbstractGpuValue>());
+        }
+
+        public void SetParameterValue(ParameterCollection theCollection)
+        {
+        }
+    }
      
      public abstract class AbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
      {

@@ -70,19 +70,7 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
             );
         }
 
-        private static string BuildArguments(List<IDelegateParameter> inputs)
-        {
-            var stringBuilder = new StringBuilder();
-            inputs.ForEach(input =>
-            {
-                stringBuilder.Append(input.TypeName());
-                stringBuilder.Append(" ");
-                stringBuilder.Append(input.Name());
-                stringBuilder.Append(", ");
-            });
-            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
-            return stringBuilder.ToString();
-        }
+        
 
         private void HandleDelegates(IDictionary<string,AbstractGpuValue> theDelegates, List<AbstractGpuValue> theInputs, Dictionary<string, string> theFunctionValueMap)
         {
@@ -93,13 +81,12 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
                 var functionName = kv.Key + "Delegate"+delegateNode.GetHashCode();
                 theFunctionValueMap.Add(kv.Key, functionName);
                 var delegates = delegateNode.ParentNode.Delegates();
-                //theInputs.Add(delegateNode);
 
                 var functionValueMap = new Dictionary<string, string>
                 {
                     {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                     {"functionName", functionName},
-                    {"arguments", BuildArguments(delegates)},
+                    {"arguments", DelegateUtil.BuildArguments(delegates)},
                     {"functionImplementation", delegateNode.ParentNode.BuildSourceCode()},
                     {"result", delegateNode.ID}
                 };

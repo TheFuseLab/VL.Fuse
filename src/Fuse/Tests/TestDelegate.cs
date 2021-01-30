@@ -19,45 +19,11 @@ namespace Fuse.Tests
                 "sin", new ConstantValue<float>(0));
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, false);
+            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output});
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             Console.WriteLine(delegateNode.BuildFunctions());
             Console.WriteLine(delegateNode.BuildSourceCode());
-            
-            var delegateNodeTemplate = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {delegate0.Output,delegate1.Output}, true);
-            
-            Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
-            Console.WriteLine(delegateNodeTemplate.BuildFunctions());
-            Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
-        }
-        
-        public static void TestDelegateShaderFunction()
-        {
-            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
-            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0));
-            
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
-            
-            var sin2 = new IntrinsicFunctionNode<float>(
-                new List<AbstractGpuValue> {delegate0.Output},
-                "sin", new ConstantValue<float>(0));
-            var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
-            
-            var delegateNode = new DelegateShaderNode<float>(operatorNode.Output, new List<AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, false);
-            
-            Console.WriteLine(operatorNode.BuildSourceCode());
-            Console.WriteLine(delegateNode.ShaderCode);
-            Console.WriteLine(delegateNode.BuildFunctions());
-            Console.WriteLine(delegateNode.BuildSourceCode());
-            
-            var delegateNodeTemplate = new DelegateShaderNode<float>(operatorNode.Output, new List<AbstractGpuValue> {delegate0.Output,delegate1.Output}, true);
-            
-            Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
-            Console.WriteLine(delegateNode.ShaderCode);
-            Console.WriteLine(delegateNodeTemplate.BuildFunctions());
-            Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
         }
 
         public static void TestTemplateDelegateFunction()
@@ -207,42 +173,6 @@ float ${signature}(float2 p)
             
             Console.WriteLine(fbmFunction.BuildFunctions());
             Console.WriteLine(fbmFunction.BuildSourceCode());
-        }
-
-        public static void TestDelegate1Function()
-        {
-            
-            var gpuValue0 = new GPUInput<float>();
-            var delegateNode = new Delegate1Node<float,float>(
-                param =>
-                {
-                    return new IntrinsicFunctionNode<float>(
-                        new List<AbstractGpuValue> {param},
-                        "sin",
-                        new ConstantValue<float>(0)).Output;
-                }, 
-                gpuValue0.Output,
-            false
-            );
-            
-            Console.WriteLine(delegateNode.BuildFunctions());
-            Console.WriteLine(delegateNode.BuildSourceCode());
-            
-            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
-            var delegateNodeTemplate = new Delegate1Node<float,float>(
-                param =>
-                {
-                    return new IntrinsicFunctionNode<float>(
-                        new List<AbstractGpuValue> {param},
-                        "sin",
-                        new ConstantValue<float>(0)).Output;
-                }, 
-                delegate0.Output,
-                true
-            );
-            
-            Console.WriteLine(delegateNodeTemplate.BuildFunctions());
-            Console.WriteLine(delegateNodeTemplate.BuildSourceCode());
         }
     }
 }

@@ -25,4 +25,11 @@
         public override string ID => name + "_" + GetHashCode();
 
     }
+
+    public class GpuNumericValue<T> : GpuValue<T> where T : struct
+    {
+        public GpuNumericValue(string theName) : base(theName)
+        {
+        }
+    }
 }
