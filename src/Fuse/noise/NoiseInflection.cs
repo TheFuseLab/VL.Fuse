@@ -1,8 +1,8 @@
 ﻿namespace Fuse.noise
 {
-    public enum FBMType
+    public enum NoiseInflection
     {
-        Standard,
+        None,
         Ridge,
         Turbulence
     }
