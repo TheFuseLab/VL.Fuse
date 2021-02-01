@@ -1,64 +1,266 @@
 shader FuseNoise : FuseHash, FuseMap
 {
-    // takes a scalar function FUNCTIONNAME and defines a new function returning 2D vector called [FUNCTIONNAME]2
-    #define NOISE2DVECTORFUNCTION(FUNCTIONNAME)                                             \
-    float2 FUNCTIONNAME##2(float2 p)                                                        \
-    {return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+NOISEOFFSETS.x));}; 
-    
-    /*
-    usage:   NOISE2DVECTORFUNCTION myBasis
-    
-    this won't work in SDSL, but just keeping as a reference for now.  
-    The hard part it to impment noises in dim 1 - 4, 
-    after that it's just repeating the functions with 
-    offsets to get the vector valued versions.
+	// takes a scalar function FUNCTIONNAME and defines a new function returning 2D vector called [FUNCTIONNAME]2
+	#define NOISE2DVECTORFUNCTION(FUNCTIONNAME)                                             \
+	float2 FUNCTIONNAME##2(float2 p)                                                        \
+	{return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+NOISEOFFSETS.x));}; 
+	
+	/*
+	usage:   NOISE2DVECTORFUNCTION myBasis
+	
+	this won't work in SDSL, but just keeping as a reference for now.  
+	The hard part it to impment noises in dim 1 - 4, 
+	after that it's just repeating the functions with 
+	offsets to get the vector valued versions.
 
-    */
+	*/
 
-    //${resultType} ${signature}(${argumentType} p, ${argumentType} frequency, ${argumentType} offset)
-    float BASISDEFUALT (float2 p)
-    {
-        return 0.0;
-    }
+	//${resultType} ${signature}(${argumentType} p, ${argumentType} frequency, ${argumentType} offset)
+	float BASISDEFUALT (float2 p)
+	{
+		return 0.0;
+	}
 
-    float basisShaper (float2 p, float2 frequency, float2 offset, float2 amplitude, float2 center)
-    {
-        float basis = BASISDEFUALT(p * frequency + offset);
-        // apply bias
-        basis = sign(basis) * bias(abs(basis), .95);
+	float basisShaper (float2 p, float2 frequency, float2 offset, float2 amplitude, float2 center)
+	{
+		float basis = BASISDEFUALT(p * frequency + offset);
+		// apply bias
+		basis = sign(basis) * bias(abs(basis), .95);
 
-        basis = basis * amplitude + center;
-        return basis;
-    }
-
-
-
-    // just for study, but can in fact be a usefel cheap basis.  Should add the vector dot to FuseMath or FuseVector 
-    float sineBasis11 (float p)
-    {
-        return sin(p);
-    }
-
-    float sineBasis12 (float2 p)
-    {
-        float2 s = sin(p);
-
-        return dot(s.x,s.y);
-    }
-
-    float sineBasis13 (float3 p)
-    {
-        float3 s = sin(p);
-        return dot(dot(s.x, s.y), s.z);
-    }
-
-    float sineBasis14 (float4 p)
-    {
-        float4 s = sin(p);
-        return dot(dot(dot(s.x, s.y), s.z), s.w);
-    }
+		basis = basis * amplitude + center;
+		return basis;
+	}
 
 
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Sine Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  Should add the vector dot to FuseMath or FuseVector 
+	float sineBasis11 (float p)
+	{
+		return sin(p);
+	}
+
+	float sineBasis12 (float2 p)
+	{
+		float2 s = sin(p);
+
+		return dot(s.x,s.y);
+	}
+
+	float sineBasis13 (float3 p)
+	{
+		float3 s = sin(p);
+		return dot(dot(s.x, s.y), s.z);
+	}
+
+	float sineBasis14 (float4 p)
+	{
+		float4 s = sin(p);
+		return dot(dot(dot(s.x, s.y), s.z), s.w);
+	}
+
+	////////////////////////////////////////////////////////////////
+
+
+
+
+	
+	////////////////////////////////////////////////////////////////
+	//
+	//          Worley Basis
+	// 
+	////////////////////////////////////////////////////////////////
+	/*
+	MIT License
+
+	Copyright (c) 2017 Justin Hawkins
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	*/
+
+	
+
+	//1/7
+	#define K 0.142857142857
+	//3/7
+	#define Ko 0.428571428571
+
+	float3 mod(float3 x, float y) { return x - y * floor(x/y); }
+	float2 mod(float2 x, float y) { return x - y * floor(x/y); }
+
+	// Permutation polynomial: (34x^2 + x) mod 289
+	float3 Permutation(float3 x) 
+	{
+	  return mod((34.0 * x + 1.0) * x, 289.0);
+	}
+
+	float2 worleyBasis(float2 P, float jitter)
+	{			
+		float2 Pi = mod(floor(P), 289.0);
+		float2 Pf = frac(P);
+		float3 oi = float3(-1.0, 0.0, 1.0);
+		float3 of = float3(-0.5, 0.5, 1.5);
+		float3 px = Permutation(Pi.x + oi);
+	
+		float3 p, ox, oy, dx, dy;
+		float2 F = 1e6;
+	
+		for(int i = 0; i < 3; i++)
+		{
+			p = Permutation(px[i] + Pi.y + oi); // pi1, pi2, pi3
+			ox = frac(p*K) - Ko;
+			oy = mod(floor(p*K),7.0)*K - Ko;
+			dx = Pf.x - of[i] + jitter*ox;
+			dy = Pf.y - of + jitter*oy;
+		
+			float3 d = dx * dx + dy * dy; // di1, di2 and di3, squared
+		
+			//find the lowest and second lowest distances
+			for(int n = 0; n < 3; n++)
+			{
+				if(d[n] < F[0])
+				{
+					F[1] = F[0];
+					F[0] = d[n];
+				}
+				else if(d[n] < F[1])
+				{
+					F[1] = d[n];
+				}
+			}
+		}
+	
+		return F;
+	}
+
+	float2 worleyBasis(float3 P, float jitter)
+	{			
+		float3 Pi = mod(floor(P), 289.0);
+		float3 Pf = frac(P);
+		float3 oi = float3(-1.0, 0.0, 1.0);
+		float3 of = float3(-0.5, 0.5, 1.5);
+		float3 px = Permutation(Pi.x + oi);
+		float3 py = Permutation(Pi.y + oi);
+
+		float3 p, ox, oy, oz, dx, dy, dz;
+		float2 F = 1e6;
+
+		for(int i = 0; i < 3; i++)
+		{
+			for(int j = 0; j < 3; j++)
+			{
+				p = Permutation(px[i] + py[j] + Pi.z + oi); // pij1, pij2, pij3
+
+				ox = frac(p*K) - Ko;
+				oy = mod(floor(p*K),7.0)*K - Ko;
+			
+				p = Permutation(p);
+			
+				oz = frac(p*K) - Ko;
+		
+				dx = Pf.x - of[i] + jitter*ox;
+				dy = Pf.y - of[j] + jitter*oy;
+				dz = Pf.z - of + jitter*oz;
+			
+				float3 d = dx * dx + dy * dy + dz * dz; // dij1, dij2 and dij3, squared
+			
+				//Find lowest and second lowest distances
+				for(int n = 0; n < 3; n++)
+				{
+					if(d[n] < F[0])
+					{
+						F[1] = F[0];
+						F[0] = d[n];
+					}
+					else if(d[n] < F[1])
+					{
+						F[1] = d[n];
+					}
+				}
+			}
+		}
+	
+		return F;
+	}
+
+	float2 worleyBasis(float4 P, float jitter)
+	{			
+		float4 Pi = mod(floor(P), 289.0);
+		float4 Pf = frac(P);
+		float3 oi = float3(-1.0, 0.0, 1.0);
+		float3 of = float3(-0.5, 0.5, 1.5);
+		float3 px = Permutation(Pi.x + oi);
+		float3 py = Permutation(Pi.y + oi);
+		float3 pz = Permutation(Pi.z + oi);
+
+		float3 p, ox, oy, oz, ow, dx, dy, dz, dw, d;
+		float2 F = 1e6;
+		int i, j, k, n;
+
+		for(i = 0; i < 3; i++)
+		{
+			for(j = 0; j < 3; j++)
+			{
+				for(k = 0; k < 3; k++)
+				{
+					p = Permutation(px[i] + py[j] + pz[k] + Pi.w + oi); // pijk1, pijk2, pijk3
+	
+					ox = frac(p*K) - Ko;
+					oy = mod(floor(p*K),7.0)*K - Ko;
+				
+					p = Permutation(p);
+				
+					oz = frac(p*K) - Ko;
+					ow = mod(floor(p*K),7.0)*K - Ko;
+			
+					dx = Pf.x - of[i] + jitter*ox;
+					dy = Pf.y - of[j] + jitter*oy;
+					dz = Pf.z - of[k] + jitter*oz;
+					dw = Pf.w - of + jitter*ow;
+				
+					d = dx * dx + dy * dy + dz * dz + dw * dw; // dijk1, dijk2 and dijk3, squared
+				
+					//Find the lowest and second lowest distances
+					for(n = 0; n < 3; n++)
+					{
+						if(d[n] < F[0])
+						{
+							F[1] = F[0];
+							F[0] = d[n];
+						}
+						else if(d[n] < F[1])
+						{
+							F[1] = d[n];
+						}
+					}
+				}
+			}
+		}
+	
+		return F;
+	}
 
 
 
