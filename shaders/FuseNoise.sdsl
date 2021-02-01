@@ -1,0 +1,66 @@
+shader FuseNoise : FuseHash, FuseMap
+{
+    // takes a scalar function FUNCTIONNAME and defines a new function returning 2D vector called [FUNCTIONNAME]2
+    #define NOISE2DVECTORFUNCTION(FUNCTIONNAME)                                             \
+    float2 FUNCTIONNAME##2(float2 p)                                                        \
+    {return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+NOISEOFFSETS.x));}; 
+    
+    /*
+    usage:   NOISE2DVECTORFUNCTION myBasis
+    
+    this won't work in SDSL, but just keeping as a reference for now.  
+    The hard part it to impment noises in dim 1 - 4, 
+    after that it's just repeating the functions with 
+    offsets to get the vector valued versions.
+
+    */
+
+    //${resultType} ${signature}(${argumentType} p, ${argumentType} frequency, ${argumentType} offset)
+    float BASISDEFUALT (float2 p)
+    {
+        return 0.0;
+    }
+
+    float basisShaper (float2 p, float2 frequency, float2 offset, float2 amplitude, float2 center)
+    {
+        float basis = BASISDEFUALT(p * frequency + offset);
+        // apply bias
+        basis = sign(basis) * bias(abs(basis), .95);
+
+        basis = basis * amplitude + center;
+        return basis;
+    }
+
+
+
+    // just for study, but can in fact be a usefel cheap basis.  Should add the vector dot to FuseMath or FuseVector 
+    float sineBasis11 (float p)
+    {
+        return sin(p);
+    }
+
+    float sineBasis12 (float2 p)
+    {
+        float2 s = sin(p);
+
+        return dot(s.x,s.y);
+    }
+
+    float sineBasis13 (float3 p)
+    {
+        float3 s = sin(p);
+        return dot(dot(s.x, s.y), s.z);
+    }
+
+    float sineBasis14 (float4 p)
+    {
+        float4 s = sin(p);
+        return dot(dot(dot(s.x, s.y), s.z), s.w);
+    }
+
+
+
+
+
+
+};
