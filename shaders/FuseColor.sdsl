@@ -1,0 +1,206 @@
+shader FuseColor
+{
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Color Helpers
+	// 	
+	////////////////////////////////////////////////////////////////
+
+
+	// good piece of code by Ian Taylor (from http://www.chilliant.com/rgb2hsv.html ) 
+	float3 HUEtoRGB(float H)
+	{
+		H=frac(H);
+		float R = abs(H * 6 - 3) - 1;
+		float G = 2 - abs(H * 6 - 2);
+		float B = 2 - abs(H * 6 - 4);
+		return saturate(float3(R,G,B));
+	}
+
+	float3 HSVtoRGB(float3 HSV)
+	{
+		float3 RGB = HUEtoRGB(HSV.x);
+		return ((RGB - 1) * HSV.y + 1) * HSV.z;
+	}
+
+	float3 HSLtoRGB(float3 HSL)
+	{
+		float3 RGB = HUEtoRGB(HSL.x);
+		float C = (1 - abs(2 * HSL.z - 1)) * HSL.y;
+		return (RGB - 0.5) * C + HSL.z;
+	}
+
+	float3 RGBtoHSV(float3 RGB)
+	{
+		float3 HSV = 0;
+		HSV.z = max(RGB.r, max(RGB.g, RGB.b));
+		float M = min(RGB.r, min(RGB.g, RGB.b));
+		float C = HSV.z - M;
+		if (C != 0)
+		{
+			float4 RGB0 = float4(RGB, 0);
+			float4 Delta = (HSV.z - RGB0) / C;
+			Delta.rgb -= Delta.brg;
+			Delta.rgb += float3(2,4,6);
+			Delta.brg = step(HSV.z, RGB) * Delta.brg;
+			HSV.x = max(Delta.r, max(Delta.g, Delta.b));
+			HSV.x = frac(HSV.x / 6);
+			HSV.y = 1 / Delta.w;
+		}
+		return HSV;
+	}
+
+	float3 RGBtoHSL(float3 RGB)
+	{
+		float3 HSL = 0;
+		float U, V;
+		U = -min(RGB.r, min(RGB.g, RGB.b));
+		V = max(RGB.r, max(RGB.g, RGB.b));
+		HSL.z = (V - U) * 0.5;
+		float C = V + U;
+		if (C != 0)
+		{
+			float3 Delta = (V - RGB) / C;
+			Delta.rgb -= Delta.brg;
+			Delta.rgb += float3(2,4,6);
+			Delta.brg = step(V, RGB) * Delta.brg;
+			HSL.x = max(Delta.r, max(Delta.g, Delta.b));
+			HSL.x = frac(HSL.x / 6);
+			HSL.y = C / (1 - abs(2 * HSL.z - 1));
+		}
+		return HSL;
+	}
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//             ACES ToneMap
+	//
+	////////////////////////////////////////////////////////////////
+
+
+	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+	static const float3x3 ACESinputMat =
+	{
+		{0.59719, 0.35458, 0.04823},
+		{0.07600, 0.90834, 0.01566},
+		{0.02840, 0.13383, 0.83777}
+	};
+
+	// ODT_SAT => XYZ => D60_2_D65 => sRGB
+	static const float3x3 ACESOutputMat =
+	{
+		{ 1.60475, -0.53108, -0.07367},
+		{-0.10208,  1.10813, -0.00605},
+		{-0.00327, -0.07276,  1.07602}
+	};
+
+	float3 RRTAndODTFit(float3 v)
+	{
+		float3 a = v * (v + 0.0245786f) - 0.000090537f;
+		float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+		return a / b;
+	}
+
+	float3 ACESFitted(float3 color, float gamma = 1)
+	{
+		color = mul(ACESinputMat, color);
+
+		// Apply RRT and ODT
+		color = RRTAndODTFit(color);
+
+		color = mul(ACESOutputMat*gamma, color);
+
+		// Clamp to [0, 1]
+		color = saturate(color);
+
+		return color;
+	}   
+
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Color Compression
+	// 	
+	////////////////////////////////////////////////////////////////
+	
+	// 24bit to 16bit
+	float2 EncodeR5G6B5(float3 rgb24)
+	{
+		// scale up to 8-bit
+		rgb24 *= 255.0f;
+ 
+		// remove the 3 LSB of red and blue, and the 2 LSB of green
+		int3 rgb16 = rgb24 / int3(8, 4, 8);
+ 
+		// split the green at bit 3 (we'll keep the 6 bits around the split)
+		float greenSplit = rgb16.g / 8.0f;
+
+		// pack it up (capital G's are MSB, the rest are LSB)
+		float2 packed;
+		packed.x = rgb16.r * 8 + floor(greenSplit);     // rrrrrGGG
+		packed.y = frac(greenSplit) * 256 + rgb16.b;        // gggbbbbb
+ 
+		// scale down and return
+		packed /= 255.0f;
+		return packed;
+	}
+ 
+	float3 DecodeR5G6B5(float2 packed) {
+		// scale up to 8-bit
+		packed *= 255.0f;
+ 
+		// round and split the packed bits
+		float2 split = round(packed) / 8;   // first component at bit 3
+		split.y /= 4;               // second component at bit 5
+ 
+		// unpack (obfuscated yet optimized crap follows)
+		float3 rgb16 = 0.0f.rrr;
+		rgb16.gb = frac(split) * 256;
+		rgb16.rg += floor(split) * 4;
+		rgb16.r *= 2;
+ 
+		// scale down and return
+		rgb16 /= 255.0f;
+		return rgb16;
+	}
+
+	// color <> bits
+	float4 FloatBitsToColor(float bits)
+	{
+	  uint colUint = asuint(bits);
+  
+	  float r = (colUint & 0xFF000000) >> 24;
+	  float g = (colUint & 0x00FF0000) >> 16;
+	  float b = (colUint & 0x0000FF00) >> 8;
+	  float a = (colUint & 0x000000FF);
+  
+	  return float4(r, g, b, 255) * 0.003921568627451;
+	}
+
+
+
+	float ColorToBits(float4 c){
+	 uint u=(uint(saturate(c.x)*255)<<0)
+	 |(uint(saturate(c.y)*255)<<8)
+	 |(uint(saturate(c.z)*255)<<16)
+	 |(uint(saturate(c.w)*255)<<24);
+	 return asfloat( u );
+	}
+
+	float4 BitsToColor(float f){
+	 uint u=asuint( f );
+	 float4 c=((u>>8)%256)/255.;
+	 c=float4(
+	 (u>>0)%256,
+	 (u>>8)%256,
+	 (u>>16)%256,
+	 (u>>24)%256
+	 )/255.;
+	 return c;
+	}
+
+
+};
