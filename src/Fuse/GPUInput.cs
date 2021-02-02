@@ -38,24 +38,21 @@ namespace Fuse{
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
 
-         protected TParameterKeyType _parameterKey;
+         protected TParameterKeyType ParameterKey;
 
          public AbstractInput(string theName): base(theName, null,"input")
          {
-            
              Setup("", new List<AbstractGpuValue>());
-            
              Declaration = ShaderTemplateEvaluator.Evaluate(
-                 DeclarationTemplate, 
+                 DeclarationTemplate,
                  new Dictionary<string, string>
                  {
                      {"inputName", Output.ID},
-                     {"inputType",TypeName()}
+                     {"inputType", TypeName()}
                  });
+             Declarations = new List<string>(){Declaration};
+             Inputs = new List<IGpuInput>(){this};
          }
-
-
-         public override string Declaration { get; }
 
          public virtual string TypeName()
          {
@@ -64,13 +61,18 @@ namespace Fuse{
 
          public T Value { get; set; }
          public abstract void SetParameterValue(ParameterCollection theCollection);
+         
+         public sealed override List<string> Declarations { get; }
+         public sealed override List<IGpuInput> Inputs { get; }
+         
+         public string Declaration { get; }
      }
 
      public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGpuInput 
      {
          public TextureInput() : base("TextureInput")
          {
-             _parameterKey = new ObjectParameterKey<Texture>(Output.ID);
+             ParameterKey = new ObjectParameterKey<Texture>(Output.ID);
          }
 
          public override string TypeName()
@@ -80,7 +82,7 @@ namespace Fuse{
 
          public override void SetParameterValue(ParameterCollection theCollection)
          {
-             theCollection.Set(_parameterKey, Value);
+             theCollection.Set(ParameterKey, Value);
          }
      }
      
@@ -88,7 +90,7 @@ namespace Fuse{
      {
          public SamplerInput(string theName) : base("SamplerInput")
          {
-             _parameterKey = new ObjectParameterKey<SamplerState>(Output.ID);
+             ParameterKey = new ObjectParameterKey<SamplerState>(Output.ID);
          }
          
          public override string TypeName()
@@ -98,21 +100,21 @@ namespace Fuse{
 
          public override void SetParameterValue(ParameterCollection theCollection)
          {
-             theCollection.Set(_parameterKey, Value);
+             theCollection.Set(ParameterKey, Value);
          }
      }
      
-    public class GPUInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
+    public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
     {
 
-        public GPUInput(): base("GPUInput")
+        public GpuInput(): base("GPUInput")
         {
-            _parameterKey = new ValueParameterKey<T>(Output.ID);
+            ParameterKey = new ValueParameterKey<T>(Output.ID);
         }
 
         public override void SetParameterValue(ParameterCollection theCollection)
         {
-            theCollection.Set(_parameterKey, Value);
+            theCollection.Set(ParameterKey, Value);
         }
     }
 }

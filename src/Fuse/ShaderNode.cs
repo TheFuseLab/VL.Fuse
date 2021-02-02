@@ -24,10 +24,11 @@ namespace Fuse
             ID = theId;
         }
 
-        public virtual string Declaration => "";
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
 
         public virtual List<string> MixIns => new List<string>();
+        public virtual List<string> Declarations => new List<string>();
+        public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
         
         public string ID { get; }
 
@@ -56,41 +57,6 @@ namespace Fuse
             
             return myStringBuilder.ToString();
         }
-
-        public string Declarations()
-        {
-            var result = new HashSet<AbstractShaderNode>();
-            var myDeclarations = new StringBuilder();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if (!(n is AbstractShaderNode input)) return;
-                if (!input.Declaration.IsNullOrEmpty() && result.Add(input))
-                    myDeclarations.AppendLine(input.Declaration);
-            });
-            return myDeclarations.ToString();
-        }
-
-        public List<string> DeclarationList()
-        {
-            var result = new List<string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if (!(n is AbstractShaderNode input)) return;
-                if (!input.Declaration.IsNullOrEmpty())
-                    result.Add(input.Declaration);
-            });
-            return result;
-        }
-
-        public List<IGpuInput> Inputs()
-        {
-            var result = new HashSet<IGpuInput>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is IGpuInput input)result.Add(input);
-            });
-            return result.ToList();
-        }
         
         public List<IDelegateParameter> Delegates()
         {
@@ -102,19 +68,6 @@ namespace Fuse
             return result.ToList();
         }
 
-        public string BuildMixIns()
-        {
-            var result = new HashSet<string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is AbstractShaderNode input)result.AddRange(input.MixIns);
-            });
-            
-            var myBuilder = new StringBuilder();
-            result.ForEach(mixin => myBuilder.Append(","+mixin));
-            return myBuilder.ToString();
-        }
-        
         public List<string> MixinList()
         {
             var result = new List<string>();
@@ -124,25 +77,26 @@ namespace Fuse
             });
             return result;
         }
-
-        public string BuildFunctions(){
-       
-            var result = new HashSet<string>();
-            var myBuilder = new StringBuilder();
+        
+        public List<IGpuInput> InputList()
+        {
+            var result = new HashSet<IGpuInput>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input)) return;
-                
-                input.Functions?.ForEach(kv =>
-                {
-                    if (!result.Add(kv.Key)) return;
-                    
-                    myBuilder.Append(kv.Value);
-                    myBuilder.AppendLine();
-                });
-                
+                if(n is AbstractShaderNode input)result.AddRange(input.Inputs);
             });
-            return myBuilder.ToString();
+            return result.ToList();
+        }
+        
+        public List<string> DeclarationList()
+        {
+            
+            var result = new List<string>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is AbstractShaderNode input)result.AddRange(input.Declarations);
+            });
+            return result;
         }
         
         public Dictionary<string,string> FunctionMap(){

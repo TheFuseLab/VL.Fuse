@@ -30,10 +30,77 @@ namespace Fuse
             Output.ParentNode = this;
         }
     }
-    
-    public class DrawShader
+
+    public abstract class AbstractShader
     {
-        private const string Source = @"shader ${shaderID} : VS_PS_Base, Texturing${mixins}
+        public string ShaderCode { get; protected set; }
+
+        public string ShaderName { get; protected set; }
+
+        public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs)
+        {
+            
+            var declarations = new HashSet<string>();
+            var mixins = new HashSet<string>();
+            var functionMap = new Dictionary<string, string>();
+
+            var sourceStream = new Dictionary<string,(string source, string stream)>();
+            theInputs.ForEach(input =>
+            {
+                HandleShader(input.Value, declarations, mixins, functionMap, out var source, out var stream);
+                sourceStream.Add(input.Key,(source,stream));
+            });
+            
+            var declarationBuilder = new StringBuilder();
+            declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
+            
+            var mixinBuilder = new StringBuilder();
+            mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+            
+            var functionBuilder = new StringBuilder();
+            functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
+
+            var templateMap = new Dictionary<string, string>
+            {
+                {"mixins", mixinBuilder.ToString()},
+                {"declarations", declarationBuilder.ToString()},
+                {"functions", functionBuilder.ToString()}
+            };
+            
+            sourceStream.ForEach(kv =>
+            {
+                templateMap.Add("source" + kv.Key,kv.Value.source);
+                templateMap.Add("streams" + kv.Key,kv.Value.stream);
+            });
+            
+            // ReSharper disable once VirtualMemberCallInConstructor
+            ShaderCode = ShaderTemplateEvaluator.Evaluate(Source(), templateMap);
+            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            ShaderCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
+        }
+
+        public abstract string Source();
+        
+        protected static void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams)
+        {
+            var streamBuilder = new StringBuilder();
+            theShaderInputs.ForEach(kv =>
+            {
+                kv.Value?.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
+                kv.Value?.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
+                kv.Value?.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
+
+                streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
+            });
+
+            theSource = new DrawShaderNode(theShaderInputs).BuildSourceCode();
+            theStreams = streamBuilder.ToString();
+        }
+    }
+    
+    public class DrawShader : AbstractShader
+    {
+        private const string DrawShaderSource = @"shader ${shaderID} : VS_PS_Base, Texturing${mixins}
 {
     cbuffer Inputs{
 ${declarations}
@@ -54,58 +121,50 @@ ${streamsPS}
     }
 };";
 
-        public string ShaderCode { get; }
+        
 
-        public string ShaderName { get; }
-
-        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs)
-        {
-            var declarations = new HashSet<string>();
-            var mixins = new HashSet<string>();
-            var functionMap = new Dictionary<string, string>();
-
-            HandleShader(theVertexInputs, declarations, mixins, functionMap, out var sourceVS, out var streamsVS);
-            HandleShader(thePixelInputs, declarations, mixins, functionMap, out var sourcePS, out var streamsPS);
-            
-            var declarationBuilder = new StringBuilder();
-            declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
-            
-            var mixinBuilder = new StringBuilder();
-            mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
-            
-            var functionBuilder = new StringBuilder();
-            functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
-
-            var templateMap = new Dictionary<string, string>
+        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs) : base(
+            new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
-                {"mixins", mixinBuilder.ToString()},
-                {"declarations", declarationBuilder.ToString()},
-                {"functions", functionBuilder.ToString()},
-                {"sourceVS", sourceVS},
-                {"streamsVS", streamsVS},
-                {"sourcePS", sourcePS},
-                {"streamsPS", streamsPS}
-            };
+                {"VS", theVertexInputs},
+                {"PS", thePixelInputs}
+            })
+        {
             
-            ShaderCode = ShaderTemplateEvaluator.Evaluate(Source, templateMap);
-            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
-            ShaderCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
-        private static void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams)
+
+        public override string Source()
         {
-            var streamBuilder = new StringBuilder();
-            theShaderInputs.ForEach(kv =>
+            return DrawShaderSource;
+        }
+    }
+    
+    public class ComputeShader : AbstractShader
+    {
+        private const string ComputeShaderSource = @"shader ${shaderID} : ComputeShaderBase${mixins}
+{
+${declarations}
+
+${functions}
+
+    override void Compute()
+    {
+        ${sourceCS}
+    }
+};";
+        public ComputeShader(IDictionary<string,AbstractGpuValue> theComputeInputs) : base(
+            new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
-                kv.Value?.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
-                kv.Value?.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
-                kv.Value?.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
-
-                streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
-            });
-
-            theSource = new DrawShaderNode(theShaderInputs).BuildSourceCode();
-            theStreams = streamBuilder.ToString();
+                {"CS", theComputeInputs}
+            })
+        {
+            
+        }
+        
+        public override string Source()
+        {
+            return ComputeShaderSource;
         }
     }
 }

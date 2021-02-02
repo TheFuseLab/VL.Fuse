@@ -45,6 +45,7 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
             
             MixIns = new List<string>(theMixins??new List<string>());
             Functions = new Dictionary<string, string>();
+            Declarations = new List<string>();
             
             var functionValueMap = new Dictionary<string, string>
             {
@@ -98,10 +99,12 @@ ${functionImplementation}
                 Functions.Add(functionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
                 delegateNode.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
                 MixIns.AddRange(delegateNode.ParentNode.MixinList());
+                Declarations.AddRange(delegateNode.ParentNode.DeclarationList());
             });
         }
 
         public sealed override IDictionary<string, string> Functions { get; }
         public sealed override List<string> MixIns { get; }
+        public override List<string> Declarations { get; }
     }
 }

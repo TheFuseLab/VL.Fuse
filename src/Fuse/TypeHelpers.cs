@@ -116,9 +116,9 @@ namespace Fuse
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
             }
 
-            public static string GetType(AbstractGpuValue theReference)
+            public static string GetTypeByValue(AbstractGpuValue theValue)
             {
-                switch (theReference)
+                switch (theValue)
                 {
                     case GpuValue<float> _:
                         return "Float";
@@ -133,7 +133,14 @@ namespace Fuse
                     case GpuValue<int> _:
                         return "Int";
                 }
-                throw new NotImplementedException("No name defined for type: " + theReference.GetType().FullName);
+                throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName);
+            }
+            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global
+            public static string GetTypeByGeneric<T>(GpuValue<T> theValue)
+            {
+                return GetNameForType<T>();
             }
             
             // USED BY VL
@@ -158,12 +165,6 @@ namespace Fuse
             {
                 theSignature = thePrepend + GetDimension(typeof(TOut)) + GetDimension(typeof(TIn));
                 return null;
-            }
-            // USED BY VL
-            // ReSharper disable once UnusedMember.Global
-            public static string GetType<T1>(T1 var)
-            {
-                return ShaderFXUtils.GetNameForType<T1>();
             }
         }
 }
