@@ -1,9 +1,14 @@
 shader FuseNoise : FuseHash, FuseMap
 {
+
+	// for calling function multiple times to get vector valued result.  Should be in main noise file
+	static const float3 vecNoiseOffsets = float3(17.0, -43.0, 67.0);
+
+
 	// takes a scalar function FUNCTIONNAME and defines a new function returning 2D vector called [FUNCTIONNAME]2
 	#define NOISE2DVECTORFUNCTION(FUNCTIONNAME)                                             \
 	float2 FUNCTIONNAME##2(float2 p)                                                        \
-	{return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+NOISEOFFSETS.x));}; 
+	{return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+vecNoiseOffsets.x));}; 
 	
 	/*
 	usage:   NOISE2DVECTORFUNCTION myBasis
@@ -57,6 +62,11 @@ shader FuseNoise : FuseHash, FuseMap
 	{
 		float3 s = sin(p);
 		return dot(dot(s.x, s.y), s.z);
+	}
+
+	float sineBasis33 (float3 p)
+	{
+		return float3(sineBasis13(p), sineBasis13(p + vecNoiseOffsets.x), sineBasis13(p + vecNoiseOffsets.y));
 	}
 
 	float sineBasis14 (float4 p)

@@ -1,7 +1,14 @@
 shader FuseSimplex : FuseHash
 {
+
+	// for calling function multiple times to get vector valued result.  Should be in main noise file
+	static const float3 vecNoiseOffsets = float3(17.0, -43.0, 67.0);
+
 	// Will prob combine all basis functions into FuseNoise, but easier for now to edit as seperate files.
 	
+
+
+
 	/*
 
 	Description:
@@ -456,7 +463,50 @@ shader FuseSimplex : FuseHash
 		);
 	}
 
+	float2 simplexBasis22(float2 v)
+	{
+		return float2(simplexBasis12(v), simplexBasis12(v + vecNoiseOffsets.x));
+	}
 
+	float2 simplexBasis23(float3 v)
+	{
+		return float2(simplexBasis13(v), simplexBasis13(v + vecNoiseOffsets.x));
+	}
+
+	float2 simplexBasis24(float4 v)
+	{
+		return float2(simplexBasis14(v), simplexBasis14(v + vecNoiseOffsets.x));
+	}
+
+	float3 simplexBasis32(float2 v)
+	{
+		return float3(simplexBasis12(v), simplexBasis12(v + vecNoiseOffsets.x), simplexBasis12(v + vecNoiseOffsets.y));
+	}
+
+	float3 simplexBasis33(float3 v)
+	{
+		return float3(simplexBasis13(v), simplexBasis13(v + vecNoiseOffsets.x), simplexBasis13(v + vecNoiseOffsets.y));
+	}
+
+	float3 simplexBasis34(float4 v)
+	{
+		return float3(simplexBasis14(v), simplexBasis14(v + vecNoiseOffsets.x), simplexBasis14(v + vecNoiseOffsets.y));
+	}
+
+	float4 simplexBasis42(float2 v)
+	{
+		return float4(simplexBasis12(v), simplexBasis12(v + vecNoiseOffsets.x), simplexBasis12(v + vecNoiseOffsets.y), simplexBasis12(v + vecNoiseOffsets.z));
+	}
+
+	float4 simplexBasis43(float3 v)
+	{
+		return float3(simplexBasis13(v), simplexBasis13(v + vecNoiseOffsets.x), simplexBasis13(v + vecNoiseOffsets.y), simplexBasis13(v + vecNoiseOffsets.z));
+	}
+
+	float4 simplexBasis44(float4 v)
+	{
+		return float3(simplexBasis14(v), simplexBasis14(v + vecNoiseOffsets.x), simplexBasis14(v + vecNoiseOffsets.y), simplexBasis14(v + vecNoiseOffsets.z));
+	}
 
 
 };
