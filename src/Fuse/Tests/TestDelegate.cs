@@ -11,8 +11,8 @@ namespace Fuse.Tests
             var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
             var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0));
             
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
             
             var sin2 = new IntrinsicFunctionNode<float>(
                 new List< AbstractGpuValue> {delegate0.Output},
@@ -22,7 +22,7 @@ namespace Fuse.Tests
             var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output});
             
             Console.WriteLine(operatorNode.BuildSourceCode());
-            Console.WriteLine(delegateNode.BuildFunctions());
+            Console.WriteLine(delegateNode.FunctionMap());
             Console.WriteLine(delegateNode.BuildSourceCode());
         }
 
@@ -56,7 +56,7 @@ namespace Fuse.Tests
                 new ConstantValue<float>(0)
             );
             
-            var x = new GPUInput<Vector2>();
+            var x = new GpuInput<Vector2>();
             var inputs = new List<AbstractGpuValue>
             {
                 x.Output
@@ -104,7 +104,7 @@ float ${signature}(float2 p)
                     {"cellFunction",cellFunction.Output}
                 }
             );
-            Console.WriteLine(customFunction.BuildFunctions());
+            Console.WriteLine(customFunction.FunctionMap());
             Console.WriteLine(customFunction.BuildSourceCode());
         }
 
@@ -159,7 +159,7 @@ float ${signature}(float2 p)
  
     return myResult;
 }";
-            var gpuValue0 = new GPUInput<Vector2>();
+            var gpuValue0 = new GpuInput<Vector2>();
             var fbmFunction = new CustomFunctionNode<float>(
                 new List<AbstractGpuValue>(){gpuValue0.Output}, 
                 "fbm",
@@ -171,7 +171,7 @@ float ${signature}(float2 p)
                 }
             );
             
-            Console.WriteLine(fbmFunction.BuildFunctions());
+            Console.WriteLine(fbmFunction.FunctionMap());
             Console.WriteLine(fbmFunction.BuildSourceCode());
         }
     }

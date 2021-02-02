@@ -9,30 +9,28 @@ namespace Fuse.Tests
     {
         public static void TestInputs()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
 
             var add = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
 
-            var gpuValue2 = new GPUInput<float>();
+            var gpuValue2 = new GpuInput<float>();
             var add2 = new OperatorNode<float, float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
 
             var sin = new IntrinsicFunctionNode<float>(
                 new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin.BuildSourceCode());
-
-            sin.Inputs().ForEach(input => Console.WriteLine(input.ID));
         }
 
         public static void TestDrawShaderGraph()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
 
             var add = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
 
-            var gpuValue2 = new GPUInput<float>();
+            var gpuValue2 = new GpuInput<float>();
             var add2 = new OperatorNode<float, float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
 
             var sin = new IntrinsicFunctionNode<float>(
@@ -52,20 +50,19 @@ namespace Fuse.Tests
 
         public static void TestDeclarations()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
 
             var add = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
 
-            var gpuValue2 = new GPUInput<float>();
+            var gpuValue2 = new GpuInput<float>();
             var add2 = new OperatorNode<float, float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
-            Console.WriteLine(add2.Declarations());
+            Console.WriteLine(add2.DeclarationList());
         }
 
         public static void TestMixins()
         {
-            var gpuValue0 = new GPUInput<float>();
-            Console.WriteLine(gpuValue0.Declaration);
+            var gpuValue0 = new GpuInput<float>();
             
             var customFunction = new MixinFunctionNode<Vector2>(
                 new List<AbstractGpuValue>
@@ -78,14 +75,14 @@ namespace Fuse.Tests
                 new ConstantValue<Vector2>(0),
                 "Voronoise"
             );
-            Console.WriteLine(customFunction.BuildMixIns());
+            Console.WriteLine(customFunction.MixinList());
             Console.WriteLine(customFunction.BuildSourceCode());
         }
 
         public static void TestOperatorNode()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<float>(0),"+");
             var operatorNodeWithNull = new OperatorNode<float, float>(new List<GpuValue<float>> {gpuValue0.Output, gpuValue1.Output, null},new ConstantValue<float>(0),"+");
             
@@ -103,9 +100,9 @@ namespace Fuse.Tests
         public static void TestCustomFunctions()
         {
             
-            var Base = new GPUInput<Vector3>();
-            var Blend = new GPUInput<Vector3>();
-            var Opacity = new GPUInput<Vector3>();
+            var Base = new GpuInput<Vector3>();
+            var Blend = new GpuInput<Vector3>();
+            var Opacity = new GpuInput<Vector3>();
             
             var inputs = new List<AbstractGpuValue>
             {
@@ -127,15 +124,15 @@ namespace Fuse.Tests
             var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, new ConstantValue<Vector4>(0));
             
             Console.WriteLine(customFunction.BuildSourceCode());
-            Console.WriteLine(customFunction.BuildFunctions());
+            Console.WriteLine(customFunction.FunctionMap());
         }
 
         public static void TestFloatJoins()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
-            var gpuValue2 = new GPUInput<float>();
-            var gpuValue3 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
+            var gpuValue2 = new GpuInput<float>();
+            var gpuValue3 = new GpuInput<float>();
             
             var join2 = new Float2Join(gpuValue0.Output, gpuValue1.Output);
             Console.WriteLine(join2.BuildSourceCode());
@@ -166,7 +163,7 @@ namespace Fuse.Tests
         public static void TestTraversal()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
-            var gpuValue0 = new GPUInput<Vector2>();
+            var gpuValue0 = new GpuInput<Vector2>();
             var add = new OperatorNode<Vector2, Vector2>(texCoord.Output, gpuValue0.Output,new ConstantValue<Vector2>(0),"*");
 
             var memberX = new GpuValueMember<Vector2, float>(add.Output,"x");
@@ -185,8 +182,8 @@ namespace Fuse.Tests
 
         public static void TestAssign()
         {
-            var gpuValue0 = new GPUInput<Vector2>();
-            var gpuValue1 = new GPUInput<Vector2>();
+            var gpuValue0 = new GpuInput<Vector2>();
+            var gpuValue1 = new GpuInput<Vector2>();
             var add = new OperatorNode<Vector2, Vector2>(new List<GpuValue<Vector2>> {gpuValue0.Output, gpuValue1.Output},new ConstantValue<Vector2>(0),"+");
             var add2 = new OperatorNode<Vector2, Vector2>(new List<GpuValue<Vector2>> {gpuValue0.Output, gpuValue0.Output},new ConstantValue<Vector2>(0),"+");
             
@@ -197,15 +194,15 @@ namespace Fuse.Tests
 
         public static void Main()
         {
-            var gpuValue0 = new GPUInput<float>();
-            Console.WriteLine(gpuValue0.Declaration);
-            var gpuValue1 = new GPUInput<float>();
-            Console.WriteLine(gpuValue1.Declaration);
+            var gpuValue0 = new GpuInput<float>();
+            Console.WriteLine(gpuValue0.DeclarationList());
+            var gpuValue1 = new GpuInput<float>();
+            Console.WriteLine(gpuValue1.DeclarationList());
 
             var add = new OperatorNode<float, float>(new List<GpuValue<float>>
                 {gpuValue0.Output, gpuValue1.Output, gpuValue0.Output},new ConstantValue<float>(0),"+");
 
-            var gpuValue2 = new GPUInput<float>();
+            var gpuValue2 = new GpuInput<float>();
             var add2 = new OperatorNode<float,float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
 
             var sin = new IntrinsicFunctionNode<float>(
@@ -213,9 +210,9 @@ namespace Fuse.Tests
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(add2.BuildSourceCode());
             Console.WriteLine(sin.BuildSourceCode());
-            Console.WriteLine(add2.Declarations());
+            Console.WriteLine(add2.DeclarationList());
 
-            sin.Inputs().ForEach(Console.WriteLine);
+            sin.Inputs.ForEach(Console.WriteLine);
 
             var texCoord = new Semantic<Vector2>("TexCoord");
             var add3 = new OperatorNode<Vector2,Vector2>(new List<GpuValue<Vector2>> {texCoord.Output, texCoord.Output},new ConstantValue<Vector2>(0),"+");
@@ -232,7 +229,7 @@ namespace Fuse.Tests
                 new ConstantValue<Vector2>(0),
                 "Voronoise"
             );
-            Console.WriteLine(customFunction.BuildMixIns());
+            Console.WriteLine(customFunction.MixinList());
             Console.WriteLine(customFunction.BuildSourceCode());
             
             

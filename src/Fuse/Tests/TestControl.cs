@@ -7,8 +7,8 @@ namespace Fuse.Tests
     {
         public static void TestBooleanOperator()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
             
             var compare = new OperatorNode<float, bool>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<bool>(true),">");
             Console.WriteLine(compare.BuildSourceCode());
@@ -19,8 +19,8 @@ namespace Fuse.Tests
         
         public static void TestBooleanSwitch()
         {
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
             
             var compare = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
             
@@ -33,11 +33,11 @@ namespace Fuse.Tests
         
         public static void TestNumericSwitch()
         {    
-            var gpuValueCheck = new GPUInput<int>();
-            var gpuValue0 = new GPUInput<float>();
-            var gpuValue1 = new GPUInput<float>();
-            var gpuValue2 = new GPUInput<float>();
-            var gpuValue3 = new GPUInput<float>();
+            var gpuValueCheck = new GpuInput<int>();
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
+            var gpuValue2 = new GpuInput<float>();
+            var gpuValue3 = new GpuInput<float>();
             
             var compare = new OperatorNode<float, bool>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<bool>(false),">");
             Console.WriteLine(compare.BuildSourceCode());
