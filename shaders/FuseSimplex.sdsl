@@ -1,4 +1,4 @@
-shader FuseSimplex
+shader FuseSimplex : FuseHash
 {
 	// Will prob combine all basis functions into FuseNoise, but easier for now to edit as seperate files.
 	
@@ -116,22 +116,26 @@ shader FuseSimplex
 
 	// ( x*34.0 + 1.0 )*x = 
 	// x*x*34.0 + x
-	float permute(float x) {
-		return mod289(
-			x*x*34.0 + x
+
+
+	// tried replacing with our hash functions, but the wrapping here has some special significance for Simplex noise
+	float permute(float x) 
+	{
+		//return hash11(x);
+		return mod289(x*x*34.0 + x);
+	}
+
+	float3 permute(float3 x) 
+	{
+		//return hash33(x);
+		return mod289(x*x*34.0 + x
 		);
 	}
 
-	float3 permute(float3 x) {
-		return mod289(
-			x*x*34.0 + x
-		);
-	}
-
-	float4 permute(float4 x) {
-		return mod289(
-			x*x*34.0 + x
-		);
+	float4 permute(float4 x) 
+	{
+		//return hash44(x);
+		return mod289(x*x*34.0 + x);
 	}
 
 
