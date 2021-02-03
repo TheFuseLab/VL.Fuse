@@ -69,25 +69,25 @@ namespace Fuse
     {
     }
 
-    public class DelegateNode<T> : ShaderNode<T> ,IDelegateNode
+    public abstract class AbstractDelegateNode<T> : ShaderNode<T>, IDelegateNode
     {
-        
-        
-        public DelegateNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
+        protected AbstractDelegateNode(string theId, ConstantValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
         {
-            FunctionName = "delegateFunction" + GetHashCode();
+            
             MixIns = new List<string>();
             Functions = new Dictionary<string, string>();
-
-
-            var gpuValues = theParameters.ToList();
-            
+            Declarations = new List<string>();
+            Inputs = new List<IGpuInput>();
+        }
+        
+        protected void AddDelegate(string theFunctionName, AbstractGpuValue theDelegate)
+        {
             var delegates = theDelegate.ParentNode.Delegates();
 
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                {"functionName", FunctionName},
+                {"functionName", theFunctionName},
                 {"arguments", DelegateUtil.BuildArguments(delegates)},
                 {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},
                 {"result", theDelegate.ID}
@@ -97,9 +97,31 @@ namespace Fuse
 ${functionImplementation}
         return ${result};
     }";
-            Functions.Add(FunctionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
+            Functions.Add(theFunctionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             theDelegate.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
             MixIns.AddRange(theDelegate.ParentNode.MixinList());
+            Declarations.AddRange(theDelegate.ParentNode.DeclarationList());
+            Inputs.AddRange(theDelegate.ParentNode.InputList());
+        }
+        
+        public sealed override IDictionary<string, string> Functions { get; }
+        public sealed override List<string> MixIns { get; }
+        public override List<string> Declarations { get; }
+        public override List<IGpuInput> Inputs { get; }
+        
+    }
+
+    public class DelegateNode<T> : AbstractDelegateNode<T>
+    {
+        
+        public DelegateNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, ConstantValue<T> theDefault = null) : base("Delegate", theDefault)
+        {
+            FunctionName = "delegateFunction" + GetHashCode();
+
+
+            var gpuValues = theParameters.ToList();
+            
+            AddDelegate(FunctionName,theDelegate);
             
             const string shaderCode = "${resultType} ${resultName} = ${functionName}(${arguments});";
             var valueMap = new Dictionary<string, string>
@@ -110,10 +132,8 @@ ${functionImplementation}
             Setup(shaderCode, gpuValues, valueMap);
         }
 
-        public sealed override List<string> MixIns { get; }
-        
         public string FunctionName { get;  }
         
-        public sealed override IDictionary<string, string> Functions { get; }
+        
     }
 }

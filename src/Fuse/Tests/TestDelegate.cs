@@ -28,7 +28,7 @@ namespace Fuse.Tests
 
         public static void TestTemplateDelegateFunction()
         {
-            var offset = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
+            var offset = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
 
             const string cellDistanceCode = @"float get(float2 offset)
  {
@@ -43,7 +43,7 @@ namespace Fuse.Tests
             );
             
             
-            var f1f2 = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
+            var f1f2 = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
             const string cellFunctionCode = @"float get(float2 offset)
 {
     return  sqrt(dot( offset, offset ));
@@ -110,7 +110,7 @@ float ${signature}(float2 p)
 
         public static void TestFBM()
         {
-            var noiseDelegateParameter = new DelegateParameter<Vector2>(new ConstantValue<Vector2>(0));
+            var noiseDelegateParameter = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
             var noiseFunction = new MixinFunctionNode<float>(
                 new List<AbstractGpuValue>(){noiseDelegateParameter.Output}, 
                 "gradientNoise12",

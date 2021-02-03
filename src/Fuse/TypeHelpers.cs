@@ -79,7 +79,7 @@ namespace Fuse
                 KnownTypes.Add(typeof(Vector3), "Float3");
                 KnownTypes.Add(typeof(Vector4), "Float4");
                 KnownTypes.Add(typeof(Color4), "Float4");
-                KnownTypes.Add(typeof(Matrix), "Matrix");
+                KnownTypes.Add(typeof(Matrix), "Float4x4");
                 KnownTypes.Add(typeof(int), "Int");
                 KnownTypes.Add(typeof(Int2), "Int2");
                 KnownTypes.Add(typeof(Int3), "Int3");
@@ -94,11 +94,11 @@ namespace Fuse
                 TypeDefaults.Add(typeof(Vector3), "float3(0.0, 0.0, 0.0)");
                 TypeDefaults.Add(typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)");
                 TypeDefaults.Add(typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)");
-                TypeDefaults.Add(typeof(Matrix), "Matrix");
+                TypeDefaults.Add(typeof(Matrix), "float4x4()");
                 TypeDefaults.Add(typeof(int), "0");
-                TypeDefaults.Add(typeof(Int2), "Int2");
-                TypeDefaults.Add(typeof(Int3), "Int3");
-                TypeDefaults.Add(typeof(Int4), "Int4");
+                TypeDefaults.Add(typeof(Int2), "int2(0, 0)");
+                TypeDefaults.Add(typeof(Int3), "int3(0, 0)");
+                TypeDefaults.Add(typeof(Int4), "int4(0, 0)");
                 TypeDefaults.Add(typeof(uint), "0");
                 TypeDefaults.Add(typeof(bool), "true");
             }

@@ -27,7 +27,7 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
 }
      */
 
-    public class CustomFunctionNode<T>: ShaderNode<T>
+    public class CustomFunctionNode<T>: AbstractDelegateNode<T>
     {
         
         public CustomFunctionNode(
@@ -42,11 +42,7 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
         {
             var arguments = theArguments.ToList();
             var signature = theFunction + GetHashCode();
-            
-            MixIns = new List<string>(theMixins??new List<string>());
-            Functions = new Dictionary<string, string>();
-            Declarations = new List<string>();
-            
+
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
@@ -81,30 +77,8 @@ ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacit
                 if (delegateNode == null) return;
                 var functionName = kv.Key + "Delegate"+delegateNode.GetHashCode();
                 theFunctionValueMap.Add(kv.Key, functionName);
-                var delegates = delegateNode.ParentNode.Delegates();
-
-                var functionValueMap = new Dictionary<string, string>
-                {
-                    {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                    {"functionName", functionName},
-                    {"arguments", DelegateUtil.BuildArguments(delegates)},
-                    {"functionImplementation", delegateNode.ParentNode.BuildSourceCode()},
-                    {"result", delegateNode.ID}
-                };
-
-                const string functionCode = @"    ${resultType} ${functionName}(${arguments}){
-${functionImplementation}
-        return ${result};
-    }";
-                Functions.Add(functionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
-                delegateNode.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
-                MixIns.AddRange(delegateNode.ParentNode.MixinList());
-                Declarations.AddRange(delegateNode.ParentNode.DeclarationList());
+                AddDelegate(functionName,delegateNode);
             });
         }
-
-        public sealed override IDictionary<string, string> Functions { get; }
-        public sealed override List<string> MixIns { get; }
-        public override List<string> Declarations { get; }
     }
 }

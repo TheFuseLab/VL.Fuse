@@ -146,7 +146,7 @@ namespace Fuse
 
         protected virtual string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
-            
+            if (theSourceCode.Trim() == "") return "";
             if (ShaderNodesUtil.HasNullValue(theIns))
             {
                 return GenerateDefaultSource();
@@ -167,7 +167,7 @@ namespace Fuse
 
         protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
         {
-            Default = theDefault ?? new ConstantValue<T>(0);
+            Default = theDefault ?? ConstantHelper.FromFloat<T>(0);
             Output = new GpuValue<T>(outputName);
         }
 
@@ -177,7 +177,7 @@ namespace Fuse
             {
                 {"resultName", Output.ID},
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                {"default", Default.ID}
+                {"default", Default == null ? "": Default.ID}
             };
         }
 
