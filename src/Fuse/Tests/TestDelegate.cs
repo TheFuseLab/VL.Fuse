@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 
 namespace Fuse.Tests
@@ -8,8 +9,8 @@ namespace Fuse.Tests
     {
         public static void TestDelegateFunction()
         {
-            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0));
-            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0));
+            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0),0);
+            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0),1);
             
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
@@ -19,10 +20,12 @@ namespace Fuse.Tests
                 "sin", new ConstantValue<float>(0));
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output});
+            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, "delegate");
             
             Console.WriteLine(operatorNode.BuildSourceCode());
-            Console.WriteLine(delegateNode.FunctionMap());
+            
+            delegateNode.FunctionMap().ForEach(kv => Console.Write(kv.Value));
+            
             Console.WriteLine(delegateNode.BuildSourceCode());
         }
 
@@ -98,10 +101,10 @@ float ${signature}(float2 p)
                 "worley",
                 worleyCode, 
                 new ConstantValue<float>(0),  
-                new Dictionary<string, AbstractGpuValue>
+                new List<IDelegateNode>
                 {
-                    {"cellDistance",cellDistance.Output},
-                    {"cellFunction",cellFunction.Output}
+                    new DelegateNode<float>(cellDistance.Output, new List<AbstractGpuValue> {x.Output},"cellDistance"),
+                    new DelegateNode<float>(cellFunction.Output, new List<AbstractGpuValue> {f1f2.Output},"cellFunction")
                 }
             );
             Console.WriteLine(customFunction.FunctionMap());
@@ -126,9 +129,9 @@ float ${signature}(float2 p)
                 "fbmType",
                 fbmTypeCode,
                 new ConstantValue<float>(0),
-                new Dictionary<string, AbstractGpuValue>
+                new List<IDelegateNode>
                 {
-                    {"noise",noiseFunction.Output}
+                    new DelegateNode<float>(noiseFunction.Output, new List<AbstractGpuValue> {fbmTypeDelegateParameter.Output},"noise")
                 }
             );
 
@@ -165,9 +168,9 @@ float ${signature}(float2 p)
                 "fbm",
                 fbmCode,
                 new ConstantValue<float>(0),
-                new Dictionary<string, AbstractGpuValue>
+                new List<IDelegateNode>
                 {
-                    {"fbmType",fbmTypeFunction.Output}
+                    new DelegateNode<float>(fbmTypeFunction.Output, new List<AbstractGpuValue> {gpuValue0.Output},"fbmType")
                 }
             );
             

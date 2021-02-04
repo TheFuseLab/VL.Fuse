@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 
 namespace Fuse.Tests
@@ -106,14 +107,14 @@ namespace Fuse.Tests
         {
             
             var Base = new GpuInput<Vector3>();
-            var Blend = new GpuInput<Vector3>();
-            var Opacity = new GpuInput<Vector3>();
+            var blend = new GpuInput<Vector3>();
+            var opacity = new GpuInput<Vector3>();
             
             var inputs = new List<AbstractGpuValue>
             {
                 Base.Output,
-                Blend.Output,
-                Opacity.Output,
+                blend.Output,
+                opacity.Output,
             };
             const string template = @"
         ${resultType} ${signature}(${resultType} Base, ${resultType} Blend, float Opacity)
@@ -129,6 +130,9 @@ namespace Fuse.Tests
             var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, ConstantHelper.FromFloat<Vector4>(0));
             
             Console.WriteLine(customFunction.BuildSourceCode());
+            Console.WriteLine(customFunction.FunctionMap().Count);
+            Console.WriteLine(customFunction.Functions.Count);
+            customFunction.FunctionMap().ForEach(kv => Console.WriteLine(kv.Value));
             Console.WriteLine(customFunction.FunctionMap());
         }
 
