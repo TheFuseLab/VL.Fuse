@@ -72,6 +72,42 @@ shader FuseColor
 		return HSL;
 	}
 
+	float3 RGBtoOKLab(float3 RGB){
+    	const float3x3 kCONEtoLMS = float3x3(                
+         	0.4121656120, 0.2118591070, 0.0883097947,
+        	0.5362752080, 0.6807189584, 0.2818474174,
+         	0.0514575653, 0.1074065790, 0.6302613616
+		);
+    
+    	return pow( mul(kCONEtoLMS,RGB), float3(1.0/3.0,1.0/3.0,1.0/3.0));
+	}
+
+	float3 OKLabToRGB(float3 okLab){
+    	const float3x3 kLMStoCONE = float3x3(
+        	 4.0767245293, -1.2681437731, -0.0041119885,
+        	-3.3072168827,  2.6093323231, -0.7034763098,
+        	 0.2307590544, -0.3411344290,  1.7068625689
+		);
+    
+		return mul(kLMStoCONE,(okLab*okLab*okLab));
+	}
+
+	float3 OKLabMix( float3 colA, float3 colB, float blend ){
+		// https://bottosson.github.io/posts/oklab
+		
+		
+						
+		// rgb to cone (arg of pow can't be negative)
+		float3 okA = RGBtoOKLab(colA);
+		float3 okB = RGBtoOKLab(colB);
+		// lerp
+		float3 okS = lerp( okA, okB, blend );
+		// gain in the middle (no oaklab anymore, but looks better?)
+		okS *= 1.0 + 0.2 * blend * (1.0 - blend);
+		// cone to rgb
+		return OKLabToRGB(okS);
+	}
+
 
 	////////////////////////////////////////////////////////////////
 	//
