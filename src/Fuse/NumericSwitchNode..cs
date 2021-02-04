@@ -14,25 +14,24 @@ namespace Fuse
 ${cases}
     }
         ";
+
+        private GpuValue<T> _default;
+        private List<GpuValue<T>> _cases;
         public NumericSwitchNode(GpuValue<int> theCheck, IEnumerable<GpuValue<T>> inputs, GpuValue<T> theDefault) : base("numericSwitch")
         {
-            var abstractGpuValues = inputs.ToList();
-            var myIns = new List<AbstractGpuValue>(abstractGpuValues);
+            _cases = inputs.ToList();
+            _default = theDefault;
+            var myIns = new List<AbstractGpuValue>(_cases);
             if (theDefault != null)
             {
                 myIns.Add(theDefault);
             }
             
-            var sourceCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"cases", BuildCases(abstractGpuValues, theDefault)}});
-            
             var myKeyMap = new Dictionary<string, string>
             {
-                {"resultName", Output.ID},
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
                 {"check", theCheck.ID}
             };
-            sourceCode = ShaderTemplateEvaluator.Evaluate(sourceCode, myKeyMap);
-            Setup(sourceCode, myIns);
+            Setup(myIns,myKeyMap);
             
         }
         
@@ -55,6 +54,11 @@ ${cases}
                 stringBuilder.Append("        break;" );
             }
             return stringBuilder.ToString();
+        }
+
+        protected override string SourceTemplate()
+        {
+            return ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"cases", BuildCases(_cases, _default)}});
         }
     }
 }

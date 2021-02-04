@@ -16,7 +16,12 @@ namespace Fuse
         public Semantic (string theSemantic) : base("Semantic")
         {
             Output = new SemanticValue<T>(theSemantic);
-            Setup("", new List<AbstractGpuValue>() );
+            Setup(new List<AbstractGpuValue>() );
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";
         }
     }
 }

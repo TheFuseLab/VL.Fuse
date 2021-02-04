@@ -11,23 +11,18 @@ namespace Fuse
 
     public class DrawShaderNode : AbstractShaderNode
     {
-        public  GpuValue<float> Output { get; protected set; }
+        private GpuValue<float> Output { get; set; }
         
         public DrawShaderNode(IDictionary<string,AbstractGpuValue> theVertexInputs) : base("drawShader")
         {
-            Output = new GpuValue<float>("output");
-            Setup(
-                "", 
-                theVertexInputs.Values
-            );
+            Output = new GpuValue<float>("output") {ParentNode = this};
+            Ins = theVertexInputs.Values;
+            
         }
-        
-        protected void Setup(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+
+        protected override string SourceTemplate()
         {
-            var abstractGpuValues = theIns.ToList();
-            _sourceCode = GenerateSource(theSourceCode, abstractGpuValues, theCustomValues);
-            Ins = abstractGpuValues;
-            Output.ParentNode = this;
+            return "";
         }
     }
 

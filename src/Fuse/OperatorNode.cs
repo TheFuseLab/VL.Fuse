@@ -8,33 +8,40 @@ namespace Fuse
     public class OperatorNode<TIn, TOut> : ShaderNode<TOut>
     {
 
+        private readonly string _operator;
         public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
         { 
             
-            var abstractGpuValues = new List<GpuValue<TIn>>();
+            _operator = theOperator;
             
-            var call = new StringBuilder();
+            var abstractGpuValues = new List<GpuValue<TIn>>();
             theInputs.ForEach(input =>
             {
                 if (input == null) return;
                 abstractGpuValues.Add(input);
-                call.Append(input.ID);
-                call.Append(" " + theOperator + " ");
             });
             
-            if(call.Length > 3)call.Remove(call.Length - 3, 3);
-            
-            Setup(
-               "${resultType} ${resultName} = ${Call};", 
-               abstractGpuValues, 
-               new Dictionary<string,string>
-               {
-                   {"Call",call.ToString()}
-               });
+            Setup(abstractGpuValues);
         }
 
         public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, ConstantValue<TOut> theDefault, string theOperator) :
             this(new List<GpuValue<TIn>> {input0, input1}, theDefault, theOperator){
+        }
+
+        protected override string SourceTemplate()
+        {
+            var call = new StringBuilder();
+            Ins.ForEach(input =>
+            {
+                call.Append(input.ID);
+                call.Append(" " + _operator + " ");
+            });
+            
+            if(call.Length > 3)call.Remove(call.Length - 3, 3);
+            return ShaderTemplateEvaluator.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
+            {
+                {"Call",call.ToString()}
+            });
         }
     }
     

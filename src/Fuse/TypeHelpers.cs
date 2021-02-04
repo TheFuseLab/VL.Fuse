@@ -59,6 +59,7 @@ namespace Fuse
                 {
                     return "Texture0";
                 }
+                
                 return GetDefaultForType(typeof(T));        
             }
             

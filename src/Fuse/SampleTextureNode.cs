@@ -9,7 +9,6 @@ namespace Fuse
         public SampleTextureNode(GpuValue<Texture> theTexture, GpuValue<SamplerState> theSampler, GpuValue<Vector2> theTexCoords, ConstantValue<Vector4> theDefault) : base( "sampleTexture", theDefault)
         {
             Setup(
-                "${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoords});",
                 new List<AbstractGpuValue>() {theTexture, theSampler, theTexCoords},
                 new Dictionary<string, string>()
                 {
@@ -19,6 +18,11 @@ namespace Fuse
                 }
             );
 
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoords});";
         }
     }
 }

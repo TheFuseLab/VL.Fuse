@@ -15,8 +15,11 @@ namespace Fuse
     
     public abstract class AbstractShaderNode : IShaderNode
     {
-        protected string _sourceCode;
         protected IEnumerable<AbstractGpuValue> Ins;
+
+        protected abstract string SourceTemplate();
+
+        protected IDictionary<string, string> CustomTemplateValues;
 
 
         protected AbstractShaderNode(string theId)
@@ -31,8 +34,10 @@ namespace Fuse
         public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
         
         public string ID { get; }
+        
+        
 
-        public string SourceCode => _sourceCode;
+        public string SourceCode => GenerateSource(SourceTemplate(), Ins, CustomTemplateValues);
 
         private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
@@ -144,7 +149,7 @@ namespace Fuse
             return ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        protected virtual string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
             if (theSourceCode.Trim() == "") return "";
             if (ShaderNodesUtil.HasNullValue(theIns))
@@ -160,7 +165,7 @@ namespace Fuse
         
     }
     
-    public class ShaderNode<T> : AbstractShaderNode
+    public abstract class ShaderNode<T> : AbstractShaderNode
     {
         public  GpuValue<T> Output { get; protected set; }
         public  ConstantValue<T> Default { get; protected set; }
@@ -177,15 +182,15 @@ namespace Fuse
             {
                 {"resultName", Output.ID},
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                {"default", Default == null ? "": Default.ID}
+                {"default", Default == null ? "": Default.ID},
+                {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
         }
 
-        protected void Setup(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected void Setup(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
-            var abstractGpuValues = theIns.ToList();
-            _sourceCode = GenerateSource(theSourceCode, abstractGpuValues, theCustomValues);
-            Ins = abstractGpuValues;
+            CustomTemplateValues = theCustomValues;
+            Ins = theIns.ToList();
             Output.ParentNode = this;
         }
     }

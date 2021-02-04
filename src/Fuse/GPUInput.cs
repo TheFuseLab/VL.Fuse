@@ -23,11 +23,16 @@ namespace Fuse{
         public DefaultInput(string theName) : base(theName, null, "defaultInput")
         {
             Output = new DefaultInputValue<T>(theName);
-            Setup("", new List<AbstractGpuValue>());
+            Setup(new List<AbstractGpuValue>());
         }
 
         public void SetParameterValue(ParameterCollection theCollection)
         {
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";
         }
     }
      
@@ -42,7 +47,7 @@ namespace Fuse{
 
          public AbstractInput(string theName): base(theName, null,"input")
          {
-             Setup("", new List<AbstractGpuValue>());
+             Setup( new List<AbstractGpuValue>());
              Declaration = ShaderTemplateEvaluator.Evaluate(
                  DeclarationTemplate,
                  new Dictionary<string, string>
@@ -66,6 +71,11 @@ namespace Fuse{
          public sealed override List<IGpuInput> Inputs { get; }
          
          public string Declaration { get; }
+         
+         protected override string SourceTemplate()
+         {
+             return "";
+         }
      }
 
      public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGpuInput 

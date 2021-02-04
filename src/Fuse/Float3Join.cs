@@ -5,24 +5,30 @@ namespace Fuse
 {
     public class Float3Join : ShaderNode<Vector3>
     {
+        
+        private GpuValue<float> _x;
+        private GpuValue<float> _y;
+        private GpuValue<float> _z;
 
         public Float3Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z) : base("Float3Join")
         {
             
-            x = x ?? new ConstantValue<float>(0);
-            y = y ?? new ConstantValue<float>(0);
-            z = z ?? new ConstantValue<float>(0);
+            _x = x ?? new ConstantValue<float>(0);
+            _y = y ?? new ConstantValue<float>(0);
+            _z = z ?? new ConstantValue<float>(0);
             
-            Setup(
-                "float3 ${resultName} = float3(${x},${y},${z});", 
-                new List<AbstractGpuValue>{x,y,z},
+            Setup( new List<AbstractGpuValue>{_x,_y,_z});
+        }
+        
+        protected override string SourceTemplate()
+        {
+            return ShaderTemplateEvaluator.Evaluate("float3 ${resultName} = float3(${x},${y},${z});", 
                 new Dictionary<string, string>
                 {
-                    {"x", x.ID},
-                    {"y", y.ID},
-                    {"z", z.ID}
-                }
-            );
+                    {"x", _x.ID},
+                    {"y", _y.ID},
+                    {"z", _z.ID}
+                });
         }
     }
 }
