@@ -1,40 +1,82 @@
 shader FuseNoise : FuseHash, FuseMap
 {
 
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Vector Noise Helpers
+	// 
+	////////////////////////////////////////////////////////////////
+
 	// for calling function multiple times to get vector valued result.  Should be in main noise file
-	static const float3 vecNoiseOffsets = float3(17.0, -43.0, 67.0);
+	static const float3 vectorValuedNoiseOffsets = float3(17.0, -43.0, 67.0);
+
+	////////////////////////////////////////////////////////////////////////////////////
+	// 1D
+
+	// 1D 2D Vector Valued
+	void noiseDomainOffset (inout float p1, out float p2)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; }
+
+	// 1D 3D Vector Valued
+	void noiseDomainOffset (inout float p1, out float p2, out float p3)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; }
+
+	// 1D 4D Vector Valued
+	void noiseDomainOffset (inout float p1, out float p2, out float p3, out float p4)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; p4 = p1 + vectorValuedNoiseOffsets.y; }
 
 
-	// takes a scalar function FUNCTIONNAME and defines a new function returning 2D vector called [FUNCTIONNAME]2
-	#define NOISE2DVECTORFUNCTION(FUNCTIONNAME)                                             \
-	float2 FUNCTIONNAME##2(float2 p)                                                        \
-	{return float2(FUNCTIONNAME(p), FUNCTIONNAME (p+vecNoiseOffsets.x));}; 
-	
-	/*
-	usage:   NOISE2DVECTORFUNCTION myBasis
-	
-	this won't work in SDSL, but just keeping as a reference for now.  
-	The hard part it to impment noises in dim 1 - 4, 
-	after that it's just repeating the functions with 
-	offsets to get the vector valued versions.
+	////////////////////////////////////////////////////////////////////////////////////
+	// 2D
 
-	*/
+	// 2D 2D Vector Valued
+	void noiseDomainOffset (inout float2 p1, out float2 p2)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; }
 
-	//${resultType} ${signature}(${argumentType} p, ${argumentType} frequency, ${argumentType} offset)
-	float BASISDEFUALT (float2 p)
+	//2D 3D Vector Valued
+	void noiseDomainOffset (inout float2 p1, out float2 p2, out float2 p3)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; }
+
+	//2D 4D Vector Valued
+	void noiseDomainOffset (inout float2 p1, out float2 p2, out float2 p3, out float2 p4)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; p4 = p1 + vectorValuedNoiseOffsets.y; }
+
+	////////////////////////////////////////////////////////////////////////////////////
+	// 3D
+
+	// 3D 2D Vector Valued
+	void noiseDomainOffset (inout float3 p1, out float3 p2)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; }
+
+	// 3D 3D Vector Valued
+	void noiseDomainOffset (inout float3 p1, out float3 p2, out float3 p3)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; }
+
+	// 3D 4D Vector Valued
+	void noiseDomainOffset (inout float3 p1, out float3 p2, out float3 p3, out float3 p4)
 	{
-		return 0.0;
+		p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; p4 = p1 + vectorValuedNoiseOffsets.y;
 	}
 
-	float basisShaper (float2 p, float2 frequency, float2 offset, float2 amplitude, float2 center)
-	{
-		float basis = BASISDEFUALT(p * frequency + offset);
-		// apply bias
-		basis = sign(basis) * bias(abs(basis), .95);
+	////////////////////////////////////////////////////////////////////////////////////
+	// 4D
 
-		basis = basis * amplitude + center;
-		return basis;
+	// 4D 2D Vector Valued
+	void noiseDomainOffset (inout float4 p1, out float4 p2)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; }
+
+	// 4D 3D Vector Valued
+	void noiseDomainOffset (inout float4 p1, out float4 p2, out float4 p3)
+	{ p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; }
+
+	// 4D 4D Vector Valued
+	void noiseDomainOffset (inout float4 p1, out float4 p2, out float4 p3, out float4 p4)
+	{
+		p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; p4 = p1 + vectorValuedNoiseOffsets.y;
 	}
+
+
 
 
 
@@ -45,7 +87,9 @@ shader FuseNoise : FuseHash, FuseMap
 	// 
 	////////////////////////////////////////////////////////////////
 
-	// just for study, but can in fact be a usefel cheap basis.  Should add the vector dot to FuseMath or FuseVector 
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
 	float sineBasis11 (float p)
 	{
 		return sin(p);
@@ -64,20 +108,97 @@ shader FuseNoise : FuseHash, FuseMap
 		return dot(dot(s.x, s.y), s.z);
 	}
 
-	float sineBasis33 (float3 p)
-	{
-		return float3(sineBasis13(p), sineBasis13(p + vecNoiseOffsets.x), sineBasis13(p + vecNoiseOffsets.y));
-	}
-
 	float sineBasis14 (float4 p)
 	{
 		float4 s = sin(p);
 		return dot(dot(dot(s.x, s.y), s.z), s.w);
 	}
 
-	float4 sineBasis44(float4 v)
+	// 2D
+	float2 sineBasis21 (float p)
 	{
-		return float4(sineBasis14(v), sineBasis14(v + vecNoiseOffsets.x), sineBasis14(v + vecNoiseOffsets.y), sineBasis14(v + vecNoiseOffsets.z));
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(sineBasis11(p), sineBasis11(p2));
+	}
+
+	float2 sineBasis22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(sineBasis12(p), sineBasis12(p2));
+	}
+
+	float2 sineBasis23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(sineBasis13(p), sineBasis13(p2));
+	}
+
+	float2 sineBasis24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(sineBasis14(p), sineBasis14(p2));
+	}
+
+	// 3D
+	float3 sineBasis31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2);
+		return float3(sineBasis11(p), sineBasis11(p2), sineBasis11(p3));
+	}
+
+	float3 sineBasis32 (float2 p)
+	{
+		float2 p2, p3;
+		noiseDomainOffset(p, p2);
+		return float3(sineBasis12(p), sineBasis12(p2), sineBasis12(p3));
+	}
+
+	float3 sineBasis33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2);
+		return float3(sineBasis13(p), sineBasis13(p2), sineBasis13(p3));
+	}
+
+	float3 sineBasis34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2);
+		return float3(sineBasis14(p), sineBasis14(p2), sineBasis14(p3));
+	}
+
+	// 4D
+	float4 sineBasis41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(sineBasis11(p), sineBasis11(p2), sineBasis11(p3), sineBasis11(p4));
+	}
+
+	float4 sineBasis42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(sineBasis12(p), sineBasis12(p2), sineBasis12(p3), sineBasis12(p4));
+	}
+
+	float4 sineBasis43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(sineBasis13(p), sineBasis13(p2), sineBasis13(p3), sineBasis13(p4));
+	}
+
+	float4 sineBasis44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(sineBasis13(p), sineBasis13(p2), sineBasis13(p3), sineBasis13(p4));
 	}
 	////////////////////////////////////////////////////////////////
 
