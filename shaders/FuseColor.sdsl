@@ -51,6 +51,15 @@ shader FuseColor
 		return HSV;
 	}
 
+	// Smooth HSV to RGB conversion 
+    float4 HSVtoRGB_smooth(float4 col)
+    {
+        float3 rgb = clamp( abs(fmod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
+        rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
+        return float4(col.z * lerp( float3(1.0), rgb, col.y), col.w);
+    }
+
+
 	float3 RGBtoHSL(float3 RGB)
 	{
 		float3 HSL = 0;
