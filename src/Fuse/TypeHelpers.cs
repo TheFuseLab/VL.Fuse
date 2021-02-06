@@ -167,5 +167,10 @@ namespace Fuse
                 theSignature = thePrepend + GetDimension(typeof(TOut)) + GetDimension(typeof(TIn));
                 return null;
             }
+
+            public static void LimitToStruct<T>(GpuValue<T> theValue) where T : struct 
+            {
+                
+            }
         }
 }
