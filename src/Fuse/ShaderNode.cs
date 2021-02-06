@@ -32,11 +32,8 @@ namespace Fuse
         public virtual List<string> MixIns => new List<string>();
         public virtual List<string> Declarations => new List<string>();
         public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
-        
         public string ID { get; }
         
-        
-
         public string SourceCode => GenerateSource(SourceTemplate(), Ins, CustomTemplateValues);
 
         private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
