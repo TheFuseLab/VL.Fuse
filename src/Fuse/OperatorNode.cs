@@ -5,7 +5,7 @@ using Stride.Core.Extensions;
 
 namespace Fuse
 {
-    public class OperatorNode<TIn, TOut> : ShaderNode<TOut>
+    public class OperatorNode<TIn, TOut> : ShaderNode<TOut> where TIn : struct where TOut : struct
     {
 
         private readonly string _operator;

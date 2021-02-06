@@ -3,7 +3,7 @@
 namespace Fuse
 {
     
-    public class FromFloat<T> : ShaderNode<T>
+    public class FromFloat<T> : ShaderNode<T> where T : struct
     {
 
         public FromFloat(GpuValue<float> x) : base("fromFloat")
