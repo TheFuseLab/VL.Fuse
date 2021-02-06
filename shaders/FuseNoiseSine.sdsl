@@ -1,0 +1,39 @@
+shader FuseNoiseSine
+{
+	////////////////////////////////////////////////////////////////
+	//
+	//          Sine Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
+	float sineNoise (float p)
+	{
+		return sin(p);
+	}
+
+	// 2D
+	float sineNoise (float2 p)
+	{
+		float2 s = sin(p);
+
+		return dot(s.x,s.y);
+	}
+
+	// 3D
+	float sineNoise (float3 p)
+	{
+		float3 s = sin(p);
+		return dot(dot(s.x, s.y), s.z);
+	}
+
+	// 4D
+	float sineNoise (float4 p)
+	{
+		float4 s = sin(p);
+		return dot(dot(dot(s.x, s.y), s.z), s.w);
+	}
+
+};

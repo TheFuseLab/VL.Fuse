@@ -20,22 +20,24 @@
 // with a smooth interpolant (line 31 and 33).
 
 
-shader FuseValueNoise : FuseHash
+shader FuseNoiseValueNoise : FuseHash
 {
 	
 
-    float valueNoise11(float p){
+	float valueNoise(float p)
+	{
 		float i = floor(p);
-    	float f = frac(p);
+		float f = frac(p);
 	
 		float u = f * f * (3.0 - 2.0 * f);
 
 		return  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
 	}
 
-    float valueNoise12(float2 p){
+	float valueNoise(float2 p)
+	{
 		float2 i = floor(p);
-    	float2 f = frac(p);
+		float2 f = frac(p);
 	
 		float2 u = f * f * (3.0 - 2.0 * f);
 
@@ -45,7 +47,8 @@ shader FuseValueNoise : FuseHash
 						 hash12(i + float2(1.0,1.0)), u.x), u.y);
 	}
 
-    float valueNoise13(float3 p){
+	float valueNoise(float3 p)
+	{
 		float3 i = floor(p);
 		float3 f = frac(p);
 
@@ -53,39 +56,41 @@ shader FuseValueNoise : FuseHash
 		
 		return lerp(lerp(lerp(hash13(i + float3(0,0,0)), 
 							  hash13(i + float3(1,0,0)),u.x),
-					     lerp(hash13(i + float3(0,1,0)), 
+						 lerp(hash13(i + float3(0,1,0)), 
 							  hash13(i + float3(1,1,0)),u.x),u.y),
-			        lerp(lerp(hash13(i + float3(0,0,1)), 
+					lerp(lerp(hash13(i + float3(0,0,1)), 
 							  hash13(i + float3(1,0,1)),u.x),
-					     lerp(hash13(i + float3(0,1,1)), 
+						 lerp(hash13(i + float3(0,1,1)), 
 							  hash13(i + float3(1,1,1)),u.x),u.y),u.z);
 	}
 
-    float valueNoise14(float4 p){
+	float valueNoise(float4 p)
+	{
 		float4 i = floor(p);
 		float4 f = frac(p);
 
 		float4 u = f * f * (3.0 - 2.0 * f);
 		
 		return lerp(lerp(lerp(lerp(hash14(i + float4(0,0,0,0)), 
-							   	   hash14(i + float4(1,0,0,0)),u.x),
-					          lerp(hash14(i + float4(0,1,0,0)), 
-							       hash14(i + float4(1,1,0,0)),u.x),u.y),
-			             lerp(lerp(hash14(i + float4(0,0,1,0)), 
-							       hash14(i + float4(1,0,1,0)),u.x),
-					          lerp(hash14(i + float4(0,1,1,0)), 
-							       hash14(i + float4(1,1,1,0)),u.x),u.y),u.z),
-				    lerp(lerp(lerp(hash14(i + float4(0,0,0,1)), 
-							       hash14(i + float4(1,0,0,1)),u.x),
-					          lerp(hash14(i + float4(0,1,0,1)), 
-							       hash14(i + float4(1,1,0,1)),u.x),u.y),
-			             lerp(lerp(hash14(i + float4(0,0,1,1)), 
-							       hash14(i + float4(1,0,1,1)),u.x),
-					          lerp(hash14(i + float4(0,1,1,1)), 
-							       hash14(i + float4(1,1,1,1)),u.x),u.y),u.z),u.w);
+								   hash14(i + float4(1,0,0,0)),u.x),
+							  lerp(hash14(i + float4(0,1,0,0)), 
+								   hash14(i + float4(1,1,0,0)),u.x),u.y),
+						 lerp(lerp(hash14(i + float4(0,0,1,0)), 
+								   hash14(i + float4(1,0,1,0)),u.x),
+							  lerp(hash14(i + float4(0,1,1,0)), 
+								   hash14(i + float4(1,1,1,0)),u.x),u.y),u.z),
+					lerp(lerp(lerp(hash14(i + float4(0,0,0,1)), 
+								   hash14(i + float4(1,0,0,1)),u.x),
+							  lerp(hash14(i + float4(0,1,0,1)), 
+								   hash14(i + float4(1,1,0,1)),u.x),u.y),
+						 lerp(lerp(hash14(i + float4(0,0,1,1)), 
+								   hash14(i + float4(1,0,1,1)),u.x),
+							  lerp(hash14(i + float4(0,1,1,1)), 
+								   hash14(i + float4(1,1,1,1)),u.x),u.y),u.z),u.w);
 	}
 
-    float3 valueNoise32(float2 p){
+	/*
+	float3 valueNoise32(float2 p){
 		float2 i = floor(p);
 		float2 f = frac(p);
 		
@@ -191,5 +196,5 @@ shader FuseValueNoise : FuseHash
 	float4 valueNoise44(float4 x){
 		return valueNoise43(x.xyz)*0.5;
 	}
-
+	*/
 };

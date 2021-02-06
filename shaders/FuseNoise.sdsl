@@ -1,6 +1,19 @@
-shader FuseNoise : FuseHash, FuseMap
-{
 
+/*
+
+	Basic Usage:
+	Simple noise types can be called with 1D, 2D, 3D or 4D domains, and can return a float, float2, float3 or float 4 as a result
+
+	The format is [NoiseType][ResultType][DomainType]
+
+	for example:
+	valueNoise13 -> returns Value Noise as a float over 3D space
+	simplexNoise42 -> returns Simplex Noise as a float4 over 2D space
+
+*/
+
+shader FuseNoise :  FuseNoiseSine, FuseNoiseValueNoise, FuseNoiseGradientNoise, FuseNoiseSimplex, FuseNoiseRandom // would be better to support sub folders for organization and naming
+{
 
 	////////////////////////////////////////////////////////////////
 	//
@@ -77,10 +90,6 @@ shader FuseNoise : FuseHash, FuseMap
 	}
 
 
-
-
-
-
 	////////////////////////////////////////////////////////////////
 	//
 	//          Sine Basis
@@ -90,314 +99,545 @@ shader FuseNoise : FuseHash, FuseMap
 	// just for study, but can in fact be a usefel cheap basis.  
 
 	// 1D
-	float sineBasis11 (float p)
-	{
-		return sin(p);
-	}
+	float sineNoise11 (float p)
+	{ return sineNoise(p); }
 
-	float sineBasis12 (float2 p)
-	{
-		float2 s = sin(p);
+	float sineNoise12 (float2 p)
+	{ return sineNoise(p); }
 
-		return dot(s.x,s.y);
-	}
+	float sineNoise13 (float3 p)
+	{ return sineNoise(p); }
 
-	float sineBasis13 (float3 p)
-	{
-		float3 s = sin(p);
-		return dot(dot(s.x, s.y), s.z);
-	}
-
-	float sineBasis14 (float4 p)
-	{
-		float4 s = sin(p);
-		return dot(dot(dot(s.x, s.y), s.z), s.w);
-	}
+	float sineNoise14 (float4 p)
+	{ return sineNoise(p); }
 
 	// 2D
-	float2 sineBasis21 (float p)
+	float2 sineNoise21 (float p)
 	{
 		float p2;
 		noiseDomainOffset(p, p2);
-		return float2(sineBasis11(p), sineBasis11(p2));
+		return float2(sineNoise(p), sineNoise(p2));
 	}
 
-	float2 sineBasis22 (float2 p)
+	float2 sineNoise22 (float2 p)
 	{
 		float2 p2;
 		noiseDomainOffset(p, p2);
-		return float2(sineBasis12(p), sineBasis12(p2));
+		return float2(sineNoise(p), sineNoise(p2));
 	}
 
-	float2 sineBasis23 (float3 p)
+	float2 sineNoise23 (float3 p)
 	{
 		float3 p2;
 		noiseDomainOffset(p, p2);
-		return float2(sineBasis13(p), sineBasis13(p2));
+		return float2(sineNoise(p), sineNoise(p2));
 	}
 
-	float2 sineBasis24 (float4 p)
+	float2 sineNoise24 (float4 p)
 	{
 		float4 p2;
 		noiseDomainOffset(p, p2);
-		return float2(sineBasis14(p), sineBasis14(p2));
+		return float2(sineNoise(p), sineNoise(p2));
 	}
 
 	// 3D
-	float3 sineBasis31 (float p)
+	float3 sineNoise31 (float p)
 	{
 		float p2, p3;
 		noiseDomainOffset(p, p2, p3);
-		return float3(sineBasis11(p), sineBasis11(p2), sineBasis11(p3));
+		return float3(sineNoise(p), sineNoise(p2), sineNoise(p3));
 	}
 
-	float3 sineBasis32 (float2 p)
+	float3 sineNoise32 (float2 p)
 	{
-		float2 p2, p3;
+		float2 p2, p3; 
 		noiseDomainOffset(p, p2, p3);
-		return float3(sineBasis12(p), sineBasis12(p2), sineBasis12(p3));
+		return float3(sineNoise(p), sineNoise(p2), sineNoise(p3));
 	}
 
-	float3 sineBasis33 (float3 p)
+	float3 sineNoise33 (float3 p)
 	{
 		float3 p2, p3;
 		noiseDomainOffset(p, p2, p3);
-		return float3(sineBasis13(p), sineBasis13(p2), sineBasis13(p3));
+		return float3(sineNoise(p), sineNoise(p2), sineNoise(p3));
 	}
 
-	float3 sineBasis34 (float4 p)
+	float3 sineNoise34 (float4 p)
 	{
 		float4 p2, p3;
 		noiseDomainOffset(p, p2, p3);
-		return float3(sineBasis14(p), sineBasis14(p2), sineBasis14(p3));
+		return float3(sineNoise(p), sineNoise(p2), sineNoise(p3));
 	}
 
 	// 4D
-	float4 sineBasis41(float p)
+	float4 sineNoise41(float p)
 	{
 		float4 p2, p3, p4;
 		noiseDomainOffset(p, p2, p3, p4);
-		return float4(sineBasis11(p), sineBasis11(p2), sineBasis11(p3), sineBasis11(p4));
+		return float4(sineNoise(p), sineNoise(p2), sineNoise(p3), sineNoise(p4));
 	}
 
-	float4 sineBasis42(float2 p)
+	float4 sineNoise42(float2 p)
 	{
 		float4 p2, p3, p4;
 		noiseDomainOffset(p, p2, p3, p4);
-		return float4(sineBasis12(p), sineBasis12(p2), sineBasis12(p3), sineBasis12(p4));
+		return float4(sineNoise(p), sineNoise(p2), sineNoise(p3), sineNoise(p4));
 	}
 
-	float4 sineBasis43(float3 p)
+	float4 sineNoise43(float3 p)
 	{
 		float4 p2, p3, p4;
 		noiseDomainOffset(p, p2, p3, p4);
-		return float4(sineBasis13(p), sineBasis13(p2), sineBasis13(p3), sineBasis13(p4));
+		return float4(sineNoise(p), sineNoise(p2), sineNoise(p3), sineNoise(p4));
 	}
 
-	float4 sineBasis44(float4 p)
+	float4 sineNoise44(float4 p)
 	{
 		float4 p2, p3, p4;
 		noiseDomainOffset(p, p2, p3, p4);
-		return float4(sineBasis13(p), sineBasis13(p2), sineBasis13(p3), sineBasis13(p4));
+		return float4(sineNoise(p), sineNoise(p2), sineNoise(p3), sineNoise(p4));
 	}
 	////////////////////////////////////////////////////////////////
 
 
-
-
-	
 	////////////////////////////////////////////////////////////////
 	//
-	//          Worley Basis
+	//          Value Noise Basis
 	// 
 	////////////////////////////////////////////////////////////////
-	/*
-	MIT License
 
-	Copyright (c) 2017 Justin Hawkins
+	// just for study, but can in fact be a usefel cheap basis.  
 
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
+	// 1D
+	float valueNoise11 (float p)
+	{ return valueNoise(p); }
 
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
+	float valueNoise12 (float2 p)
+	{ return valueNoise(p); }
 
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-	*/
+	float valueNoise13 (float3 p)
+	{ return valueNoise(p); }
 
-	
+	float valueNoise14 (float4 p)
+	{ return valueNoise(p); }
 
-	//1/7
-	#define K 0.142857142857
-	//3/7
-	#define Ko 0.428571428571
-
-	float3 mod(float3 x, float y) { return x - y * floor(x/y); }
-	float2 mod(float2 x, float y) { return x - y * floor(x/y); }
-
-	// Permutation polynomial: (34x^2 + x) mod 289
-	float3 Permutation(float3 x) 
+	// 2D
+	float2 valueNoise21 (float p)
 	{
-	  return mod((34.0 * x + 1.0) * x, 289.0);
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
 	}
 
-	// returns d1 & d2 as float2
-	float2 worleyBasis(float2 P, float jitter = .8)
-	{			
-		float2 Pi = mod(floor(P), 289.0);
-		float2 Pf = frac(P);
-		float3 oi = float3(-1.0, 0.0, 1.0);
-		float3 of = float3(-0.5, 0.5, 1.5);
-		float3 px = Permutation(Pi.x + oi);
-	
-		float3 p, ox, oy, dx, dy;
-		float2 F = 1e6;
-	
-		for(int i = 0; i < 3; i++)
-		{
-			p = Permutation(px[i] + Pi.y + oi); // pi1, pi2, pi3
-			ox = frac(p*K) - Ko;
-			oy = mod(floor(p*K),7.0)*K - Ko;
-			dx = Pf.x - of[i] + jitter*ox;
-			dy = Pf.y - of + jitter*oy;
-		
-			float3 d = dx * dx + dy * dy; // di1, di2 and di3, squared
-		
-			//find the lowest and second lowest distances
-			for(int n = 0; n < 3; n++)
-			{
-				if(d[n] < F[0])
-				{
-					F[1] = F[0];
-					F[0] = d[n];
-				}
-				else if(d[n] < F[1])
-				{
-					F[1] = d[n];
-				}
-			}
-		}
-	
-		return F;
+	float2 valueNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
 	}
 
-	float2 worleyBasis(float3 P, float jitter = .8)
-	{			
-		float3 Pi = mod(floor(P), 289.0);
-		float3 Pf = frac(P);
-		float3 oi = float3(-1.0, 0.0, 1.0);
-		float3 of = float3(-0.5, 0.5, 1.5);
-		float3 px = Permutation(Pi.x + oi);
-		float3 py = Permutation(Pi.y + oi);
-
-		float3 p, ox, oy, oz, dx, dy, dz;
-		float2 F = 1e6;
-
-		for(int i = 0; i < 3; i++)
-		{
-			for(int j = 0; j < 3; j++)
-			{
-				p = Permutation(px[i] + py[j] + Pi.z + oi); // pij1, pij2, pij3
-
-				ox = frac(p*K) - Ko;
-				oy = mod(floor(p*K),7.0)*K - Ko;
-			
-				p = Permutation(p);
-			
-				oz = frac(p*K) - Ko;
-		
-				dx = Pf.x - of[i] + jitter*ox;
-				dy = Pf.y - of[j] + jitter*oy;
-				dz = Pf.z - of + jitter*oz;
-			
-				float3 d = dx * dx + dy * dy + dz * dz; // dij1, dij2 and dij3, squared
-			
-				//Find lowest and second lowest distances
-				for(int n = 0; n < 3; n++)
-				{
-					if(d[n] < F[0])
-					{
-						F[1] = F[0];
-						F[0] = d[n];
-					}
-					else if(d[n] < F[1])
-					{
-						F[1] = d[n];
-					}
-				}
-			}
-		}
-	
-		return F;
+	float2 valueNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
 	}
 
-	float2 worleyBasis(float4 P, float jitter = .8)
-	{			
-		float4 Pi = mod(floor(P), 289.0);
-		float4 Pf = frac(P);
-		float3 oi = float3(-1.0, 0.0, 1.0);
-		float3 of = float3(-0.5, 0.5, 1.5);
-		float3 px = Permutation(Pi.x + oi);
-		float3 py = Permutation(Pi.y + oi);
-		float3 pz = Permutation(Pi.z + oi);
-
-		float3 p, ox, oy, oz, ow, dx, dy, dz, dw, d;
-		float2 F = 1e6;
-		int i, j, k, n;
-
-		for(i = 0; i < 3; i++)
-		{
-			for(j = 0; j < 3; j++)
-			{
-				for(k = 0; k < 3; k++)
-				{
-					p = Permutation(px[i] + py[j] + pz[k] + Pi.w + oi); // pijk1, pijk2, pijk3
-	
-					ox = frac(p*K) - Ko;
-					oy = mod(floor(p*K),7.0)*K - Ko;
-				
-					p = Permutation(p);
-				
-					oz = frac(p*K) - Ko;
-					ow = mod(floor(p*K),7.0)*K - Ko;
-			
-					dx = Pf.x - of[i] + jitter*ox;
-					dy = Pf.y - of[j] + jitter*oy;
-					dz = Pf.z - of[k] + jitter*oz;
-					dw = Pf.w - of + jitter*ow;
-				
-					d = dx * dx + dy * dy + dz * dz + dw * dw; // dijk1, dijk2 and dijk3, squared
-				
-					//Find the lowest and second lowest distances
-					for(n = 0; n < 3; n++)
-					{
-						if(d[n] < F[0])
-						{
-							F[1] = F[0];
-							F[0] = d[n];
-						}
-						else if(d[n] < F[1])
-						{
-							F[1] = d[n];
-						}
-					}
-				}
-			}
-		}
-	
-		return F;
+	float2 valueNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
 	}
 
+	// 3D
+	float3 valueNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	// 4D
+	float4 valueNoise41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Gradient Noise Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
+	float gradientNoise11 (float p)
+	{ return gradientNoise(p); }
+
+	float gradientNoise12 (float2 p)
+	{ return gradientNoise(p); }
+
+	float gradientNoise13 (float3 p)
+	{ return gradientNoise(p); }
+
+	float gradientNoise14 (float4 p)
+	{ return gradientNoise(p); }
+
+	// 2D
+	float2 gradientNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	// 3D
+	float3 gradientNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	// 4D
+	float4 gradientNoise41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Simplex Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
+	float simplexNoise11 (float p)
+	{ return simplexNoise(p); }
+
+	float simplexNoise12 (float2 p)
+	{ return simplexNoise(p); }
+
+	float simplexNoise13 (float3 p)
+	{ return simplexNoise(p); }
+
+	float simplexNoise14 (float4 p)
+	{ return simplexNoise(p); }
+
+	// 2D
+	float2 simplexNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(simplexNoise(p), simplexNoise(p2));
+	}
+
+	float2 simplexNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(simplexNoise(p), simplexNoise(p2));
+	}
+
+	float2 simplexNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(simplexNoise(p), simplexNoise(p2));
+	}
+
+	float2 simplexNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(simplexNoise(p), simplexNoise(p2));
+	}
+
+	// 3D
+	float3 simplexNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(simplexNoise(p), simplexNoise(p2), simplexNoise(p3));
+	}
+
+	float3 simplexNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(simplexNoise(p), simplexNoise(p2), simplexNoise(p3));
+	}
+
+	float3 simplexNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(simplexNoise(p), simplexNoise(p2), simplexNoise(p3));
+	}
+
+	float3 simplexNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(simplexNoise(p), simplexNoise(p2), simplexNoise(p3));
+	}
+
+	// 4D
+	float4 simplexNoise41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(simplexNoise(p), simplexNoise(p2), simplexNoise(p3), simplexNoise(p4));
+	}
+
+	float4 simplexNoise42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(simplexNoise(p), simplexNoise(p2), simplexNoise(p3), simplexNoise(p4));
+	}
+
+	float4 simplexNoise43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(simplexNoise(p), simplexNoise(p2), simplexNoise(p3), simplexNoise(p4));
+	}
+
+	float4 simplexNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(simplexNoise(p), simplexNoise(p2), simplexNoise(p3), simplexNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
+
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Random Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
+	float randomNoise11 (float p)
+	{ return randomNoise(p); }
+
+	float randomNoise12 (float2 p)
+	{ return randomNoise(p); }
+
+	float randomNoise13 (float3 p)
+	{ return randomNoise(p); }
+
+	float randomNoise14 (float4 p)
+	{ return randomNoise(p); }
+
+	// 2D
+	float2 randomNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(randomNoise(p), randomNoise(p2));
+	}
+
+	float2 randomNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(randomNoise(p), randomNoise(p2));
+	}
+
+	float2 randomNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(randomNoise(p), randomNoise(p2));
+	}
+
+	float2 randomNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(randomNoise(p), randomNoise(p2));
+	}
+
+	// 3D
+	float3 randomNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(randomNoise(p), randomNoise(p2), randomNoise(p3));
+	}
+
+	float3 randomNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(randomNoise(p), randomNoise(p2), randomNoise(p3));
+	}
+
+	float3 randomNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(randomNoise(p), randomNoise(p2), randomNoise(p3));
+	}
+
+	float3 randomNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(randomNoise(p), randomNoise(p2), randomNoise(p3));
+	}
+
+	// 4D
+	float4 randomNoise41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(randomNoise(p), randomNoise(p2), randomNoise(p3), randomNoise(p4));
+	}
+
+	float4 randomNoise42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(randomNoise(p), randomNoise(p2), randomNoise(p3), randomNoise(p4));
+	}
+
+	float4 randomNoise43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(randomNoise(p), randomNoise(p2), randomNoise(p3), randomNoise(p4));
+	}
+
+	float4 randomNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(randomNoise(p), randomNoise(p2), randomNoise(p3), randomNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
 
 
 

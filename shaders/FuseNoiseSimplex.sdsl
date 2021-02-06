@@ -1,58 +1,7 @@
-shader FuseSimplex : FuseHash
+shader FuseNoiseSimplex : FuseHash
 {
 
-	// for calling function multiple times to get vector valued result.  Should be in main noise file
-	static const float3 vecNoiseOffsets = float3(17.0, -43.0, 67.0);
-
-	// Will prob combine all basis functions into FuseNoise, but easier for now to edit as seperate files.
-	
-
-
-
 	/*
-
-	Description:
-		Array- and textureless CgFx/HLSL 2D, 3D and 4D simplex noise functions.
-		a.k.a. simplified and optimized Perlin noise.
-	
-		The functions have very good performance
-		and no dependencies on external data.
-	
-		2D - Very fast, very compact code.
-		3D - Fast, compact code.
-		4D - Reasonably fast, reasonably compact code.
-
-	------------------------------------------------------------------
-
-	Ported by:
-		Lex-DRL
-		I've ported the code from GLSL to CgFx/HLSL for Unity,
-		added a couple more optimisations (to speed it up even further)
-		and slightly reformatted the code to make it more readable.
-
-	Original GLSL functions:
-		https://github.com/ashima/webgl-noise
-		Credits from original glsl file are at the end of this cginc.
-
-	------------------------------------------------------------------
-
-	Usage:
-	
-		float ns = snoise(v);
-		// v is any of: float2, float3, float4
-	
-		Return type is float.
-		To generate 2 or more components of noise (colorful noise),
-		call these functions several times with different
-		constant offsets for the arguments.
-		E.g.:
-	
-		float3 colorNs = float3(
-			snoise(v),
-			snoise(v + 17.0),
-			snoise(v - 43.0),
-		);
-
 
 	Remark about those offsets from the original author:
 	
@@ -162,15 +111,18 @@ shader FuseSimplex : FuseHash
 	}
 
 
-	// does not really make sense to do simplex in this case- prob will revert to vnoise
-	float simplexBasis11 (float v)
+	// does not really make sense to do simplex in 1D-  will revert to value noise
+	// 1D
+	float simplexNoise (float v)
 	{
-		//return valueNoise11(v);
+		float i = floor(v);
+		float f = frac(v);
+		float u = f * f * (3.0 - 2.0 * f);
+		return  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
 	}
 
-	// ----------------------------------- 2D -------------------------------------
-
-	float simplexBasis12 (float2 v)
+	// 2D
+	float simplexNoise (float2 v)
 	{
 		const float4 C = float4(
 			0.211324865405187, // (3.0-sqrt(3.0))/6.0
@@ -231,9 +183,8 @@ shader FuseSimplex : FuseHash
 		return 130.0 * dot(m, g);
 	}
 
-	// ----------------------------------- 3D -------------------------------------
-
-	float simplexBasis13(float3 v)
+	// 3D
+	float simplexNoise(float3 v)
 	{
 		const float2 C = float2(
 			0.166666666666666667, // 1/6
@@ -330,9 +281,8 @@ shader FuseSimplex : FuseHash
 		);
 	}
 
-	// ----------------------------------- 4D -------------------------------------
-
-	float simplexBasis14(float4 v)
+	// 4D
+	float simplexNoise(float4 v)
 	{
 		const float4 C = float4(
 			0.138196601125011, // (5 - sqrt(5))/20 G4
@@ -463,6 +413,7 @@ shader FuseSimplex : FuseHash
 		);
 	}
 
+	/*
 	float2 simplexBasis22(float2 v)
 	{
 		return float2(simplexBasis12(v), simplexBasis12(v + vecNoiseOffsets.x));
@@ -508,5 +459,5 @@ shader FuseSimplex : FuseHash
 		return float4(simplexBasis14(v), simplexBasis14(v + vecNoiseOffsets.x), simplexBasis14(v + vecNoiseOffsets.y), simplexBasis14(v + vecNoiseOffsets.z));
 	}
 
-
+	*/
 };
