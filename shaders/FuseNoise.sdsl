@@ -12,7 +12,7 @@
 
 */
 
-shader FuseNoise :  FuseNoiseSine, FuseNoiseValueNoise, FuseNoiseGradientNoise, FuseNoiseSimplex, FuseNoiseRandom // would be better to support sub folders for organization and naming
+shader FuseNoise :  FuseNoiseSine, FuseNoiseValueNoise, FuseNoiseGradientNoise, FuseNoiseSimplex, FuseNoiseRandom, FuseNoiseWorley // would be better to support sub folders for organization and naming
 {
 
 	////////////////////////////////////////////////////////////////
@@ -528,6 +528,115 @@ shader FuseNoise :  FuseNoiseSine, FuseNoiseValueNoise, FuseNoiseGradientNoise, 
 	}
 	////////////////////////////////////////////////////////////////
 
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          worleySimple Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// just for study, but can in fact be a usefel cheap basis.  
+
+	// 1D
+	float worleySimpleNoise11 (float p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise12 (float2 p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise13 (float3 p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise14 (float4 p)
+	{ return worleySimpleNoise(p); }
+
+	// 2D
+	float2 worleySimpleNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	// 3D
+	float3 worleySimpleNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	// 4D
+	float4 worleySimpleNoise41(float p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise42(float2 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise43(float3 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
 
 
 	////////////////////////////////////////////////////////////////

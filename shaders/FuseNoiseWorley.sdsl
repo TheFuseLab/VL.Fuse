@@ -1,4 +1,118 @@
 shader FuseNoiseWorley : FuseHash
 {
+	/*
+	Just a simple one first, that fits the interface of the general node.  Several nodes can deal with more advanded versions
+	
+	TODO:
+	-Add F1F2
+	-Add SmoothF1
+	-Distance Metrics
+	-F1 F2 combination Functions
+	-Add Edge SDF
+	-Add N-SPhere
+	-Figure out how to support Feature struct output.  Eg for 3D:
+		struct Worley3DFeature
+		{
+			float dist;
+			float3 pos;
+			float id;
+		};
+	*/ 
+
+	// 1D
+	float worleySimpleNoise (float p, float jitter = .7)
+	{
+		float cellPosition = floor(p);
+		float localPosition = p - cellPosition;
+		float minDistance = 8.0;
+		[unroll]
+		for (int x = -1; x <= 1; x++) 
+		{
+			float cellOffset = x;
+			float pointPosition = cellOffset + hash11(cellPosition + cellOffset) * jitter;
+			float toCell = pointPosition - localPosition;
+			float distanceToPoint = dot(toCell, toCell);
+			if (distanceToPoint < minDistance) minDistance = distanceToPoint;		
+		}
+		return sqrt(minDistance);
+	}
+
+	// 2D
+	float worleySimpleNoise (float2 p, float jitter = .7)
+	{
+		float2 cellPosition = floor(p);
+		float2 localPosition = p - cellPosition;
+		float minDistance = 8.0;
+		[unroll]
+		for (int y = -1; y <= 1; y++) 
+		{
+			[unroll]
+			for (int x = -1; x <= 1; x++) 
+			{
+				float2 cellOffset = float2(x, y);
+				float2 pointPosition = cellOffset + hash22(cellPosition + cellOffset) * jitter;
+				float2 toCell = pointPosition - localPosition;
+				float distanceToPoint = dot(toCell, toCell);
+				if (distanceToPoint < minDistance) minDistance = distanceToPoint;		
+			}
+		}
+		return sqrt(minDistance);
+	}
+
+	// 3D
+	float worleySimpleNoise (float3 p, float jitter = .7)
+	{
+		float3 cellPosition = floor(p);
+		float3 localPosition = p - cellPosition;
+		float minDistance = 8.0;
+		[unroll]
+		for (int z = -1; z <= 1; z++) 
+		{
+			[unroll]
+			for (int y = -1; y <= 1; y++) 
+			{
+				[unroll]
+				for (int x = -1; x <= 1; x++) 
+				{
+					float3 cellOffset = float3(x, y, z);
+					float3 pointPosition = cellOffset + hash33(cellPosition + cellOffset) * jitter;
+					float3 toCell = pointPosition - localPosition;
+					float distanceToPoint = dot(toCell, toCell);
+					if (distanceToPoint < minDistance) minDistance = distanceToPoint;	
+				}
+			}
+		}
+		return sqrt(minDistance);
+	}
+
+	// 4D
+	float worleySimpleNoise (float4 p, float jitter = .7)
+	{
+		float4 cellPosition = floor(p);
+		float4 localPosition = p - cellPosition;
+		float minDistance = 8.0;
+		[unroll]
+		for (int w = -1; w <= 1; w++) 
+		{
+			[unroll]
+			for (int z = -1; z <= 1; z++) 
+			{
+				[unroll]
+				for (int y = -1; y <= 1; y++) 
+				{
+					[unroll]
+					for (int x = -1; x <= 1; x++) 
+					{
+						float4 cellOffset = float4(x, y, z, w);
+						float4 pointPosition = cellOffset + hash44(cellPosition + cellOffset) * jitter;
+						float4 toCell = pointPosition - localPosition;
+						float distanceToPoint = dot(toCell, toCell);
+						if (distanceToPoint < minDistance) minDistance = distanceToPoint;	
+					}
+				}
+			}
+		}
+		return sqrt(minDistance);
+	}
 
 };

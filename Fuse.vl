@@ -8479,7 +8479,7 @@
                     <Pin Id="TqAUD424hODOH5KfjEYbx0" Name="value" Kind="InputPin" />
                     <Pin Id="OdHKRjLPrOhMezyAc5AyW2" Name="Output" Kind="OutputPin" />
                   </Node>
-                  <Pad Id="GDMdFNbXBdmNKyVALS5ACR" Bounds="1070,468,141,179" ShowValueBox="true" isIOBox="true">
+                  <Pad Id="GDMdFNbXBdmNKyVALS5ACR" Bounds="1070,468,154,222" ShowValueBox="true" isIOBox="true">
                     <p:TypeAnnotation LastCategoryFullName="Collections" LastSymbolSource="VL.Collections.vl">
                       <Choice Kind="TypeFlag" Name="Spread" />
                       <p:TypeArguments>
@@ -8488,11 +8488,15 @@
                         </TypeReference>
                       </p:TypeArguments>
                     </p:TypeAnnotation>
+                    <p:ValueBoxSettings>
+                      <p:maxvisibleentries p:Type="Int32">6</p:maxvisibleentries>
+                    </p:ValueBoxSettings>
                     <p:Value>
                       <Item>sineNoise</Item>
                       <Item>valueNoise</Item>
                       <Item>gradientNoise</Item>
                       <Item>simplexNoise</Item>
+                      <Item>worleySimpleNoise</Item>
                       <Item>randomNoise</Item>
                     </p:Value>
                   </Pad>
@@ -8633,7 +8637,7 @@
     ************************ AdaptiveNoise ************************
 
 -->
-        <Node Name="AdaptiveNoise" Bounds="631,511" Id="BzEKVByUi6RPtoXUe6LdVj" Summary="Basic Noise taking its implementation from a provided mixin and function prepend">
+        <Node Name="AdaptiveNoise" Bounds="634,556" Id="BzEKVByUi6RPtoXUe6LdVj" Summary="Basic Noise taking its implementation from a provided mixin and function prepend">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -8929,6 +8933,80 @@
             <Link Id="PPvhZDmxvaCQPfwdH1fAC1" Ids="S65FuTUDvHZOFi3o1cNsdu,Q9BBHTLQOUmPw8VDKe5xDt" />
           </Patch>
         </Node>
+        <!--
+
+    ************************ SimpleWorleyNoise ************************
+
+-->
+        <Node Name="SimpleWorleyNoise" Bounds="601,503" Id="Cy0GFA9uiRCPLirSthFmcK">
+          <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
+            <Choice Kind="ContainerDefinition" Name="Process" />
+          </p:NodeReference>
+          <Patch Id="GWeDtH5DHkWLyNwXNOlYuV" IsGeneric="true">
+            <Canvas Id="BwsQKHDw3ErP5RzFHVite5" CanvasType="Group">
+              <ControlPoint Id="PSxlRd6NWCXNSyQ300hid9" Bounds="171,172" />
+              <ControlPoint Id="FWvKeNilkL6QDrGrnCHbV9" Bounds="165,408" />
+              <ControlPoint Id="GgmBpa1sSKeNsBDhLSyJen" Bounds="194,203" />
+              <Pad Id="Ivm2nxG33I3PIJfFQoYZHj" Bounds="243,296,103,13" ShowValueBox="true" isIOBox="true" Value="worleySimpleNoise">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="String" />
+                </p:TypeAnnotation>
+              </Pad>
+              <Pad Id="BSJmZ3nAiUUQNZz9jTFWIV" Comment="" Bounds="219,250,79,15" ShowValueBox="true" isIOBox="true" Value="FuseNoise">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="String" />
+                </p:TypeAnnotation>
+              </Pad>
+              <Node Bounds="164,335,81,19" Id="VHH89O4BQdJMcD3PsR20Ik">
+                <p:NodeReference LastCategoryFullName="Fuse.Noise" LastSymbolSource="Fuse.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="AdaptiveNoise" />
+                </p:NodeReference>
+                <Pin Id="SqyRsIpf8uUPmp0Ks9DZpL" Name="x" Kind="InputPin" />
+                <Pin Id="Io6MKQX3Ec4OlXapD05clS" Name="default" Kind="InputPin" />
+                <Pin Id="NjrGLOmB4AWNHNMFP43hq6" Name="mixin" Kind="InputPin" />
+                <Pin Id="T6J3ZFJnC0oNJ1NWGEt12n" Name="functionName" Kind="InputPin" />
+                <Pin Id="VRtpyzTGPaYLdFrUz1IEPd" Name="Output" Kind="OutputPin" />
+              </Node>
+            </Canvas>
+            <Patch Id="PP3NIMWnJc1QGr4IBfqSEb" Name="Create" />
+            <Patch Id="SIjK4E98s2NNK5H6Hpty7S" Name="Update">
+              <Pin Id="NXoIuZn2nW8MmgSyI6H4yY" Name="x" Kind="InputPin" />
+              <Pin Id="MxNU3aGrrlYMQYc1p1VIcL" Name="Output" Kind="OutputPin" />
+              <Pin Id="JnbTNfQLoRFON6GOHWSG1R" Name="default" Kind="InputPin" Visibility="Optional" />
+            </Patch>
+            <ProcessDefinition Id="BiWlxAtR8aBNNJiHJGvNz8">
+              <Fragment Id="MqwiLov6r4kL5l77aTRYID" Patch="PP3NIMWnJc1QGr4IBfqSEb" Enabled="true" />
+              <Fragment Id="FiMta7NniKhNDavP2GXUIe" Patch="SIjK4E98s2NNK5H6Hpty7S" Enabled="true" />
+            </ProcessDefinition>
+            <Link Id="EKP5JtaQjKXPhoWR5ja6GI" Ids="NXoIuZn2nW8MmgSyI6H4yY,PSxlRd6NWCXNSyQ300hid9" IsHidden="true" />
+            <Link Id="Gcs2Cop1WW1Nrc1pyX57gf" Ids="FWvKeNilkL6QDrGrnCHbV9,MxNU3aGrrlYMQYc1p1VIcL" IsHidden="true" />
+            <Link Id="VuSc8rEJjdaPLaV0nlxzxt" Ids="JnbTNfQLoRFON6GOHWSG1R,GgmBpa1sSKeNsBDhLSyJen" IsHidden="true" />
+            <Link Id="HH3Cj2kY5s4Mr9IzyPILJs" Ids="BSJmZ3nAiUUQNZz9jTFWIV,NjrGLOmB4AWNHNMFP43hq6" />
+            <Link Id="LwQ1cqxU3PcM5YPYF1CzUh" Ids="Ivm2nxG33I3PIJfFQoYZHj,T6J3ZFJnC0oNJ1NWGEt12n" />
+            <Link Id="IBjEtN7nKAILiOhMdB1cqa" Ids="PSxlRd6NWCXNSyQ300hid9,SqyRsIpf8uUPmp0Ks9DZpL" />
+            <Link Id="GxvKmnGF871MtQ4vGfaY5r" Ids="GgmBpa1sSKeNsBDhLSyJen,Io6MKQX3Ec4OlXapD05clS" />
+            <Link Id="FHOkiTtZSomPqcOmv3lPQy" Ids="VRtpyzTGPaYLdFrUz1IEPd,FWvKeNilkL6QDrGrnCHbV9" />
+          </Patch>
+        </Node>
+        <Pad Id="Plid1JtCHcAPa8jNtRbI5U" Bounds="296,418,229,45" ShowValueBox="true" isIOBox="true" Value="TODO:  Add more FBM types">
+          <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+            <Choice Kind="TypeFlag" Name="String" />
+          </p:TypeAnnotation>
+          <p:ValueBoxSettings>
+            <p:fontsize p:Type="Int32">9</p:fontsize>
+            <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+          </p:ValueBoxSettings>
+        </Pad>
+        <Pad Id="Bje5uigazOtMQA3YpjTrCY" Bounds="847,434,465,301" ShowValueBox="true" isIOBox="true" Value="&#x9;Worley TODO:&#xD;&#xA;&#x9;-Add F1F2&#xD;&#xA;&#x9;-Add SmoothF1&#xD;&#xA;&#x9;-Distance Metrics&#xD;&#xA;&#x9;-F1 F2 combination Functions&#xD;&#xA;&#x9;-Add Edge SDF&#xD;&#xA;&#x9;-Add N-SPhere&#xD;&#xA;&#x9;-Figure out how to support Feature struct output.  Eg for 3D:&#xD;&#xA;&#x9;&#x9;struct Worley3DFeature&#xD;&#xA;&#x9;&#x9;{&#xD;&#xA;&#x9;&#x9;&#x9;float dist;&#xD;&#xA;&#x9;&#x9;&#x9;float3 pos;&#xD;&#xA;&#x9;&#x9;&#x9;float id;&#xD;&#xA;&#x9;&#x9;};">
+          <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+            <Choice Kind="TypeFlag" Name="String" />
+          </p:TypeAnnotation>
+          <p:ValueBoxSettings>
+            <p:fontsize p:Type="Int32">9</p:fontsize>
+            <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+          </p:ValueBoxSettings>
+        </Pad>
       </Canvas>
       <!--
 
