@@ -2,13 +2,11 @@
 {
     public enum NoiseType
         {
-            GradientNoise,
+            Sine,
             ValueNoise,
-            Worley,
-            WorleyDetailed,
+            GradientNoise,
             Simplex,
-            Perlin,
+            WorleySimple,
             Random
-    
         }
 }
