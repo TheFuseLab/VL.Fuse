@@ -9,18 +9,24 @@
 
         public AbstractShaderNode ParentNode { get; set; }
     }
-    
+
     public class GpuValue<T> : AbstractGpuValue
     {
         protected internal string name;
+
+        public string TypeOverride { get; set; }
 
         public GpuValue(string theName)
         {
             name = theName;
         }
-        
+
         public override string TypeName()
         {
+            if (typeof(T) == typeof(GpuStruct))
+            {
+                return TypeOverride;
+            }
             return TypeHelpers.GetNameForType<T>().ToLower();
         }
 

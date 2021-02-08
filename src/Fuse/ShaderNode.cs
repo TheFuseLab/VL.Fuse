@@ -178,7 +178,7 @@ namespace Fuse
             return new Dictionary<string, string>
             {
                 {"resultName", Output.ID},
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"resultType", Output != null ? Output.TypeName() : TypeHelpers.GetNameForType<T>().ToLower()},
                 {"default", Default == null ? "": Default.ID},
                 {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
