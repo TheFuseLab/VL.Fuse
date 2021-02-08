@@ -282,6 +282,36 @@ shader FuseNoiseWorley : FuseHash
 		return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
 	}
 
+	// 2D
+	float2 worleySmoothF1_DEBUG (float2 p, float smooth = .2, float jitter = .7)
+	{
+		float2 cellPosition = floor(p);
+		float2 localPosition = p - cellPosition;
+		float smoothDistance  = 8.0;
+		float2 smoothPosition = 0.0;
+		float smoothID = 0.0;
+		[unroll]
+		for (int y = -1; y <= 1; y++) 
+		{
+			[unroll]
+			for (int x = -1; x <= 1; x++) 
+			{
+				float2 cellOffset = float2(x, y);
+				float2 pointPosition = cellOffset + hash22(cellPosition + cellOffset) * jitter;
+				float distanceToPoint = distFunc(pointPosition, localPosition);
+				float h = smoothstep(0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smooth);
+				float correctionFactor = smooth * h * (1.0 - h);
+				smoothDistance = lerp(smoothDistance, distanceToPoint, h) - correctionFactor;
+				correctionFactor /= 1.0 + 3.0 * smooth;
+				float cellID = hash12(cellPosition + cellOffset);
+				smoothID = lerp(smoothID, cellID, h) - correctionFactor;
+				smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
+			}
+		}
+		return cellPosition + smoothPosition;
+	}
+
+
 	// 3D
 	worley3DFeature worleySmoothF1 (float3 p, float smooth = .2, float jitter = .7)
 	{
