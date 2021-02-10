@@ -101,6 +101,79 @@ shader FuseColor
 		return mul(kLMStoCONE,(okLab*okLab*okLab));
 	}
 
+	// Converts an srgb color to linear space
+	// Copyright (c) Stride contributors (https://stride3d.net) and Silicon Studio Corp. (https://www.siliconstudio.co.jp)
+	// Distributed under the MIT license. See the LICENSE.md file in the project root for more information.
+	// http://chilliant.blogspot.jp/2012/08/srgb-approximations-for-hlsl.html
+
+    
+    float SRGBToLinear1(float sRGB){  
+        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+    }
+
+	float2 SRGBToLinear2(float2 sRGB){
+        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+    }
+
+    float3 SRGBToLinear3(float3 sRGB){
+        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+    }
+
+    // Converts an srgb color to linear space
+    float4 SRGBToLinear4(float4 sRGBa){
+        float3 sRGB = sRGBa.rgb;
+        return float4(sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878), sRGBa.a);
+    }
+
+	float LinearToSRGB1(float RGB){
+		float S1 = sqrt(RGB);
+  		float S2 = sqrt(S1);
+  		float S3 = sqrt(S2);
+  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+	}
+
+	float2 LinearToSRGB2(float2 RGB){
+		float2 S1 = sqrt(RGB);
+  		float2 S2 = sqrt(S1);
+  		float2 S3 = sqrt(S2);
+  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+	}
+
+	float3 LinearToSRGB3(float3 RGB){
+		float3 S1 = sqrt(RGB);
+  		float3 S2 = sqrt(S1);
+  		float3 S3 = sqrt(S2);
+  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+	}
+
+	float4 LinearToSRGB4(float4 RGB){
+		float4 S1 = sqrt(RGB);
+  		float4 S2 = sqrt(S1);
+  		float4 S3 = sqrt(S2);
+  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//             Palettes
+	//
+	////////////////////////////////////////////////////////////////
+
+	// A simple way to create color variation in a cheap way (yes, trigonometrics ARE cheap
+	// in the GPU, don't try to be smart and use a triangle wave instead).
+	// See http://iquilezles.org/www/articles/palettes/palettes.htm for more information
+
+
+	float3 pal(float t, float3 a, float3 b, float3 c, float3 d ){
+    	return a + b * cos( 6.28318*(c*t+d) );
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//             MIX
+	//
+	////////////////////////////////////////////////////////////////
+
 	float3 OKLabMix( float3 colA, float3 colB, float blend ){
 		// https://bottosson.github.io/posts/oklab
 		
