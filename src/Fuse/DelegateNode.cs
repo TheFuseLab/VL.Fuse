@@ -113,10 +113,10 @@ namespace Fuse
 
         private void AddDelegate(string theFunctionName, AbstractGpuValue theDelegate, List<AbstractGpuValue> theParameters)
         {
+            if (theDelegate == null) return;
             var delegates = theDelegate.ParentNode.Delegates();
             delegates.ForEach(input => input.Remap(theParameters));
             
-            Console.WriteLine(theDelegate.ParentNode.BuildSourceCode());
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
