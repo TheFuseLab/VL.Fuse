@@ -39,7 +39,7 @@ namespace Fuse.particles
         }
 
         //add this to get a node that can access the Instance from everywhere
-        public static ParticleAttributeDefinition Instance => ManualDynamicEnumDefinitionBase<ParticleAttributeDefinition>.Instance;
+        public new static ParticleAttributeDefinition Instance => ManualDynamicEnumDefinitionBase<ParticleAttributeDefinition>.Instance;
     }
 
     [Serializable]
