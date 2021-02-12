@@ -200,6 +200,17 @@ namespace Fuse.Tests
             
             Console.WriteLine(assign.BuildSourceCode());
         }
+        
+        public static void TestToFloat()
+        {
+            var gpuValue0 = new GpuInput<Vector2>();
+            var gpuValue1 = new GpuInput<Vector2>();
+            var add = new OperatorNode<Vector2, Vector2>(new List<GpuValue<Vector2>> {gpuValue0.Output, gpuValue1.Output},ConstantHelper.FromFloat<Vector2>(0),"+");
+            
+            var toFloat4 = new ToFloat4<Vector2>(add.Output);
+            
+            Console.WriteLine(toFloat4.BuildSourceCode());
+        }
 
         public static void Main()
         {
