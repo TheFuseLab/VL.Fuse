@@ -114,6 +114,24 @@ namespace Fuse{
          }
      }
      
+     public class BufferInput: AbstractInput<Buffer, ObjectParameterKey<Buffer>>, IGpuInput  
+     {
+         public BufferInput(string theName) : base("BufferInput")
+         {
+             ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
+         }
+         
+         public override string TypeName()
+         {
+             return "RWStructuredBuffer<float>";
+         }
+
+         public override void SetParameterValue(ParameterCollection theCollection)
+         {
+             theCollection.Set(ParameterKey, Value);
+         }
+     }
+     
     public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
     {
 
