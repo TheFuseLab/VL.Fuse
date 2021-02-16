@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Rendering.Materials;
 using Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
-using static VL.Stride.Shaders.ShaderFX.ShaderFXUtils;
+using VL.Stride.Shaders.ShaderFX.Functions;
 
-namespace Fuse.shaderFXBridge
+namespace Fuse
 {
     
-    
-    public class ToComputeFx : ComputeVoid
+    public class ToMaterialFX<T> : ComputeValue<T>
     {
-        
         public string ShaderCode { get; protected set; }
         public string ShaderName { get; protected set; }
 
@@ -32,7 +31,22 @@ ${sourceCompute}
     }
 };";
         
-        public ToComputeFx(AbstractGpuValue theCompute)
+        private const string ShaderSource = @"
+shader ${shaderID} : Compute${shaderType}, ComputeShaderBase${mixins}
+{
+    cbuffer PerMaterial{
+${declarations}
+    }
+
+${functions}
+
+    override ${resultType} Compute()
+    {
+${sourceCompute}
+    }
+};";
+        
+        public ToMaterialFX(GpuValue<T> theCompute)
         {
             var declarations = new HashSet<string>();
             var mixins = new HashSet<string>();
@@ -81,7 +95,5 @@ ${sourceCompute}
         {
             return new ShaderClassSource(ShaderName);
         }
-
-        
     }
 }
