@@ -104,7 +104,34 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
 		streams.Depth = PosWVP.z/PosWVP.w;
 		return c;
+	}
 
+	float4 shadeRayGradient(Ray ray)
+	{		
+		float4 c=1;
+		float g = saturate(dot(ray.rd,-ray.sn));
+		c.rgb = g;
+
+		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
+		streams.Depth = PosWVP.z/PosWVP.w;
+		return c;
+	}
+
+
+	float4 shadeRayMatcap(Ray ray)
+	{		
+		float4 c=1;
+		float3 vn = mul(float4(ray.sn, 0), View).xyz;
+		//vn.y = -vn.y;
+		//vn.xy = vn.xy * .5 + .5;
+		float2 matCapCoords = vn * float2(.5, -.5) + .5;
+
+		// sample matcap tex with matCapCoords
+	
+
+		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
+		streams.Depth = PosWVP.z/PosWVP.w;
+		return c;
 	}
 
 
