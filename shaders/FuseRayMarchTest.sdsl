@@ -80,18 +80,15 @@ shader FuseRayMarchTest : ShaderBaseStream, Transformation, Texturing, FuseRayMa
 
 
 
-	float4 rayDebug()
+	float4 rayDebug(int maxIter = 180)
 	{
 
 		float2 minMaxDist = float2(.01, 100);
 		float3 bbRad = 2.6;
 		float3 bbPos = float3(.5, 0, 0);
-
-		float2 uv = streams.TexCoord; // Takes uv as input
-
 		Ray ray = setupRay();
 		minMaxDist = cullRay(ray);
-		marchRay(ray, minMaxDist);
+		marchRay(ray, minMaxDist, maxIter);
 		ray.sn = SDFNormal(ray.sp);
 		return shadeRay(ray);
 

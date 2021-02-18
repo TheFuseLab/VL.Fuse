@@ -43,7 +43,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 	}
 
 
-	Ray setupRayDefualt()
+	Ray setupRaybyCamera()
 	{	
 		float2 uv = streams.TexCoord;
 		float3 rd = normalize(mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,-1,0),ViewInverse).xyz);
@@ -51,13 +51,17 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		return makeRay(ro, rd);
 	}
 
-	float2 cullRayByBox(Ray ray)  // box
+	float2 cullRayDefualt(Ray ray)
 	{
-		float3 pos = 0.; 
-		float3 rad = 2.;
+		return float2(0.1, 200.);
+	}
+
+
+	float2 cullRayByBox(Ray ray, float3 pos = 0., float3 radius = 2.)  // bounding box
+	{
 		float3 m = 1.0 / ray.rd;
 		float3 n = m * (ray.ro - pos);
-		float3 k = abs(m) * rad;
+		float3 k = abs(m) * radius;
 		float3 t1 = -n - k;
 		float3 t2 = -n + k;
 
@@ -68,6 +72,8 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 	
 		return float2( tN, tF );
 	}
+
+	void killRayDiscard() {discard;};
 
 	void marchRayDefualt(inout Ray ray, float2 minMaxDist = float2(.05, 100), int maxIter = 180)
 	{
@@ -86,6 +92,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		if(z > minMaxDist.y) discard;
 		ray.sp = p;
 	}
+
 
 	float4 shadeRayNormals(Ray ray)
 	{		
