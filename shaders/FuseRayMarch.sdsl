@@ -1,0 +1,104 @@
+shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
+{
+	struct Ray
+	{
+		float3 ro, rd, sp, sn;
+	};
+
+	Ray makeRay(float3 ro, float3 rd, float3 sp = 0.0, float3 sn = 0.0)
+	{
+		Ray ray;
+		ray.ro = ro;
+		ray.rd = rd;
+		ray.sp = sp;
+		ray.sn = sn;
+		return  ray;
+	}
+
+	// the signed distance field to raymarch
+	abstract float SDF(float3 p);		
+
+	// setup ray origin and direction
+	abstract Ray setupRay();		
+	
+	// min max distances and early discard
+	abstract float2 cullRay(Ray ray);	
+	abstract void killRay();	
+	
+	// ray march loop
+	abstract void marchRay(inout Ray ray, float2 minMaxDist, int maxIter = 180);
+
+	// what kind of color / material treatment? multi & adaptive sampling can also go here
+	abstract float4 shadeRay(Ray ray); 
+
+
+	// just generate normals with central difference
+	float3 SDFNormal(float3 p, float e = 0.01)
+	{
+		float3 gradient = float3 (	(SDF(p + float3(e,0,0)) - SDF(p - float3(e,0,0))) / (2*e), 
+									(SDF(p + float3(0,e,0)) - SDF(p - float3(0,e,0))) / (2*e), 
+									(SDF(p + float3(0,0,e)) - SDF(p - float3(0,0,e))) / (2*e)	);
+		return normalize(gradient);
+
+	}
+
+
+	Ray setupRayDefualt()
+	{	
+		float2 uv = streams.TexCoord;
+		float3 rd = normalize(mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,-1,0),ViewInverse).xyz);
+		float3 ro = ViewInverse[3].xyz;
+		return makeRay(ro, rd);
+	}
+
+	float2 cullRayByBox(Ray ray)  // box
+	{
+		float3 pos = 0.; 
+		float3 rad = 2.;
+		float3 m = 1.0 / ray.rd;
+		float3 n = m * (ray.ro - pos);
+		float3 k = abs(m) * rad;
+		float3 t1 = -n - k;
+		float3 t2 = -n + k;
+
+		float tN = max( max( t1.x, t1.y ), t1.z );
+		float tF = min( min( t2.x, t2.y ), t2.z );
+	
+		if( tN > tF || tF < 0.0) killRay(); // no intersection
+	
+		return float2( tN, tF );
+	}
+
+	void marchRayDefualt(inout Ray ray, float2 minMaxDist = float2(.05, 100), int maxIter = 180)
+	{
+		float3 startPos = ray.ro + ray.rd * minMaxDist.x;
+		float3 p = startPos;
+		float z = minMaxDist.x;
+		//maxDist -= minDist;
+		for(int i=0; i<maxIter; i++)
+		{
+			float dist = SDF(p);
+			p += ray.rd * dist;	
+			z += dist;
+			if(abs(dist) < 0.0001 * z || z > minMaxDist.y) break;
+		}
+
+		if(z > minMaxDist.y) discard;
+		ray.sp = p;
+	}
+
+	float4 shadeRayNormals(Ray ray)
+	{		
+		float4 c=1;
+		c.rgb = ray.sn;
+		c.rgb = c.rgb * 0.5 + 0.5; // remap normals to 0-1
+		c.a = 1;
+
+		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
+		streams.Depth = PosWVP.z/PosWVP.w;
+		return c;
+
+	}
+
+
+};
