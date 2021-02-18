@@ -7,6 +7,8 @@ namespace Fuse{
     public interface IGpuInput : IShaderNode
     {
         void SetParameterValue(ParameterCollection theCollection);
+
+        void SetParameters(ParameterCollection theCollection);
     }
     
     public class DefaultInputValue <T>: GpuValue<T>
@@ -30,6 +32,10 @@ namespace Fuse{
         {
         }
 
+        public void SetParameters(ParameterCollection theCollection)
+        {
+        }
+
         protected override string SourceTemplate()
         {
             return "";
@@ -44,6 +50,13 @@ namespace Fuse{
         stage ${inputType} ${inputName};";
 
          protected TParameterKeyType ParameterKey;
+
+         protected ParameterCollection Parameters;
+         
+         public void SetParameters(ParameterCollection theCollection)
+         {
+             Parameters = theCollection;
+         }
 
          public AbstractInput(string theName): base(theName, null,"input")
          {
@@ -63,8 +76,22 @@ namespace Fuse{
          {
              return TypeHelpers.GetNameForType<T>().ToLower();
          }
+         
+         private T inputValue;
 
-         public T Value { get; set; }
+         public T Value
+         {
+             get => inputValue;
+             set
+             {
+                 if (inputValue!=null && inputValue.Equals(value)) return;
+                 
+                 inputValue = value;
+
+                 if (Parameters == null) return;
+                 SetParameterValue(Parameters);
+             }
+         } 
          public abstract void SetParameterValue(ParameterCollection theCollection);
          
          public sealed override List<string> Declarations { get; }

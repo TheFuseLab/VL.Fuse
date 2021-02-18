@@ -15,6 +15,7 @@ namespace Fuse
             // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypes<T>(T input, T input2, T input3, T input4)
             {
+                
             }
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
@@ -133,6 +134,12 @@ namespace Fuse
                         return "Bool";
                     case GpuValue<int> _:
                         return "Int";
+                    case GpuValue<Int2> _:
+                        return "Int2";
+                    case GpuValue<Int3> _:
+                        return "Int3";
+                    case GpuValue<Int4> _:
+                        return "Int4";
                 }
                 throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName);
             }
@@ -158,6 +165,10 @@ namespace Fuse
                 if (theType == typeof(Vector3)) return 3;
                 if (theType == typeof(Vector4)) return 4;
                 if (theType == typeof(Color4)) return 4;
+                if (theType == typeof(int)) return 1;
+                if (theType == typeof(Int2)) return 2;
+                if (theType == typeof(Int3)) return 3;
+                if (theType == typeof(Int4)) return 4;
 
                 return 0;
             }
