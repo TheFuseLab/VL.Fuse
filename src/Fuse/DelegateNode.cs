@@ -62,7 +62,7 @@ namespace Fuse
 
         public virtual string TypeName()
         {
-            return TypeHelpers.GetNameForType<T>().ToLower();
+            return TypeHelpers.GetGpuTypeForType<T>();
         }
 
         public string Name()
@@ -119,7 +119,7 @@ namespace Fuse
             
             var functionValueMap = new Dictionary<string, string>
             {
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
                 {"functionName", theFunctionName},
                 {"arguments", BuildArguments(theParameters)},
                 {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},

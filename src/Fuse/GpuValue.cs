@@ -27,7 +27,7 @@
             {
                 return TypeOverride;
             }
-            return TypeHelpers.GetNameForType<T>().ToLower();
+            return TypeHelpers.GetGpuTypeForType<T>();
         }
 
         public override string ID => name + "_" + GetHashCode();

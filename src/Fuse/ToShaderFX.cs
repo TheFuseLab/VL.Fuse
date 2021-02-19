@@ -39,8 +39,8 @@ namespace Fuse
             var templateMap = new Dictionary<string, string>
             {
                 {"resultName", theCompute.ID},
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
-                {"shaderType", TypeHelpers.GetNameForType<T>()},
+                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
+                {"shaderType", TypeHelpers.GetShaderTypeForType<T>()},
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},

@@ -64,7 +64,7 @@ namespace Fuse
 
             var functionValueMap = new Dictionary<string, string>
             {
-                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
                 {"signature", signature}
             };
 

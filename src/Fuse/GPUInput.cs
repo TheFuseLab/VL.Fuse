@@ -74,7 +74,7 @@ namespace Fuse{
 
          public virtual string TypeName()
          {
-             return TypeHelpers.GetNameForType<T>().ToLower();
+             return TypeHelpers.GetGpuTypeForType<T>();
          }
          
          private T _inputValue;

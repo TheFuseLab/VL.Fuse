@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
-using VL.Stride.Shaders.ShaderFX;
-using VL.Stride.Shaders.ShaderFX.Functions;
 
 namespace Fuse
 {
@@ -28,7 +26,6 @@ namespace Fuse
             {
             }
 
-            private static readonly Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>();
 
             public static string GetDefaultForType<T>(T theValue)
             {
@@ -71,51 +68,91 @@ namespace Fuse
 
                 throw new NotImplementedException("No name defined for type: " + t.Name);
             }
-
-            private static readonly Dictionary<Type, string> KnownTypes = new Dictionary<Type, string>();
-
-            static TypeHelpers()
+            
+            private static readonly Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>
             {
-                KnownTypes.Add(typeof(float), "Float");
-                KnownTypes.Add(typeof(Vector2), "Float2");
-                KnownTypes.Add(typeof(Vector3), "Float3");
-                KnownTypes.Add(typeof(Vector4), "Float4");
-                KnownTypes.Add(typeof(Color4), "Float4");
-                KnownTypes.Add(typeof(Matrix), "Float4x4");
-                KnownTypes.Add(typeof(int), "Int");
-                KnownTypes.Add(typeof(Int2), "Int2");
-                KnownTypes.Add(typeof(Int3), "Int3");
-                KnownTypes.Add(typeof(Int4), "Int4");
-                KnownTypes.Add(typeof(uint), "UInt");
-                KnownTypes.Add(typeof(bool), "Bool");
-                KnownTypes.Add(typeof(Texture), "Texture");
-                KnownTypes.Add(typeof(SamplerState), "Sampler");
-                KnownTypes.Add(typeof(GpuVoid), "Void");
+                {typeof(float), "0.0"},
+                {typeof(Vector2), "float2(0.0, 0.0)"},
+                {typeof(Vector3), "float3(0.0, 0.0, 0.0)"},
+                {typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)"},
+                {typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)"},
+                {typeof(Matrix), "float4x4()"},
                 
-                TypeDefaults.Add(typeof(float), "0.0");
-                TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");
-                TypeDefaults.Add(typeof(Vector3), "float3(0.0, 0.0, 0.0)");
-                TypeDefaults.Add(typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)");
-                TypeDefaults.Add(typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)");
-                TypeDefaults.Add(typeof(Matrix), "float4x4()");
-                TypeDefaults.Add(typeof(int), "0");
-                TypeDefaults.Add(typeof(Int2), "int2(0, 0)");
-                TypeDefaults.Add(typeof(Int3), "int3(0, 0)");
-                TypeDefaults.Add(typeof(Int4), "int4(0, 0)");
-                TypeDefaults.Add(typeof(uint), "0");
-                TypeDefaults.Add(typeof(bool), "true");
+                {typeof(int), "0"},
+                {typeof(Int2), "int2(0, 0)"},
+                {typeof(Int3), "int3(0, 0, 0)"},
+                {typeof(Int4), "int4(0, 0, 0, 0)"},
+                {typeof(uint), "0"},
+                {typeof(bool), "true"},
+            };
+
+            private static readonly Dictionary<Type, string> KnownGpuTypes = new Dictionary<Type, string>
+            {
+                {typeof(float), "float"},
+                {typeof(Vector2), "float2"},
+                {typeof(Vector3), "float3"},
+                {typeof(Vector4), "float4"},
+                {typeof(Color4), "float4"},
+                {typeof(Matrix), "float4x4"},
+                
+                {typeof(int), "int"},
+                {typeof(Int2), "int2"},
+                {typeof(Int3), "int3"},
+                {typeof(Int4), "int4"},
+                {typeof(uint), "uint"},
+                {typeof(bool), "bool"},
+                
+                {typeof(Texture), "Texture"},
+                {typeof(SamplerState), "Sampler"},
+                {typeof(GpuVoid), "Void"},
+                {typeof(Fuse.sdf.Ray), "Ray"},
+            };
+            
+            private static readonly Dictionary<Type, string> KnownShaderTypes = new Dictionary<Type, string>
+            {
+                {typeof(float), "Float"},
+                {typeof(Vector2), "Float2"},
+                {typeof(Vector3), "Float3"},
+                {typeof(Vector4), "Float4"},
+                {typeof(Color4), "Float4"},
+                {typeof(Matrix), "Float4x4"},
+                
+                {typeof(int), "Int"},
+                {typeof(Int2), "Int2"},
+                {typeof(Int3), "Int3"},
+                {typeof(Int4), "Int4"},
+                {typeof(uint), "Unt"},
+                {typeof(bool), "Bool"},
+                
+                {typeof(Texture), "Texture"},
+                {typeof(SamplerState), "Sampler"},
+                {typeof(GpuVoid), "Void"},
+                {typeof(Fuse.sdf.Ray), "Ray"},
+            };
+            
+            public static string GetGpuTypeForType<T>()
+            {
+                return GetGpuTypeForType(typeof(T));        
             }
 
-            public static string GetNameForType<T>()
+            public static string GetGpuTypeForType(Type t)
             {
-                return GetNameForType(typeof(T));        
-            }
-
-            public static string GetNameForType(Type t)
-            {
-                if (KnownTypes.TryGetValue(t, out var result))
+                if (KnownGpuTypes.TryGetValue(t, out var result))
                     return result;
+                
+                throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+            }
+            
+            public static string GetShaderTypeForType<T>()
+            {
+                return GetShaderTypeForType(typeof(T));        
+            }
 
+            public static string GetShaderTypeForType(Type t)
+            {
+                if (KnownShaderTypes.TryGetValue(t, out var result))
+                    return result;
+                
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
             }
 
@@ -141,6 +178,8 @@ namespace Fuse
                         return "Int3";
                     case GpuValue<Int4> _:
                         return "Int4";
+                    case GpuValue<Fuse.sdf.Ray> _:
+                        return "Ray";
                 }
                 throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName);
             }
@@ -149,7 +188,7 @@ namespace Fuse
             // ReSharper disable once UnusedMember.Global
             public static string GetTypeByGeneric<T>(GpuValue<T> theValue)
             {
-                return GetNameForType<T>();
+                return GetGpuTypeForType<T>();
             }
             
             // USED BY VL
