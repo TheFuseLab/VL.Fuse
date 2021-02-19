@@ -90,6 +90,7 @@ namespace Fuse
                 KnownTypes.Add(typeof(bool), "Bool");
                 KnownTypes.Add(typeof(Texture), "Texture");
                 KnownTypes.Add(typeof(SamplerState), "Sampler");
+                KnownTypes.Add(typeof(GpuVoid), "Void");
                 
                 TypeDefaults.Add(typeof(float), "0.0");
                 TypeDefaults.Add(typeof(Vector2), "float2(0.0, 0.0)");

@@ -1,6 +1,6 @@
 ﻿namespace Fuse
 {
-    public class Void
+    public class GpuVoid
     {
         
     }

@@ -10,17 +10,17 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.shaderFXBridge
 {
-    public abstract class ToShaderFX : ComputeNode
+    public abstract class ToShaderFX<T> : ComputeNode
     {
         public string ShaderCode { get; protected set; }
         public string ShaderName { get; protected set; }
         
         private AbstractShaderNode _myNode;
         
-        public ToShaderFX(AbstractGpuValue theCompute)
+        public ToShaderFX(GpuValue<T> theCompute)
         {
             _myNode = theCompute.ParentNode;
-                
+
             var declarations = new HashSet<string>();
             var mixins = new HashSet<string>();
             var functionMap = new Dictionary<string, string>();
@@ -38,6 +38,9 @@ namespace Fuse.shaderFXBridge
 
             var templateMap = new Dictionary<string, string>
             {
+                {"resultName", theCompute.ID},
+                {"resultType", TypeHelpers.GetNameForType<T>().ToLower()},
+                {"shaderType", TypeHelpers.GetNameForType<T>()},
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},
@@ -73,7 +76,7 @@ namespace Fuse.shaderFXBridge
         }
     }
     
-    public class ToComputeFx : ToShaderFX , IComputeVoid
+    public class ToComputeFx : ToShaderFX<GpuVoid> , IComputeVoid
     {
         
         
@@ -94,7 +97,7 @@ ${sourceCompute}
 };";
 
 
-        public ToComputeFx(AbstractGpuValue theCompute) : base(theCompute)
+        public ToComputeFx(GpuValue<GpuVoid> theCompute) : base(theCompute)
         {
         }
 
@@ -104,11 +107,11 @@ ${sourceCompute}
         }
     }
     
-    public class ToMaterialFX<T> : ToShaderFX, IComputeValue<T>
+    public class ToMaterialFX<T> : ToShaderFX<T>, IComputeValue<T> where T : struct
     {
 
         private const string ShaderSource = @"
-shader ${shaderID} : Compute${shaderType}, ComputeShaderBase${mixins}
+shader ${shaderID} : Compute${shaderType}${mixins}
 {
     cbuffer PerMaterial{
 ${declarations}
@@ -119,11 +122,12 @@ ${functions}
     override ${resultType} Compute()
     {
 ${sourceCompute}
+        return ${result};
     }
 };";
 
 
-        public ToMaterialFX(AbstractGpuValue theCompute) : base(theCompute)
+        public ToMaterialFX(GpuValue<T> theCompute) : base(theCompute)
         {
         }
 

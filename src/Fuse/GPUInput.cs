@@ -77,17 +77,15 @@ namespace Fuse{
              return TypeHelpers.GetNameForType<T>().ToLower();
          }
          
-         private T inputValue;
+         private T _inputValue;
 
          public T Value
          {
-             get => inputValue;
+             get => _inputValue;
              set
              {
-                 if (inputValue!=null && inputValue.Equals(value)) return;
-                 
-                 inputValue = value;
-
+                 if (_inputValue!=null && _inputValue.Equals(value)) return;
+                 _inputValue = value;
                  if (Parameters == null) return;
                  SetParameterValue(Parameters);
              }

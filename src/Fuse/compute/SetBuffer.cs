@@ -3,7 +3,7 @@ using Stride.Graphics;
 
 namespace Fuse
 {
-    public class SetBufferNode<TIn> : ShaderNode<Void> where TIn : struct
+    public class SetBufferNode<TIn> : ShaderNode<GpuVoid> where TIn : struct
     {
         private GpuValue<Buffer> _buffer;
         private GpuValue<int> _index;
