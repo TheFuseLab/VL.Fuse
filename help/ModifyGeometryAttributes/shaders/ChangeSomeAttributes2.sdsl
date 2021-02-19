@@ -1,0 +1,29 @@
+shader ChangeSomeAttributes2 : ComputeFloat, ShaderBaseStream, Camera, MaterialVertexStream, MaterialPixelStream, Texturing
+{
+	compose ComputeFloat4 Color;
+	compose ComputeFloat Amount;
+
+	override float Compute()
+	{
+		//float4 col = float4(streams.TexCoord.x, streams.TexCoord.y, 0, 1);
+		float4 col = Color.Compute();
+		//float amount = Amount.Compute();
+		float4 colInv = col;
+		colInv.rgb = 1 - colInv.rgb;
+		var su = sin(streams.TexCoord.x * 60) * 0.5 + 0.5;
+		var sv = sin(streams.TexCoord.y * 60) * 0.5 + 0.5;
+		streams.Depth = ComputeZProjFromDepth(sv * su * 0.49 + 4);
+		
+		// streams.matNormal = streams.normalWS ;
+		// streams.matDiffuse = col;
+		// streams.matColorBase = col;
+		// streams.matGlossiness = su;
+
+		return sv;
+	}
+
+	float ComputeZProjFromDepth(float depth) 
+	{
+        return (ZProjection.y / depth) + ZProjection.x;
+    }
+};

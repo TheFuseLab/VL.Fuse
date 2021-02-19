@@ -1,0 +1,16 @@
+shader ChangeVertex : ComputeFloat, ShaderBaseStream, PositionStream4, Transformation
+{
+	compose ComputeFloat4 Color;
+	compose ComputeFloat Amount;
+
+	override float Compute()
+	{
+		//float4 col = float4(streams.TexCoord.x, streams.TexCoord.y, 0, 1);
+		float4 col = Color.Compute();
+		//float amount = Amount.Compute();
+		streams.Position = mul(streams.Position, mul(ProjectionInverse, ViewInverse));
+		//streams.Position += float4(0, 0, -1, 0);
+		//streams.Position *= float4(2, 2, 0, 1);
+		return 0;
+	}
+};
