@@ -109,5 +109,70 @@ float ${signature} (float${Domain} a, float${Domain} b, float power = 4.)
     {	
 	 	result += pow(abs(a[i] - b[i]), power);
 	}
-	return pow(result, 1.0/p);  
+	return pow(result, 1.0/ppwer);  
+}
+
+
+
+// sdf combine
+Union
+Intersect
+Difference
+UnionChamfer
+IntersectionChamfer
+DifferenceChamfer
+UnionRound
+IntersectionRound
+DifferenceRound
+UnionColumns
+IntersectionColumns
+DifferenceColumns
+UnionStairs
+IntersectionStairs
+DifferenceStairs
+Pipe
+Engrave
+Groove
+Tongue
+
+U(d1, d2)
+I(d1, d2)
+S(d1, d2)
+fOpUnionChamfer(d1, d2, p1)
+fOpIntersectionChamfer(d1, d2, p1)
+fOpDifferenceChamfer(d1, d2, p1)
+fOpUnionRound(d1, d2, p1)
+fOpIntersectionRound(d1, d2, p1)
+fOpDifferenceRound(d1, d2, p1)
+fOpUnionColumns(d1, d2, p1, p2)
+fOpIntersectionColumns(d1, d2, p1, p2)
+fOpDifferenceColumns(d1, d2, p1, p2)
+fOpUnionStairs(d1, d2, p1, p2)
+fOpIntersectionStairs(d1, d2, p1, p2)
+fOpDifferenceStairs(d1, d2, p1, p2)
+fOpPipe(d1, d2, p1)
+fOpEngrave(d1, d2, p1)
+fOpGroove(d1, d2, p1, p2)
+fOpTongue(d1, d2, p1, p2)
+
+
+float ${signature}(${argumentType} p, float p1, float p2) 
+{
+	float d1 = ${sdf0}(p);
+	float d2 = ${sdf1}(p);
+	return ${OP};
+}
+
+
+
+
+//WorleySmooth
+override float distFunc(${Domain} x, ${Domain} y)
+{
+	return ${DIST_FUNC}(x, y);
+}
+
+${FEATURE} ${signature} (float${Domain} p, float smooth = .2, float jitter = .7)
+{
+	return worleySmoothF1(p, smooth, .7);
 }
