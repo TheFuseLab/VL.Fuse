@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Stride.Core.Extensions;
@@ -8,7 +8,7 @@ using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
 
-namespace Fuse.shaderFXBridge
+namespace Fuse
 {
     public abstract class ToShaderFX<T> : ComputeNode
     {
