@@ -1,269 +1,281 @@
 shader FuseTransform : FuseMath
 {
-    ////////////////////////////////////////////////////////////////
-    //
-    //          Transformation Functions
-    // 	
-    ////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////
+	//
+	//          Transformation Functions
+	// 	
+	////////////////////////////////////////////////////////////////
 
-    // may need to take Stride coord system into account
+	// may need to take Stride coord system into account
 
-    ////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////
 
-    ////////////////////////////////////////////////////////////////
-    //
-    //          Helpers
-    // 	
-    ////////////////////////////////////////////////////////////////
-    float3 getPos(float4x4 m) {return float3(m._41,m._42,m._43);}
-    float3 getScale(float4x4 m) {return float3(length(float3(m._11, m._12, m._13)), length(float3(m._21, m._22, m._23)), length(float3(m._31, m._32, m._33)));}
+	////////////////////////////////////////////////////////////////
+	//
+	//          Helpers
+	// 	
+	////////////////////////////////////////////////////////////////
+	float3 getPos(float4x4 m) {return float3(m._41,m._42,m._43);}
+	float3 getScale(float4x4 m) {return float3(length(float3(m._11, m._12, m._13)), length(float3(m._21, m._22, m._23)), length(float3(m._31, m._32, m._33)));}
 
-    float4x4 identity4x4()
-    {
-        float4x4 m = {  1, 0, 0,  0, 
-                        0, 1, 0,  0, 
-                        0, 0, 1,  0, 
-                        0, 0, 0,  1  };
-        return m;
-    }
+	float4x4 identity4x4()
+	{
+		float4x4 m = {  1, 0, 0,  0, 
+						0, 1, 0,  0, 
+						0, 0, 1,  0, 
+						0, 0, 0,  1  };
+		return m;
+	}
 
-    float3x3 identity3x3()
-    {
-        float3x3 m = {  1, 0, 0,   
-                        0, 1, 0,   
-                        0, 0, 1, };
-        return m;
-    }
+	float3x3 identity3x3()
+	{
+		float3x3 m = {  1, 0, 0,   
+						0, 1, 0,   
+						0, 0, 1, };
+		return m;
+	}
 
-    float4x4 as4x4(float3x3 m)
-    {
-            float4x4 newM =	{m._11,  m._12,  m._13, 0, 
-                             m._21,  m._22,  m._23, 0, 
-                             m._31,  m._32,  m._33, 0, 
-                             0,   	 0,    	0,  	1 };
-            return newM;
-    }
+	float4x4 as4x4(float3x3 m)
+	{
+			float4x4 newM =	{m._11,  m._12,  m._13, 0, 
+							 m._21,  m._22,  m._23, 0, 
+							 m._31,  m._32,  m._33, 0, 
+							 0,   	 0,    	0,  	1 };
+			return newM;
+	}
 
-    float3x3 lookat(float3 dir,float3 up=float3(0,1,0)){float3 z=normalize(dir);float3 x=normalize(cross(up,z));float3 y=normalize(cross(z,x));return float3x3(x,y,z);} 
+	float3x3 lookat(float3 dir,float3 up=float3(0,1,0)){float3 z=normalize(dir);float3 x=normalize(cross(up,z));float3 y=normalize(cross(z,x));return float3x3(x,y,z);} 
 
-    float4x4 lookat4x4(float3 dir,float3 up=float3(0,1,0))
-    {
-        return as4x4(lookat(dir, up));
-    }
-    ////////////////////////////////////////////////////////////////
-
-
-    ////////////////////////////////////////////////////////////////
-    //
-    //          Transformations
-    // 	
-    ////////////////////////////////////////////////////////////////
+	float4x4 lookat4x4(float3 dir,float3 up=float3(0,1,0))
+	{
+		return as4x4(lookat(dir, up));
+	}
+	////////////////////////////////////////////////////////////////
 
 
-    // 2D rotation
-
-    float2 r2d(float2 pt, float a)
-    {
-        float x = cos(a) * pt.x + sin(a) * pt.y;
-        float y = cos(a) * pt.y - sin(a) * pt.x;
-        return float2(x,y);
-    }
+	////////////////////////////////////////////////////////////////
+	//
+	//          Transformations
+	// 	
+	////////////////////////////////////////////////////////////////
 
 
-    //offset version
-    float2 r2d(float2 pt, float2 o, float a)
-    {
-        float x = cos(a) * (pt.x - o.x) + sin(a) * (pt.y - o.y) + o.x;
-        float y = cos(a) * (pt.y - o.y) - sin(a) * (pt.x - o.x) + o.y;
-        return float2(x,y);
-    }
+	// 2D rotation
+
+	void pR(inout float2 p, float a) // demo style
+	{
+		p = cos(a)*p + sin(a)*float2(p.y, -p.x);
+	}
+
+	// Shortcut for 45-degrees rotation
+	void pR45(inout float2 p) 
+	{
+		p = (p + float2(p.y, -p.x))*sqrt(0.5);
+	}
 
 
-    float4x4 scaleM (float3 scale, float4x4 m)
-    {
-        m._11 *= scale.x;  m._21 *= scale.x;  m._31 *= scale.x; m._41 *= scale.x;
-        m._12 *= scale.y;  m._22 *= scale.y;  m._32 *= scale.y; m._42 *= scale.y;
-        m._13 *= scale.z;  m._23 *= scale.z;  m._33 *= scale.z; m._43 *= scale.z;
-        return m;
-    }
-
-    float4x4 translateM (float3 pos,float4x4 m)
-    {
-        float4x4 mT = identity4x4();
-        mT._41 = pos.x;
-        mT._42 = pos.y;
-        mT._43 = pos.z;
-        return mul(mT, m);
-    }
+	float2 r2d(float2 pt, float a)
+	{
+		float x = cos(a) * pt.x + sin(a) * pt.y;
+		float y = cos(a) * pt.y - sin(a) * pt.x;
+		return float2(x,y);
+	}
 
 
-    float3x3 rot3x3(float pitch, float yaw, float roll)
-    {
-        float3 z=float3(-pitch,yaw,-roll)*acos(-1)*2;float3 x=cos(z),y=sin(z);
-        return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
-    }
-
-    float3x3 rot3x3(float3 rotation)
-    {
-        float3 z=float3(-rotation.x,rotation.y,-rotation.z)*acos(-1)*2;float3 x=cos(z),y=sin(z);
-        return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
-    }
-
-    float4x4 rot4x4(float pitch, float yaw, float roll)
-    {
-        return as4x4(rot3x3(pitch, yaw, roll));
-    }
-
-    float4x4 rot4x4(float3 rotation)
-    {
-        return as4x4(rot3x3(rotation));
-    }
+	//offset version
+	float2 r2d(float2 pt, float2 o, float a)
+	{
+		float x = cos(a) * (pt.x - o.x) + sin(a) * (pt.y - o.y) + o.x;
+		float y = cos(a) * (pt.y - o.y) - sin(a) * (pt.x - o.x) + o.y;
+		return float2(x,y);
+	}
 
 
-    float3 rX(float3 p, float a) 
-    {
-        float c,s;float3 q=p;
-        c = cos(a); s = sin(a);
-        p.y = c * q.y - s * q.z;
-        p.z = s * q.y + c * q.z;
-        return p;
-    }
+	float4x4 scaleM (float3 scale, float4x4 m)
+	{
+		m._11 *= scale.x;  m._21 *= scale.x;  m._31 *= scale.x; m._41 *= scale.x;
+		m._12 *= scale.y;  m._22 *= scale.y;  m._32 *= scale.y; m._42 *= scale.y;
+		m._13 *= scale.z;  m._23 *= scale.z;  m._33 *= scale.z; m._43 *= scale.z;
+		return m;
+	}
 
-    float3 rY(float3 p, float a) 
-    {
-        float c,s;float3 q=p;
-        c = cos(a); s = sin(a);
-        p.x = c * q.x + s * q.z;
-        p.z = -s * q.x + c * q.z;
-        return p;
-    }
-
-    float3 rZ(float3 p, float a) 
-    {
-        float c,s;float3 q=p;
-        c = cos(a); s = sin(a);
-        p.x = c * q.x - s * q.y;
-        p.y = s * q.x + c * q.y;
-        return p;
-    }
-
-    float3 rCX(float3 p, float a,float3 ce) 
-    {
-        float c,s;float3 q=p-ce;
-        c = cos(a); s = sin(a);
-        p.y = c * q.y - s * q.z;
-        p.z = s * q.y + c * q.z;
-        return p+ce;
-    }
-
-    float3 rCY(float3 p, float a,float3 ce) 
-    {
-        float c,s;float3 q=p-ce;
-        c = cos(a); s = sin(a);
-        p.x = c * q.x + s * q.z;
-        p.z = -s * q.x + c * q.z;
-        return p+ce;
-    }
-
-    float3 rCZ(float3 p, float a,float3 ce) 
-    {
-        float c,s;float3 q=p-ce;
-        c = cos(a); s = sin(a);
-        p.x = c * q.x - s * q.y;
-        p.y = s * q.x + c * q.y;
-        return p+ce;
-    }
-    ////////////////////////////////////////////////////////////////
+	float4x4 translateM (float3 pos,float4x4 m)
+	{
+		float4x4 mT = identity4x4();
+		mT._41 = pos.x;
+		mT._42 = pos.y;
+		mT._43 = pos.z;
+		return mul(mT, m);
+	}
 
 
-    ////////////////////////////////////////////////////////////////
-    //
-    //          Quaternions
-    // 	
-    ////////////////////////////////////////////////////////////////
+	float3x3 rot3x3(float pitch, float yaw, float roll)
+	{
+		float3 z=float3(-pitch,yaw,-roll)*acos(-1)*2;float3 x=cos(z),y=sin(z);
+		return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
+	}
 
-    float4 invertQuat(float4 q)
-    { 
-      return float4(-q.x, -q.y, -q.z, q.w); 
-    }
+	float3x3 rot3x3(float3 rotation)
+	{
+		float3 z=float3(-rotation.x,rotation.y,-rotation.z)*acos(-1)*2;float3 x=cos(z),y=sin(z);
+		return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
+	}
 
-    float4 mulQuat(float4 q1, float4 q2)
-    {
-        return float4
-        (
-            q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
-            q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
-            q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
-            q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
-        );
-    }
+	float4x4 rot4x4(float pitch, float yaw, float roll)
+	{
+		return as4x4(rot3x3(pitch, yaw, roll));
+	}
 
-    float3x3 qRot3x3(float4 q)
-    {
-        float3x3 m = identity3x3();
-        m[0][0] = 1 - 2*q.y*q.y - 2*q.z*q.z;
-        m[0][1] = 2*q.x*q.y + 2*q.w*q.z;
-        m[0][2] = 2*q.x*q.z - 2*q.w*q.y;
-        m[1][0] = 2*q.x*q.y - 2*q.w*q.z;
-        m[1][1] = 1 - 2*q.x*q.x - 2*q.z*q.z;
-        m[1][2] = 2*q.y*q.z + 2*q.w*q.x;
-        m[2][0] = 2*q.x*q.z + 2*q.w*q.y;
-        m[2][1] = 2*q.y*q.z - 2*q.w*q.x;
-        m[2][2] = 1 - 2*q.x*q.x - 2*q.y*q.y;
-        return m;
-    }
+	float4x4 rot4x4(float3 rotation)
+	{
+		return as4x4(rot3x3(rotation));
+	}
 
-    float4x4 qRot4x4(float4 q)
-    {
-        return as4x4(qRot3x3(q));
-    }
 
-    float4 slerp (float4 a, float4 b, float t )
-    {
-        if ( t <= 0.0f )
-        {
-            return a;
-        }
+	float3 rX(float3 p, float a) 
+	{
+		float c,s;float3 q=p;
+		c = cos(a); s = sin(a);
+		p.y = c * q.y - s * q.z;
+		p.z = s * q.y + c * q.z;
+		return p;
+	}
 
-        if ( t >= 1.0f )
-        {
-            return b;
-        }
+	float3 rY(float3 p, float a) 
+	{
+		float c,s;float3 q=p;
+		c = cos(a); s = sin(a);
+		p.x = c * q.x + s * q.z;
+		p.z = -s * q.x + c * q.z;
+		return p;
+	}
 
-        float coshalftheta = dot(a, b);
-        //coshalftheta = std::min (1.0f, std::max (-1.0f, coshalftheta));
-        float4 c = b;
+	float3 rZ(float3 p, float a) 
+	{
+		float c,s;float3 q=p;
+		c = cos(a); s = sin(a);
+		p.x = c * q.x - s * q.y;
+		p.y = s * q.x + c * q.y;
+		return p;
+	}
 
-        // Angle is greater than 180. We can negate the angle/quat to get the
-        // shorter rotation to reach the same destination.
-        if ( coshalftheta < 0.0f )
-        {
-            coshalftheta = -coshalftheta;
-            c = -c;
-        }
+	float3 rCX(float3 p, float a,float3 ce) 
+	{
+		float c,s;float3 q=p-ce;
+		c = cos(a); s = sin(a);
+		p.y = c * q.y - s * q.z;
+		p.z = s * q.y + c * q.z;
+		return p+ce;
+	}
 
-            if ( coshalftheta > 0.99f )
-            {
-            // Angle is tiny - save some computation by lerping instead.
-                    float4 r = lerp(a, c, t);
-                    return r;
-            }
+	float3 rCY(float3 p, float a,float3 ce) 
+	{
+		float c,s;float3 q=p-ce;
+		c = cos(a); s = sin(a);
+		p.x = c * q.x + s * q.z;
+		p.z = -s * q.x + c * q.z;
+		return p+ce;
+	}
 
-        float halftheta = acos(coshalftheta);
-        float sintheta = sin(halftheta);
+	float3 rCZ(float3 p, float a,float3 ce) 
+	{
+		float c,s;float3 q=p-ce;
+		c = cos(a); s = sin(a);
+		p.x = c * q.x - s * q.y;
+		p.y = s * q.x + c * q.y;
+		return p+ce;
+	}
+	////////////////////////////////////////////////////////////////
 
-        return (sin((1.0f - t) * halftheta) * a + sin(t * halftheta) * c) / sin(halftheta);
-    }
 
-    float4 axisAngle2Quat(float3 a, float r)
-    {
-        float4 res = 0;
-        float sinr = sin( r*PI );
-        float cosr = cos( r*PI );
-        res.x = a.x * sinr;
-        res.y = a.y * sinr;
-        res.z = a.z * sinr;
-        res.w = cosr;
-        return res;
-    }
+	////////////////////////////////////////////////////////////////
+	//
+	//          Quaternions
+	// 	
+	////////////////////////////////////////////////////////////////
+
+	float4 invertQuat(float4 q)
+	{ 
+	  return float4(-q.x, -q.y, -q.z, q.w); 
+	}
+
+	float4 mulQuat(float4 q1, float4 q2)
+	{
+		return float4
+		(
+			q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
+			q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
+			q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
+			q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+		);
+	}
+
+	float3x3 qRot3x3(float4 q)
+	{
+		float3x3 m = identity3x3();
+		m[0][0] = 1 - 2*q.y*q.y - 2*q.z*q.z;
+		m[0][1] = 2*q.x*q.y + 2*q.w*q.z;
+		m[0][2] = 2*q.x*q.z - 2*q.w*q.y;
+		m[1][0] = 2*q.x*q.y - 2*q.w*q.z;
+		m[1][1] = 1 - 2*q.x*q.x - 2*q.z*q.z;
+		m[1][2] = 2*q.y*q.z + 2*q.w*q.x;
+		m[2][0] = 2*q.x*q.z + 2*q.w*q.y;
+		m[2][1] = 2*q.y*q.z - 2*q.w*q.x;
+		m[2][2] = 1 - 2*q.x*q.x - 2*q.y*q.y;
+		return m;
+	}
+
+	float4x4 qRot4x4(float4 q)
+	{
+		return as4x4(qRot3x3(q));
+	}
+
+	float4 slerp (float4 a, float4 b, float t )
+	{
+		if ( t <= 0.0f )
+		{
+			return a;
+		}
+
+		if ( t >= 1.0f )
+		{
+			return b;
+		}
+
+		float coshalftheta = dot(a, b);
+		//coshalftheta = std::min (1.0f, std::max (-1.0f, coshalftheta));
+		float4 c = b;
+
+		// Angle is greater than 180. We can negate the angle/quat to get the
+		// shorter rotation to reach the same destination.
+		if ( coshalftheta < 0.0f )
+		{
+			coshalftheta = -coshalftheta;
+			c = -c;
+		}
+
+			if ( coshalftheta > 0.99f )
+			{
+			// Angle is tiny - save some computation by lerping instead.
+					float4 r = lerp(a, c, t);
+					return r;
+			}
+
+		float halftheta = acos(coshalftheta);
+		float sintheta = sin(halftheta);
+
+		return (sin((1.0f - t) * halftheta) * a + sin(t * halftheta) * c) / sin(halftheta);
+	}
+
+	float4 axisAngle2Quat(float3 a, float r)
+	{
+		float4 res = 0;
+		float sinr = sin( r*PI );
+		float cosr = cos( r*PI );
+		res.x = a.x * sinr;
+		res.y = a.y * sinr;
+		res.z = a.z * sinr;
+		res.w = cosr;
+		return res;
+	}
 };

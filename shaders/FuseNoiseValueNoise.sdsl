@@ -31,7 +31,8 @@ shader FuseNoiseValueNoise : FuseHash
 	
 		float u = f * f * (3.0 - 2.0 * f);
 
-		return  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
+		float result =  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
+		return result * 2.0 - 1.0;
 	}
 
 	float valueNoise(float2 p)
@@ -41,12 +42,15 @@ shader FuseNoiseValueNoise : FuseHash
 	
 		float2 u = f * f * (3.0 - 2.0 * f);
 
-		return lerp(lerp(hash12(i + float2(0.0,0.0)), 
+		float result = lerp(lerp(hash12(i + float2(0.0,0.0)), 
 						 hash12(i + float2(1.0,0.0)), u.x),
-					lerp(hash12(i + float2(0.0,1.0)), 
+						lerp(hash12(i + float2(0.0,1.0)), 
 						 hash12(i + float2(1.0,1.0)), u.x), u.y);
+
+		return result * 2.0 - 1.0;
 	}
 
+	// Looks like it might be mirroring? 
 	float valueNoise(float3 p)
 	{
 		float3 i = floor(p);
@@ -54,7 +58,7 @@ shader FuseNoiseValueNoise : FuseHash
 
 		float3 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp(hash13(i + float3(0,0,0)), 
+		float result = lerp(lerp(lerp(hash13(i + float3(0,0,0)), 
 							  hash13(i + float3(1,0,0)),u.x),
 						 lerp(hash13(i + float3(0,1,0)), 
 							  hash13(i + float3(1,1,0)),u.x),u.y),
@@ -62,6 +66,7 @@ shader FuseNoiseValueNoise : FuseHash
 							  hash13(i + float3(1,0,1)),u.x),
 						 lerp(hash13(i + float3(0,1,1)), 
 							  hash13(i + float3(1,1,1)),u.x),u.y),u.z);
+		return result * 2.0 - 1.0;
 	}
 
 	float valueNoise(float4 p)
@@ -71,7 +76,7 @@ shader FuseNoiseValueNoise : FuseHash
 
 		float4 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp(lerp(hash14(i + float4(0,0,0,0)), 
+		float result = lerp(lerp(lerp(lerp(hash14(i + float4(0,0,0,0)), 
 								   hash14(i + float4(1,0,0,0)),u.x),
 							  lerp(hash14(i + float4(0,1,0,0)), 
 								   hash14(i + float4(1,1,0,0)),u.x),u.y),
@@ -87,6 +92,7 @@ shader FuseNoiseValueNoise : FuseHash
 								   hash14(i + float4(1,0,1,1)),u.x),
 							  lerp(hash14(i + float4(0,1,1,1)), 
 								   hash14(i + float4(1,1,1,1)),u.x),u.y),u.z),u.w);
+		return result * 2.0 - 1.0;
 	}
 
 	/*
