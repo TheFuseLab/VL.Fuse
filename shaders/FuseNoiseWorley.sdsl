@@ -10,13 +10,7 @@ shader FuseNoiseWorley : FuseHash
 	-F1 F2 combination Functions
 	-Add Edge SDF
 	-Add N-SPhere
-	-Figure out how to support Feature struct output.  Eg for 3D:
-		struct Worley3DFeature
-		{
-			float dist;
-			float3 pos;
-			float id;
-		};
+
 	*/ 
 
 	// should be a delegate in patch
@@ -28,28 +22,16 @@ shader FuseNoiseWorley : FuseHash
 	float distFunc(float2 x, float2 y)
 	{
 		return distance(x, y);
-		//return euclideanDist(x - y);
-		//return chebyshevDist(x - y);
-		//return minkowskiDist(x - y);
-		//return cubesDist(x - y);
 	}
 
 	float distFunc(float3 x, float3 y)
 	{
 		return distance(x, y);
-		//return euclideanDist(x - y);
-		//return chebyshevDist(x - y);
-		//return minkowskiDist(x - y);
-		//return cubesDist(x - y);
 	}
 
 	float distFunc(float4 x, float4 y)
 	{
 		return distance(x, y);
-		//return euclideanDist(x - y);
-		//return chebyshevDist(x - y);
-		//return minkowskiDist(x - y);
-		//return cubesDist(x - y);
 	}
 
 
@@ -251,6 +233,33 @@ shader FuseNoiseWorley : FuseHash
 		return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
 	}
 
+	// same as above without struct
+	float worleySmoothF1 (float p, out float cellPosition, out float cellID,  float smooth = .2, float jitter = .7)
+	{
+		cellPosition = floor(p);
+		float localPosition = p - cellPosition;
+		float smoothDistance  = 8.0;
+		float smoothPosition = 0.0;
+		float smoothID = 0.0;
+		[unroll]
+		for (int x = -1; x <= 1; x++) 
+		{
+			float cellOffset = x;
+			float pointPosition = cellOffset + hash11(cellPosition + cellOffset) * jitter;
+			float distanceToPoint = distFunc(pointPosition, localPosition);	
+			float h = smoothstep(0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smooth);
+			float correctionFactor = smooth * h * (1.0 - h);
+			smoothDistance = lerp(smoothDistance, distanceToPoint, h) - correctionFactor;
+			correctionFactor /= 1.0 + 3.0 * smooth;
+			float cellID = hash11(cellPosition + cellOffset);
+			smoothID = lerp(smoothID, cellID, h) - correctionFactor;
+			smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
+		}
+		cellPosition += smoothPosition;
+		cellID = smoothID;
+		return smoothDistance;
+		//return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
+	}
 
 
 	// 2D
@@ -282,6 +291,38 @@ shader FuseNoiseWorley : FuseHash
 		return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
 	}
 
+	// same as above without struct
+	float worleySmoothF1 (float2 p, out float2 cellPosition, out float cellID,  float smooth = .2, float jitter = .7)
+	{
+		cellPosition = floor(p);
+		float2 localPosition = p - cellPosition;
+		float smoothDistance  = 8.0;
+		float2 smoothPosition = 0.0;
+		float smoothID = 0.0;
+		[unroll]
+		for (int y = -1; y <= 1; y++) 
+		{
+			[unroll]
+			for (int x = -1; x <= 1; x++) 
+			{
+				float2 cellOffset = float2(x, y);
+				float2 pointPosition = cellOffset + hash22(cellPosition + cellOffset) * jitter;
+				float distanceToPoint = distFunc(pointPosition, localPosition);
+				float h = smoothstep(0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smooth);
+				float correctionFactor = smooth * h * (1.0 - h);
+				smoothDistance = lerp(smoothDistance, distanceToPoint, h) - correctionFactor;
+				correctionFactor /= 1.0 + 3.0 * smooth;
+				float cellID = hash12(cellPosition + cellOffset);
+				smoothID = lerp(smoothID, cellID, h) - correctionFactor;
+				smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
+			}
+		}
+
+		cellPosition += smoothPosition;
+		cellID = smoothID;
+		return smoothDistance;
+		//return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
+	}
 
 
 	// 3D
@@ -317,6 +358,43 @@ shader FuseNoiseWorley : FuseHash
 		return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
 	}
 
+	// same as above without struct
+	float worleySmoothF1 (float3 p, out float3 cellPosition, out float cellID,  float smooth = .2, float jitter = .7)
+	{
+		cellPosition = floor(p);
+		float3 localPosition = p - cellPosition;
+		float smoothDistance  = 8.0;
+		float3 smoothPosition = 0.0;
+		float smoothID = 0.0;
+		[unroll]
+		for (int z = -1; z <= 1; z++) 
+		{
+			[unroll]
+			for (int y = -1; y <= 1; y++) 
+			{
+				[unroll]
+				for (int x = -1; x <= 1; x++) 
+				{
+					float3 cellOffset = float3(x, y, z);
+					float3 pointPosition = cellOffset + hash33(cellPosition + cellOffset) * jitter;
+					float distanceToPoint = distFunc(pointPosition, localPosition);
+					float h = smoothstep(0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smooth);
+					float correctionFactor = smooth * h * (1.0 - h);
+					smoothDistance = lerp(smoothDistance, distanceToPoint, h) - correctionFactor;
+					correctionFactor /= 1.0 + 3.0 * smooth;
+					float cellID = hash13(cellPosition + cellOffset);
+					smoothID = lerp(smoothID, cellID, h) - correctionFactor;
+					smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
+				}
+			}
+		}
+		cellPosition += smoothPosition;
+		cellID = smoothID;
+		return smoothDistance;
+		//return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
+	}
+
+
 	// 4D
 	worley4DFeature worleySmoothF1 (float4 p, float smooth = .2, float jitter = .7)
 	{
@@ -348,12 +426,52 @@ shader FuseNoiseWorley : FuseHash
 						float cellID = hash14(cellPosition + cellOffset);
 						smoothID = lerp(smoothID, cellID, h) - correctionFactor;
 						smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
-				
 					}
 				}
 			}
 		}
 		return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
+	}
+
+	// same as above without struct
+	float worleySmoothF1 (float4 p, out float4 cellPosition, out float cellID,  float smooth = .2, float jitter = .7)
+	{
+		cellPosition = floor(p);
+		float4 localPosition = p - cellPosition;
+		float smoothDistance  = 8.0;
+		float4 smoothPosition = 0.0;
+		float smoothID = 0.0;
+		[unroll]
+		for (int w = -1; w <= 1; w++) 
+		{
+			[unroll]
+			for (int z = -1; z <= 1; z++) 
+			{
+				[unroll]
+				for (int y = -1; y <= 1; y++) 
+				{
+					[unroll]
+					for (int x = -1; x <= 1; x++) 
+					{
+						float4 cellOffset = float4(x, y, z, w);
+						float4 pointPosition = cellOffset + hash44(cellPosition + cellOffset) * jitter;
+						float distanceToPoint = distFunc(pointPosition, localPosition);
+					
+						float h = smoothstep(0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smooth);
+						float correctionFactor = smooth * h * (1.0 - h);
+						smoothDistance = lerp(smoothDistance, distanceToPoint, h) - correctionFactor;
+						correctionFactor /= 1.0 + 3.0 * smooth;
+						float cellID = hash14(cellPosition + cellOffset);
+						smoothID = lerp(smoothID, cellID, h) - correctionFactor;
+						smoothPosition = lerp(smoothPosition, pointPosition, h) - correctionFactor;
+					}
+				}
+			}
+		}
+		cellPosition += smoothPosition;
+		cellID = smoothID;
+		return smoothDistance;
+		//return makeWorleyFeature(smoothDistance, cellPosition + smoothPosition, smoothID);
 	}
 
 
