@@ -278,11 +278,20 @@ shader FuseSDF : FuseMath, FuseTransform
 		return l < 0 ? abs(p.y) : length(float2(p.y, l));
 	}
 
+	// edit to upright
+	float fTriPrism( float3 p, float2 h )
+	{
+		float3 q = abs(p);
+		return max(q.y-h.y,max(q.x*0.866025+p.z*0.5,-p.z)-h.x*0.5);
+	}
+
+	/*
 	float fTriPrism( float3 p, float2 h )
 	{
 		float3 q = abs(p);
 		return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
 	}
+	*/
 
 	float fPyramid(float3 p, float3 h ) 
 	{

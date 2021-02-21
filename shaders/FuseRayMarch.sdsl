@@ -51,9 +51,9 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		return makeRay(ro, rd);
 	}
 
-	float2 cullRayDefualt(Ray ray)
+	float2 cullRayDefualt(Ray ray, float2 minMaxDist =  float2(0.1, 200.))
 	{
-		return float2(0.1, 200.);
+		return minMaxDist;
 	}
 
 
@@ -68,9 +68,10 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float tN = max( max( t1.x, t1.y ), t1.z );
 		float tF = min( min( t2.x, t2.y ), t2.z );
 	
-		if( tN > tF || tF < 0.0) killRay(); // no intersection
-	
-		return float2( tN, tF );
+		//if( tN > tF || tF < 0.0) killRay(); // no intersection
+		tN = max(tN, 0); // avoid starting our ray behind us
+		//return float2( 0.01, 200 );
+		return float2(tN, tF );
 	}
 
 	void killRayDiscard() {discard;};
@@ -80,7 +81,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float3 startPos = ray.ro + ray.rd * minMaxDist.x;
 		float3 p = startPos;
 		float z = minMaxDist.x;
-		//maxDist -= minDist;
+		minMaxDist.y -= minMaxDist.x;
 		for(int i=0; i<maxIter; i++)
 		{
 			float dist = SDF(p);
