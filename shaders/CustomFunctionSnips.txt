@@ -1,116 +1,3 @@
-// Euclidean
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-	return distance(a, b);
-	// just use the intrisic function here.  N dimensional version below
-
-	/*
-    float result = 0.;
-    for(int i = 0; i < ${Domain}; i++)
-    {
- 		result += ((a[i] - b[i]) * (a[i] - b[i]));
-    }
-    return sqrt(result);
-    */
-}
-
-// EuclideanSquared
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-    float result = 0.;
-    for(int i = 0; i < ${Domain}; i++)
-    {
- 		result += ((a[i] - b[i]) * (a[i] - b[i]));
-    }
-    return result;
-}
-
-// Manhattan
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-    float result = 0.;
-    for(int i = 0; i < ${Domain}; i++)
-    {
- 		result += abs(a[i] - b[i]);
-    }
-    return result;
-}
-
-// Chebyshev
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-    float maxComponent = abs(a[0] - b[0]);
-    for(int i = 1; i < ${Domain}; i++)
-    {
- 		float next = abs(a[i] - b[i]);
- 		maxComponent = max(maxComponent, next);
-    }
-    return maxComponent;
-}
-
-// Canberra
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-    float result = 0.;
-    for(int i = 0; i < ${Domain}; i++)
-    {
- 		result += abs(a[i] - b[i]) / (abs(a[i]) + abs(b[i]));
-    }
-    return result;
-}
-
-
-// CosineSimilarity
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-    float dotProduct = 0;
-    float magnitudeOne = 0;
-    float magnitudeTwo = 0;
-    for(int i = 0; i < ${Domain}; i++)
-    {
-	    dotProduct += (a[i] * b[i]);
-        magnitudeOne += (a[i] * b[i]);
-        magnitudeTwo += (a[i] * b[i]);
-    }
-    return max(0, 1 - (dotProduct / sqrt(magnitudeOne * magnitudeTwo)));
-}
-
-// PearsonCorrelation
-float ${signature} (float${Domain} a, float${Domain} b)
-{
-	float meanOne = 0.;
-	float meanTwo = 0.;
-	for(int i = 0; i < ${Domain}; i++)
-    {
-        meanOne += a[i];
-        meanTwo += b[i];
-    }
-    meanOne /= ${Domain};
-    meanTwo /= ${Domain};
-
-    float covariance = 0;
-    float standardDeviationOne = 0;
-    float standardDeviationTwo = 0;
-    for(int i = 0; i < ${Domain}; i++)
-    {
-        covariance += ((a[i] - meanOne) * (b[i] - meanTwo));
-        standardDeviationOne += ((a[i] - meanOne) * (a[i] - meanOne));
-        standardDeviationTwo += ((b[i] - meanTwo) * (b[i] - meanTwo));
-    }
-    return max(0, 1 - (covariance / sqrt(standardDeviationOne * standardDeviationTwo)));
-}
-
-
-// Minkowski
-float ${signature} (float${Domain} a, float${Domain} b, float power = 4.)
-{
-	float result = 0.;
-	for(int i = 0; i < ${Domain}; i++)
-    {	
-	 	result += pow(abs(a[i] - b[i]), power);
-	}
-	return pow(result, 1.0/ppwer);  
-}
 
 
 
@@ -166,13 +53,44 @@ float ${signature}(${argumentType} p, float p1, float p2)
 
 
 
+
 //WorleySmooth
-override float distFunc(${DOMAIN} x, ${DOMAIN} y)
+override float distFunc(${DOMAIN} a, ${DOMAIN} b)
 {
-	return ${DIST_FUNC}(x, y);
+	return ${DIST_FUNC}(a, b);
 }
 
-${FEATURE} ${signature} (float${DOMAIN} p, float smooth = .2, float jitter = .7)
+float ${signature} (${DOMAIN} p, out ${DOMAIN} cellPosition, out float cellID, float smooth, float jitter)
 {
-	return worleySmoothF1(p, smooth, .7);
+	return worleySmoothF1(p, cellPosition,  cellID, smooth, jitter);
+}
+
+
+
+
+// raymarcher
+float SDF(float3 p) // should be override unless it's the first imp.  Gets called by the other functions
+{
+	return ${SDF}(p);
+}
+
+void killRay() { ${KILL}(); }
+
+float4 ${signature}(float3 p, int maxIter)
+{
+	Ray ray = ${SETUP}();
+	float2 minMaxDist = ${CULL}(ray);
+	${MARCH}(ray, minMaxDist, maxIter);
+	ray.sn = SDFNormal(ray.sp);
+	return ${SHADE}(ray);
+}
+
+
+
+// this was the shader code, note just the first arg gets passed on:
+float DIST_FUNC62600255(float2 arg_val57212719, float2 arg_val3718701)
+{
+    float result_13813509 = DistanceMetric63077346(arg_val57212719, arg_val57212719);
+
+    return result_13813509;
 }
