@@ -1,3 +1,72 @@
+// FBMS
+
+// FBM
+${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity)
+{
+
+    float myScale = 1;
+    float myFallOff = gain;
+    int iOctaves = int(floor(octaves)); 
+    ${resultType} myResult = 0.;  
+    float myAmp = 0.;
+    for(int i = 0; i < iOctaves;i++)
+    {
+        myResult += ${noise}(p * myScale) * myFallOff;
+        myAmp += myFallOff;
+        myFallOff *= gain;
+        myScale *= lacunarity;
+    }
+    float myBlend = octaves - float(iOctaves);
+    myResult += ${noise}(p * myScale) * myFallOff * myBlend;    
+    myAmp += myFallOff * myBlend;
+    if(myAmp > 0.0) myResult /= myAmp;
+    return myResult;
+}
+
+// Multifractal FBM
+${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity)
+{
+    float myScale = 1;
+    int iOctaves = int(floor(octaves)); 
+    ${resultType} myResult = 1.;  
+    float myAmp = 1.;
+    for(int i = 0; i < iOctaves;i++)
+    {
+        myResult *= ( myAmp * ${noise}(p * myScale) + 1.);
+        myAmp *= gain;
+        myScale *= lacunarity;
+    }
+    float myBlend = octaves - float(iOctaves);
+    if (myBlend != 0.0) myResult *= (myBlend * myAmp * ${noise}(p * myScale) + 1.);
+    return myResult;
+}
+
+
+// Heterogeneous FBM
+${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity, ${resultType} offset)
+{
+    float myAmp = gain;
+    int iOctaves = int(floor(octaves)); 
+    ${resultType} result = offset + ${noise}(p);  
+    p*= lacunarity;
+    for(int i = 1; i < iOctaves;i++)
+    {
+        ${resultType} increment = (${noise}(p) + offset) * myAmp * result;
+        result += increment;
+        myAmp *= gain;
+        p *= lacunarity;
+    }
+    float myBlend = octaves - float(iOctaves);
+    if (myBlend != 0.0) 
+    {
+        ${resultType} increment = (${noise}(p) + offset) * myAmp * result;
+        result += myBlend * increment;
+    }
+    return result;
+}
+
+
+    
 
 
 

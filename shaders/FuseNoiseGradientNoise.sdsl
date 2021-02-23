@@ -18,7 +18,8 @@ shader FuseNoiseGradientNoise : FuseHash
 	
 		float u = f * f * (3.0 - 2.0 * f);
 
-		return  lerp( dot( hash11( i + 0.0) * 2.0 - 1.0, f - 0.0 ), 
+		// scale to ~ -1 to 1
+		return 2. *  lerp( dot( hash11( i + 0.0) * 2.0 - 1.0, f - 0.0 ), 
 					  dot( hash11( i + 1.0) * 2.0 - 1.0, f - 1.0 ), u);
 	}
 
@@ -30,7 +31,8 @@ shader FuseNoiseGradientNoise : FuseHash
 	
 		float2 u = f * f * (3.0 - 2.0 * f);
 
-		return lerp(lerp(dot(hash22( i + float2(0.0,0.0) ) * 2.0 - 1.0, f - float2(0.0,0.0) ), 
+		// scale to ~ -1 to 1
+		return 2. * lerp(lerp(dot(hash22( i + float2(0.0,0.0) ) * 2.0 - 1.0, f - float2(0.0,0.0) ), 
 						 dot(hash22( i + float2(1.0,0.0) ) * 2.0 - 1.0, f - float2(1.0,0.0) ), u.x),
 					lerp(dot(hash22( i + float2(0.0,1.0) ) * 2.0 - 1.0, f - float2(0.0,1.0) ), 
 						 dot(hash22( i + float2(1.0,1.0) ) * 2.0 - 1.0, f - float2(1.0,1.0) ), u.x), u.y);
@@ -45,7 +47,8 @@ shader FuseNoiseGradientNoise : FuseHash
 
 		float3 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,0.0) ), 
+		// scale to ~ -1 to 1
+		return 2. * lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,0.0) ), 
 							   dot( hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,0.0) ), u.x),
 						 lerp( dot( hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,0.0) ), 
 							   dot( hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,0.0) ), u.x), u.y),
@@ -63,7 +66,8 @@ shader FuseNoiseGradientNoise : FuseHash
 
 		float4 u = f * f * (3.0 - 2.0 * f);
 		
-		return lerp(lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,0) ) * 2.0 - 1.0, f - float4(0,0,0,0) ), 
+		// scale to ~ -1 to 1
+		return 2 * lerp(lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,0) ) * 2.0 - 1.0, f - float4(0,0,0,0) ), 
 								   dot(hash44(i + float4(1,0,0,0) ) * 2.0 - 1.0, f - float4(1,0,0,0) ), u.x),
 							  lerp(dot(hash44(i + float4(0,1,0,0) ) * 2.0 - 1.0, f - float4(0,1,0,0) ), 
 								   dot(hash44(i + float4(1,1,0,0) ) * 2.0 - 1.0, f - float4(1,1,0,0) ), u.x),u.y),
