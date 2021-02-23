@@ -30,10 +30,10 @@ namespace Fuse
         void DeleteRemap();
     }
     
-    public class DelegateParameter<T> : ShaderNode<T> , IDelegateParameter
+    public sealed class DelegateParameter<T> : ShaderNode<T> , IDelegateParameter
     {
-        private string _name = "";
-        private int id;
+        private readonly string _name;
+        private readonly int _id;
 
         public DelegateParameter(GpuValue<T> theType, int theId = 0): base("delegate", null,"delegate")
         {
@@ -43,15 +43,13 @@ namespace Fuse
             };
             _name = "val" + GetHashCode();
             Ins = new List<AbstractGpuValue>();
-            id = theId;
+            _id = theId;
         }
 
         public void Remap(List<AbstractGpuValue> theParameters)
         {
-            if (id >= theParameters.Count()) return;
-            Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
-            Output.name = "arg_"+theParameters[id].ID;
-            Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
+            if (_id >= theParameters.Count()) return;
+            Output.name = "arg_"+theParameters[_id].ID;
         }
 
         public void DeleteRemap()
@@ -60,7 +58,7 @@ namespace Fuse
             Output.name = _name;
         }
 
-        public virtual string TypeName()
+        public string TypeName()
         {
             return TypeHelpers.GetGpuTypeForType<T>();
         }
