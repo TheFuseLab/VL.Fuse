@@ -1,9 +1,9 @@
 // FBMS
+// See Chapter by Musgrave in "Texturing and Modelling: A procedural approach"
 
 // FBM
-${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity)
+${resultType} ${signature}(${argumentType} p, float gain, float octaves, float lacunarity)
 {
-
     float myScale = 1;
     float myFallOff = gain;
     int iOctaves = int(floor(octaves)); 
@@ -24,46 +24,87 @@ ${resultType} ${signature}(${argumentType} p,float gain, float octaves, float la
 }
 
 // Multifractal FBM
-${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity)
+${resultType} ${signature}(${argumentType} p,float gain, float lacunarity, float octaves)
 {
-    float myScale = 1;
     int iOctaves = int(floor(octaves)); 
-    ${resultType} myResult = 1.;  
-    float myAmp = 1.;
-    for(int i = 0; i < iOctaves;i++)
+    ${resultType} result = 1.;  
+    float ampScale = 1.;
+	
+    for(int i = 0; i < iOctaves; i++)
     {
-        myResult *= ( myAmp * ${noise}(p * myScale) + 1.);
-        myAmp *= gain;
-        myScale *= lacunarity;
-    }
-    float myBlend = octaves - float(iOctaves);
-    if (myBlend != 0.0) myResult *= (myBlend * myAmp * ${noise}(p * myScale) + 1.);
-    return myResult;
-}
-
-
-// Heterogeneous FBM
-${resultType} ${signature}(${argumentType} p,float gain, float octaves, float lacunarity, ${resultType} offset)
-{
-    float myAmp = gain;
-    int iOctaves = int(floor(octaves)); 
-    ${resultType} result = offset + ${noise}(p);  
-    p*= lacunarity;
-    for(int i = 1; i < iOctaves;i++)
-    {
-        ${resultType} increment = (${noise}(p) + offset) * myAmp * result;
-        result += increment;
-        myAmp *= gain;
+        result *=  ampScale * ${noise}(p) + 1.0; 
+        ampScale *= gain;
         p *= lacunarity;
     }
-    float myBlend = octaves - float(iOctaves);
-    if (myBlend != 0.0) 
-    {
-        ${resultType} increment = (${noise}(p) + offset) * myAmp * result;
-        result += myBlend * increment;
-    }
-    return result;
+	
+	float remainder = octaves - float(iOctaves);	
+	if (remainder > 0. && octaves > 1.0) 
+	{
+		${resultType} fracResult = result * (ampScale * ${noise}(p) + 1);
+		result = lerp(result, fracResult, remainder);
+	}
+	return result - 1.0;
 }
+
+// Heterogeneous FBM
+${resultType} ${signature}(${argumentType} p,float gain, float lacunarity, float octaves)
+{
+	int iOctaves = int(floor(octaves)); 
+	${resultType} value;	
+	${resultType} increment;
+	float ampScale = gain;
+	
+	value = ${noise}(p);      
+	p *= lacunarity;
+	
+    for(int i = 1; i < iOctaves; i++)
+	{
+		increment = ${noise}(p) * ampScale * value;
+		value += increment;
+		ampScale *= gain;
+        p *= lacunarity;
+	}
+	float remainder = octaves - float(iOctaves);
+	if (remainder > 0. && octaves > 1.0) 
+	{
+		increment = ${noise}(p)  * ampScale * value;
+		value += (remainder * increment);
+	}
+	return value;
+}
+
+// Hybrid FBM
+${resultType} ${signature}(${argumentType} p,float gain, float lacunarity, float octaves)
+{
+	int iOctaves = int(floor(octaves)); 
+	${resultType} signal = 0.0;
+	${resultType} result = ${noise}(p);  
+	${resultType} weight = result;
+	float ampScale = gain; 
+	p *= lacunarity;
+	ampScale *= gain;
+
+	for (int i=1; i<iOctaves && weight > 0.001; i++)
+	{
+		weight = min(weight, 1.0);
+		signal = ampScale * ${noise}(p);
+		result += weight * signal;
+		weight *= gain * signal;
+		ampScale *= gain;
+		p *= lacunarity;
+	}
+	
+    float remainder = octaves - float(iOctaves);
+	if (remainder > 0. && octaves > 1.0)
+	{
+		weight = min(weight, 1.0);
+		signal = ampScale * ${noise}(p);
+		${resultType} fracResult = result + weight * signal;
+		result = lerp(result, fracResult, remainder);
+	}
+	return result;
+}
+
 
 
     
