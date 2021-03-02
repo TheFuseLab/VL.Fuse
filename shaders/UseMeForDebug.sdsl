@@ -1,73 +1,15 @@
-shader UseMeForDebug :  VS_PS_Base, Texturing, FuseCast, FuseNoise
+shader UseMeForDebug :  VS_PS_Base, Texturing
 {
-    cbuffer Inputs{
 
-        [Link("input_27735475")]
-        stage float2 input_27735475;
-
-        [Link("input_11941476")]
-        stage float input_11941476;
-
-        [Link("input_48292686")]
-        stage float input_48292686;
-
-        [Link("input_53522613")]
-        stage float input_53522613;
-
-    }
-
-    float noise20756890(float3 arg_result_51141435){
-        float result_7412431 = simplexNoise13(arg_result_51141435);
-
-        return result_7412431;
-    }
-
-    // Heterogeneous FBM
-    float fbm6351029(float3 p,float gain, float octaves, float lacunarity, float offset)
+    float sizeTest(float2 R, float2 IR, float A) // render size, inverse size, aspect
     {
-        float myAmp = gain;
-        int iOctaves = int(floor(octaves)); 
-        float result = offset + noise20756890(p);  
-        p*= lacunarity;
-        for(int i = 1; i < iOctaves;i++)
-        {
-            float increment = (noise20756890(p) + offset) * myAmp * result;
-            result += increment;
-            myAmp *= gain;
-            p *= lacunarity;
-        }
-        float myBlend = octaves - float(iOctaves);
-        if (myBlend != 0.0) 
-        {
-            float increment = (noise20756890(p) + offset) * myAmp * result;
-            result += myBlend * increment;
-        }
-        return result;
-    }
+        float3 pixelPos = streams.ShadingPosition;
+        float2 uv = streams.TexCoord;
 
+        // these should all be the same
 
-
-
-    stage override void VSMain()
-    {
-        float4 result_51535251 = mul(streams.Position, WorldViewProjection);
-
-        streams.ShadingPosition = result_51535251;
-
-    }
-
-    stage override void PSMain()
-    {
-        float2 result_55343049 = streams.TexCoord * input_27735475;
-        float result_53602024 = result_55343049.x;
-        float result_46796720 = result_55343049.y;
-        float3 result_32437960 = float3(result_53602024,result_46796720,input_11941476);
-        float3 result_10229080 = float3(input_48292686,input_48292686,input_48292686);
-        float3 result_51141435 = result_32437960 * result_10229080;
-        float result_39421644 = fbm6351029(result_51141435, 0.5, input_53522613, 2, 0.5);
-        float4 result_13052135 = cast41(result_39421644);
-
-        streams.ColorTarget = result_13052135;
-
+        //return uv.x;
+        //return pixelPos.x  / R.x;
+        return pixelPos.x * IR.x;
     }
 };
