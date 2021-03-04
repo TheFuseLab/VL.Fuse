@@ -293,6 +293,193 @@ shader FuseNoiseWorley : FuseHash
 
 	////////////////////////////////////////////////////////////////
 	//
+	//          F1 F2: first and second closest cell infos
+	// 
+	////////////////////////////////////////////////////////////////
+
+
+	// 1D
+	float2 worleyF1F2 (float p, out float F1Pos, out float F2Pos, out float F1ID, out float F2ID, float jitter = .7) // cam make a version with only dist also
+	{
+		float cellPosition = floor(p);
+		float localPosition = p - cellPosition;
+		float2 minDistance = 8.0;
+		float F1TargetOffset, F1TargetPosition, F2TargetOffset, F2TargetPosition;
+
+		[unroll]
+		for (int x = -1; x <= 1; x++) 
+		{
+			float cellOffset = x;
+			float pointPosition = cellOffset + hash11(cellPosition + cellOffset) * jitter;
+			float distanceToPoint = distFunc(pointPosition, localPosition);
+			if (distanceToPoint < minDistance.x) 		
+			{
+			
+				F2TargetOffset = F1TargetOffset;
+				minDistance.y = minDistance.x;
+				F2TargetPosition = F1TargetPosition;
+			
+				F1TargetOffset = cellOffset;
+				minDistance.x = distanceToPoint;
+				F1TargetPosition = pointPosition;
+			}
+			else if (distanceToPoint < minDistance.y) 		
+			{
+				F2TargetOffset = cellOffset;
+				minDistance.y = distanceToPoint;
+				F2TargetPosition = pointPosition;
+			}		
+		
+		}
+		F1ID = hash11(cellPosition + F1TargetOffset);
+		F1Pos = F1TargetPosition + cellPosition;
+		F2ID = hash11(cellPosition + F2TargetOffset);
+		F2Pos = F2TargetPosition + cellPosition;
+		return minDistance;
+	}
+
+	// 2D
+	float2 worleyF1F2 (float2 p, out float2 F1Pos, out float2 F2Pos, out float F1ID, out float F2ID, float jitter = .7) // cam make a version with only dist also
+	{
+		float2 cellPosition = floor(p);
+		float2 localPosition = p - cellPosition;
+		float2 minDistance = 8.0;
+		float2 F1TargetOffset, F1TargetPosition, F2TargetOffset, F2TargetPosition;
+		[unroll]
+		for (int y = -1; y <= 1; y++) 
+		{
+			[unroll]
+			for (int x = -1; x <= 1; x++) 
+			{
+				float2 cellOffset = float2(x, y);
+				float2 pointPosition = cellOffset + hash22(cellPosition + cellOffset) * jitter;
+				float distanceToPoint = distFunc(pointPosition, localPosition);
+				if (distanceToPoint < minDistance.x) 		
+				{
+				
+					F2TargetOffset = F1TargetOffset;
+					minDistance.y = minDistance.x;
+					F2TargetPosition = F1TargetPosition;
+				
+					F1TargetOffset = cellOffset;
+					minDistance.x = distanceToPoint;
+					F1TargetPosition = pointPosition;
+				}
+				else if (distanceToPoint < minDistance.y) 		
+				{
+					F2TargetOffset = cellOffset;
+					minDistance.y = distanceToPoint;
+					F2TargetPosition = pointPosition;
+				}		
+			}
+		}
+		F1ID = hash12(cellPosition + F1TargetOffset);
+		F1Pos = F1TargetPosition + cellPosition;
+		F2ID = hash12(cellPosition + F2TargetOffset);
+		F2Pos = F2TargetPosition + cellPosition;
+		return minDistance;
+	}
+
+	// 3D
+	float2 worleyF1F2 (float3 p, out float3 F1Pos, out float3 F2Pos, out float F1ID, out float F2ID, float jitter = .7) // cam make a version with only dist also
+	{
+		float3 cellPosition = floor(p);
+		float3 localPosition = p - cellPosition;
+		float2 minDistance = 8.0;
+		float3 F1TargetOffset, F1TargetPosition, F2TargetOffset, F2TargetPosition;
+		[unroll]
+		for (int z = -1; z <= 1; z++) 
+		{
+			[unroll]
+			for (int y = -1; y <= 1; y++) 
+			{
+				[unroll]
+				for (int x = -1; x <= 1; x++) 
+				{
+					float3 cellOffset = float3(x, y, z);
+					float3 pointPosition = cellOffset + hash33(cellPosition + cellOffset) * jitter;
+					float distanceToPoint = distFunc(pointPosition, localPosition);
+					if (distanceToPoint < minDistance.x) 		
+					{
+					
+						F2TargetOffset = F1TargetOffset;
+						minDistance.y = minDistance.x;
+						F2TargetPosition = F1TargetPosition;
+					
+						F1TargetOffset = cellOffset;
+						minDistance.x = distanceToPoint;
+						F1TargetPosition = pointPosition;
+					}
+					else if (distanceToPoint < minDistance.y) 		
+					{
+						F2TargetOffset = cellOffset;
+						minDistance.y = distanceToPoint;
+						F2TargetPosition = pointPosition;
+					}		
+					
+				}
+			}
+		}
+		F1ID = hash13(cellPosition + F1TargetOffset);
+		F1Pos = F1TargetPosition + cellPosition;
+		F2ID = hash13(cellPosition + F2TargetOffset);
+		F2Pos = F2TargetPosition + cellPosition;
+		return minDistance;
+	}
+
+	// 4D
+	float2 worleyF1F2 (float4 p, out float4 F1Pos, out float4 F2Pos, out float F1ID, out float F2ID, float jitter = .7) // cam make a version with only dist also
+	{
+		float4 cellPosition = floor(p);
+		float4 localPosition = p - cellPosition;
+		float2 minDistance = 8.0;
+		float4 F1TargetOffset, F1TargetPosition, F2TargetOffset, F2TargetPosition;
+		[unroll]
+		for (int w = -1; w <= 1; w++) 
+		{
+			[unroll]
+			for (int z = -1; z <= 1; z++) 
+			{
+				[unroll]
+				for (int y = -1; y <= 1; y++) 
+				{
+					[unroll]
+					for (int x = -1; x <= 1; x++) 
+					{
+						float4 cellOffset = float4(x, y, z, w);
+						float4 pointPosition = cellOffset + hash44(cellPosition + cellOffset) * jitter;
+						float distanceToPoint = distFunc(pointPosition, localPosition);
+						if (distanceToPoint < minDistance.x) 		
+						{
+						
+							F2TargetOffset = F1TargetOffset;
+							minDistance.y = minDistance.x;
+							F2TargetPosition = F1TargetPosition;
+						
+							F1TargetOffset = cellOffset;
+							minDistance.x = distanceToPoint;
+							F1TargetPosition = pointPosition;
+						}
+						else if (distanceToPoint < minDistance.y) 		
+						{
+							F2TargetOffset = cellOffset;
+							minDistance.y = distanceToPoint;
+							F2TargetPosition = pointPosition;
+						}		
+					}	
+				}
+			}
+		}
+		F1ID = hash14(cellPosition + F1TargetOffset);
+		F1Pos = F1TargetPosition + cellPosition;
+		F2ID = hash14(cellPosition + F2TargetOffset);
+		F2Pos = F2TargetPosition + cellPosition;
+		return minDistance;
+	}
+
+
+	////////////////////////////////////////////////////////////////
+	//
 	//          Edge Distance
 	// 
 	////////////////////////////////////////////////////////////////
@@ -390,7 +577,6 @@ shader FuseNoiseWorley : FuseHash
 		cellPosition += targetPosition;
 		cellID = hash12(cellPosition + targetOffset);
 		return minEdgeDistance;
-		//return makeWorleyFeature(minEdgeDistance, cellPosition + targetPosition,  hash12(cellPosition + targetOffset));
 	}
 
 	// 3D
@@ -450,7 +636,6 @@ shader FuseNoiseWorley : FuseHash
 		cellPosition += targetPosition;
 		cellID = hash13(cellPosition + targetOffset);
 		return minEdgeDistance;
-		//return makeWorleyFeature(minEdgeDistance, cellPosition + targetPosition,  hash13(cellPosition + targetOffset));
 	}
 
 	// 4D
@@ -519,7 +704,6 @@ shader FuseNoiseWorley : FuseHash
 		cellPosition += targetPosition;
 		cellID = hash14(cellPosition + targetOffset);
 		return minEdgeDistance;
-		//return makeWorleyFeature(minEdgeDistance, cellPosition + targetPosition,  hash14(cellPosition + targetOffset));
 	}
 
 };
