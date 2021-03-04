@@ -54,7 +54,6 @@ namespace Fuse
 
         public void DeleteRemap()
         {
-            Console.WriteLine("Delete Remap");
             Output.name = _name;
         }
 

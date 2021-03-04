@@ -76,7 +76,7 @@ namespace Fuse
         }
     }
     
-    public class ToComputeFx : ToShaderFX<GpuVoid> , IComputeVoid
+    public class ToComputeFx : ToShaderFX<GpuVoid>  , IComputeVoid
     {
         
         

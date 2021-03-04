@@ -92,6 +92,22 @@ namespace Fuse
             theStreams = streamBuilder.ToString();
         }
     }
+
+    public enum GeometryShaderPrimitiveType
+    {
+        Point,
+        Line,
+        Triangle,
+        Lineadj,
+        Triangleadj
+    }
+
+    public enum StreamOutputType
+    {
+        Point,
+        Line,
+        Triangle
+    }
     
     public class DrawShader : AbstractShader
     {
@@ -115,6 +131,26 @@ ${sourcePS}
 ${streamsPS}
     }
 };";
+
+
+        private const string GeometryShaderSource = @"[maxvertexcount(${maxVertexCount})]
+    stage void GSMain( ${primitiveType} Input input[1], inout ${streamType}<Output> outputStream)
+    {
+        streams = input[0];
+
+        ${sourceGS}
+        for(int i=0; i<4; i++)
+        {
+            streams.TexCoord  = QuadUV[i].xy;
+            
+            float4 posView = mul(streams.PositionWS, WorldView);
+            posView.xyz += QuadPositions[i].xyz * ParticleSize;
+            streams.ShadingPosition = mul(posView, Projection);
+            
+            outputStream.Append(streams);
+        }
+       
+    }";
 
         
 

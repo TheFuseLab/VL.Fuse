@@ -84,7 +84,7 @@ namespace Fuse{
              get => _inputValue;
              set
              {
-                 if (_inputValue!=null && _inputValue.Equals(value)) return;
+                 //if (_inputValue != null && _inputValue.Equals(value)) return;
                  _inputValue = value;
                  if (Parameters == null) return;
                  SetParameterValue(Parameters);
