@@ -1,0 +1,65 @@
+////////////////////////////////////////////////////////////////
+//
+//             Random Noise Basis 
+//
+////////////////////////////////////////////////////////////////
+
+shader FuseNoiseRandom : FuseHash
+{
+    static const int RANDOM_ITERATIONS = 4;
+
+    // 1D
+    float randomNoise (float p)
+    {
+        float a = 0.0;
+        for (int t = 0; t < RANDOM_ITERATIONS; t++)
+        {
+            float v = float(t+1)*.132;
+            float pos = (p * v * 1500.  + 50.0);
+            a += hash11(pos);
+        }
+        return a / float(RANDOM_ITERATIONS);
+    }
+
+    // 2D
+    float randomNoise (float2 p)
+    {
+        float a = 0.0;
+        for (int t = 0; t < RANDOM_ITERATIONS; t++)
+        {
+            float v = float(t+1)*.132;
+            float2 pos = (p * v * 1500.  + 50.0);
+            a += hash12(pos);
+        
+        }
+        return a / float(RANDOM_ITERATIONS);
+    }
+
+    // 3D
+    float randomNoise (float3 p)
+    {
+        float a = 0.0;
+        for (int t = 0; t < RANDOM_ITERATIONS; t++)
+        {
+            float v = float(t+1)*.132;
+            float3 pos = (p * v * 1500.  + 50.0);
+            a += hash13(pos);
+        }
+        return a / float(RANDOM_ITERATIONS);
+    }
+
+    // 4D
+    float randomNoise (float4 p)
+    {
+        float a = 0.0;
+        for (int t = 0; t < RANDOM_ITERATIONS; t++)
+        {
+            float v = float(t+1)*.132;
+            float4 pos = (p * v * 1500.  + 50.0);
+            a += hash14(pos);
+        }
+        return a / float(RANDOM_ITERATIONS);
+    }
+
+};
+

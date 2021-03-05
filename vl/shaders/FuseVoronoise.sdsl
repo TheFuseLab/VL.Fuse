@@ -1,0 +1,120 @@
+// The MIT License
+// Copyright © 2014 Inigo Quilez
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// adapted from IQ's 2d voronoise:
+// http://www.iquilezles.org/www/articles/voronoise/voronoise.htm
+
+
+shader FuseVoronoise : FuseHash
+{
+	
+
+	float voronoise2D(float2 x, float u, float v ){
+		float k = 1.0+63.0*pow(1.0-v,6.0);
+
+		float2 p = floor(x);
+		float2 f = frac(x);
+		
+		float2 a = float2(0.0,0.0);
+
+		for( int y=-2; y<=2; y++ )
+		for( int x=-2; x<=2; x++ )
+		{
+			float2 g = float2( x, y );
+			float3  o = hash32( p + g )*float3(u,u,1.0);
+			float2  d = g - f + o.xy;
+			float w = pow(1.0 - smoothstep(0.0, 1.414, length(d)), k );
+			a += float2(o.z*w,w);
+		}
+		
+		return a.x/a.y;
+	}
+
+    float voronoise3D(float3 x, float u, float v ){
+
+   		float3 p = floor(x);
+		float3 f = frac(x);
+
+		float s = 1.0 + 31.0 * v;
+    	float va = 0.0;
+    	float wt = 0.0;
+    
+		for (int z = -2; z <= 1; z++)
+    	for (int y = -2; y <= 1; y++)
+    	for (int x = -2; x <= 1; x++) {
+        	float3 g = float3(x, y, z);
+        	float3 o = hash33(p + g) * float3(u,u,1.0);
+        	float3 r = g - f + o + 0.5;
+        	float d = dot(r, r);
+        	float w = pow(1.0 - smoothstep(0.0, 1.414, sqrt(d)), s);
+        	va += o.z * w;
+        	wt += w;
+     	}
+    	 return va / wt;
+    }
+
+	float voronoiseFloatToFloat(float x, float u, float v){
+		return voronoise2D(float2(x,0), u, v);
+	}
+
+	float voronoiseFloat2ToFloat(float2 x, float u, float v){
+		return voronoise2D(x, u, v);
+	}
+
+	float voronoiseFloat3ToFloat(float3 x, float u, float v){
+		return voronoise3D(x, u, v);
+	}
+
+	float voronoiseFloat4ToFloat(float4 x, float u, float v){
+		return voronoise3D(x.xyz, u, v);
+	}
+
+	float2 voronoiseFloatToFloat2(float x, float u, float v){
+		return voronoise2D(float2(x,0), u, v);
+	}
+
+	float2 voronoiseFloat2ToFloat2(float2 x, float u, float v){
+		return voronoise2D(x, u, v);
+	}
+
+	float2 voronoiseFloat3ToFloat2(float3 x, float u, float v){
+		return voronoise3D(x, u, v);
+	}
+
+	float2 voronoiseFloat4ToFloat2(float4 x, float u, float v){
+		return voronoise3D(x.xyz, u, v);
+	}
+
+	float3 voronoiseFloatToFloat3(float x, float u, float v){
+		return voronoise2D(float2(x,0), u, v);
+	}
+
+	float3 voronoiseFloat2ToFloat3(float2 x, float u, float v){
+		return voronoise2D(x, u, v);
+	}
+
+	float3 voronoiseFloat3ToFloat3(float3 x, float u, float v){
+		return voronoise3D(x, u, v);
+	}
+
+	float3 voronoiseFloat4ToFloat3(float4 x, float u, float v){
+		return voronoise3D(x.xyz, u, v);
+	}
+
+	float4 voronoiseFloatToFloat4(float x, float u, float v){
+		return voronoise2D(float2(x,0), u, v);
+	}
+
+	float4 voronoiseFloat2ToFloat4(float2 x, float u, float v){
+		return voronoise2D(x, u, v);
+	}
+
+	float4 voronoiseFloat3ToFloat4(float3 x, float u, float v){
+		return voronoise3D(x, u, v);
+	}
+
+	float4 voronoiseFloat4ToFloat4(float4 x, float u, float v){
+		return voronoise3D(x.xyz, u, v);
+	}
+};

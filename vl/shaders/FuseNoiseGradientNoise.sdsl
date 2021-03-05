@@ -1,0 +1,199 @@
+// The MIT License
+// Copyright © 2017 Inigo Quilez
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+// Computes the analytic derivatives of a 3D Gradient Noise. This can be used for example to compute normals to a
+// 3d rocks based on Gradient Noise without approximating the gradient by having to take central differences. More
+// info here: http://iquilezles.org/www/articles/gradientnoise/gradientnoise.htm
+
+
+shader FuseNoiseGradientNoise : FuseHash
+{
+	// 1D
+	float gradientNoise(float p)
+	{
+		float i = floor(p);
+		float f = frac(p);
+	
+		float u = f * f * (3.0 - 2.0 * f);
+
+		// scale to ~ -1 to 1
+		return 2. *  lerp( dot( hash11( i + 0.0) * 2.0 - 1.0, f - 0.0 ), 
+					  dot( hash11( i + 1.0) * 2.0 - 1.0, f - 1.0 ), u);
+	}
+
+	// 2D
+	float gradientNoise(float2 p)
+	{
+		float2 i = floor(p);
+		float2 f = frac(p);
+	
+		float2 u = f * f * (3.0 - 2.0 * f);
+
+		// scale to ~ -1 to 1
+		return 2. * lerp(lerp(dot(hash22( i + float2(0.0,0.0) ) * 2.0 - 1.0, f - float2(0.0,0.0) ), 
+						 dot(hash22( i + float2(1.0,0.0) ) * 2.0 - 1.0, f - float2(1.0,0.0) ), u.x),
+					lerp(dot(hash22( i + float2(0.0,1.0) ) * 2.0 - 1.0, f - float2(0.0,1.0) ), 
+						 dot(hash22( i + float2(1.0,1.0) ) * 2.0 - 1.0, f - float2(1.0,1.0) ), u.x), u.y);
+	}
+
+	
+	// 3D
+	float gradientNoise(float3 p)
+	{
+		float3 i = floor(p);
+		float3 f = frac(p);
+
+		float3 u = f * f * (3.0 - 2.0 * f);
+		
+		// scale to ~ -1 to 1
+		return 2. * lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,0.0) ), 
+							   dot( hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,0.0) ), u.x),
+						 lerp( dot( hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,0.0) ), 
+							   dot( hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,0.0) ), u.x), u.y),
+					lerp(lerp( dot( hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,1.0) ), 
+							   dot( hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,1.0) ), u.x),
+						 lerp( dot( hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,1.0) ), 
+							   dot( hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,1.0) ), u.x), u.y), u.z );
+	}
+
+	//4D
+	float gradientNoise(float4 p)
+	{
+		float4 i = floor(p);
+		float4 f = frac(p);
+
+		float4 u = f * f * (3.0 - 2.0 * f);
+		
+		// scale to ~ -1 to 1
+		return 2 * lerp(lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,0) ) * 2.0 - 1.0, f - float4(0,0,0,0) ), 
+								   dot(hash44(i + float4(1,0,0,0) ) * 2.0 - 1.0, f - float4(1,0,0,0) ), u.x),
+							  lerp(dot(hash44(i + float4(0,1,0,0) ) * 2.0 - 1.0, f - float4(0,1,0,0) ), 
+								   dot(hash44(i + float4(1,1,0,0) ) * 2.0 - 1.0, f - float4(1,1,0,0) ), u.x),u.y),
+						 lerp(lerp(dot(hash44(i + float4(0,0,1,0) ) * 2.0 - 1.0, f - float4(0,0,1,0) ), 
+								   dot(hash44(i + float4(1,0,1,0) ) * 2.0 - 1.0, f - float4(1,0,1,0) ), u.x),
+							  lerp(dot(hash44(i + float4(0,1,1,0) ) * 2.0 - 1.0, f - float4(0,1,1,0) ), 
+								   dot(hash44(i + float4(1,1,1,0) ) * 2.0 - 1.0, f - float4(1,1,1,0) ), u.x),u.y),u.z),
+					lerp(lerp(lerp(dot(hash44(i + float4(0,0,0,1) ) * 2.0 - 1.0, f - float4(0,0,0,1) ), 
+								   dot(hash44(i + float4(1,0,0,1) ) * 2.0 - 1.0, f - float4(1,0,0,1) ), u.x),
+							  lerp(dot(hash44(i + float4(0,1,0,1) ) * 2.0 - 1.0, f - float4(0,1,0,1) ), 
+								   dot(hash44(i + float4(1,1,0,1) ) * 2.0 - 1.0, f - float4(1,1,0,1) ), u.x),u.y),
+						 lerp(lerp(dot(hash44(i + float4(0,0,1,1) ) * 2.0 - 1.0, f - float4(0,0,1,1) ), 
+								   dot(hash44(i + float4(1,0,1,1) ) * 2.0 - 1.0, f - float4(1,0,1,1) ), u.x),
+							  lerp(dot(hash44(i + float4(0,1,1,1) ) * 2.0 - 1.0, f - float4(0,1,1,1) ), 
+								   dot(hash44(i + float4(1,1,1,1) ) * 2.0 - 1.0, f - float4(1,1,1,1) ), u.x),u.y),u.z),u.w);
+	}
+
+	/*
+	float3 gradientNoise32(float2 p){
+		float2 i = floor(p);
+		float2 f = frac(p);
+		
+	#if 1
+		// quintic interpolation
+		float2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+		float2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
+	#else
+		// cubic interpolation
+		float2 u = f * f * (3.0 - 2.0 * f);
+		float2 du = 6.0 * f * (1.0 - f);
+	#endif    
+		
+		float2 ga = hash22(i + float2(0.0,0.0)) * 2.0 - 1.0;
+		float2 gb = hash22(i + float2(1.0,0.0)) * 2.0 - 1.0;
+		float2 gc = hash22(i + float2(0.0,1.0)) * 2.0 - 1.0;
+		float2 gd = hash22(i + float2(1.0,1.0)) * 2.0 - 1.0;
+		
+		float va = dot( ga, f - float2(0.0,0.0) );
+		float vb = dot( gb, f - float2(1.0,0.0) );
+		float vc = dot( gc, f - float2(0.0,1.0) );
+		float vd = dot( gd, f - float2(1.0,1.0) );
+
+		return float3( va + u.x*(vb-va) + u.y*(vc-va) + u.x*u.y*(va-vb-vc+vd),   // value
+				 ga + u.x*(gb-ga) + u.y*(gc-ga) + u.x*u.y*(ga-gb-gc+gd) +  // derivatives
+				 du * (u.yx*(va-vb-vc+vd) + float2(vb,vc) - va));    
+	}
+
+	float4 gradientNoise43(float3 p){
+		float3 i = floor(p);
+		float3 f = frac(p);
+		
+	#if 1
+		// quintic interpolation
+		float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+		float3 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
+	#else
+		// cubic interpolation
+		float3 u = f * f * (3.0 - 2.0 * f);
+		float3 du = 6.0 * f * (1.0 - f);
+	#endif    
+		
+		
+		// gradients
+	float3 ga = hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0;
+	float3 gb = hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0;
+	float3 gc = hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0;
+	float3 gd = hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0;
+	float3 ge = hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0;
+	float3 gf = hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0;
+	float3 gg = hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0;
+	float3 gh = hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0;
+	
+	// projections
+	float va = dot( ga, f - float3(0.0,0.0,0.0) );
+	float vb = dot( gb, f - float3(1.0,0.0,0.0) );
+	float vc = dot( gc, f - float3(0.0,1.0,0.0) );
+	float vd = dot( gd, f - float3(1.0,1.0,0.0) );
+	float ve = dot( ge, f - float3(0.0,0.0,1.0) );
+	float vf = dot( gf, f - float3(1.0,0.0,1.0) );
+	float vg = dot( gg, f - float3(0.0,1.0,1.0) );
+	float vh = dot( gh, f - float3(1.0,1.0,1.0) );
+	
+	// interpolations
+	return float4( va + u.x*(vb-va) + u.y*(vc-va) + u.z*(ve-va) + u.x*u.y*(va-vb-vc+vd) + u.y*u.z*(va-vc-ve+vg) + u.z*u.x*(va-vb-ve+vf) + (-va+vb+vc-vd+ve-vf-vg+vh)*u.x*u.y*u.z,    // value
+				 ga + u.x*(gb-ga) + u.y*(gc-ga) + u.z*(ge-ga) + u.x*u.y*(ga-gb-gc+gd) + u.y*u.z*(ga-gc-ge+gg) + u.z*u.x*(ga-gb-ge+gf) + (-ga+gb+gc-gd+ge-gf-gg+gh)*u.x*u.y*u.z +   // derivatives
+				 du * (float3(vb,vc,ve) - va + u.yzx*float3(va-vb-vc+vd,va-vc-ve+vg,va-vb-ve+vf) + u.zxy*float3(va-vb-ve+vf,va-vb-vc+vd,va-vc-ve+vg) + u.yzx*u.zxy*(-va+vb+vc-vd+ve-vf-vg+vh) ));
+	}
+
+	float2 gradientNoise21(float x){
+		return gradientNoise32(float2(x,0)).xy;
+	}
+
+	float2 gradientNoise22(float2 x){
+		return gradientNoise32(x).xy;
+	}
+
+	float2 gradientNoise23(float3 x){
+		return gradientNoise43(x).xy;
+	}
+
+	float2 gradientNoise24(float4 x){
+		return gradientNoise43(x.xyz).xy;
+	}
+
+	float3 gradientNoise31(float x){
+		return gradientNoise43(float3(x,0,0)).xyz;
+	}
+
+	float3 gradientNoise33(float3 x){
+		return gradientNoise43(x).xyz;
+	}
+
+	float3 gradientNoise34(float4 x){
+		return gradientNoise43(x.xyz).xyz;
+	}
+
+	float4 gradientNoise41(float x){
+		return gradientNoise43(float3(x,0,0));
+	}
+
+	float4 gradientNoise42(float2 x){
+		return gradientNoise43(float3(x.xy,0));
+	}
+
+	float4 gradientNoise44(float4 x){
+		return gradientNoise43(x.xyz)*0.5;
+	}
+	*/
+};
