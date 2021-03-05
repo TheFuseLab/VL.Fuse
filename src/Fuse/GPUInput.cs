@@ -148,11 +148,16 @@ namespace Fuse{
          
          public override string TypeName()
          {
-             return "RWStructuredBuffer<float>";
+             if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+             {
+                 return "RWStructuredBuffer<float>";
+             }
+             return "StructuredBuffer<float>";
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)
          {
+             
              theCollection.Set(ParameterKey, Value);
          }
      }
