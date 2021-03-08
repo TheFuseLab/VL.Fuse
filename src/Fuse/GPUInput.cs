@@ -15,6 +15,7 @@ namespace Fuse{
     {
         public DefaultInputValue(string theName) : base(theName)
         {
+            
         }
         
         public override string ID => name;
@@ -58,10 +59,11 @@ namespace Fuse{
              Parameters = theCollection;
          }
 
-         public AbstractInput(string theName): base(theName, null,"input")
+         public AbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
          {
+             Value = theValue;
              Setup( new List<AbstractGpuValue>());
-             Declaration = ShaderTemplateEvaluator.Evaluate(
+             Declaration = ShaderNodesUtil.Evaluate(
                  DeclarationTemplate,
                  new Dictionary<string, string>
                  {
@@ -105,7 +107,7 @@ namespace Fuse{
 
      public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGpuInput 
      {
-         public TextureInput() : base("TextureInput")
+         public TextureInput(Texture theTexture) : base("TextureInput", theTexture)
          {
              ParameterKey = new ObjectParameterKey<Texture>(Output.ID);
          }
@@ -123,7 +125,7 @@ namespace Fuse{
      
      public class SamplerInput: AbstractInput<SamplerState, ObjectParameterKey<SamplerState>>, IGpuInput 
      {
-         public SamplerInput(string theName) : base("SamplerInput")
+         public SamplerInput(string theName, SamplerState theSampler) : base("SamplerInput", theSampler)
          {
              ParameterKey = new ObjectParameterKey<SamplerState>(Output.ID);
          }
@@ -141,7 +143,7 @@ namespace Fuse{
      
      public class BufferInput: AbstractInput<Buffer, ObjectParameterKey<Buffer>>, IGpuInput  
      {
-         public BufferInput(string theName) : base("BufferInput")
+         public BufferInput(string theName, Buffer theBuffer = null) : base("BufferInput", theBuffer)
          {
              ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
          }

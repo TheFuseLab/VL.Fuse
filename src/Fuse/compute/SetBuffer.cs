@@ -26,7 +26,7 @@ namespace Fuse
         protected override string SourceTemplate()
         {
             const string shaderCode = "${bufferName}[${index}] = ${value};";
-            return ShaderTemplateEvaluator.Evaluate(shaderCode,new Dictionary<string, string>()
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"bufferName", _buffer.ID},
                 {"index", _index.ID},

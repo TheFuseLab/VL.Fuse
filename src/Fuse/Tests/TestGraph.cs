@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
+using Stride.Graphics;
 
 namespace Fuse.Tests
 {
@@ -212,6 +213,11 @@ namespace Fuse.Tests
             Console.WriteLine(toFloat4.BuildSourceCode());
         }
 
+        public static void Bits()
+        {
+            Console.WriteLine(((BufferFlags.UnorderedAccess & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)+"");
+        }
+
         public static void Main()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -253,6 +259,27 @@ namespace Fuse.Tests
             Console.WriteLine(customFunction.BuildSourceCode());
             
             
+        }
+
+        public static void TestToShaderFX()
+        {
+            var gpuValue0 = new GpuInput<float>();
+            Console.WriteLine(gpuValue0.DeclarationList());
+            var gpuValue1 = new GpuInput<float>();
+            Console.WriteLine(gpuValue1.DeclarationList());
+
+            var add = new OperatorNode<float, float>(new List<GpuValue<float>>
+                {gpuValue0.Output, gpuValue1.Output, gpuValue0.Output},new ConstantValue<float>(0),"+");
+
+            var gpuValue2 = new GpuInput<float>();
+            var add2 = new OperatorNode<float,float>(new List<GpuValue<float>> {add.Output, gpuValue2.Output},new ConstantValue<float>(0),"+");
+
+            var sin = new IntrinsicFunctionNode<float>(
+                new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
+                "sin", new ConstantValue<float>(0));
+
+            var toMaterial = new ToMaterialFX<float>(gpuValue0.Output);
+           Console.WriteLine(toMaterial.ShaderCode);
         }
     }
 }

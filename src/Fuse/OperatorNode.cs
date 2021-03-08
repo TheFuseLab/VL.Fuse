@@ -38,7 +38,7 @@ namespace Fuse
             });
             
             if(call.Length > 3)call.Remove(call.Length - 3, 3);
-            return ShaderTemplateEvaluator.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
             {
                 {"Call",call.ToString()}
             });

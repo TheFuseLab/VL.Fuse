@@ -16,7 +16,7 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
-            return ShaderTemplateEvaluator.Evaluate("${target} = ${source};", new Dictionary<string, string>()
+            return ShaderNodesUtil.Evaluate("${target} = ${source};", new Dictionary<string, string>()
             {
                 {"target", _target.ID}, 
                 {"source", _source.ID}
