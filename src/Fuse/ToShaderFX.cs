@@ -12,8 +12,8 @@ namespace Fuse
 {
     public abstract class ToShaderFX<T> : ComputeNode
     {
-        public string ShaderCode { get; protected set; }
-        public string ShaderName { get; protected set; }
+        public string ShaderCode { get; }
+        public string ShaderName { get; }
         
         private AbstractShaderNode _myNode;
         
@@ -44,13 +44,14 @@ namespace Fuse
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},
-                {"sourceCompute", source}
+                {"sourceCompute", source},
+                {"result", theCompute.ID}
             };
             
             // ReSharper disable once VirtualMemberCallInConstructor
-            ShaderCode = ShaderTemplateEvaluator.Evaluate(SourceCode(), templateMap);
+            ShaderCode = ShaderNodesUtil.Evaluate(SourceCode(), templateMap);
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
-            ShaderCode = ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
+            ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
         protected static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
@@ -60,8 +61,7 @@ namespace Fuse
             theInput.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
             theInput.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
             theInput.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
-            
-            theSource = theInput.ParentNode.BuildSourceCode();
+            theSource = new DrawShaderNode(new Dictionary<string, AbstractGpuValue>{{"in", theInput}}).BuildSourceCode();
         }
 
         public abstract string SourceCode();

@@ -74,7 +74,7 @@ namespace Fuse
 
             theCodeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
             theFunctionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
-            Functions.Add(signature, ShaderTemplateEvaluator.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
+            Functions.Add(signature, ShaderNodesUtil.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
             Setup(inputs, new Dictionary<string, string> {{"function", signature}});
         }
         
@@ -168,7 +168,7 @@ ${functionImplementation}
             Ins = inputs;
             HandleDelegates(theDelegates,functionValueMap);
 
-            Functions.Add(signature, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
+            Functions.Add(signature, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             Setup(inputs, new Dictionary<string, string> {{"function", signature}});
             
         }

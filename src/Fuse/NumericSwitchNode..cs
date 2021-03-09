@@ -58,7 +58,7 @@ ${cases}
 
         protected override string SourceTemplate()
         {
-            return ShaderTemplateEvaluator.Evaluate(ShaderCode, new Dictionary<string, string>{{"cases", BuildCases(_cases, _default)}});
+            return ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"cases", BuildCases(_cases, _default)}});
         }
     }
 }

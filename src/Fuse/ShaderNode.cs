@@ -143,7 +143,7 @@ namespace Fuse
         
         private string GenerateDefaultSource()
         {
-            return ShaderTemplateEvaluator.Evaluate(DefaultShaderCode, CreateTemplateMap());
+            return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
         protected string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
@@ -157,7 +157,7 @@ namespace Fuse
             var templateMap = CreateTemplateMap();
             theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
 
-            return ShaderTemplateEvaluator.Evaluate(theSourceCode, templateMap);
+            return ShaderNodesUtil.Evaluate(theSourceCode, templateMap);
         }
         
     }

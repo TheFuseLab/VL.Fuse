@@ -129,7 +129,7 @@ namespace Fuse
 ${functionImplementation}
         return ${result};
     }";
-            Functions.Add(theFunctionName, ShaderTemplateEvaluator.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
+            Functions.Add(theFunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             theDelegate.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
             MixIns.AddRange(theDelegate.ParentNode.MixinList());
             Declarations.AddRange(theDelegate.ParentNode.DeclarationList());

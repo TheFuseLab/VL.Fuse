@@ -18,7 +18,7 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            return ShaderTemplateEvaluator.Evaluate("float2 ${resultName} = float2(${x},${y});", 
+            return ShaderNodesUtil.Evaluate("float2 ${resultName} = float2(${x},${y});", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},

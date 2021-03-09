@@ -22,7 +22,7 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            return ShaderTemplateEvaluator.Evaluate("float3 ${resultName} = float3(${x},${y},${z});", 
+            return ShaderNodesUtil.Evaluate("float3 ${resultName} = float3(${x},${y},${z});", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},

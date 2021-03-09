@@ -27,7 +27,7 @@ namespace Fuse
             ${resultName} = ${inFalse};
         }
         ";
-            return ShaderTemplateEvaluator.Evaluate(shaderCode,new Dictionary<string, string>()
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"check", _inCheck.ID},
                 {"inFalse", _inFalse.ID},
