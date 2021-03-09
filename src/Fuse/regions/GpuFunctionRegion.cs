@@ -42,7 +42,7 @@ namespace Fuse.regions
     }
 
         public override NameAndVersion Name => new NameAndVersion("GpuFunction");
-        public override string Category => "Fuse";
+        public override string Category => "Fuse.Common.Base";
         public bool ExecutesOnlyOnce => true;
         public bool IsAtomic => true;
         public bool IsSynchronous => true;
