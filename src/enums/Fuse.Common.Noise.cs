@@ -2,13 +2,15 @@
 
 namespace Fuse.Common.Noise
 {
-    public enum NoiseType
+    public enum NoiseBasisType
     { Sine, ValueNoise, GradientNoise, Simplex, WorleySimple, Random };
-    public enum NoiseInflection
+    public enum NoiseBasisInflection
     { None, Ridge, Turbulence };
 
+    /*
     public enum WorleyCellDistance { Euclidean, EuclideanSquared, Chebyshev, Manhattan, Minkowski, Cubes } // may use general distane enum from Fuse.Core.Domain instead
 
     public enum WorleyCellFunction
     { F1, F2, F2MinusF1, F1PlusF2, Average, Crackle }
+    */
 }
