@@ -7,7 +7,7 @@ shader FuseBuffer
 	//
 	////////////////////////////////////////////////////////////////
 	
-	// these should be valid as different signatures, need to test to see if it will really casue compile error
+	// these should be valid as an overload of sbSize with different signatures, but Stride does not seem to spot type difference in StructuredBuffer<TYPE>
 	uint sbSize (StructuredBuffer<float> sBuffer)
 	{
 		uint count, dummy;	
@@ -36,6 +36,21 @@ shader FuseBuffer
 		return count;
 	}
 
+	int sbSizeI (StructuredBuffer<int> sBuffer)
+	{
+		int count, dummy;	
+		sBuffer.GetDimensions(count,dummy);
+		return count;
+	}
+
+
+	uint sbSizeUI (StructuredBuffer<uint> sBuffer)
+	{
+		uint count, dummy;	
+		sBuffer.GetDimensions(count,dummy);
+		return count;
+	}
+
 	//  seems to be some issue with parsing matrix as buffer type in VL/Stride
 	/*
 	uint sBSize (StructuredBuffer<float4x4> sBuffer)
@@ -46,44 +61,55 @@ shader FuseBuffer
 	}
 	*/
 
-	uint sbSizeUI (StructuredBuffer<uint> sBuffer)
-	{
-		uint count, dummy;	
-		sBuffer.GetDimensions(count,dummy);
-		return count;
-	}
+
 
 	// Safe Buffer Load with Defualt value
 
-	float sbLoad(StructuredBuffer<float> sBuffer, float defaultValue, uint dtid)
+	float sbLoad(StructuredBuffer<float> sBuffer, uint index, float defaultValue = 0.)
 	{
 		float value = defaultValue;
 		uint count = sbSize(sBuffer);
-		if (count > 0) value = sBuffer[dtid.x % count];
+		if (count > 0) value = sBuffer[index % count];
 		return value;
 	}
 
-	float2 sbLoad(StructuredBuffer<float2> sBuffer, float2 defaultValue, uint dtid)
+	float2 sbLoad(StructuredBuffer<float2> sBuffer, uint index, float2 defaultValue = 0.)
 	{
 		float2 value = defaultValue;
-		uint count = sbSize(sBuffer);
-		if (count > 0) value = sBuffer[dtid.x % count];
+		uint count = sbSize2(sBuffer);
+		if (count > 0) value = sBuffer[index % count];
 		return value;
 	}
 
-	float3 sbLoad(StructuredBuffer<float3> sBuffer, float3 defaultValue, uint dtid)
+	float3 sbLoad(StructuredBuffer<float3> sBuffer, uint index, float3 defaultValue = 0.)
 	{
 		float3 value = defaultValue;
-		uint count = sbSize(sBuffer);
-		if (count > 0) value = sBuffer[dtid.x % count];
+		uint count = sbSize3(sBuffer);
+		if (count > 0) value = sBuffer[index % count];
 		return value;
 	}
 
-	float4 sbLoad(StructuredBuffer<float4> sBuffer, float4 defaultValue, uint dtid)
+	float4 sbLoad(StructuredBuffer<float4> sBuffer, uint index, float4 defaultValue = 0.)
 	{
 		float4 value = defaultValue;
-		uint count = sbSize(sBuffer);
-		if (count > 0) value = sBuffer[dtid.x % count];
+		uint count = sbSize4(sBuffer);
+		if (count > 0) value = sBuffer[index % count];
+		return value;
+	}
+
+	int sbLoad(StructuredBuffer<uint> sBuffer, uint index, int defaultValue = 0)
+	{
+		uint value = defaultValue;
+		uint count = sbSizeI(sBuffer);
+		if (count > 0) value = sBuffer[index % count];
+		return value;
+	}
+
+	uint sbLoad(StructuredBuffer<uint> sBuffer, uint index, uint defaultValue = 0)
+	{
+		uint value = defaultValue;
+		uint count = sbSizeUI(sBuffer);
+		if (count > 0) value = sBuffer[index % count];
 		return value;
 	}
 
@@ -97,14 +123,6 @@ shader FuseBuffer
 		return value;
 	}
 	*/
-
-	uint sbLoad(StructuredBuffer<uint> sBuffer, uint defaultValue, uint dtid)
-	{
-		uint value = defaultValue;
-		uint count = sbSize(sBuffer);
-		if (count > 0) value = sBuffer[dtid.x % count];
-		return value;
-	}
 
 	
 };
