@@ -50,14 +50,15 @@ namespace Fuse{
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
 
-         protected TParameterKeyType ParameterKey;
 
-         protected ParameterCollection Parameters;
-         
          public void SetParameters(ParameterCollection theCollection)
          {
              Parameters = theCollection;
          }
+
+         public ParameterCollection Parameters { get; private set; }
+
+         public TParameterKeyType ParameterKey { get; protected set;}
 
          public AbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
          {
