@@ -278,7 +278,7 @@ namespace Fuse.Tests
                 new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
 
-            var toMaterial = new ToMaterialFX<float>(gpuValue0.Output);
+            var toMaterial = new ToShaderFX<float>(gpuValue0.Output);
            Console.WriteLine(toMaterial.ShaderCode);
         }
     }

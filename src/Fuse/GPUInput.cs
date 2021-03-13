@@ -9,6 +9,8 @@ namespace Fuse{
         void SetParameterValue(ParameterCollection theCollection);
 
         void SetParameters(ParameterCollection theCollection);
+
+        void UpdateParameter();
     }
     
     public class DefaultInputValue <T>: GpuValue<T>
@@ -37,6 +39,10 @@ namespace Fuse{
         {
         }
 
+        public void UpdateParameter()
+        {
+        }
+
         protected override string SourceTemplate()
         {
             return "";
@@ -54,6 +60,12 @@ namespace Fuse{
          public void SetParameters(ParameterCollection theCollection)
          {
              Parameters = theCollection;
+         }
+
+         public void UpdateParameter()
+         {
+             if (Parameters == null) return;
+             SetParameterValue(Parameters);
          }
 
          public ParameterCollection Parameters { get; private set; }

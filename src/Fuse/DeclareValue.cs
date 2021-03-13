@@ -1,20 +1,28 @@
 ﻿using System.Collections.Generic;
 using Fuse;
+using VL.Lib.Adaptive;
 
 namespace Fuse
 {
     public class DeclareValue<T> : ShaderNode<T>
     {
 
-        private GpuValue<T> _value;
+        private readonly GpuValue<T> _value;
 
         public DeclareValue(GpuValue<T> theValue): base("output", null,"outputParam")
         {
+            
+            var inputList = new List<AbstractGpuValue>();
+            if (theValue != null)
+            {
+                inputList.Add(theValue);
+            }
+            Ins = inputList;
+            Setup(Ins);
             Output = new GpuValue<T>("outputParam")
             {
                 ParentNode = this
             };
-            Ins = new List<AbstractGpuValue>();
             _value = theValue;
         }
 

@@ -10,14 +10,14 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
-    public abstract class ToShaderFX<T> : ComputeNode
+    public abstract class AbstractToShaderFX<T> : ComputeNode
     {
         public string ShaderCode { get; }
         public string ShaderName { get; }
         
         private AbstractShaderNode _myNode;
         
-        public ToShaderFX(GpuValue<T> theCompute)
+        public AbstractToShaderFX(GpuValue<T> theCompute)
         {
             _myNode = theCompute.ParentNode;
 
@@ -76,7 +76,7 @@ namespace Fuse
         }
     }
     
-    public class ToComputeFx : ToShaderFX<GpuVoid>  , IComputeVoid
+    public class ToComputeFx : AbstractToShaderFX<GpuVoid>  , IComputeVoid
     {
         
         
@@ -107,11 +107,11 @@ ${sourceCompute}
         }
     }
     
-    public class ToMaterialFX<T> : ToShaderFX<T>, IComputeValue<T> where T : struct
+    public class ToShaderFX<T> : AbstractToShaderFX<T>, IComputeValue<T> where T : struct
     {
 
         private const string ShaderSource = @"
-shader ${shaderID} : Compute${shaderType}${mixins}
+shader ${shaderID} : VS_PS_Base, Compute${shaderType}${mixins}
 {
     cbuffer PerMaterial{
 ${declarations}
@@ -127,7 +127,7 @@ ${sourceCompute}
 };";
 
 
-        public ToMaterialFX(GpuValue<T> theCompute) : base(theCompute)
+        public ToShaderFX(GpuValue<T> theCompute) : base(theCompute)
         {
         }
 

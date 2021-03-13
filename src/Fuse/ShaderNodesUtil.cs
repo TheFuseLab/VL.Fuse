@@ -88,5 +88,13 @@ namespace Fuse
             computeShader.ShaderSourceName = theComputeFX.ShaderName;
             return computeShader;
         }
+
+        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, GpuValue<T> theGpuValue) where T : struct
+        {
+            var toShaderFx = new ToShaderFX<T>(theGpuValue);
+            AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
+            return toShaderFx;
+        }
+        
     }
 }
