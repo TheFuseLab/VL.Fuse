@@ -154,25 +154,24 @@ namespace Fuse{
          }
      }
      
-     public class BufferInput: AbstractInput<Buffer, ObjectParameterKey<Buffer>>, IGpuInput  
+     public class BufferInput<T>: AbstractInput<Buffer<T>, ObjectParameterKey<Buffer<T>>>, IGpuInput where T : struct
      {
-         public BufferInput(string theName, Buffer theBuffer = null) : base("BufferInput", theBuffer)
+         public BufferInput(string theName, Buffer<T> theBuffer = null) : base("BufferInput", theBuffer)
          {
-             ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
+             ParameterKey = new ObjectParameterKey<Buffer<T>>(Output.ID);
          }
          
          public override string TypeName()
          {
              if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
              {
-                 return "RWStructuredBuffer<float>";
+                 return "RWStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
              }
-             return "StructuredBuffer<float>";
+             return "StructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)
          {
-             
              theCollection.Set(ParameterKey, Value);
          }
      }

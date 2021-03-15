@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
+using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
@@ -23,6 +24,11 @@ namespace Fuse
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypesByDictionary<T>(T input, IDictionary<string,T> input2)
+            {
+            }
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
+            public static void ConstrainTypesByBuffer<T>(GpuValue<T> input, GpuValue<Buffer<T>> input2) where T : struct
             {
             }
 
