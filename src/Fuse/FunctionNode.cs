@@ -8,15 +8,35 @@ namespace Fuse
 {
     public abstract class AbstractFunctionNode<T> : ShaderNode<T>
     {
-        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault) : base(theFunction, theDefault)
+        private bool _isGroupable;
+
+        private string _functionName;
+        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
+            _isGroupable = theIsGroupable;
+            _functionName = theFunction;
             Setup(theArguments, new Dictionary<string, string> {{"function", theFunction}});
         }
 
 
         protected override string SourceTemplate()
         {
-            return "${resultType} ${resultName} = ${function}(${arguments});";
+            if(!_isGroupable || Ins.Count() <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
+
+            var inputList = new List<AbstractGpuValue>(Ins);
+            var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID + ")");
+
+            for (var i = 2; i < inputList.Count();i++)
+            {
+                call.Insert(0, "${function}(");
+                call.Append(", ");
+                call.Append(inputList[i].ID);
+                call.Append(")");
+            }
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
+            {
+                {"Call",call.ToString()}
+            });
         }
         
     }
@@ -24,7 +44,7 @@ namespace Fuse
     public class IntrinsicFunctionNode<T> : AbstractFunctionNode<T>
     {
         
-        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault) : base(theArguments, theFunction, theDefault)
+        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theArguments, theFunction, theDefault, theIsGroupable)
         {
             
         }
@@ -33,7 +53,7 @@ namespace Fuse
     public class MixinFunctionNode<T> : AbstractFunctionNode<T>
     {
 
-        public MixinFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, string theMixin) : base(theArguments,theFunction, theDefault)
+        public MixinFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, string theMixin, bool theIsGroupable = false) : base(theArguments,theFunction, theDefault, theIsGroupable)
         {
             MixIns = new List<string>(){theMixin};
         }
@@ -51,8 +71,9 @@ namespace Fuse
             ConstantValue<T> theDefault, 
             IEnumerable<IDelegateNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
-            IDictionary<string,string> theFunctionValues = null
-        ) : base(theArguments, theFunction, theDefault)
+            IDictionary<string,string> theFunctionValues = null,
+            bool theIsGroupable = false
+        ) : base(theArguments, theFunction, theDefault, theIsGroupable)
         {
             MixIns = new List<string>();
             if(theMixins!=null)MixIns.AddRange(theMixins);
