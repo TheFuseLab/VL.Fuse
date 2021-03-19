@@ -7,6 +7,9 @@ namespace Fuse.Common.Noise
     public enum NoiseBasisInflection
     { None, Ridge, Turbulence };
 
+    public enum FBMBasisType
+    { Additive, Multiplicative, Hybrid, Heterogeneous };
+
     /*
     public enum WorleyCellDistance { Euclidean, EuclideanSquared, Chebyshev, Manhattan, Minkowski, Cubes } // may use general distane enum from Fuse.Core.Domain instead
 
