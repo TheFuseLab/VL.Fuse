@@ -24,4 +24,9 @@ namespace Fuse.Common.SDF
         Groove,
         Tongue
     }
+    public enum ExtrudeSDF
+    { Extrude, ExtrudeChamfer, ExtrudeRound }
+
+    public enum GridSDF
+    { Box, Triangle, Hexagon }
 }
