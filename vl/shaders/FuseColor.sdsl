@@ -52,12 +52,12 @@ shader FuseColor
 	}
 
 	// Smooth HSV to RGB conversion 
-    float4 HSVtoRGB_smooth(float4 col)
-    {
-        float3 rgb = clamp( abs(fmod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
-        rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
-        return float4(col.z * lerp( float3(1.0), rgb, col.y), col.w);
-    }
+	float4 HSVtoRGB_smooth(float4 col)
+	{
+		float3 rgb = clamp( abs(fmod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
+		rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
+		return float4(col.z * lerp( float3(1.0), rgb, col.y), col.w);
+	}
 
 
 	float3 RGBtoHSL(float3 RGB)
@@ -82,22 +82,22 @@ shader FuseColor
 	}
 
 	float3 RGBtoOKLab(float3 RGB){
-    	const float3x3 kCONEtoLMS = float3x3(                
-         	0.4121656120, 0.2118591070, 0.0883097947,
-        	0.5362752080, 0.6807189584, 0.2818474174,
-         	0.0514575653, 0.1074065790, 0.6302613616
+		const float3x3 kCONEtoLMS = float3x3(                
+			0.4121656120, 0.2118591070, 0.0883097947,
+			0.5362752080, 0.6807189584, 0.2818474174,
+			0.0514575653, 0.1074065790, 0.6302613616
 		);
-    
-    	return pow( mul(kCONEtoLMS,RGB), float3(1.0/3.0,1.0/3.0,1.0/3.0));
+	
+		return pow( mul(kCONEtoLMS,RGB), float3(1.0/3.0,1.0/3.0,1.0/3.0));
 	}
 
 	float3 OKLabToRGB(float3 okLab){
-    	const float3x3 kLMStoCONE = float3x3(
-        	 4.0767245293, -1.2681437731, -0.0041119885,
-        	-3.3072168827,  2.6093323231, -0.7034763098,
-        	 0.2307590544, -0.3411344290,  1.7068625689
+		const float3x3 kLMStoCONE = float3x3(
+			 4.0767245293, -1.2681437731, -0.0041119885,
+			-3.3072168827,  2.6093323231, -0.7034763098,
+			 0.2307590544, -0.3411344290,  1.7068625689
 		);
-    
+	
 		return mul(kLMStoCONE,(okLab*okLab*okLab));
 	}
 
@@ -106,51 +106,51 @@ shader FuseColor
 	// Distributed under the MIT license. See the LICENSE.md file in the project root for more information.
 	// http://chilliant.blogspot.jp/2012/08/srgb-approximations-for-hlsl.html
 
-    
-    float SRGBToLinear1(float sRGB){  
-        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
-    }
+	
+	float SRGBToLinear1(float sRGB){  
+		return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+	}
 
 	float2 SRGBToLinear2(float2 sRGB){
-        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
-    }
+		return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+	}
 
-    float3 SRGBToLinear3(float3 sRGB){
-        return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
-    }
+	float3 SRGBToLinear3(float3 sRGB){
+		return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+	}
 
-    // Converts an srgb color to linear space
-    float4 SRGBToLinear4(float4 sRGBa){
-        float3 sRGB = sRGBa.rgb;
-        return float4(sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878), sRGBa.a);
-    }
+	// Converts an srgb color to linear space
+	float4 SRGBToLinear4(float4 sRGBa){
+		float3 sRGB = sRGBa.rgb;
+		return float4(sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878), sRGBa.a);
+	}
 
 	float LinearToSRGB1(float RGB){
 		float S1 = sqrt(RGB);
-  		float S2 = sqrt(S1);
-  		float S3 = sqrt(S2);
-  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+		float S2 = sqrt(S1);
+		float S3 = sqrt(S2);
+		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
 	}
 
 	float2 LinearToSRGB2(float2 RGB){
 		float2 S1 = sqrt(RGB);
-  		float2 S2 = sqrt(S1);
-  		float2 S3 = sqrt(S2);
-  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+		float2 S2 = sqrt(S1);
+		float2 S3 = sqrt(S2);
+		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
 	}
 
 	float3 LinearToSRGB3(float3 RGB){
 		float3 S1 = sqrt(RGB);
-  		float3 S2 = sqrt(S1);
-  		float3 S3 = sqrt(S2);
-  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+		float3 S2 = sqrt(S1);
+		float3 S3 = sqrt(S2);
+		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
 	}
 
 	float4 LinearToSRGB4(float4 RGB){
 		float4 S1 = sqrt(RGB);
-  		float4 S2 = sqrt(S1);
-  		float4 S3 = sqrt(S2);
-  		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
+		float4 S2 = sqrt(S1);
+		float4 S3 = sqrt(S2);
+		return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * RGB;
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -164,8 +164,9 @@ shader FuseColor
 	// See http://iquilezles.org/www/articles/palettes/palettes.htm for more information
 
 
+	// would be good to name these parameters clearly
 	float3 pal(float t, float3 a, float3 b, float3 c, float3 d ){
-    	return a + b * cos( 6.28318*(c*t+d) );
+		return a + b * cos( 6.28318*(c*t+d) );
 	}
 
 	////////////////////////////////////////////////////////////////
