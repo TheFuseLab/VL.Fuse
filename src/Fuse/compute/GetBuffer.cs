@@ -5,10 +5,10 @@ namespace Fuse
 {
     public class GetBufferNode<T> : ShaderNode<T> where T : struct
     {
-        private GpuValue<Buffer> _buffer;
+        private GpuValue<Buffer<T>> _buffer;
         private GpuValue<int> _index;
         
-        public GetBufferNode(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, ConstantValue<T> theDefault) : base( "getBuffer", theDefault)
+        public GetBufferNode(GpuValue<Buffer<T>> theBuffer, GpuValue<int> theIndex, ConstantValue<T> theDefault) : base( "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
