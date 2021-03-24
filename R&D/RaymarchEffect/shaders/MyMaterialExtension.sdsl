@@ -1,0 +1,15 @@
+shader MyMaterialExtension : TransformationBase, PositionStream4
+{
+    stage override void PreTransformPosition()
+    {
+        base.PreTransformPosition();
+        
+        float DeformFactorY = 0.01;
+        float DeformFactorX = 0.01;
+
+        // Deform Y
+        streams.PositionWS.y += DeformFactorY * streams.PositionWS.z * streams.PositionWS.z;
+        // Deform X
+        streams.PositionWS.x += DeformFactorX * streams.PositionWS.z * streams.PositionWS.z;
+    }
+};
