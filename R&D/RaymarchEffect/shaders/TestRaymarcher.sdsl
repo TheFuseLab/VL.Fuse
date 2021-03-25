@@ -1,0 +1,120 @@
+shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, NormalStream, HappySDF
+{
+    float SDF(float3 p)
+    {
+        return fSphere(p,  0.5);
+    }
+
+    //float4x4 ViewInverse;
+    //float4x4 ProjectionInverse;
+
+    ////////////////////////////////////////////////////////////////
+
+    // Partial Derivatives in 3D domain
+    #define calcDx3D(f, p, e) ( (f(p + float3(e,0,0)) - f(p - float3(e,0,0))) / (2*e) )
+    #define calcDy3D(f, p, e) ( (f(p + float3(0,e,0)) - f(p - float3(0,e,0))) / (2*e) )
+    #define calcDz3D(f, p, e) ( (f(p + float3(0,0,e)) - f(p - float3(0,0,e))) / (2*e) )
+    #define calcNormS3(f, p, e) normalize( float3(calcDx3D(f, p, e), calcDy3D(f, p, e), calcDz3D(f, p, e)))
+    ////////////////////////////////////////////////////////////////
+    //
+    //             Ray Setup
+    //
+    ////////////////////////////////////////////////////////////////
+    void setupRay(float2 uv, out float3 ro, out float3 rd)
+    {	
+        // normal projection
+            rd = normalize(mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,-1,0),ViewInverse).xyz);
+            ro = ViewInverse[3].xyz;
+    }
+
+
+    float3 rayMarch(float3 rayPos, float3 rayDir, float stepLength = .9, float minDist = 0.1, float maxDist = 200.0, int maxIter = 120)
+    {
+        float3 startPos = rayPos + rayDir * minDist;
+        float3 p = startPos;
+        float z = minDist;
+        maxDist -= minDist;
+        for(int i=0; i<maxIter; i++)
+        {
+            float dist = SDF(p);
+            float rayStep = stepLength * dist;
+            p += rayDir * rayStep;	
+            z += rayStep;
+            if(abs(dist) < 0.0001 * z || z > maxDist) break;
+        }
+        return p;
+    }
+    ////////////////////////////////////////////////////////////////
+
+    // Raymarch a scene.  Takes uv and returns pos(p), normals(n) & distance(z)
+    void rayMarcher(float2 uv, out float3 p, out float3 n, out float3 rd, out float z)
+    {
+        // Paramerters
+        int marchMaxIterations = 120;
+        float marchMaxDistance = 200;
+        float marchMinDistance = 0.1f;
+        float marchStepLength = 0.75f;
+        float alpha = 1;
+
+        float3 ro;
+        setupRay(uv, ro, rd);
+
+        p = rayMarch(ro, rd, marchStepLength, marchMinDistance, marchMaxDistance, marchMaxIterations);
+        float ff=SDF(p);
+        if(abs(ff)>.5)discard;
+        z = length(p - ro);
+        n = calcNormS3(SDF, p, .01*sqrt(z));
+    }
+
+
+    float aoScale = 0.5f;
+    float aoBias = 0.5f;
+    float calcAO(float3 p, float3 n)
+    {
+        float ao=1;
+        float g=SDF(p).x;
+        float shd=0;
+        int iter=3;
+        for(int i=0;i<iter;i++)
+        {
+            float ff=aoScale;
+            ff*=pow(2,12*pow((float)i/iter,2));
+            float smp=max(0,1-SDF(p+n*ff).x/ff);
+            shd+=pow(smp,2)/iter*pow(0.5,(float)i/iter);
+        }
+        ao=1-shd;
+        ao=saturate(ao);
+        ao = (ao / ((((1.0/aoBias) - 2.0)*(1.0 - ao))+1.0));
+        return ao;
+    }
+
+    float4 ComputeRaymarch(float2 texCoord)
+    {
+        // Raymarcher 
+        ////////////////////////////////////////////////////////////////
+        float2 uv = texCoord; // Takes uv as input
+        float3 rd, p, n;   	float z; // Outputs surface posistion(p) & normals(n), ray direction(rd) & length(z) 
+        rayMarcher(uv, p, n, rd, z);
+        ////////////////////////////////////////////////////////////////
+    
+        float4 c=1;
+        c.rgb = n;
+        c.rgb = c.rgb *0.5 + 0.5; // remap normals to 0-1
+        c.a = 1;
+
+        //AO not yet working
+        //float ao = calcAO(p,n);
+        //c.rgb *= ao;
+    
+        //write to SV_Depth
+        streams.PositionWS = float4(p.xyz, 1);
+        float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+        streams.normalWS = n;
+        streams.meshNormalWS = n;
+        streams.Depth = PosWVP.z/PosWVP.w;
+
+        return c;
+        //return float4(uv, 0,1);
+
+    }
+};

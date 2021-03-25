@@ -1,4 +1,4 @@
-shader MyMaterialExtension : TransformationBase, NormalBase, PositionStream4, ShadingBase, Camera, MaterialPixelStream
+shader MyMaterialExtension : TestRaymarcher, TransformationBase, NormalBase, PositionStream4, Texturing, ShadingBase, Camera, MaterialPixelStream
 {
     // End of the VS (usually skinning)
     stage override void PreTransformPosition() 
@@ -23,15 +23,17 @@ shader MyMaterialExtension : TransformationBase, NormalBase, PositionStream4, Sh
 
     stage override float4 Shading() 
     {
+        //streams.normalWS = float3(0,1,0);
+        ComputeRaymarch(streams.TexCoord);
+        //streams.Depth = cos(streams.TexCoord.x * 50) * 0.01 + 0.98;
         float4 shadingCol = base.Shading();
         float4 testCol = float4(0, 1, 0, 1);
-        streams.Depth = .99;
-        return lerp(testCol, shadingCol, 0.9);
+        //streams.Depth = .99;
+        return lerp(testCol, shadingCol, 1);
     }
 
     override void PrepareMaterialForLightingAndShading()
     {
-        //streams.normalWS = float3(0,1,0);
         base.PrepareMaterialForLightingAndShading();
     }
 };
