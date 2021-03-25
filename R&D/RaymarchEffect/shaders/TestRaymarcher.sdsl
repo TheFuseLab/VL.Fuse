@@ -2,7 +2,9 @@ shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, Norma
 {
     float SDF(float3 p)
     {
-        return fSphere(p,  0.5);
+        //return fSphere(p, 0.5);
+        return fRBox(p, float3(0.5, 0.5, 0.5), 0.1);
+        //return fJulia(p);
     }
 
     //float4x4 ViewInverse;
@@ -111,6 +113,7 @@ shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, Norma
         float4 PosWVP = mul(streams.PositionWS, ViewProjection);
         streams.normalWS = n;
         streams.meshNormalWS = n;
+        streams.DepthVS = PosWVP.w;
         streams.Depth = PosWVP.z/PosWVP.w;
 
         return c;
