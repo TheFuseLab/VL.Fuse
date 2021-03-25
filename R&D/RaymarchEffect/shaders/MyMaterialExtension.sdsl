@@ -1,33 +1,37 @@
-shader MyMaterialExtension : TransformationBase, PositionStream4, ShadingBase, Camera, MaterialPixelStream
+shader MyMaterialExtension : TransformationBase, NormalBase, PositionStream4, ShadingBase, Camera, MaterialPixelStream
 {
-    stage override void PreTransformPosition()
+    // End of the VS (usually skinning)
+    stage override void PreTransformPosition() 
     {
-        base.PreTransformPosition();
-        
-        float DeformFactorY = 0.01;
-        float DeformFactorX = 0.01;
+        streams.PositionWS = streams.Position;
+    }
 
-        // Deform Y
-        streams.PositionWS.y += DeformFactorY * streams.PositionWS.z * streams.PositionWS.z;
-        // Deform X
-        streams.PositionWS.x += DeformFactorX * streams.PositionWS.z * streams.PositionWS.z;
+    // End of tessellation (usually displacement mapping in world space, etc...)
+    stage override void TransformPosition() {}
+
+    // At the end of the geometry pipeline (to generate ShadingPosition)
+    stage override void PostTransformPosition()
+    {
+        streams.ShadingPosition = streams.Position;
+    }
+
+    stage override void GenerateNormal_VS()
+    {
+        streams.meshNormalWS = streams.meshNormal;
+        streams.normalWS = streams.meshNormalWS;
     }
 
     stage override float4 Shading() 
     {
-        float4 normalShade = base.Shading();
-
-        if(normalShade.w <= 0.005)
-            return normalShade;
-        float4 testCol = float4(1,0,0,1);
-        return lerp(testCol, normalShade, .5);
+        float4 shadingCol = base.Shading();
+        float4 testCol = float4(0, 1, 0, 1);
+        streams.Depth = .99;
+        return lerp(testCol, shadingCol, 0.9);
     }
 
     override void PrepareMaterialForLightingAndShading()
     {
-        streams.normalWS = float3(0,1,0);
+        //streams.normalWS = float3(0,1,0);
         base.PrepareMaterialForLightingAndShading();
-
-
     }
 };
