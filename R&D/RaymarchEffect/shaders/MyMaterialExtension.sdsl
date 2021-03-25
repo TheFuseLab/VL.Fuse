@@ -15,25 +15,12 @@ shader MyMaterialExtension : TestRaymarcher, TransformationBase, NormalBase, Pos
         streams.ShadingPosition = streams.Position;
     }
 
-    stage override void GenerateNormal_VS()
-    {
-        streams.meshNormalWS = streams.meshNormal;
-        streams.normalWS = streams.meshNormalWS;
-    }
+
 
     stage override float4 Shading() 
     {
-        //streams.normalWS = float3(0,1,0);
         ComputeRaymarch(streams.TexCoord);
-        //streams.Depth = cos(streams.TexCoord.x * 50) * 0.01 + 0.98;
-        float4 shadingCol = base.Shading();
-        float4 testCol = float4(0, 1, 0, 1);
-        //streams.Depth = .99;
-        return lerp(testCol, shadingCol, 1);
+        return base.Shading();
     }
 
-    override void PrepareMaterialForLightingAndShading()
-    {
-        base.PrepareMaterialForLightingAndShading();
-    }
 };
