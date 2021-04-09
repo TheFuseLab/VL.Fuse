@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.3.1.89" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.3.1" />
+<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.0.30" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.0-0030-gf9a882289a" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Compute" CanvasType="FullCategory">
       <!--
@@ -2609,6 +2609,11 @@
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <p:TypeArguments>
+                      <TypeReference>
+                        <Choice Kind="TypeFlag" Name="GpuVoid" />
+                      </TypeReference>
+                    </p:TypeArguments>
                   </TypeReference>
                 </p:TypeArguments>
               </p:TypeAnnotation>
@@ -2668,10 +2673,10 @@
       </Overlay>
       <!--
 
-    ************************ SetIntraStageVariable ************************
+    ************************ SetAttribute ************************
 
 -->
-      <Node Name="SetIntraStageVariable" Bounds="1083,491" Id="NID8sEV3IY6NEQzmFo1YcV">
+      <Node Name="SetAttribute" Bounds="1083,491" Id="NID8sEV3IY6NEQzmFo1YcV">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -2680,7 +2685,7 @@
           <Canvas Id="SumydqspKPLLvdtgWHksUP" CanvasType="Group">
             <ControlPoint Id="NvUL6NZ2CxaOJZbJhleWc7" Bounds="611,264" />
             <ControlPoint Id="E2nhBHXXnxzOWrzVrtgM3f" Bounds="497,264" />
-            <ControlPoint Id="PCleg7LxASeMaKx7JfWAoe" Bounds="569,330" />
+            <ControlPoint Id="PCleg7LxASeMaKx7JfWAoe" Bounds="560,378" />
           </Canvas>
           <Patch Id="OsC8Gsv9QQnLAKRLr5nl4F" Name="Create" />
           <ProcessDefinition Id="R9pcJGDC5oRNCdpCBtmrnG">
@@ -2698,20 +2703,28 @@
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="U3nuDSQ0n45NjSkcAyIp4e" Name="Shader Graph" Kind="OutputPin" Bounds="589,306" />
+            <Pin Id="U3nuDSQ0n45NjSkcAyIp4e" Name="Shader Graph" Kind="OutputPin" Bounds="589,306">
+              <p:TypeAnnotation>
+                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <p:TypeArguments>
+                  <TypeReference>
+                    <Choice Kind="TypeFlag" Name="GpuVoid" />
+                  </TypeReference>
+                </p:TypeArguments>
+              </p:TypeAnnotation>
+            </Pin>
           </Patch>
           <Link Id="Tg0A6MiF5SIMX8Cpe1pmFu" Ids="HiLahHsQQBjP9D1FOIAZOF,NvUL6NZ2CxaOJZbJhleWc7" IsHidden="true" />
           <Link Id="QHm0u3hZFNiQHluxycQ8vG" Ids="HijvEmkdsWuMG9sqJTN4pm,E2nhBHXXnxzOWrzVrtgM3f" IsHidden="true" />
-          <Link Id="Subf5fa9rtbMMKCPbpM9jm" Ids="NvUL6NZ2CxaOJZbJhleWc7,PCleg7LxASeMaKx7JfWAoe" />
           <Link Id="QcpeGZMaO9BNi36pzeLNSt" Ids="PCleg7LxASeMaKx7JfWAoe,U3nuDSQ0n45NjSkcAyIp4e" IsHidden="true" />
         </Patch>
       </Node>
       <!--
 
-    ************************ GetIntraStageVariable ************************
+    ************************ GetAttribute ************************
 
 -->
-      <Node Name="GetIntraStageVariable" Bounds="1082,441" Id="M7aNvdjUN5RL55uJlghWvq">
+      <Node Name="GetAttribute" Bounds="1082,441" Id="M7aNvdjUN5RL55uJlghWvq">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -3055,7 +3068,7 @@
                 <FullNameCategoryReference ID="3D" />
               </p:TypeAnnotation>
             </Pad>
-            <Pad Id="CdqsUbMKAqQLUwtUjyIm7W" Comment="Name" Bounds="679,454,38,15" ShowValueBox="true" isIOBox="true" Value="Force">
+            <Pad Id="CdqsUbMKAqQLUwtUjyIm7W" Comment="Name" Bounds="829,474,38,15" ShowValueBox="true" isIOBox="true" Value="Force">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
@@ -3068,7 +3081,7 @@
             <Node Bounds="822,633,113,19" Id="BKNsf0BGpCNOKp41pK4BxS">
               <p:NodeReference LastCategoryFullName="Fuse.Common.Compute" LastSymbolSource="Fuse.Common.Compute.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="SetIntraStageVariable" />
+                <Choice Kind="ProcessAppFlag" Name="SetAttribute" />
               </p:NodeReference>
               <Pin Id="L6zOI3DnX5FQLqSfeIFBJr" Name="Variable Name" Kind="InputPin" />
               <Pin Id="PI7TKFUkK8eQH5NhF4qz0E" Name="Shader Graph" Kind="InputPin" />
@@ -3085,7 +3098,7 @@
             <Node Bounds="854,536,114,19" Id="GlgsYOf2ETiOy9kCG6u8I2">
               <p:NodeReference LastCategoryFullName="Fuse.Common.Compute" LastSymbolSource="Fuse.Common.Compute.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="GetIntraStageVariable" />
+                <Choice Kind="ProcessAppFlag" Name="GetAttribute" />
               </p:NodeReference>
               <Pin Id="KsnqGd5P9uyQQSZOcpwcnx" Name="Variable Name" Kind="InputPin" />
               <Pin Id="O1RSpMUM1odNlXys8qXm3W" Name="Shader Graph" Kind="OutputPin" />
@@ -3164,7 +3177,7 @@
             <Node Bounds="661,445,114,19" Id="Lla1ZaUvAEINkj3jfyuA8y">
               <p:NodeReference LastCategoryFullName="Fuse.Common.Compute" LastSymbolSource="Fuse.Common.Compute.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="GetIntraStageVariable" />
+                <Choice Kind="ProcessAppFlag" Name="GetAttribute" />
               </p:NodeReference>
               <Pin Id="CDbAfPWw9z2OHXx0GKMjMt" Name="Variable Name" Kind="InputPin" />
               <Pin Id="VRn1IXQrDcoMCcRhkUPmVD" Name="Shader Graph" Kind="OutputPin" />
@@ -3710,7 +3723,7 @@
             <Node Bounds="822,633,113,19" Id="MPQeMO8xhyvO84cwYGwbv0">
               <p:NodeReference LastCategoryFullName="Fuse.Common.Compute" LastSymbolSource="Fuse.Common.Compute.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="SetIntraStageVariable" />
+                <Choice Kind="ProcessAppFlag" Name="SetAttribute" />
               </p:NodeReference>
               <Pin Id="Co0lK3H9uktNw3jsw2QA7H" Name="Variable Name" Kind="InputPin" />
               <Pin Id="IgqCdJbpAPcPtcagq6e4Xb" Name="Shader Graph" Kind="InputPin" />
@@ -3779,7 +3792,7 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.3.1" />
-  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="0.9.90-g7445968757" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.0-0030-gf9a882289a" />
+  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="0.9.103-g509b4e3ea3" />
   <DocumentDependency Id="Kr8RSepJqx2OusN7PvxrKR" Location="./Fuse.Core.vl" />
 </Document>
