@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Stride.Graphics;
 
 namespace Fuse
 {
     public class SetBufferNode<TIn> : ShaderNode<GpuVoid> where TIn : struct
     {
-        private GpuValue<Buffer<TIn>> _buffer;
-        private GpuValue<int> _index;
-        private GpuValue<TIn> _value;
+        private readonly GpuValue<Buffer<TIn>> _buffer;
+        private readonly GpuValue<int> _index;
+        private readonly GpuValue<TIn> _value;
     
         public SetBufferNode(GpuValue<Buffer<TIn>> theBuffer, GpuValue<int> theIndex, GpuValue<TIn> theValue) : base( "setBuffer")
         {
@@ -21,6 +22,11 @@ namespace Fuse
         protected override Dictionary<string, string> CreateTemplateMap()
         {
             return new Dictionary<string, string>();
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
         }
 
         protected override string SourceTemplate()

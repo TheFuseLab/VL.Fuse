@@ -34,7 +34,7 @@ namespace Fuse
         public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
         public string ID { get; }
         
-        public string SourceCode => GenerateSource(SourceTemplate(), Ins, CustomTemplateValues);
+        public string SourceCode => GenerateSource(Ins, CustomTemplateValues);
 
         private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
@@ -141,23 +141,26 @@ namespace Fuse
             return new Dictionary<string, string>();
         }
         
-        private string GenerateDefaultSource()
+        protected virtual string GenerateDefaultSource()
         {
             return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        protected string GenerateSource(string theSourceCode, IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
-            if (theSourceCode.Trim() == "") return "";
+            
             if (ShaderNodesUtil.HasNullValue(theIns))
             {
                 return GenerateDefaultSource();
             }
 
+            var sourceCode = SourceTemplate();
+            if (sourceCode.Trim() == "") return "";
+
             var templateMap = CreateTemplateMap();
             theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
 
-            return ShaderNodesUtil.Evaluate(theSourceCode, templateMap);
+            return ShaderNodesUtil.Evaluate(sourceCode, templateMap);
         }
         
     }
