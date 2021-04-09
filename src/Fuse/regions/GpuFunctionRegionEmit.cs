@@ -167,7 +167,7 @@ namespace Fuse.regions
             }
         }
 
-        void BindOutputControlPoints(IRoslynPatchCompiler compiler, IPatchSymbol patch, INodeSymbol node, List<SyntaxNode> syntaxNodes, ISlotSymbol slot)
+        private static void BindOutputControlPoints(IRoslynPatchCompiler compiler, IPatchSymbol patch, INodeSymbol node, List<SyntaxNode> syntaxNodes, INamedSymbol slot)
         {
             // Can be null in case the output is connected on Create while the region itself is on Update.
             // In that case the Cache region never had a chance to run so we can only return the default value.
@@ -182,7 +182,7 @@ namespace Fuse.regions
             BindOutputControlPoints(compiler, patch, node, syntaxNodes, outputs);
         }
 
-        void BindOutputControlPoints(IRoslynPatchCompiler compiler, IPatchSymbol patch, INodeSymbol node, List<SyntaxNode> syntaxNodes, SyntaxNode outputs)
+        private static void BindOutputControlPoints(IRoslynPatchCompiler compiler, IPatchSymbol patch, INodeSymbol node, List<SyntaxNode> syntaxNodes, SyntaxNode outputs)
         {
             // var (x, y, ...) = outputs
             using var outputNames = Pooled.GetList<string>();

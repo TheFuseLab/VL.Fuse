@@ -8,7 +8,7 @@ namespace Fuse
         private GpuValue<Buffer<TIn>> _buffer;
         private GpuValue<int> _index;
         private GpuValue<TIn> _value;
-        
+    
         public SetBufferNode(GpuValue<Buffer<TIn>> theBuffer, GpuValue<int> theIndex, GpuValue<TIn> theValue) : base( "setBuffer")
         {
             _buffer = theBuffer;
