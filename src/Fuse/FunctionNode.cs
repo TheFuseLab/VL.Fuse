@@ -129,7 +129,7 @@ namespace Fuse
                 ParentNode = this
             };
             Ins = new List<AbstractGpuValue>();
-            Output.name = "arg_"+theId;
+            Output.Name = "arg_"+theId;
         }
 
         public string TypeName()
@@ -167,7 +167,7 @@ namespace Fuse
             Declarations = new List<string>();
             Inputs = new List<IGpuInput>();
             
-            var signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetShaderTypeForType<T>();
+            var signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
 
             
             
@@ -211,7 +211,7 @@ ${functionImplementation}
         private static string BuildSignature(IEnumerable<AbstractGpuValue> inputs)
         {
             var stringBuilder = new StringBuilder();
-            inputs.ForEach(input => stringBuilder.Append(TypeHelpers.GetShaderTypeForType(input.GetType().GetGenericArguments()[0])));
+            inputs.ForEach(input => stringBuilder.Append(TypeHelpers.GetSignatureTypeForType(input.GetType().GetGenericArguments()[0])));
             return stringBuilder.ToString();
         }
         

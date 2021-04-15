@@ -20,7 +20,7 @@ namespace Fuse{
             
         }
         
-        public override string ID => name;
+        public override string ID => Name;
     }
 
     public class DefaultInput<T> : ShaderNode<T>, IGpuInput
@@ -76,14 +76,6 @@ namespace Fuse{
          {
              Value = theValue;
              Setup( new List<AbstractGpuValue>());
-             Declaration = ShaderNodesUtil.Evaluate(
-                 DeclarationTemplate,
-                 new Dictionary<string, string>
-                 {
-                     {"inputName", Output.ID},
-                     {"inputType", TypeName()}
-                 });
-             Declarations = new List<string>(){Declaration};
              Inputs = new List<IGpuInput>(){this};
          }
 
@@ -107,11 +99,18 @@ namespace Fuse{
          } 
          public abstract void SetParameterValue(ParameterCollection theCollection);
          
-         public sealed override List<string> Declarations { get; }
+         public sealed override List<string> Declarations => new List<string>(){Declaration};
          public sealed override List<IGpuInput> Inputs { get; }
          
-         public string Declaration { get; }
-         
+         public string Declaration =>
+             ShaderNodesUtil.Evaluate(
+                 DeclarationTemplate,
+                 new Dictionary<string, string>
+                 {
+                     {"inputName", Output.ID},
+                     {"inputType", TypeName()}
+                 });
+
          protected override string SourceTemplate()
          {
              return "";
@@ -146,6 +145,31 @@ namespace Fuse{
          public override string TypeName()
          {
              return "SamplerState ";
+         }
+
+         public override void SetParameterValue(ParameterCollection theCollection)
+         {
+             theCollection.Set(ParameterKey, Value);
+         }
+     }
+     
+     public class DynamicStructBufferInput: AbstractInput<Buffer, ObjectParameterKey<Buffer>>, IGpuInput
+     {
+
+         private GpuValue<GpuStruct> _struct;
+         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null) : base("BufferInput", theBuffer)
+         {
+             _struct = theStruct;
+             ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
+         }
+         
+         public override string TypeName()
+         {
+             if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+             {
+                 return "RWStructuredBuffer<"+_struct.TypeOverride+">";
+             }
+             return "StructuredBuffer<"+_struct.TypeOverride+">";
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)

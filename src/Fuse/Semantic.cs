@@ -8,7 +8,7 @@ namespace Fuse
         {
         }
         
-        public override string ID => "streams." + name;
+        public override string ID => "streams." + Name;
     }
     public class Semantic<T> : ShaderNode<T>
     {

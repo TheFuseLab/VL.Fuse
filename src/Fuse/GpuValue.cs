@@ -2,6 +2,12 @@
 {
     public abstract class AbstractGpuValue
     {
+        public  string Name{ get; set; }
+
+        protected AbstractGpuValue(string theName)
+        {
+            Name = theName;
+        }
 
         public abstract string ID { get; }
 
@@ -12,13 +18,11 @@
 
     public class GpuValue<T> : AbstractGpuValue
     {
-        protected internal string name;
 
         public string TypeOverride { get; set; }
 
-        public GpuValue(string theName)
+        public GpuValue(string theName) : base(theName)
         {
-            name = theName;
         }
 
         public override string TypeName()
@@ -30,7 +34,7 @@
             return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        public override string ID => name + "_" + GetHashCode();
+        public override string ID => Name + "_" + GetHashCode();
 
     }
 

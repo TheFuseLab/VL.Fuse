@@ -22,13 +22,17 @@ namespace Fuse
             _myNode = theCompute.ParentNode;
 
             var declarations = new HashSet<string>();
+            var structs = new HashSet<string>();
             var mixins = new HashSet<string>();
             var functionMap = new Dictionary<string, string>();
             
-            HandleShader(theCompute, declarations, mixins, functionMap, out var source);
+            HandleShader(theCompute, declarations, structs, mixins, functionMap, out var source);
             
             var declarationBuilder = new StringBuilder();
             declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
+            
+            var structBuilder = new StringBuilder();
+            structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
             var mixinBuilder = new StringBuilder();
             mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
@@ -40,9 +44,10 @@ namespace Fuse
             {
                 {"resultName", theCompute.ID},
                 {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
-                {"shaderType", TypeHelpers.GetShaderTypeForType<T>()},
+                {"shaderType", TypeHelpers.GetSignatureTypeForType<T>()},
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
+                {"structs", structBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},
                 {"sourceCompute", source},
                 {"result", theCompute.ID}
@@ -54,11 +59,12 @@ namespace Fuse
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
-        protected static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
+        public static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
         {
             var streamBuilder = new StringBuilder();
            
             theInput.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
+            theInput.ParentNode.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
             theInput.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
             theInput.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
             theSource = new DrawShaderNode(new Dictionary<string, AbstractGpuValue>{{"in", theInput}}).BuildSourceCode();
@@ -88,6 +94,8 @@ shader ${shaderID} : ComputeVoid, ComputeShaderBase${mixins}
 ${declarations}
     }
 
+${structs}
+
 ${functions}
 
     override void Compute()
@@ -116,6 +124,8 @@ shader ${shaderID} : VS_PS_Base, Compute${shaderType}${mixins}
     cbuffer PerMaterial{
 ${declarations}
     }
+
+${structs}
 
 ${functions}
 

@@ -15,7 +15,7 @@ namespace Fuse
         {
         }
 
-        public override string ID => name;
+        public override string ID => Name;
 
     }
     
@@ -50,13 +50,13 @@ namespace Fuse
         {
             if (id >= theParameters.Count()) return;
             Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
-            Output.name = "arg_"+theParameters[id].ID;
+            Output.Name = "arg_"+theParameters[id].ID;
             Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
         }
 
         public void DeleteRemap()
         {
-            Output.name = _name;
+            Output.Name = _name;
         }
 
         public virtual string TypeName()
@@ -133,6 +133,7 @@ ${functionImplementation}
             theDelegate.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
             MixIns.AddRange(theDelegate.ParentNode.MixinList());
             Declarations.AddRange(theDelegate.ParentNode.DeclarationList());
+            Structs.AddRange(theDelegate.ParentNode.StructList());
             Inputs.AddRange(theDelegate.ParentNode.InputList());
             
             

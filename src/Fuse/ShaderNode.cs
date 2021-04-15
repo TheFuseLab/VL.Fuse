@@ -31,6 +31,7 @@ namespace Fuse
 
         public virtual List<string> MixIns => new List<string>();
         public virtual List<string> Declarations => new List<string>();
+        public virtual List<string> Structs => new List<string>();
         public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
         public string ID { get; }
         
@@ -60,6 +61,8 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
         
+        
+        
         public List<IDelegateParameter> Delegates()
         {
             var result = new HashSet<IDelegateParameter>();
@@ -69,36 +72,37 @@ namespace Fuse
             });
             return result.ToList();
         }
+        
+        private delegate List<Type> GetInfoElement<Type>(AbstractShaderNode theInput);
+        
+        private  List<Type> GetInfo<Type>(GetInfoElement<Type> theDelegate)
+        {
+            var result = new HashSet<Type>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is AbstractShaderNode input)result.AddRange(theDelegate(input));
+            });
+            return result.ToList();
+        }
 
         public List<string> MixinList()
         {
-            var result = new List<string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is AbstractShaderNode input)result.AddRange(input.MixIns);
-            });
-            return result;
+            return GetInfo<string>(input => input.MixIns);
         }
         
         public List<IGpuInput> InputList()
         {
-            var result = new HashSet<IGpuInput>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is AbstractShaderNode input)result.AddRange(input.Inputs);
-            });
-            return result.ToList();
+            return GetInfo<IGpuInput>(input => input.Inputs);
         }
         
         public List<string> DeclarationList()
         {
-            
-            var result = new List<string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is AbstractShaderNode input)result.AddRange(input.Declarations);
-            });
-            return result;
+            return GetInfo<string>(input => input.Declarations);
+        }
+        
+        public List<string> StructList()
+        {
+            return GetInfo<string>(input => input.Structs);
         }
         
         public Dictionary<string,string> FunctionMap(){

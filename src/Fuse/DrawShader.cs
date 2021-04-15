@@ -36,18 +36,22 @@ namespace Fuse
         {
             
             var declarations = new HashSet<string>();
+            var structs = new HashSet<string>();
             var mixins = new HashSet<string>();
             var functionMap = new Dictionary<string, string>();
 
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             theInputs.ForEach(input =>
             {
-                HandleShader(input.Value, declarations, mixins, functionMap, out var source, out var stream);
+                HandleShader(input.Value, declarations, structs, mixins, functionMap, out var source, out var stream);
                 sourceStream.Add(input.Key,(source,stream));
             });
             
             var declarationBuilder = new StringBuilder();
             declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
+            
+            var structBuilder = new StringBuilder();
+            structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
             var mixinBuilder = new StringBuilder();
             mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
@@ -59,6 +63,7 @@ namespace Fuse
             {
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
+                {"structs", structBuilder.ToString()},
                 {"functions", functionBuilder.ToString()}
             };
             
@@ -76,12 +81,13 @@ namespace Fuse
 
         public abstract string Source();
         
-        protected static void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams)
+        protected static void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams)
         {
             var streamBuilder = new StringBuilder();
             theShaderInputs.ForEach(kv =>
             {
                 kv.Value?.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
+                kv.Value?.ParentNode.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
                 kv.Value?.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
                 kv.Value?.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
 
@@ -116,6 +122,8 @@ namespace Fuse
     cbuffer Inputs{
 ${declarations}
     }
+
+${structs}
 
 ${functions}
 

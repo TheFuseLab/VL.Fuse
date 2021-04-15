@@ -8,9 +8,15 @@
 
     public class GpuStruct : IGpuStruct
     {
+        private readonly string _typeName;
+        public GpuStruct()
+        {
+            _typeName = "GpuStruct";
+        }
+        
         public string TypeName()
         {
-            return "GpuStruct";
+            return _typeName;
         }
     }
 }
