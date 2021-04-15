@@ -31,6 +31,11 @@ namespace Fuse
             public static void ConstrainTypesByBuffer<T>(GpuValue<T> input, GpuValue<Buffer<T>> input2) where T : struct
             {
             }
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
+            public static void ConstrainTypeByGpuValue<T>(GpuValue<T> input, T input2) where T : struct
+            {
+            }
 
 
             public static string GetDefaultForType<T>(T theValue)
@@ -54,7 +59,7 @@ namespace Fuse
                     var vec4 = (Vector4) Convert.ChangeType(theValue, typeof(Vector4));
                     return $"float4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
                 }
-                
+              
                 if (typeof(T) == typeof(SamplerState))
                 {
                     return "Sampler";
@@ -108,13 +113,16 @@ namespace Fuse
                 {typeof(uint), "uint"},
                 {typeof(bool), "bool"},
                 
+                
+                {typeof(GpuStruct), "struct"},
+                
                 {typeof(Texture), "Texture"},
                 {typeof(SamplerState), "Sampler"},
                 {typeof(GpuVoid), "Void"},
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
-            private static readonly Dictionary<Type, string> KnownShaderTypes = new Dictionary<Type, string>
+            private static readonly Dictionary<Type, string> KnownSignatureTypes = new Dictionary<Type, string>
             {
                 {typeof(float), "Float"},
                 {typeof(Vector2), "Float2"},
@@ -127,8 +135,10 @@ namespace Fuse
                 {typeof(Int2), "Int2"},
                 {typeof(Int3), "Int3"},
                 {typeof(Int4), "Int4"},
-                {typeof(uint), "Unt"},
+                {typeof(uint), "UInt"},
                 {typeof(bool), "Bool"},
+                
+                {typeof(GpuStruct), "Struct"},
                 
                 {typeof(Texture), "Texture"},
                 {typeof(SamplerState), "Sampler"},
@@ -149,45 +159,71 @@ namespace Fuse
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
             }
             
-            public static string GetShaderTypeForType<T>()
+            public static string GetSignatureTypeForType<T>()
             {
-                return GetShaderTypeForType(typeof(T));        
+                return GetSignatureTypeForType(typeof(T));        
             }
 
-            public static string GetShaderTypeForType(Type t)
+            public static string GetSignatureTypeForType(Type t)
             {
-                if (KnownShaderTypes.TryGetValue(t, out var result))
+                if (KnownSignatureTypes.TryGetValue(t, out var result))
                     return result;
                 
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
             }
 
-            public static string GetTypeByValue(AbstractGpuValue theValue)
+            public static string GetGpuTypeByValue(AbstractGpuValue theValue)
             {
-                switch (theValue)
+                return theValue switch
                 {
-                    case GpuValue<float> _:
-                        return "Float";
-                    case GpuValue<Vector2> _:
-                        return "Float2";
-                    case GpuValue<Vector3> _:
-                        return "Float3";
-                    case GpuValue<Vector4> _:
-                        return "Float4";
-                    case GpuValue<bool> _:
-                        return "Bool";
-                    case GpuValue<int> _:
-                        return "Int";
-                    case GpuValue<Int2> _:
-                        return "Int2";
-                    case GpuValue<Int3> _:
-                        return "Int3";
-                    case GpuValue<Int4> _:
-                        return "Int4";
-                    case GpuValue<Fuse.sdf.Ray> _:
-                        return "Ray";
-                }
-                throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName);
+                    GpuValue<float> _ => "float",
+                    GpuValue<Vector2> _ => "float2",
+                    GpuValue<Vector3> _ => "float3",
+                    GpuValue<Vector4> _ => "float4",
+                    GpuValue<bool> _ => "bool",
+                    GpuValue<int> _ => "int",
+                    GpuValue<Int2> _ => "int2",
+                    GpuValue<Int3> _ => "int3",
+                    GpuValue<Int4> _ => "int4",
+                    GpuValue<Fuse.sdf.Ray> _ => "Ray",
+                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
+                };
+            }
+            
+            public static int GetSizeInBytes(AbstractGpuValue theValue)
+            {
+                return theValue switch
+                {
+                    GpuValue<float> _ => 4,
+                    GpuValue<Vector2> _ => 2 * 4,
+                    GpuValue<Vector3> _ => 3 * 4,
+                    GpuValue<Vector4> _ => 4 * 4,
+                    GpuValue<bool> _ => 1,
+                    GpuValue<int> _ => 4,
+                    GpuValue<Int2> _ => 2 * 4,
+                    GpuValue<Int3> _ => 3 * 4,
+                    GpuValue<Int4> _ => 4 * 4,
+                    GpuValue<Fuse.sdf.Ray> _ => 4,
+                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
+                };
+            }
+            
+            public static string GetSignatureTypeByValue(AbstractGpuValue theValue)
+            {
+                return theValue switch
+                {
+                    GpuValue<float> _ => "Float",
+                    GpuValue<Vector2> _ => "Float2",
+                    GpuValue<Vector3> _ => "Float3",
+                    GpuValue<Vector4> _ => "Float4",
+                    GpuValue<bool> _ => "Bool",
+                    GpuValue<int> _ => "Int",
+                    GpuValue<Int2> _ => "Int2",
+                    GpuValue<Int3> _ => "Int3",
+                    GpuValue<Int4> _ => "Int4",
+                    GpuValue<Fuse.sdf.Ray> _ => "Ray",
+                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
+                };
             }
             
             // USED BY VL
