@@ -1,11 +1,11 @@
-shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, NormalStream, HappySDF
+shader FuseRaymarcher : ShaderBaseStream, Transformation, PositionStream4, NormalStream, HappySDF, ShaderBase
 {
-    float SDF(float3 p)
+    stage float SDF(float3 p)
     {
         //return fSphere(p, 0.5);
-        //return fRBox(p, float3(0.5, 0.5, 0.5), 0.1);
+        return fRBox(p, float3(0.5, 0.5, 0.5), 0.1);
         //return fJulia(p, float4(.33, 0.2, .55, 0.0), 20);//fJulia(float3 p, float4 pars = , uint iter = 11)
-        return fKaliThorns(p, 0.2, 1.4);
+        //return fKaliThorns(p, 0.2, 1.4);
     }
 
     //float4x4 ViewInverse;
@@ -91,7 +91,7 @@ shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, Norma
         return ao;
     }
 
-    float4 ComputeRaymarch(float2 texCoord)
+    stage void ComputeRaymarch(float2 texCoord)
     {
         // Raymarcher 
         ////////////////////////////////////////////////////////////////
@@ -99,11 +99,6 @@ shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, Norma
         float3 rd, p, n;   	float z; // Outputs surface posistion(p) & normals(n), ray direction(rd) & length(z) 
         rayMarcher(uv, p, n, rd, z);
         ////////////////////////////////////////////////////////////////
-    
-        float4 c=1;
-        c.rgb = n;
-        c.rgb = c.rgb *0.5 + 0.5; // remap normals to 0-1
-        c.a = 1;
 
         //AO not yet working
         //float ao = calcAO(p,n);
@@ -116,9 +111,5 @@ shader TestRaymarcher : ShaderBaseStream, Transformation, PositionStream4, Norma
         streams.meshNormalWS = n;
         streams.DepthVS = PosWVP.w;
         streams.Depth = PosWVP.z/PosWVP.w;
-
-        return c;
-        //return float4(uv, 0,1);
-
     }
 };
