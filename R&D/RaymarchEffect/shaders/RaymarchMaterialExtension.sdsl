@@ -1,4 +1,4 @@
-shader MyMaterialExtension : TestRaymarcher, TransformationBase, NormalBase, PositionStream4, Texturing, ShadingBase, Camera, MaterialPixelStream
+shader RaymarchMaterialExtension : FuseRaymarcher, TransformationBase, PositionStream4, Texturing, ShadingBase
 {
     // End of the VS (usually skinning)
     stage override void PreTransformPosition() 
@@ -14,13 +14,10 @@ shader MyMaterialExtension : TestRaymarcher, TransformationBase, NormalBase, Pos
     {
         streams.ShadingPosition = streams.Position;
     }
-
-
-
+    
     stage override float4 Shading() 
     {
         ComputeRaymarch(streams.TexCoord);
         return base.Shading();
     }
-
 };
