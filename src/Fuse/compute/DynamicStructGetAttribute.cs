@@ -1,14 +1,14 @@
 ﻿using System.Collections.Generic;
 
-namespace Fuse
+namespace Fuse.compute
 {
-    public class GetDynamicStructAttribute<TOut> : ShaderNode<TOut>
+    public class DynamicStructGetAttribute<TOut> : ShaderNode<TOut>
     {
 
         private readonly GpuValue<GpuStruct> _struct;
         private readonly GpuValue<TOut> _member;
         
-        public GetDynamicStructAttribute(GpuValue<GpuStruct> theStruct, GpuValue<TOut> theMember, ConstantValue<TOut> theDefault = null) : base("StructAttribute", theDefault)
+        public DynamicStructGetAttribute(GpuValue<GpuStruct> theStruct, GpuValue<TOut> theMember, ConstantValue<TOut> theDefault = null) : base("StructAttribute", theDefault)
         {
             _struct = theStruct;
             _member = theMember;

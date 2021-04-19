@@ -1,16 +1,15 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using Stride.Graphics;
 
-namespace Fuse
+namespace Fuse.compute
 {
-    public class SetBufferNode<TIn> : ShaderNode<GpuVoid> where TIn : struct
+    public class TypedBufferSet<TIn> : ShaderNode<GpuVoid> where TIn : struct
     {
         private readonly GpuValue<Buffer<TIn>> _buffer;
         private readonly GpuValue<int> _index;
         private readonly GpuValue<TIn> _value;
     
-        public SetBufferNode(GpuValue<Buffer<TIn>> theBuffer, GpuValue<int> theIndex, GpuValue<TIn> theValue) : base( "setBuffer")
+        public TypedBufferSet(GpuValue<Buffer<TIn>> theBuffer, GpuValue<int> theIndex, GpuValue<TIn> theValue) : base( "setBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse.compute;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Buffer = Stride.Graphics.Buffer;
@@ -146,6 +147,30 @@ namespace Fuse
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
+            private static readonly Dictionary<Type, int> KnownTypeSize = new Dictionary<Type, int>
+            {
+                {typeof(float), 4},
+                {typeof(Vector2), 2 * 4},
+                {typeof(Vector3), 3 * 4},
+                {typeof(Vector4), 4 * 4},
+                {typeof(Color4), 4 * 4},
+                {typeof(Matrix), 16 * 4},
+                
+                {typeof(int), 4},
+                {typeof(Int2), 2 * 4},
+                {typeof(Int3), 3 * 4},
+                {typeof(Int4), 4 * 4},
+                {typeof(uint), 4},
+                {typeof(bool), 1},
+                
+                {typeof(GpuStruct), 0},
+                
+                {typeof(Texture), 0},
+                {typeof(SamplerState), 0},
+                {typeof(GpuVoid), 0},
+                {typeof(Fuse.sdf.Ray), 0},
+            };
+            
             public static string GetGpuTypeForType<T>()
             {
                 return GetGpuTypeForType(typeof(T));        
@@ -170,6 +195,20 @@ namespace Fuse
                     return result;
                 
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+            }
+            
+            
+            public static int GetGpuTypeSizeForType<T>()
+            {
+                return GetGpuTypeSizeForType(typeof(T));        
+            }
+
+            public static int GetGpuTypeSizeForType(Type t)
+            {
+                if (KnownTypeSize.TryGetValue(t, out var result))
+                    return result;
+                
+                throw new NotImplementedException("No size defined for type: " + t.Name + " : " + t.FullName);
             }
 
             public static string GetGpuTypeByValue(AbstractGpuValue theValue)
