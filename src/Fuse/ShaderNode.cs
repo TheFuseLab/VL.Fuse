@@ -60,8 +60,6 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
         
-        
-        
         public List<IDelegateParameter> Delegates()
         {
             var result = new HashSet<IDelegateParameter>();

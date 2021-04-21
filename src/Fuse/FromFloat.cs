@@ -8,9 +8,7 @@ namespace Fuse
 
         public FromFloat(GpuValue<float> x) : base("fromFloat")
         {
-            x = x ?? new ConstantValue<float>(0);
-
-            
+            x ??= new ConstantValue<float>(0);
             
             Setup(
                 new List<AbstractGpuValue>{x},

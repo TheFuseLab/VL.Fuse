@@ -38,6 +38,17 @@
 
     }
 
+    public class GpuValuePassThrough<T> : GpuValue<T>
+    {
+       
+        private GpuValue<T> _value;
+        public GpuValuePassThrough(GpuValue<T> theValue) : base(theValue.Name)
+        {
+            _value = theValue;
+        }
+        public override string ID => _value.ID;
+    }
+
     public class GpuNumericValue<T> : GpuValue<T> where T : struct
     {
         public GpuNumericValue(string theName) : base(theName)
