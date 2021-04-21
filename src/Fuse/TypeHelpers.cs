@@ -37,6 +37,16 @@ namespace Fuse
             public static void ConstrainTypeByGpuValue<T>(GpuValue<T> input, T input2) where T : struct
             {
             }
+            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
+            public static void ConstrainType<T>(T value, GpuValue<T> gpuValue, Buffer<T> buffer, GpuValue<Buffer<T>> gpuBuffer) where T : struct
+            {
+            }
+            
+            public static void ConstrainBuffer<T>(T value, GpuValue<T> gpuValue, Buffer<T> buffer, GpuValue<Buffer<T>> gpuBuffer) where T : struct
+            {
+            }
 
 
             public static string GetDefaultForType<T>(T theValue)
@@ -178,10 +188,7 @@ namespace Fuse
 
             public static string GetGpuTypeForType(Type t)
             {
-                if (KnownGpuTypes.TryGetValue(t, out var result))
-                    return result;
-                
-                throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+                return KnownGpuTypes.TryGetValue(t, out var result) ? result : t.Name;
             }
             
             public static string GetSignatureTypeForType<T>()
@@ -195,6 +202,16 @@ namespace Fuse
                     return result;
                 
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+            }
+            
+            public static bool IsStructType<T>()
+            {
+                return IsStructType(typeof(T));        
+            }
+
+            public static bool IsStructType(Type t)
+            {
+                return KnownSignatureTypes.ContainsKey(t);
             }
             
             

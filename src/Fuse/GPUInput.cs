@@ -48,11 +48,11 @@ namespace Fuse{
             return "";
         }
     }
-     
-     public abstract class AbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
+    
+    public abstract class UnhandledResourcesAbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
      {
         
-         private const string DeclarationTemplate = @"
+         protected const string DeclarationTemplate = @"
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
 
@@ -72,11 +72,10 @@ namespace Fuse{
 
          public TParameterKeyType ParameterKey { get; protected set;}
 
-         public AbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
+         public UnhandledResourcesAbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
          {
              Value = theValue;
              Setup( new List<AbstractGpuValue>());
-             Inputs = new List<IGpuInput>(){this};
          }
 
          public virtual string TypeName()
@@ -98,22 +97,28 @@ namespace Fuse{
              }
          } 
          public abstract void SetParameterValue(ParameterCollection theCollection);
-         
-         public sealed override List<string> Declarations => new List<string>(){Declaration};
-         public sealed override List<IGpuInput> Inputs { get; }
-         
-         public string Declaration =>
-             ShaderNodesUtil.Evaluate(
+
+         protected override string SourceTemplate()
+         {
+             return "";
+         }
+     }
+     
+     public abstract class AbstractInput<T, TParameterKeyType> : UnhandledResourcesAbstractInput<T,TParameterKeyType> where TParameterKeyType : ParameterKey<T>
+     {
+        
+         public AbstractInput(string theName, T theValue = default(T)): base(theName, theValue)
+         {
+             Value = theValue;
+             Setup( new List<AbstractGpuValue>());
+             AddResource(Inputs, this);
+             AddResource(Declarations,ShaderNodesUtil.Evaluate(
                  DeclarationTemplate,
                  new Dictionary<string, string>
                  {
                      {"inputName", Output.ID},
                      {"inputType", TypeName()}
-                 });
-
-         protected override string SourceTemplate()
-         {
-             return "";
+                 }));
          }
      }
 
@@ -153,14 +158,23 @@ namespace Fuse{
          }
      }
      
-     public class DynamicStructBufferInput: AbstractInput<Buffer, ObjectParameterKey<Buffer>>, IGpuInput
+     public class DynamicStructBufferInput: UnhandledResourcesAbstractInput<Buffer,ObjectParameterKey<Buffer>> 
      {
 
-         private GpuValue<GpuStruct> _struct;
+         private readonly GpuValue<GpuStruct> _struct;
          public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null) : base("BufferInput", theBuffer)
          {
              _struct = theStruct;
              ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
+             
+             AddResource(Inputs, this);
+             AddResource(Declarations,ShaderNodesUtil.Evaluate(
+                 DeclarationTemplate,
+                 new Dictionary<string, string>
+                 {
+                     {"inputName", Output.ID},
+                     {"inputType", TypeName()}
+                 }));
          }
          
          public override string TypeName()

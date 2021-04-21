@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,8 @@ namespace Fuse
 
         string ID { get;  }
     }
+
+    
     
     public abstract class AbstractShaderNode : IShaderNode
     {
@@ -28,11 +31,7 @@ namespace Fuse
         }
 
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
-
-        public virtual List<string> MixIns => new List<string>();
-        public virtual List<string> Declarations => new List<string>();
-        public virtual List<string> Structs => new List<string>();
-        public virtual List<IGpuInput> Inputs => new List<IGpuInput>();
+        
         public string ID { get; }
         
         public string SourceCode => GenerateSource(Ins, CustomTemplateValues);
@@ -84,25 +83,81 @@ namespace Fuse
             });
             return result.ToList();
         }
+        
+        public List<TResourceType> ResourceForTree<TResourceType>(string theResourceId)
+        {
+            var result = new HashSet<TResourceType>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input) || !input.Resources.ContainsKey(theResourceId)) return;
+                input.Resources[theResourceId].ForEach<TResourceType>(i => result.Add(i));
+            });
+            return result.ToList();
+        }
+
+        public Dictionary<string, IList> ResourcesForTree()
+        {
+            var result = new Dictionary<string, IList>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input)) return;
+                input.Resources.ForEach(kv =>
+                {
+                    if (result.ContainsKey(kv.Key)) return;
+                    
+                    var list = new ArrayList();
+                    ResourceForTree<object>(kv.Key).ForEach(i => list.Add(i));
+                    result[kv.Key] = list;
+                });
+            });
+            return result;
+        }
+
+        public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();
+
+        public void AddResource(string theResourceId, object theResource)
+        {
+            if (!Resources.ContainsKey(theResourceId))
+            {
+                Resources[theResourceId] = new ArrayList();
+            }
+
+            Resources[theResourceId].Add(theResource);
+        }
+        
+        public void AddResources(string theResourceId, IList theResources)
+        {
+            if (!Resources.ContainsKey(theResourceId))
+            {
+                Resources[theResourceId] = new ArrayList();
+            }
+
+            theResources.ForEach<object>(r => Resources[theResourceId].Add(r));
+        }
+
+        protected const string Mixins = "Mixins";
+        protected const string Inputs = "Inputs";
+        protected const string Declarations = "Declarations";
+        protected const string Structs = "Structs";
 
         public List<string> MixinList()
         {
-            return GetInfo<string>(input => input.MixIns);
+            return ResourceForTree<string>(Mixins);
         }
         
         public List<IGpuInput> InputList()
         {
-            return GetInfo<IGpuInput>(input => input.Inputs);
+            return ResourceForTree<IGpuInput>(Inputs);
         }
         
         public List<string> DeclarationList()
         {
-            return GetInfo<string>(input => input.Declarations);
+            return ResourceForTree<string>(Declarations);
         }
         
         public List<string> StructList()
         {
-            return GetInfo<string>(input => input.Structs);
+            return ResourceForTree<string>(Structs);
         }
         
         public Dictionary<string,string> FunctionMap(){

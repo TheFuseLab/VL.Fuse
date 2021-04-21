@@ -25,21 +25,18 @@ ${structMembers}
                 call.Append("        "+TypeHelpers.GetGpuTypeByValue(input) + " " + input.Name+";"+Environment.NewLine);
                 myStride += TypeHelpers.GetSizeInBytes(input);
             });
-            Struct = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            var _struct = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"structName", theName},
                 {"structMembers", call.ToString()}
             });
             
-            Structs = new List<string>(){Struct};
+            AddResource(Structs, _struct);
             _stride = myStride;
 
             Output.TypeOverride = theName;
         }
         
-        public sealed override List<string> Structs { get; }
-        
-        public string Struct { get; }
 
         protected override string SourceTemplate()
         {
