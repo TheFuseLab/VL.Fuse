@@ -163,10 +163,10 @@ namespace Fuse.Tests
         public static void TestMember()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
-            var member = new GpuValueMember<Vector2, float>(texCoord.Output, "x");
+            var member = new GetMember<Vector2, float>(texCoord.Output, "x");
             Console.WriteLine(member.BuildSourceCode());
             
-            var memberNull = new GpuValueMember<Vector2, float>(null, "x");
+            var memberNull = new GetMember<Vector2, float>(null, "x");
             Console.WriteLine(memberNull.BuildSourceCode());
         }
         
@@ -176,13 +176,13 @@ namespace Fuse.Tests
             var gpuValue0 = new GpuInput<Vector2>();
             var add = new OperatorNode<Vector2, Vector2>(texCoord.Output, gpuValue0.Output,ConstantHelper.FromFloat<Vector2>(0),"*");
 
-            var memberX = new GpuValueMember<Vector2, float>(add.Output,"x");
-            var memberY = new GpuValueMember<Vector2, float>(add.Output,"y");
+            var memberX = new GetMember<Vector2, float>(add.Output,"x");
+            var memberY = new GetMember<Vector2, float>(add.Output,"y");
 
             var float2Join = new Float2Join(memberX.Output, memberY.Output);
             
-            var memberX1 = new GpuValueMember<Vector2, float>(float2Join.Output,"x");
-            var memberY1 = new GpuValueMember<Vector2, float>(float2Join.Output,"y");
+            var memberX1 = new GetMember<Vector2, float>(float2Join.Output,"x");
+            var memberY1 = new GetMember<Vector2, float>(float2Join.Output,"y");
             
             
             var add1 = new OperatorNode<float, float>(memberX.Output, memberY1.Output,new ConstantValue<float>(0),"+");
@@ -238,7 +238,7 @@ namespace Fuse.Tests
             Console.WriteLine(sin.BuildSourceCode());
             Console.WriteLine(add2.DeclarationList());
 
-            sin.Inputs.ForEach(Console.WriteLine);
+            sin.InputList().ForEach(Console.WriteLine);
 
             var texCoord = new Semantic<Vector2>("TexCoord");
             var add3 = new OperatorNode<Vector2,Vector2>(new List<GpuValue<Vector2>> {texCoord.Output, texCoord.Output},ConstantHelper.FromFloat<Vector2>(0),"+");
