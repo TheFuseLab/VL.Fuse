@@ -1,15 +1,15 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
 
-namespace Fuse
+namespace Fuse.compute
 {
-    public class GetDynamicStructBuffer : ShaderNode<GpuStruct> 
+    public class DynamicStructBufferGet : ShaderNode<GpuStruct> 
     {
         private readonly GpuValue<Buffer> _buffer;
         private readonly GpuValue<int> _index;
         private readonly GpuValue<GpuStruct> _struct;
         
-        public GetDynamicStructBuffer(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theStruct, ConstantValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
+        public DynamicStructBufferGet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theStruct, ConstantValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;

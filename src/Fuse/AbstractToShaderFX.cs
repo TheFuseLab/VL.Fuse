@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Fuse.compute;
 using Stride.Core.Extensions;
 using Stride.Rendering;
 using Stride.Rendering.Materials;

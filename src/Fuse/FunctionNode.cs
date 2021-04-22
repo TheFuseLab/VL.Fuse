@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -55,10 +56,8 @@ namespace Fuse
 
         public MixinFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, string theMixin, bool theIsGroupable = false) : base(theArguments,theFunction, theDefault, theIsGroupable)
         {
-            MixIns = new List<string>(){theMixin};
+            AddResource(Mixins, theMixin);
         }
-
-        public sealed override List<string> MixIns { get; }
     }
     
     public sealed class CustomFunctionNode<T>: AbstractFunctionNode<T>
@@ -75,11 +74,14 @@ namespace Fuse
             bool theIsGroupable = false
         ) : base(theArguments, theFunction, theDefault, theIsGroupable)
         {
-            MixIns = new List<string>();
-            if(theMixins!=null)MixIns.AddRange(theMixins);
+
+            if (theMixins != null)
+            {
+                var mixinList = new ArrayList();
+                theMixins.ForEach(m => mixinList.Add(m));
+                AddResources(Mixins, mixinList);
+            }
             Functions = new Dictionary<string, string>();
-            Declarations = new List<string>();
-            Inputs = new List<IGpuInput>();
             
             var signature = theFunction + GetHashCode();
 
@@ -107,16 +109,14 @@ namespace Fuse
                 
                 theFunctionValueMap.Add(delegateNode.Name, delegateNode.FunctionName);
                 delegateNode.Functions.ForEach(kv => Functions[kv.Key] = kv.Value);
-                MixIns.AddRange(delegateNode.MixIns);
-                Declarations.AddRange(delegateNode.Declarations);
-                Inputs.AddRange(delegateNode.Inputs);
+                delegateNode.ResourcesForTree().ForEach(kv =>
+                {
+                    AddResources(kv.Key, kv.Value);
+                });
             });
         }
         
         public override IDictionary<string, string> Functions { get; }
-        public override List<string> MixIns { get; }
-        public override List<string> Declarations { get; }
-        public override List<IGpuInput> Inputs { get; }
     }
     
     public sealed class PatchedFunctionParameter<T> : ShaderNode<T> 
@@ -161,11 +161,13 @@ namespace Fuse
             IDictionary<string,string> theFunctionValues = null
         ) : base(theArguments, "patchedFunction", theDefault)
         {
-            MixIns = new List<string>();
-            if(theMixins!=null)MixIns.AddRange(theMixins);
+            if (theMixins != null)
+            {
+                var mixinList = new ArrayList();
+                theMixins.ForEach(m => mixinList.Add(m));
+                AddResources(Mixins, mixinList);
+            }
             Functions = new Dictionary<string, string>();
-            Declarations = new List<string>();
-            Inputs = new List<IGpuInput>();
             
             var signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
 
@@ -202,9 +204,10 @@ ${functionImplementation}
                 
                 theFunctionValueMap.Add(delegateNode.Name, delegateNode.FunctionName);
                 delegateNode.Functions.ForEach(kv => Functions[kv.Key] = kv.Value);
-                MixIns.AddRange(delegateNode.MixIns);
-                Declarations.AddRange(delegateNode.Declarations);
-                Inputs.AddRange(delegateNode.Inputs);
+                delegateNode.ResourcesForTree().ForEach(kv =>
+                {
+                    AddResources(kv.Key, kv.Value);
+                });
             });
         }
         
@@ -232,8 +235,5 @@ ${functionImplementation}
         }
         
         public override IDictionary<string, string> Functions { get; }
-        public override List<string> MixIns { get; }
-        public override List<string> Declarations { get; }
-        public override List<IGpuInput> Inputs { get; }
     }
 }

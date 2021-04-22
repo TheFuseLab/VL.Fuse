@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -81,20 +82,16 @@ namespace Fuse
          string FunctionName { get;  }
          
          IDictionary<string, string> Functions { get; }
-         List<string> MixIns { get; }
-         List<string> Declarations { get; }
-         List<IGpuInput> Inputs { get; }
+
+
+         Dictionary<string, IList> ResourcesForTree();
     }
 
     public class DelegateNode<T> : ShaderNode<T>, IDelegateNode
     {
         public DelegateNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, ConstantValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
         {
-            
-            MixIns = new List<string>();
             Functions = new Dictionary<string, string>();
-            Declarations = new List<string>();
-            Inputs = new List<IGpuInput>();
 
             Name = theId;
             FunctionName = theId + GetHashCode();
@@ -131,11 +128,16 @@ ${functionImplementation}
     }";
             Functions.Add(theFunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             theDelegate.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
-            MixIns.AddRange(theDelegate.ParentNode.MixinList());
+            theDelegate.ParentNode.ResourcesForTree().ForEach(kv =>
+            {
+                AddResources(kv.Key, kv.Value );
+            });
+            /*
+            AddResources(Mixins,theDelegate.ParentNode.MixinList());
             Declarations.AddRange(theDelegate.ParentNode.DeclarationList());
             Structs.AddRange(theDelegate.ParentNode.StructList());
             Inputs.AddRange(theDelegate.ParentNode.InputList());
-            
+            */
             
             delegates.ForEach(input => input.DeleteRemap());
         }
@@ -160,10 +162,6 @@ ${functionImplementation}
         }
 
         public sealed override IDictionary<string, string> Functions { get; }
-        public sealed override List<string> MixIns { get; }
-        public override List<string> Declarations { get; }
-        public override List<IGpuInput> Inputs { get; }
-
         public string FunctionName { get;  }
 
         public string Name { get; }

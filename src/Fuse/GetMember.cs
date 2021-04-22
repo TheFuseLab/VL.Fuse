@@ -2,12 +2,12 @@
 
 namespace Fuse
 {
-    public class GpuValueMember<TIn, TOut> : ShaderNode<TOut>
+    public class GetMember<TIn, TOut> : ShaderNode<TOut>
     {
 
         private readonly GpuValue<TIn> _input;
         private readonly string _member;
-        public GpuValueMember(GpuValue<TIn> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
+        public GetMember(GpuValue<TIn> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
         {
             _input = theInput;
             _member = theMember;

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using Fuse.compute;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 
@@ -91,8 +92,8 @@ ${sourceCompute}
             var gpuStruct = new DynamicStruct(new List<AbstractGpuValue>(){valVec4},"TestStruct");
             var bufferInput = new DynamicStructBufferInput(gpuStruct.Output);
 
-            var gpuStructInstance = new GetDynamicStructBuffer(bufferInput.Output, gpuIndex.Output, gpuStruct.Output, null);
-            var structValue = new GetDynamicStructAttribute<Vector4>(gpuStructInstance.Output, valVec4);
+            var gpuStructInstance = new DynamicStructBufferGet(bufferInput.Output, gpuIndex.Output, gpuStruct.Output, null);
+            var structValue = new DynamicStructGetAttribute<Vector4>(gpuStructInstance.Output, valVec4);
             Console.WriteLine(structValue.BuildSourceCode());
             Console.WriteLine(GetShader(structValue.Output));
             

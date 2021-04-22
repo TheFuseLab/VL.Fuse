@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse.compute;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Buffer = Stride.Graphics.Buffer;
@@ -34,6 +35,16 @@ namespace Fuse
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
             public static void ConstrainTypeByGpuValue<T>(GpuValue<T> input, T input2) where T : struct
+            {
+            }
+            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global 
+            public static void ConstrainType<T>(T value, GpuValue<T> gpuValue, Buffer<T> buffer, GpuValue<Buffer<T>> gpuBuffer) where T : struct
+            {
+            }
+            
+            public static void ConstrainBuffer<T>(T value, GpuValue<T> gpuValue, Buffer<T> buffer, GpuValue<Buffer<T>> gpuBuffer) where T : struct
             {
             }
 
@@ -146,6 +157,30 @@ namespace Fuse
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
+            private static readonly Dictionary<Type, int> KnownTypeSize = new Dictionary<Type, int>
+            {
+                {typeof(float), 4},
+                {typeof(Vector2), 2 * 4},
+                {typeof(Vector3), 3 * 4},
+                {typeof(Vector4), 4 * 4},
+                {typeof(Color4), 4 * 4},
+                {typeof(Matrix), 16 * 4},
+                
+                {typeof(int), 4},
+                {typeof(Int2), 2 * 4},
+                {typeof(Int3), 3 * 4},
+                {typeof(Int4), 4 * 4},
+                {typeof(uint), 4},
+                {typeof(bool), 1},
+                
+                {typeof(GpuStruct), 0},
+                
+                {typeof(Texture), 0},
+                {typeof(SamplerState), 0},
+                {typeof(GpuVoid), 0},
+                {typeof(Fuse.sdf.Ray), 0},
+            };
+            
             public static string GetGpuTypeForType<T>()
             {
                 return GetGpuTypeForType(typeof(T));        
@@ -153,10 +188,7 @@ namespace Fuse
 
             public static string GetGpuTypeForType(Type t)
             {
-                if (KnownGpuTypes.TryGetValue(t, out var result))
-                    return result;
-                
-                throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+                return KnownGpuTypes.TryGetValue(t, out var result) ? result : t.Name;
             }
             
             public static string GetSignatureTypeForType<T>()
@@ -170,6 +202,30 @@ namespace Fuse
                     return result;
                 
                 throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
+            }
+            
+            public static bool IsStructType<T>()
+            {
+                return IsStructType(typeof(T));        
+            }
+
+            public static bool IsStructType(Type t)
+            {
+                return KnownSignatureTypes.ContainsKey(t);
+            }
+            
+            
+            public static int GetGpuTypeSizeForType<T>()
+            {
+                return GetGpuTypeSizeForType(typeof(T));        
+            }
+
+            public static int GetGpuTypeSizeForType(Type t)
+            {
+                if (KnownTypeSize.TryGetValue(t, out var result))
+                    return result;
+                
+                throw new NotImplementedException("No size defined for type: " + t.Name + " : " + t.FullName);
             }
 
             public static string GetGpuTypeByValue(AbstractGpuValue theValue)
