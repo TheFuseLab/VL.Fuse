@@ -11,7 +11,8 @@ namespace Fuse
             Setup(new List<AbstractGpuValue>{theIn});
             AddResources(theResourceId, theResources);
 
-            Output = new GpuValuePassThrough<T>(theIn);
+            
+            Output = theIn == null ? new GpuValue<T>(""):new GpuValuePassThrough<T>(theIn);
             Output.ParentNode = this;
         }
 
