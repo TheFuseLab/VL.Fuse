@@ -1,0 +1,66 @@
+﻿
+shader ObstaclesCylinderVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
+{
+    struct InvTransform
+    {
+        float4x4 Matrix;
+    };
+
+    StructuredBuffer<InvTransform> InstanceWorldInverse;
+    Buffer<float4> VelBuffer;
+    RWTexture3D<float4> RWDistanceVolume;
+
+    float SDFBorder = 0.1f;
+    float SDFBorderPlus = 0.1f;
+
+    bool DoObstaclesCylinders;
+
+    float4x4 WorldVol;
+    //float3 VolumeMin;
+
+    float UnitCylinder(float3 p) 
+    {
+        float d = length(p.xz) - 0.5;
+        d = max(d, abs(p.y) - 0.5);
+        return d;
+    }
+
+    override void Compute()
+    {
+        uint count;
+        uint stride;
+        InstanceWorldInverse.GetDimensions(count, stride);
+
+        uint3 ti = streams.DispatchThreadId;
+        float3 p = ti+0.5;
+        p /= FluidDimensions;
+        p -= 0.5f;
+
+        float3 tp;
+    
+        float dist;
+        float3 vel;
+        float obst=0;
+
+        float3 worldPos = mul(float4(p,1), WorldVol).xyz;
+
+        float4 vol = float4((float3)-999,1);
+    
+        if(DoObstaclesCylinders)
+        {
+            for(uint i=0; i<count; i++)
+            {
+                tp = mul(float4(p,1), InstanceWorldInverse[i].Matrix).xyz;
+                dist = min(vol.w, UnitCylinder(tp));
+        
+                if (dist < SDFBorder + SDFBorderPlus) vel = max(vol.xyz, VelBuffer[i].xyz);
+        
+                if (dist < SDFBorder + SDFBorderPlus) obst = 0.5;
+                if (dist < SDFBorder) obst = 1;
+            }
+        }
+
+        RWDistanceVolume[ti] = float4(vel, obst);
+    }
+   
+};

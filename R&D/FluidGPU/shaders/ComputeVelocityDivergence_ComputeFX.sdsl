@@ -1,0 +1,91 @@
+﻿//----------------------------------------------------------------------------------
+// File:   FluidSim.fx
+// Author: Sarah Tariq and Ignacio Llamas
+// Email:  sdkfeedback@nvidia.com
+//
+// Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
+//
+// TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
+// *AS IS*  AND NVIDIA AND  ITS SUPPLIERS DISCLAIM  ALL WARRANTIES,  EITHER  EXPRESS
+// OR IMPLIED, INCLUDING, BUT NOT LIMITED  TO, IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL  NVIDIA OR ITS SUPPLIERS
+// BE  LIABLE  FOR  ANY  SPECIAL,  INCIDENTAL,  INDIRECT,  OR  CONSEQUENTIAL DAMAGES
+// WHATSOEVER (INCLUDING, WITHOUT LIMITATION,  DAMAGES FOR LOSS OF BUSINESS PROFITS,
+// BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS)
+// ARISING OUT OF THE  USE OF OR INABILITY  TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS
+// BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+//
+//
+//----------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------
+// Shaders to implement a "stable fluids" style semi-Lagrangian solver for 3D smoke
+//--------------------------------------------------------------------------------------
+// It assumes the velocity and pressure grids are collocated
+// It handles boundary conditions for static obstacles stored as an in/out voxel volume
+// BFECC is supported for smoke density advection
+// The diffusion step is skipped
+//--------------------------------------------------------------------------------------
+
+shader ComputeVelocityDivergence_ComputeFX : ComputeShaderBase, FluidGlobals
+{
+    //--------------------------------------------------------------------------------------
+    // Textures
+    //--------------------------------------------------------------------------------------
+
+    Texture3D<float3> Texture_Velocity;
+    Texture3D<float> Texture_Obstacles;
+    Texture3D<float3> Texture_ObstVelocity;
+    RWTexture3D<float> Texture_Divergence; //Output Texture
+
+    //--------------------------------------------------------------------------------------
+    // Helper functions
+    //--------------------------------------------------------------------------------------
+
+    float3 GetObstVelocity( float3 cellTexCoords )
+    {
+        return Texture_ObstVelocity[cellTexCoords];
+    }
+
+    bool IsBoundaryCell( float3 cellTexCoords )
+    {
+        return (Texture_Obstacles[cellTexCoords].r > 0.9);    
+    }
+
+    //--------------------------------------------------------------------------------------
+    // Compute Shader
+    //--------------------------------------------------------------------------------------
+
+    override void Compute()
+    {
+        uint3 i = streams.DispatchThreadId;
+        uint3 dim = FluidDimensions;
+
+        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
+       
+        float3 fieldL = Texture_Velocity[LEFTCELL];
+        float3 fieldR = Texture_Velocity[RIGHTCELL];
+        float3 fieldB = Texture_Velocity[BOTTOMCELL];
+        float3 fieldT = Texture_Velocity[TOPCELL];
+        float3 fieldD = Texture_Velocity[DOWNCELL];
+        float3 fieldU = Texture_Velocity[UPCELL];
+
+        if( IsBoundaryCell(LEFTCELL) )  fieldL = GetObstVelocity(LEFTCELL);
+        if( IsBoundaryCell(RIGHTCELL) ) fieldR = GetObstVelocity(RIGHTCELL);
+        if( IsBoundaryCell(BOTTOMCELL) )fieldB = GetObstVelocity(BOTTOMCELL);
+        if( IsBoundaryCell(TOPCELL) )   fieldT = GetObstVelocity(TOPCELL);
+        if( IsBoundaryCell(DOWNCELL) )  fieldD = GetObstVelocity(DOWNCELL);
+        if( IsBoundaryCell(UPCELL) )    fieldU = GetObstVelocity(UPCELL);
+
+        float divergence =  0.5 *
+            ( ( fieldR.x - fieldL.x ) + ( fieldT.y - fieldB.y ) + ( fieldU.z - fieldD.z ) );
+
+        Texture_Divergence[i] = divergence;
+    
+    }
+};
