@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stride.Core.Extensions;
+//using Stride.Core.Extensions;
 using VL.Lib.Collections;
+
+
 
 namespace Fuse
 {
@@ -44,7 +46,7 @@ namespace Fuse
                
                 ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
             });
-            if (!SourceCode.IsNullOrEmpty() && theHashes.Add(GetHashCode()))
+            if (!Stride.Core.Extensions.EnumerableExtensions.IsNullOrEmpty(SourceCode))
             {
                 theSourceBuilder.Append("        " + SourceCode + Environment.NewLine);
             }
@@ -88,7 +90,8 @@ namespace Fuse
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
                 if (!(n is AbstractShaderNode input) || !input.Resources.ContainsKey(theResourceId)) return;
-                input.Resources[theResourceId].ForEach<TResourceType>(i => result.Add(i));
+                Stride.Core.Extensions.EnumerableExtensions.ForEach<TResourceType>(input.Resources[theResourceId], i => result.Add(i));
+
             });
             return result.ToList();
         }
@@ -144,7 +147,8 @@ namespace Fuse
                 Resources[theResourceId] = new ArrayList();
             }
 
-            theResources.ForEach<object>(r => Resources[theResourceId].Add(r));
+            Stride.Core.Extensions.EnumerableExtensions.ForEach<object>(theResources, r => Resources[theResourceId].Add(r));
+
         }
 
         protected const string Mixins = "Mixins";
