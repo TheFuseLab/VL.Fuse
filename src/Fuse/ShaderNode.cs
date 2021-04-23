@@ -93,6 +93,20 @@ namespace Fuse
             return result.ToList();
         }
 
+        public List<string> ResourceIdsForTree()
+        {
+            var result = new HashSet<string>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input)) return;
+                input.Resources.ForEach(kv =>
+                {
+                    if (result.Add(kv.Key)) return;
+                });
+            });
+            return result.ToList();
+        }
+        
         public Dictionary<string, IList> ResourcesForTree()
         {
             var result = new Dictionary<string, IList>();

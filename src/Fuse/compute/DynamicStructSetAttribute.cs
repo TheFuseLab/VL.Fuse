@@ -16,6 +16,9 @@ namespace Fuse.compute
             _value = theValue;
             Setup(new List<AbstractGpuValue>{theStruct,theValue});
             Output = theStruct;
+            
+            Output = theStruct == null ? new GpuValue<GpuStruct>(""):new GpuValuePassThrough<GpuStruct>(theStruct);
+            Output.ParentNode = this;
         }
 
         protected override string SourceTemplate()

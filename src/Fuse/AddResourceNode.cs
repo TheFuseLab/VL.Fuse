@@ -21,6 +21,11 @@ namespace Fuse
             return "";
         }
         
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+        
         protected override Dictionary<string, string> CreateTemplateMap()
         {
             return new Dictionary<string, string>();
