@@ -1,0 +1,95 @@
+﻿//----------------------------------------------------------------------------------
+// File:   FluidSim.fx
+// Author: Sarah Tariq and Ignacio Llamas
+// Email:  sdkfeedback@nvidia.com
+// 
+// Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
+//
+// TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
+// *AS IS*  AND NVIDIA AND  ITS SUPPLIERS DISCLAIM  ALL WARRANTIES,  EITHER  EXPRESS
+// OR IMPLIED, INCLUDING, BUT NOT LIMITED  TO, IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL  NVIDIA OR ITS SUPPLIERS
+// BE  LIABLE  FOR  ANY  SPECIAL,  INCIDENTAL,  INDIRECT,  OR  CONSEQUENTIAL DAMAGES
+// WHATSOEVER (INCLUDING, WITHOUT LIMITATION,  DAMAGES FOR LOSS OF BUSINESS PROFITS,
+// BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS)
+// ARISING OUT OF THE  USE OF OR INABILITY  TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS
+// BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+//
+//
+//----------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------
+// Shaders to implement a "stable fluids" style semi-Lagrangian solver for 3D smoke
+//--------------------------------------------------------------------------------------
+// It assumes the velocity and pressure grids are collocated
+// It handles boundary conditions for static obstacles stored as an in/out voxel volume
+// BFECC is supported for smoke density advection
+// The diffusion step is skipped
+//--------------------------------------------------------------------------------------
+
+shader ObstaclesGradient_ComputeFX : ComputeShaderBase, FluidGlobals
+{
+    //--------------------------------------------------------------------------------------
+    // Textures
+    //--------------------------------------------------------------------------------------
+
+    Texture3D <float4> CylinderVelocity;
+    RWTexture3D<float> Texture_Obstacles; //Output Texture
+
+    //Texture2DArray<uint2> TexO;
+    //Texture2DArray<float4> TexOV;
+    
+    //--------------------------------------------------------------------------------------
+    // Helper functions
+    //--------------------------------------------------------------------------------------
+    
+    bool PointIsInsideBox(float3 p, float3 LBUcorner, float3 RTDcorner)
+    {
+        return ((p.x > LBUcorner.x) && (p.x < RTDcorner.x)
+        &&  (p.y > LBUcorner.y) && (p.y < RTDcorner.y)
+        &&  (p.z > LBUcorner.z) && (p.z < RTDcorner.z));
+    }
+    
+    //--------------------------------------------------------------------------------------
+    // Compute Shader
+    //--------------------------------------------------------------------------------------
+
+    override void Compute()
+    {
+        uint3 i = streams.DispatchThreadId;
+        uint3 dim = FluidDimensions;
+
+        float obstacle = 0.5; 
+    
+        if(PointIsInsideBox(i, 0, dim-1))
+        {
+            obstacle = 0;
+        }
+
+    /*
+        float3 p = i;	
+        float2 voxel = TexO[p];
+    
+        if (voxel.g > 0.9) obstacle = 0.5;
+
+        if (TexOV[p].w == 0 ) obstacle = 1;
+        */
+
+
+        float4 cylinderObs = CylinderVelocity[i];
+        if(cylinderObs.w == 0.5) obstacle = 0.5;
+        if(cylinderObs.w == 1) obstacle = 1;
+
+        //if (Texture_Obstacles[i] > 0.5) 
+        //{
+            
+        //    return;
+        //} 
+        //else 
+        //{
+
+            Texture_Obstacles[i] = obstacle;
+
+        //}
+    }   
+};

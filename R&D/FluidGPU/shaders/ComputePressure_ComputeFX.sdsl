@@ -1,0 +1,99 @@
+﻿//----------------------------------------------------------------------------------
+// File:   FluidSim.fx
+// Author: Sarah Tariq and Ignacio Llamas
+// Email:  sdkfeedback@nvidia.com
+//
+// Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
+//
+// TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
+// *AS IS*  AND NVIDIA AND  ITS SUPPLIERS DISCLAIM  ALL WARRANTIES,  EITHER  EXPRESS
+// OR IMPLIED, INCLUDING, BUT NOT LIMITED  TO, IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL  NVIDIA OR ITS SUPPLIERS
+// BE  LIABLE  FOR  ANY  SPECIAL,  INCIDENTAL,  INDIRECT,  OR  CONSEQUENTIAL DAMAGES
+// WHATSOEVER (INCLUDING, WITHOUT LIMITATION,  DAMAGES FOR LOSS OF BUSINESS PROFITS,
+// BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS)
+// ARISING OUT OF THE  USE OF OR INABILITY  TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS
+// BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+//
+//
+//----------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------
+// Shaders to implement a "stable fluids" style semi-Lagrangian solver for 3D smoke
+//--------------------------------------------------------------------------------------
+// It assumes the velocity and pressure grids are collocated
+// It handles boundary conditions for static obstacles stored as an in/out voxel volume
+// BFECC is supported for smoke density advection
+// The diffusion step is skipped
+//--------------------------------------------------------------------------------------
+
+shader ComputePressure_ComputeFX : ComputeShaderBase, FluidGlobals
+{
+    //--------------------------------------------------------------------------------------
+    // Textures
+    //--------------------------------------------------------------------------------------
+
+    Texture3D<float> Texture_Obstacles;
+    Texture3D<float> Texture_Divergence;
+    Texture3D<float> Texture_PressureIn; //Input Texture
+    RWTexture3D<float> Texture_Pressure; //Output Texture
+    float3 CoordsOffset;
+
+    //--------------------------------------------------------------------------------------
+    // Helper functions
+    //--------------------------------------------------------------------------------------
+
+    bool IsBoundaryCell( uint3 cellTexCoords )
+    {
+        return (Texture_Obstacles[cellTexCoords].r > 0.9);
+    }
+
+    //--------------------------------------------------------------------------------------
+    // Compute Shader
+    //--------------------------------------------------------------------------------------
+
+    override void Compute()
+    {
+        uint3 dim = FluidDimensions;
+        uint3 i = streams.DispatchThreadId + CoordsOffset;
+
+        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
+
+        float pCenter = Texture_PressureIn[i];
+    
+        float pL = Texture_PressureIn[LEFTCELL];
+        float pR = Texture_PressureIn[RIGHTCELL];
+        float pB = Texture_PressureIn[BOTTOMCELL];
+        float pT = Texture_PressureIn[TOPCELL];
+        float pD = Texture_PressureIn[DOWNCELL];
+        float pU = Texture_PressureIn[UPCELL];
+
+        i = streams.DispatchThreadId;
+
+        LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
+
+        // Texture_tempvector contains the "divergence" computed by PS_DIVERGENCE
+        float bC = Texture_Divergence[streams.DispatchThreadId];
+
+        if( IsBoundaryCell(LEFTCELL) )  pL = pCenter;
+        if( IsBoundaryCell(RIGHTCELL) ) pR = pCenter;
+        if( IsBoundaryCell(BOTTOMCELL) )pB = pCenter;
+        if( IsBoundaryCell(TOPCELL) )   pT = pCenter; 
+        if( IsBoundaryCell(DOWNCELL) )  pD = pCenter;  
+        if( IsBoundaryCell(UPCELL) )    pU = pCenter;
+
+        Texture_Pressure[streams.DispatchThreadId] = ( pL + pR + pB + pT + pU + pD - bC ) / 6.0;
+
+    }
+
+};

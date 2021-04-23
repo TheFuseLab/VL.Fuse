@@ -1,0 +1,95 @@
+﻿//----------------------------------------------------------------------------------
+// File:   FluidSim.fx
+// Author: Sarah Tariq and Ignacio Llamas
+// Email:  sdkfeedback@nvidia.com
+//
+// Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
+//
+// TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
+// *AS IS*  AND NVIDIA AND  ITS SUPPLIERS DISCLAIM  ALL WARRANTIES,  EITHER  EXPRESS
+// OR IMPLIED, INCLUDING, BUT NOT LIMITED  TO, IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL  NVIDIA OR ITS SUPPLIERS
+// BE  LIABLE  FOR  ANY  SPECIAL,  INCIDENTAL,  INDIRECT,  OR  CONSEQUENTIAL DAMAGES
+// WHATSOEVER (INCLUDING, WITHOUT LIMITATION,  DAMAGES FOR LOSS OF BUSINESS PROFITS,
+// BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS)
+// ARISING OUT OF THE  USE OF OR INABILITY  TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS
+// BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+//
+//
+//----------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------
+// Shaders to implement a "stable fluids" style semi-Lagrangian solver for 3D smoke
+//--------------------------------------------------------------------------------------
+// It assumes the velocity and pressure grids are collocated
+// It handles boundary conditions for static obstacles stored as an in/out voxel volume
+// BFECC is supported for smoke density advection
+// The diffusion step is skipped
+//--------------------------------------------------------------------------------------
+
+shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
+{
+    //--------------------------------------------------------------------------------------
+    // Textures
+    //--------------------------------------------------------------------------------------
+    
+    Texture3D<float3> Texture_VelocityIn; 
+    RWTexture3D<float3> Texture_Velocity; //Output Texture
+
+    //--------------------------------------------------------------------------------------
+    // Variables
+    //--------------------------------------------------------------------------------------
+
+    float Modulate = 1.0f;
+    float Forward = 1.0f;
+    float3 CoordsOffset;
+    int BorderMargin = 5;
+    float BorderGamma = 1.0f;
+
+    //--------------------------------------------------------------------------------------
+    // Pipeline State Definitions
+    //--------------------------------------------------------------------------------------
+
+    SamplerState samLinear : IMMUTABLE
+    {
+        Filter = MIN_MAG_MIP_LINEAR;
+        AddressU = Clamp;
+        AddressV = Clamp;
+        AddressW = Clamp;
+    };
+    
+    //--------------------------------------------------------------------------------------
+    // Helper functions
+    //--------------------------------------------------------------------------------------
+
+    float3 GetAdvectedPosTexCoords(uint3 i)
+    {
+        float3 pos = i;
+    
+        pos -= Timestep * Forward *	Texture_Velocity[i];
+    
+        return pos;
+    }
+
+    //--------------------------------------------------------------------------------------
+    // Compute Shader
+    //--------------------------------------------------------------------------------------
+
+    override void Compute()
+    {
+        uint3 i = streams.DispatchThreadId;
+        uint3 dim = FluidDimensions;
+
+        float3 npos = ((GetAdvectedPosTexCoords((int3)i) + (int3)CoordsOffset) + 0.5f) / dim;
+
+        float3 BorderFader;
+        uint3 halfDim = FluidDimensions/2;
+        int3 borderGradient = abs((int3)halfDim - (int3)i);
+        BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
+        float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
+        finalGrad = pow(finalGrad, BorderGamma);
+     
+        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * Modulate * finalGrad;
+    }
+
+};

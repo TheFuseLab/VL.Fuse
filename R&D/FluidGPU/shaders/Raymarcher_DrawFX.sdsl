@@ -1,0 +1,70 @@
+﻿
+shader Raymarcher_DrawFX : ShaderBase, Transformation, Texturing, PositionStream4
+{
+    [Color]
+    stage float4 Color;
+    Texture3D <float3> texVOL;
+    float4x4 tVolumeTransform;
+
+    SamplerState linearSampler : IMMUTABLE
+    {
+        Filter = MIN_MAG_MIP_LINEAR;
+        AddressU = Border;
+        AddressV = Border;
+        AddressW = Border;
+    };
+
+    uint maxSteps; // = 128;
+    float stepSize; // = .01;
+    float opacity; // = .001;
+    float OffsetZ;
+    float Gamma ; //=1;
+
+    //vertex shader ========================================================================================================
+    stage override void VSMain()
+    { 
+        streams.ShadingPosition = mul(streams.Position, World);
+        streams.TexCoord = mul(float4(streams.TexCoord.x - 0.5, 0.5 - streams.TexCoord.y, 0, 1), World);
+    }
+
+    float3 UVtoEYE(float2 uv)
+    {
+        float4 rayPos = float4(mul(float4(uv, 0, 1), ProjectionInverse).xy, -1, 0);
+        return normalize(mul(rayPos, ViewInverse).xyz);
+    }
+
+    float3 volume(float3 p, Texture3D<float3> t)
+    {
+        //world transformation and mapping to 3d texture space
+        p = mul(float4(p, 1), tVolumeTransform).xyz + 0.5;
+        
+        float3 result = t.Sample(linearSampler, p);
+        return result;
+    }
+
+    //pixel shader ========================================================================================================
+    stage override void PSMain()
+    {
+        // Ray Origin
+        float3 eye = ViewInverse[3].xyz;
+    
+        // Ray Direction
+        float3 dir = UVtoEYE(streams.TexCoord);
+    
+        float3 p = eye + normalize(dir) * OffsetZ;
+    
+        float3 accumVolume;
+        float3 lightP = p;
+    
+        for (uint i = 0; i <= maxSteps; i++)
+        {
+            p += dir * stepSize;
+            accumVolume += volume(p, texVOL) * opacity;
+        }
+    
+        float4 col = float4(accumVolume, 1);
+        
+        //col = sign(col) * pow(abs(col), Gamma);
+        streams.ColorTarget = saturate(float4(col.xyz, 0.5));
+    }
+};
