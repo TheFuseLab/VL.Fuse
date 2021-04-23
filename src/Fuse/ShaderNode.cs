@@ -46,7 +46,7 @@ namespace Fuse
                
                 ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
             });
-            if (!string.IsNullOrWhiteSpace(SourceCode))
+            if (!string.IsNullOrWhiteSpace(SourceCode) && theHashes.Add(GetHashCode()))
 
             {
                 theSourceBuilder.Append("        " + SourceCode + Environment.NewLine);
