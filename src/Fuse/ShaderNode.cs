@@ -46,7 +46,8 @@ namespace Fuse
                
                 ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
             });
-            if (!Stride.Core.Extensions.EnumerableExtensions.IsNullOrEmpty(SourceCode))
+            if (!string.IsNullOrWhiteSpace(SourceCode))
+
             {
                 theSourceBuilder.Append("        " + SourceCode + Environment.NewLine);
             }
