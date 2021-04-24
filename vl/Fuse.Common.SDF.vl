@@ -4697,17 +4697,7 @@
               </p:TypeAnnotation>
             </Pin>
             <Pin Id="U5LCTdLIF0MLKvLlSKf8QY" Name="Position" Kind="InputPin" />
-            <Pin Id="ONXnJSj8kxHOdal4JVqyfO" Name="SDF A" Kind="InputPin">
-              <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
-                <p:TypeArguments>
-                  <TypeReference>
-                    <Choice Kind="TypeFlag" Name="Float32" />
-                  </TypeReference>
-                </p:TypeArguments>
-              </p:TypeAnnotation>
-            </Pin>
-            <Pin Id="G6VZWueMWAwPKGTKHXILbC" Name="SDF B" Kind="InputPin">
+            <Pin Id="ONXnJSj8kxHOdal4JVqyfO" Name="Input" Kind="InputPin">
               <p:TypeAnnotation>
                 <Choice Kind="TypeFlag" Name="GpuValue" />
                 <p:TypeArguments>
@@ -4737,8 +4727,13 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="Nz3ukQijW9cMk2zzarnxkq" Name="Op" Kind="InputPin" Bounds="1233,497" />
+            <Pin Id="Nz3ukQijW9cMk2zzarnxkq" Name="Op" Kind="InputPin" Bounds="1233,497">
+              <p:TypeAnnotation>
+                <Choice Kind="TypeFlag" Name="CombineSDFOp" />
+              </p:TypeAnnotation>
+            </Pin>
             <Pin Id="H3v19VawKgePFQ6hIi90p5" Name="Op" Kind="OutputPin" Bounds="1241,1271" />
+            <Pin Id="AMadWawJLr7NxFeuV3iVZc" Name="Input 2" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="FJMEkg2A9D2Ns98ZDPWuvm">
             <Fragment Id="PIb0zqRum37Pgu3efyqNtd" Patch="V8dor2KlMTKQV26ALNJe84" Enabled="true" />
@@ -4761,7 +4756,6 @@
           <Link Id="D69pIUoxvXAN8yvmj6rTaq" Ids="VD7ycmcDAJsNYQ1M0VYUIx,ANFgNebvmEBL72HH4pNvnh" />
           <Link Id="E7wvPMywOwWNrSaB0cpG07" Ids="KzTsK58FggTLi2sKqTXNor,TAQ8VxJlqt4N05ZpMTc0KC" />
           <Link Id="UXslHa2okTCOrCuJlFR0c2" Ids="TAQ8VxJlqt4N05ZpMTc0KC,LoXBtsMBZkwNiAzy3rpuZz" />
-          <Link Id="IUdEdrJNyF9PN0LNkYq64l" Ids="G6VZWueMWAwPKGTKHXILbC,KzTsK58FggTLi2sKqTXNor" IsHidden="true" />
           <Link Id="L5y5AHhIOjfP4K3umW14sA" Ids="JFitM9SVZGUPbyIjimtYRf,VCQpxWCeUgGOCiexjr4chJ" />
           <Link Id="RghAlgk0WdIMi63GYKfEIw" Ids="QbhkvjlDyYdPOJxXHju9iM,H7Nr5eBVmBOMdYZmPxrm42" />
           <Link Id="ISOuWW2LMaGPGCs2E1GyB4" Ids="HJZrToms2dmPzhfusmwPh5,InI29r1WheFL1V2zIbeNeW" />
@@ -4795,6 +4789,7 @@
           <Link Id="SpVhFbhrJEVMruiGaSRKH3" Ids="VkNIktZxfBtPsbHDwWqMXG,J8TxRF1xe9cMSWVRT0WMi9" />
           <Link Id="JElypvulg0cQLXB65SxOCO" Ids="BsImeGKVFSYLNbSo3lMtpq,UpLNXaMohRtPXicMPI6pzH" />
           <Link Id="KFxF4RBtBuSQXaWfyhphMP" Ids="DXmh3WyPXHVORHxc9NFi2Z,DrJTrqwW0RPP0BFRk5239m" />
+          <Link Id="RXDFJDXcDqbNZsckvJS1Fh" Ids="AMadWawJLr7NxFeuV3iVZc,KzTsK58FggTLi2sKqTXNor" IsHidden="true" />
         </Patch>
       </Node>
       <Canvas Id="Twx97w0zBJxOLJ8KeBClw1" Name="Operations" Position="601,182" />
@@ -4978,6 +4973,33 @@
           <Link Id="IFzHDrMutSLOl0on653JoM" Ids="RJ7esx20U3ALnNjRRvbarg,M6Fan0RMIJDOFz1OBzXyPI" />
           <Link Id="BBZkjD2R6AqMIpbeZOCGzy" Ids="UqznTkbDyZVOnorOoYRVNa,VbRKrdT3xL8MNdtevn6HLH" />
           <Link Id="TKI0CHsKjG4OX4iBuiSUtL" Ids="ChU5OLkPfWTMEmC7vKbu4R,LOF5WpNkTFzLIMKK9PQyGM" />
+        </Patch>
+      </Node>
+      <!--
+
+    ************************ CombineSDFOp ************************
+
+-->
+      <Node Name="CombineSDFOp" Bounds="454,416" Id="IjC8uAfh2QjQOlQTtuTAfb">
+        <p:NodeReference>
+          <Choice Kind="ForwardDefinition" Name="Forward" />
+          <FullNameCategoryReference ID="Primitive" />
+        </p:NodeReference>
+        <p:TypeAnnotation LastCategoryFullName="Fuse.Common.SDF" LastSymbolSource="enums.dll">
+          <AssemblyReference ID="enums.dll" />
+          <CategoryReference Kind="AssemblyCategory" Name="Fuse" />
+          <CategoryReference Kind="AssemblyCategory" Name="Common" />
+          <CategoryReference Kind="AssemblyCategory" Name="SDF" />
+          <Choice Kind="EnumType" Name="CombineSDF" />
+        </p:TypeAnnotation>
+        <Patch Id="T21XndPUNNEOK70uBydwaG">
+          <Canvas Id="DLeHcHrwCacL63zkrTko4R" CanvasType="Group" />
+          <!--
+
+    ************************  ************************
+
+-->
+          <ProcessDefinition Id="U4rji3XdkEfNUCIpOYssdf" IsHidden="true" />
         </Patch>
       </Node>
     </Canvas>
