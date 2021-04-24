@@ -22,6 +22,8 @@ namespace Fuse
 
         protected abstract string SourceTemplate();
 
+        public abstract AbstractGpuValue AbstractOutput();
+
         protected IDictionary<string, string> CustomTemplateValues;
 
 
@@ -256,6 +258,11 @@ namespace Fuse
                 {"default", Default == null ? "": Default.ID},
                 {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
+        }
+
+        public override AbstractGpuValue AbstractOutput()
+        {
+            return Output;
         }
 
         protected void Setup(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)

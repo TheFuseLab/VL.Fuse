@@ -13,6 +13,7 @@ namespace Fuse
         {
             
             var inputList = new List<AbstractGpuValue>();
+            if (theValue == null) theValue = ConstantHelper.FromFloat<T>(0);
             if (theValue != null)
             {
                 inputList.Add(theValue);

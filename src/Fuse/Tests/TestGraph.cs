@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse.compute;
 using Stride.Core.Extensions;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
@@ -280,6 +281,16 @@ namespace Fuse.Tests
 
             var toMaterial = new ToShaderFX<float>(gpuValue0.Output);
            Console.WriteLine(toMaterial.ShaderCode);
+        }
+
+        public static void TestCreation()
+        {
+            var _value = new GpuValue<Vector3>("bla");
+            var getDeclareBaseType = typeof(DeclareValue<>);
+            var dataType = new Type [] { _value.GetType().GetGenericArguments()[0]};
+            var getDeclareType = getDeclareBaseType.MakeGenericType(dataType);
+            var getDeclareInstance = Activator.CreateInstance(getDeclareType, new object[]{null} ) as AbstractShaderNode;
+            Console.WriteLine(getDeclareInstance.AbstractOutput().GetType().Name);
         }
     }
 }

@@ -18,12 +18,15 @@ namespace Fuse.compute
 @"    struct ${structName}{
 ${structMembers}
     };" ;
+            
             var myStride = 0;
             var call = new StringBuilder();
             Ins.ForEach(input =>
             {
                 call.Append("        "+TypeHelpers.GetGpuTypeByValue(input) + " " + input.Name+";"+Environment.NewLine);
                 myStride += TypeHelpers.GetSizeInBytes(input);
+
+                
             });
             var _struct = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {

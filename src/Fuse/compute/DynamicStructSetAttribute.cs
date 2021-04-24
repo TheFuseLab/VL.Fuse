@@ -2,23 +2,19 @@
 
 namespace Fuse.compute
 {
-    public class DynamicStructSetAttribute<T> : ShaderNode<GpuStruct>
+    public class DynamicStructSetAbstractAttribute : ShaderNode<GpuVoid>
     {
 
         private readonly GpuValue<GpuStruct> _struct;
         private readonly string _member;
-        private readonly GpuValue<T> _value;
+        private readonly AbstractGpuValue _value;
         
-        public DynamicStructSetAttribute(GpuValue<GpuStruct> theStruct, string theMember, GpuValue<T> theValue) : base("StructAttribute")
+        public DynamicStructSetAbstractAttribute(GpuValue<GpuStruct> theStruct, string theMember, AbstractGpuValue theValue) : base("StructAttribute")
         {
             _struct = theStruct;
             _member = theMember;
             _value = theValue;
             Setup(new List<AbstractGpuValue>{theStruct,theValue});
-            Output = theStruct;
-            
-            Output = theStruct == null ? new GpuValue<GpuStruct>(""):new GpuValuePassThrough<GpuStruct>(theStruct);
-            Output.ParentNode = this;
         }
 
         protected override string SourceTemplate()
@@ -28,6 +24,22 @@ namespace Fuse.compute
                 {"member", _member},
                 {"value", _value.ID}
             });
+        }
+        
+        public GpuValue<GpuStruct> Struct()
+        {
+            var result = _struct == null ? new GpuValue<GpuStruct>(""):new GpuValuePassThrough<GpuStruct>(_struct);
+            result.ParentNode = this;
+            return result;
+        }
+    }
+    
+    public class DynamicStructSetAttribute<T> : DynamicStructSetAbstractAttribute
+    {
+        
+        public DynamicStructSetAttribute(GpuValue<GpuStruct> theStruct, string theMember, GpuValue<T> theValue) : base(theStruct, theMember, theValue)
+        {
+            
         }
     }
 }
