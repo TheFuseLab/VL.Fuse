@@ -96,5 +96,38 @@ namespace Fuse
             return toShaderFx;
         }
         
+        public static IDictionary<string, AbstractGpuValue> AbstractMembers(GpuValue<GpuStruct> theStruct, IEnumerable<AbstractGpuValue> theMembers)
+        {
+            var getMemberBaseType = typeof(GetMember<,>);
+            
+            var members = new Dictionary<string, AbstractGpuValue>();
+            theMembers.ForEach(member =>
+            {
+                var dataType = new Type [] { typeof(GpuStruct), member.GetType().GetGenericArguments()[0]};
+                var getMemberType = getMemberBaseType.MakeGenericType(dataType);
+                var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, member.Name, null) as AbstractShaderNode;
+                members[member.Name] = getMemberInstance.AbstractOutput();
+            });
+            return members;
+        }
+        
+        public static AbstractGpuValue AbstractMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
+        {
+            var getMemberBaseType = typeof(GetMember<,>);
+            var dataType = new Type [] { typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
+            var getMemberType = getMemberBaseType.MakeGenericType(dataType);
+            var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
+            return getMemberInstance.AbstractOutput();
+        }
+        
+        public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theMember)
+        {
+            var getDeclareBaseType = typeof(DeclareValue<>);
+            var dataType = new Type [] { theMember.GetType().GetGenericArguments()[0]};
+            var getDeclareType = getDeclareBaseType.MakeGenericType(dataType);
+            var getDeclareInstance = Activator.CreateInstance(getDeclareType,  new object[]{null} ) as AbstractShaderNode;
+            return getDeclareInstance.AbstractOutput();
+        }
+        
     }
 }

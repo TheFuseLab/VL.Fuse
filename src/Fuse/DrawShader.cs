@@ -24,6 +24,11 @@ namespace Fuse
         {
             return "";
         }
+
+        public override AbstractGpuValue AbstractOutput()
+        {
+            return Output;
+        }
     }
 
     public abstract class AbstractShader

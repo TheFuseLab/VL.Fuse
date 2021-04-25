@@ -1,13 +1,13 @@
 ﻿using System.Collections.Generic;
 
-namespace Fuse
+namespace Fuse.compute
 {
-    public class GetMember<TIn, TOut> : ShaderNode<TOut>
+    public class GetStructMember<TOut> : ShaderNode<TOut>
     {
 
-        private readonly GpuValue<TIn> _input;
+        private readonly GpuValue<GpuStruct> _input;
         private readonly string _member;
-        public GetMember(GpuValue<TIn> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
+        public GetStructMember(GpuValue<GpuStruct> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
         {
             _input = theInput;
             _member = theMember;
