@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse.compute;
 
 namespace Fuse.Tests
 {
@@ -29,6 +30,38 @@ namespace Fuse.Tests
             
             var switchValNull = new BooleanSwitchNode<float>(compare.Output, gpuValue0.Output, null,new ConstantValue<float>(0));
             Console.WriteLine(switchValNull.BuildSourceCode());
+            
+            var switchValNull2 = new BooleanSwitchNode<float>(compare.Output, null, gpuValue1.Output,new ConstantValue<float>(0));
+            Console.WriteLine(switchValNull2.BuildSourceCode());
+            
+            var switchValNull3 = new BooleanSwitchNode<float>(compare.Output, null, null,new ConstantValue<float>(0));
+            Console.WriteLine(switchValNull3.BuildSourceCode());
+        }
+        
+        public static void TestBooleanSwitchVoid()
+        {
+            var gpuValue0 = new GpuInput<float>();
+            var gpuValue1 = new GpuInput<float>();
+
+            var val0 = new DeclareValue<float>(gpuValue0.Output);
+            var val1 = new DeclareValue<float>(gpuValue1.Output);
+
+            var assign0 = new AssignNode<float>(val0.Output, gpuValue0.Output);
+            var assign1 = new AssignNode<float>(val1.Output, gpuValue1.Output);
+            
+            var compare = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
+            
+            var switchVal = new BooleanSwitchNode<GpuVoid>(compare.Output, assign0.Output, assign1.Output);
+            Console.WriteLine(switchVal.BuildSourceCode());
+            
+            var switchValNull = new BooleanSwitchNode<GpuVoid>(compare.Output, assign0.Output, null);
+            Console.WriteLine(switchValNull.BuildSourceCode());
+            
+            var switchValNull2 = new BooleanSwitchNode<GpuVoid>(compare.Output, null, assign1.Output);
+            Console.WriteLine(switchValNull2.BuildSourceCode());
+            
+            var switchValNull3 = new BooleanSwitchNode<GpuVoid>(compare.Output, null, null);
+            Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
         public static void TestNumericSwitch()
