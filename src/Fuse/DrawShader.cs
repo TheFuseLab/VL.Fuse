@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-//using Stride.Core.Extensions;
-using VL.Lib.Adaptive;
-using VL.Lib.Collections;
+using Stride.Core.Extensions;
 
 namespace Fuse
 {
@@ -33,23 +30,27 @@ namespace Fuse
 
     public abstract class AbstractShader
     {
-        public string ShaderCode { get; protected set; }
+        public string ShaderCode { get; }
 
         public string ShaderName { get; protected set; }
 
-        public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs)
+        private readonly List<string> _definedStreams;
+
+        public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, Dictionary<string,string> theCustomTemplate)
         {
-            
+            _definedStreams = theDefinedStreams;
             var declarations = new HashSet<string>();
             var structs = new HashSet<string>();
             var mixins = new HashSet<string>();
             var functionMap = new Dictionary<string, string>();
 
             var sourceStream = new Dictionary<string,(string source, string stream)>();
+            var streamDefinesBuilder = new StringBuilder();
             theInputs.ForEach(input =>
             {
-                HandleShader(input.Value, declarations, structs, mixins, functionMap, out var source, out var stream);
+                HandleShader(input.Value, declarations, structs, mixins, functionMap, out var source, out var stream, out var streamDefines);
                 sourceStream.Add(input.Key,(source,stream));
+                streamDefinesBuilder.AppendLine(streamDefines);
             });
             
             var declarationBuilder = new StringBuilder();
@@ -69,8 +70,13 @@ namespace Fuse
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
                 {"structs", structBuilder.ToString()},
-                {"functions", functionBuilder.ToString()}
+                {"functions", functionBuilder.ToString()},
+                {"streamDeclaration",streamDefinesBuilder.ToString()}
             };
+            theCustomTemplate.ForEach(kv =>
+            {
+                templateMap.Add(kv.Key,kv.Value);
+            });
             
             sourceStream.ForEach(kv =>
             {
@@ -84,11 +90,12 @@ namespace Fuse
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
-        public abstract string Source();
+        protected abstract string Source();
         
-        protected static void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams)
+        protected void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams, out string theDefinedStreams)
         {
             var streamBuilder = new StringBuilder();
+            var streamDeclareBuilder = new StringBuilder();
             theShaderInputs.ForEach(kv =>
             {
                 kv.Value?.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
@@ -97,10 +104,14 @@ namespace Fuse
                 kv.Value?.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
 
                 streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
+                if (_definedStreams.Contains(kv.Key)) return;
+
+                streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuTypeByValue(kv.Value) + " " + kv.Key + ";");
             });
 
             theSource = new DrawShaderNode(theShaderInputs).BuildSourceCode();
             theStreams = streamBuilder.ToString();
+            theDefinedStreams = streamDeclareBuilder.ToString();
         }
     }
 
@@ -120,9 +131,36 @@ namespace Fuse
         Triangle
     }
     
+    
+    
     public class DrawShader : AbstractShader
     {
-        private const string DrawShaderSource = @"shader ${shaderID} : VS_PS_Base, Texturing${mixins}
+        private static readonly List<string> DefinedStreams = new List<string>()
+        {
+            "ShadingPosition",
+            
+            "ColorTarget",
+            "ColorTarget1",
+            "ColorTarget2",
+            "ColorTarget3",
+            "ColorTarget4",
+            "ColorTarget5",
+            "ColorTarget6",
+            "ColorTarget7",
+            
+            "TexCoord",
+            "TexCoord1",
+            "TexCoord2",
+            "TexCoord3",
+            "TexCoord4",
+            "TexCoord5",
+            "TexCoord6",
+            "TexCoord7",
+            "TexCoord8",
+            "TexCoord9",
+        };
+        //VS_PS_Base
+        private const string DrawShaderSource = @"shader ${shaderID} : ${BaseShader}, Texturing${mixins}
 {
     cbuffer Inputs{
 ${declarations}
@@ -131,6 +169,7 @@ ${declarations}
 ${structs}
 
 ${functions}
+${streamDeclaration}
 
     stage override void VSMain()
     {
@@ -146,39 +185,23 @@ ${streamsPS}
 };";
 
 
-        private const string GeometryShaderSource = @"[maxvertexcount(${maxVertexCount})]
-    stage void GSMain( ${primitiveType} Input input[1], inout ${streamType}<Output> outputStream)
-    {
-        streams = input[0];
-
-        ${sourceGS}
-        for(int i=0; i<4; i++)
-        {
-            streams.TexCoord  = QuadUV[i].xy;
-            
-            float4 posView = mul(streams.PositionWS, WorldView);
-            posView.xyz += QuadPositions[i].xyz * ParticleSize;
-            streams.ShadingPosition = mul(posView, Projection);
-            
-            outputStream.Append(streams);
-        }
-       
-    }";
-
-        
-
-        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs) : base(
+        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs, string theBaseShader = "VS_PS_Base") : base(
             new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
                 {"VS", theVertexInputs},
                 {"PS", thePixelInputs}
+            },
+            DefinedStreams,
+            new Dictionary<string, string>()
+            {
+                {"BaseShader",theBaseShader}
             })
         {
             
         }
 
 
-        public override string Source()
+        protected override string Source()
         {
             return DrawShaderSource;
         }
@@ -201,12 +224,14 @@ ${functions}
             new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
                 {"CS", theComputeInputs}
-            })
+            },
+            new List<string>(),
+            new Dictionary<string, string>())
         {
             
         }
-        
-        public override string Source()
+
+        protected override string Source()
         {
             return ComputeShaderSource;
         }
