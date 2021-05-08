@@ -3,9 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-//using Stride.Core.Extensions;
+using Stride.Core.Extensions;
 using VL.Lib.Collections;
-
 
 
 namespace Fuse
@@ -38,9 +37,52 @@ namespace Fuse
         
         public string ID { get; }
         
+        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
+        {
+            get
+            {
+                var result = new List<Trees.IReadOnlyTreeNode>();
+                
+                Ins.ForEach(input =>
+                {
+                    if(input?.ParentNode != null)result.Add(input.ParentNode);
+                });
+                return result;
+            }
+        }
+        
+        protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
+        
         public string SourceCode => GenerateSource(Ins, CustomTemplateValues);
+        
+        protected virtual Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
+        }
+        
+        protected virtual string GenerateDefaultSource()
+        {
+            return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
+        }
 
-        private void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        protected string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        {
+            
+            if (ShaderNodesUtil.HasNullValue(theIns))
+            {
+                return GenerateDefaultSource();
+            }
+
+            var sourceCode = SourceTemplate();
+            if (sourceCode.Trim() == "") return "";
+
+            var templateMap = CreateTemplateMap();
+            theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
+
+            return ShaderNodesUtil.Evaluate(sourceCode, templateMap);
+        }
+
+        public void BuildChildrenSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
             Children.ForEach(child =>
             {
@@ -48,10 +90,16 @@ namespace Fuse
                
                 ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
             });
-            if (!string.IsNullOrWhiteSpace(SourceCode) && theHashes.Add(GetHashCode()))
+        }
 
+        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        {
+            BuildChildrenSource(theSourceBuilder, theHashes);
+
+            var source = SourceCode;
+            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(GetHashCode()))
             {
-                theSourceBuilder.Append("        " + SourceCode + Environment.NewLine);
+                theSourceBuilder.Append("        " + source + Environment.NewLine);
             }
         }
        
@@ -130,6 +178,26 @@ namespace Fuse
             });
             return result;
         }
+        
+        public Dictionary<string, IList<TRessource>> ResourcesForTree<TRessource>()
+        {
+            var result = new Dictionary<string, IList<TRessource>>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if (!(n is AbstractShaderNode input)) return;
+                input.Resources.ForEach(kv =>
+                {
+                    var values = kv.Value.OfType<TRessource>();
+                    if (values.IsNullOrEmpty()) return;
+                    if (!result.ContainsKey(kv.Key))
+                    {
+                        result[kv.Key] = new List<TRessource>();
+                    }
+                    values.ForEach(v => result[kv.Key].Add(v));
+                });
+            });
+            return result;
+        }
 
         public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();
 
@@ -196,50 +264,9 @@ namespace Fuse
             });
             return result;
         }
-
-        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
-        {
-            get
-            {
-                var result = new List<Trees.IReadOnlyTreeNode>();
-                
-                Ins.ForEach(input =>
-                {
-                    if(input?.ParentNode != null)result.Add(input.ParentNode);
-                });
-                return result;
-            }
-        }
         
         
-        protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
         
-        protected virtual Dictionary<string, string> CreateTemplateMap()
-        {
-            return new Dictionary<string, string>();
-        }
-        
-        protected virtual string GenerateDefaultSource()
-        {
-            return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
-        }
-
-        protected string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
-        {
-            
-            if (ShaderNodesUtil.HasNullValue(theIns))
-            {
-                return GenerateDefaultSource();
-            }
-
-            var sourceCode = SourceTemplate();
-            if (sourceCode.Trim() == "") return "";
-
-            var templateMap = CreateTemplateMap();
-            theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
-
-            return ShaderNodesUtil.Evaluate(sourceCode, templateMap);
-        }
         
     }
     
