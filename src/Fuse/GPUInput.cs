@@ -162,9 +162,13 @@ namespace Fuse{
      {
 
          private readonly GpuValue<GpuStruct> _struct;
-         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null) : base("BufferInput", theBuffer)
+
+         private readonly bool _append;
+         
+         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
          {
              _struct = theStruct;
+             _append = theAppend;
              ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
              
              AddResource(Inputs, this);
@@ -183,6 +187,14 @@ namespace Fuse{
              {
                  return "RWStructuredBuffer<"+_struct.TypeOverride+">";
              }
+             if (Value != null && (Value.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
+             {
+                 if (_append)
+                 {
+                     return "AppendStructuredBuffer<"+_struct.TypeOverride+">";
+                 }
+                 return "ConsumeStructuredBuffer<"+_struct.TypeOverride+">";
+             }
              return "StructuredBuffer<"+_struct.TypeOverride+">";
          }
 
@@ -194,9 +206,13 @@ namespace Fuse{
      
      public class BufferInput<T>: AbstractInput<Buffer<T>, ObjectParameterKey<Buffer<T>>>, IGpuInput where T : struct
      {
-         public BufferInput(string theName, Buffer<T> theBuffer = null) : base("BufferInput", theBuffer)
+
+         private readonly bool _append;
+         
+         public BufferInput(string theName, Buffer<T> theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
          {
              ParameterKey = new ObjectParameterKey<Buffer<T>>(Output.ID);
+             _append = theAppend;
          }
          
          public override string TypeName()
@@ -204,6 +220,15 @@ namespace Fuse{
              if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
              {
                  return "RWStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
+             }
+             if (Value != null && (Value.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
+             {
+                 if (_append)
+                 {
+                     return "AppendStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
+                 }
+                 return "ConsumeStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
+                 
              }
              return "StructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
          }
