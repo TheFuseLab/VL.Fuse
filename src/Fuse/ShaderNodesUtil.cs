@@ -4,8 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-//using Stride.Core.Extensions;
-using Stride.Core.Mathematics;
+using Stride.Core.Extensions;
 using Stride.Engine;
 using Stride.Rendering;
 using Stride.Shaders.Compiler;
@@ -111,7 +110,7 @@ namespace Fuse
             return members;
         }
         
-        public static AbstractGpuValue AbstractMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
+        public static AbstractGpuValue AbstractGetMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
         {
             var getMemberBaseType = typeof(GetMember<,>);
             var dataType = new Type [] { typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
