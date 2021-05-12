@@ -185,13 +185,13 @@ ${streamsPS}
 };";
 
 
-        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs, string theBaseShader = "VS_PS_Base") : base(
+        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs, List<string> theDefinedStreams = null, string theBaseShader = "VS_PS_Base") : base(
             new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
                 {"VS", theVertexInputs},
                 {"PS", thePixelInputs}
             },
-            DefinedStreams,
+            GetDefinedStreams(theDefinedStreams),
             new Dictionary<string, string>()
             {
                 {"BaseShader",theBaseShader}
@@ -200,6 +200,14 @@ ${streamsPS}
             
         }
 
+        private static List<string> GetDefinedStreams(List<string> theDefinedStreams)
+        {
+            if (theDefinedStreams == null) return DefinedStreams;
+            var result = new List<string>();
+            result.AddRange(theDefinedStreams);
+            result.AddRange(DefinedStreams);
+            return result;
+        }
 
         protected override string Source()
         {
