@@ -36,7 +36,7 @@ namespace Fuse
 
         private readonly List<string> _definedStreams;
 
-        public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, Dictionary<string,string> theCustomTemplate)
+        public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, Dictionary<string,string> theCustomTemplate, string theSource)
         {
             _definedStreams = theDefinedStreams;
             var declarations = new HashSet<string>();
@@ -85,23 +85,27 @@ namespace Fuse
             });
             
             // ReSharper disable once VirtualMemberCallInConstructor
-            ShaderCode = ShaderNodesUtil.Evaluate(Source(), templateMap);
+            ShaderCode = ShaderNodesUtil.Evaluate(theSource, templateMap);
+            ShaderCode = CheckCode(ShaderCode);
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
-        protected abstract string Source();
-        
-        protected void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams, out string theDefinedStreams)
+        protected virtual string CheckCode(string theCode)
+        {
+            return theCode;
+        }
+
+        private void HandleShader(IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams, out string theDefinedStreams)
         {
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
             theShaderInputs.ForEach(kv =>
             {
-                kv.Value?.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
-                kv.Value?.ParentNode.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
-                kv.Value?.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
-                kv.Value?.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
+                kv.Value?.ParentNode?.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
+                kv.Value?.ParentNode?.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
+                kv.Value?.ParentNode?.MixinList().ForEach(mixin => theMixins.Add(mixin));
+                kv.Value?.ParentNode?.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
 
                 streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
                 if (_definedStreams.Contains(kv.Key)) return;
@@ -160,7 +164,7 @@ namespace Fuse
             "TexCoord9",
         };
         //VS_PS_Base
-        private const string DrawShaderSource = @"shader ${shaderID} : ${BaseShader}, Texturing${mixins}
+        private const string DrawShaderSource = @"shader ${shaderID} : VS_PS_Base, Texturing${mixins}
 {
     cbuffer Inputs{
 ${declarations}
@@ -184,20 +188,23 @@ ${streamsPS}
     }
 };";
 
-
-        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs, List<string> theDefinedStreams = null, string theBaseShader = "VS_PS_Base") : base(
+        
+        public DrawShader(IDictionary<string,AbstractGpuValue> theVertexInputs, IDictionary<string,AbstractGpuValue> thePixelInputs, List<string> theDefinedStreams = null, string theTemplate = DrawShaderSource) : base(
             new Dictionary<string, IDictionary<string, AbstractGpuValue>>
             {
                 {"VS", theVertexInputs},
                 {"PS", thePixelInputs}
             },
             GetDefinedStreams(theDefinedStreams),
-            new Dictionary<string, string>()
-            {
-                {"BaseShader",theBaseShader}
-            })
+            new Dictionary<string, string>(),
+            theTemplate)
         {
             
+        }
+
+        protected override string CheckCode(string theCode)
+        {
+            return theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
 
         private static List<string> GetDefinedStreams(List<string> theDefinedStreams)
@@ -207,11 +214,6 @@ ${streamsPS}
             result.AddRange(theDefinedStreams);
             result.AddRange(DefinedStreams);
             return result;
-        }
-
-        protected override string Source()
-        {
-            return DrawShaderSource;
         }
     }
     
@@ -234,14 +236,10 @@ ${functions}
                 {"CS", theComputeInputs}
             },
             new List<string>(),
-            new Dictionary<string, string>())
+            new Dictionary<string, string>(),
+            ComputeShaderSource)
         {
             
-        }
-
-        protected override string Source()
-        {
-            return ComputeShaderSource;
         }
     }
 }
