@@ -65,7 +65,7 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        protected string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        private string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
         {
             
             if (ShaderNodesUtil.HasNullValue(theIns))

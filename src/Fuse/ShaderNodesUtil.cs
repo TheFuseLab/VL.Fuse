@@ -55,8 +55,8 @@ namespace Fuse
                 m => theKeys.ContainsKey(m.Groups["key"].Value) ? theKeys[m.Groups["key"].Value] : m.Value
             );
         }
-        
-        public static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
+
+        private static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
         {
             var effectSystem = game.EffectSystem;
             var compiler = effectSystem.Compiler as EffectCompiler;
@@ -79,12 +79,12 @@ namespace Fuse
             return new DynamicEffectInstance(theDrawShader.ShaderName);
         }
 
-        public static ComputeEffectDispatcher RegisterComputeShader(Game game, ToComputeFx theComputeFX)
+        public static ComputeEffectDispatcher RegisterComputeShader(Game game, ToComputeFx theComputeFx)
         {
-            AddShaderSource(game, theComputeFX.ShaderName, theComputeFX.ShaderCode, "shaders\\" + theComputeFX.ShaderName + ".sdsl");
-            var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFX);
+            AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
+            var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
             var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-            computeShader.ShaderSourceName = theComputeFX.ShaderName;
+            computeShader.ShaderSourceName = theComputeFx.ShaderName;
             return computeShader;
         }
 
