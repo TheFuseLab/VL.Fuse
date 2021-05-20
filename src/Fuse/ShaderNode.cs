@@ -179,9 +179,9 @@ namespace Fuse
             return result;
         }
         
-        public Dictionary<string, IList<TRessource>> ResourcesForTree<TRessource>()
+        public Dictionary<string, List<TRessource>> ResourcesForTree<TRessource>()
         {
-            var result = new Dictionary<string, IList<TRessource>>();
+            var result = new Dictionary<string, List<TRessource>>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
                 if (!(n is AbstractShaderNode input)) return;
