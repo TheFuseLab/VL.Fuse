@@ -16,9 +16,9 @@ namespace Fuse
         public string ShaderCode { get; }
         public string ShaderName { get; }
         
-        private AbstractShaderNode _myNode;
-        
-        public AbstractToShaderFX(GpuValue<T> theCompute)
+        private readonly AbstractShaderNode _myNode;
+
+        protected AbstractToShaderFX(GpuValue<T> theCompute, string theSource)
         {
             _myNode = theCompute.ParentNode;
 
@@ -55,12 +55,12 @@ namespace Fuse
             };
             
             // ReSharper disable once VirtualMemberCallInConstructor
-            ShaderCode = ShaderNodesUtil.Evaluate(SourceCode(), templateMap);
+            ShaderCode = ShaderNodesUtil.Evaluate(theSource, templateMap);
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
-        public static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
+        private static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
         {
             var streamBuilder = new StringBuilder();
            
@@ -70,15 +70,18 @@ namespace Fuse
             theInput.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
             theSource = new DrawShaderNode(new Dictionary<string, AbstractGpuValue>{{"in", theInput}}).BuildSourceCode();
         }
-
-        public abstract string SourceCode();
         
-        ParameterCollection Parameters;
+        protected virtual string CheckCode(string theCode)
+        {
+            return theCode;
+        }
+
+        private ParameterCollection _parameters;
 
         public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
-            Parameters = context.Parameters;
-            _myNode.InputList().ForEach(input => input.SetParameters(Parameters));
+            _parameters = context.Parameters;
+            _myNode.InputList().ForEach(input => input.SetParameters(_parameters));
             return new ShaderClassSource(ShaderName);
         }
     }
@@ -106,13 +109,8 @@ ${sourceCompute}
 };";
 
 
-        public ToComputeFx(GpuValue<GpuVoid> theCompute) : base(theCompute)
+        public ToComputeFx(GpuValue<GpuVoid> theCompute) : base(theCompute, ComputeShaderSource)
         {
-        }
-
-        public override string SourceCode()
-        {
-            return ComputeShaderSource;
         }
     }
     
@@ -137,14 +135,8 @@ ${sourceCompute}
     }
 };";
 
-
-        public ToShaderFX(GpuValue<T> theCompute) : base(theCompute)
+        public ToShaderFX(GpuValue<T> theCompute, string theShaderSource = ShaderSource) : base(theCompute, theShaderSource)
         {
-        }
-
-        public override string SourceCode()
-        {
-            return ShaderSource;
         }
     }
 }
