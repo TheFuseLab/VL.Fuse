@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using Stride.Core.Extensions;
 using Stride.Engine;
 using Stride.Rendering;
 using Stride.Shaders.Compiler;

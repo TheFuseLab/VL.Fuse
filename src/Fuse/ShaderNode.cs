@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stride.Core.Extensions;
 using VL.Lib.Collections;
 
 
@@ -188,7 +187,7 @@ namespace Fuse
                 input.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TRessource>();
-                    if (values.IsNullOrEmpty()) return;
+                    if (values.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
                         result[kv.Key] = new List<TRessource>();
