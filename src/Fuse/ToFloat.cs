@@ -4,10 +4,10 @@ using Stride.Core.Mathematics;
 
 namespace Fuse
 {
-    public class ToFloat4<Vector4> : ShaderNode<Vector4>
+    public class ToFloat4 : ShaderNode<Vector4>
     {
 
-        private AbstractGpuValue _x;
+        private readonly AbstractGpuValue _x;
 
         public ToFloat4(AbstractGpuValue x) : base("ToFloat")
         {

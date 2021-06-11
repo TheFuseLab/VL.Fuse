@@ -1,1 +1,0 @@
-xcopy .\src\Fuse\bin\Debug\Fuse.dll .\lib\Fuse.dll /Y

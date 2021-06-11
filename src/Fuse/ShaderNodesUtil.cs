@@ -4,8 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-//using Stride.Core.Extensions;
-using Stride.Core.Mathematics;
+using Fuse.ShaderFX;
 using Stride.Engine;
 using Stride.Rendering;
 using Stride.Shaders.Compiler;
@@ -15,6 +14,25 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
+    
+    public static class DictionaryExtensions
+    {
+        public static void ForEach<TKey, TValue>(this Dictionary<TKey, TValue> dict, Action<KeyValuePair<TKey, TValue>> action)
+        {
+            foreach (var item in dict)
+                action(item);
+        }
+    }
+    
+    public static class EnumerableExtensionForEach
+    {
+        public static void ForEach<T>(this IEnumerable<T> list, Action<T> block) {
+            foreach (var item in list) {
+                block(item);
+            }
+        }
+    }
+    
     public static class ShaderNodesUtil
     {
         
@@ -56,8 +74,8 @@ namespace Fuse
                 m => theKeys.ContainsKey(m.Groups["key"].Value) ? theKeys[m.Groups["key"].Value] : m.Value
             );
         }
-        
-        public static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
+
+        private static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
         {
             var effectSystem = game.EffectSystem;
             var compiler = effectSystem.Compiler as EffectCompiler;
@@ -80,12 +98,12 @@ namespace Fuse
             return new DynamicEffectInstance(theDrawShader.ShaderName);
         }
 
-        public static ComputeEffectDispatcher RegisterComputeShader(Game game, ToComputeFx theComputeFX)
+        public static ComputeEffectDispatcher RegisterComputeShader(Game game, ToComputeFx theComputeFx)
         {
-            AddShaderSource(game, theComputeFX.ShaderName, theComputeFX.ShaderCode, "shaders\\" + theComputeFX.ShaderName + ".sdsl");
-            var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFX);
+            AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
+            var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
             var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-            computeShader.ShaderSourceName = theComputeFX.ShaderName;
+            computeShader.ShaderSourceName = theComputeFx.ShaderName;
             return computeShader;
         }
 
@@ -111,7 +129,7 @@ namespace Fuse
             return members;
         }
         
-        public static AbstractGpuValue AbstractMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
+        public static AbstractGpuValue AbstractGetMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
         {
             var getMemberBaseType = typeof(GetMember<,>);
             var dataType = new Type [] { typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};

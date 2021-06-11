@@ -1,18 +1,9 @@
 ﻿
-shader FuseDrawSpritesParticle_DrawFX : VS_PS_Base, FuseBuffer
+shader FuseDrawSprites_DrawFX : VS_PS_Base, FuseBuffer
 {
     StructuredBuffer<float3> posBuffer;
     StructuredBuffer<float> sizeBuffer;
     StructuredBuffer<float4> colBuffer;
-
-    struct ParticleStruct
-    {
-        float3 Velocity;
-        float3 Position;
-        float Drag;
-        float4 Color;
-    };
-    StructuredBuffer<ParticleStruct> ParticlesBuffer;
 
     // SPRITES UTILS ==============================================================
  
@@ -44,36 +35,31 @@ shader FuseDrawSpritesParticle_DrawFX : VS_PS_Base, FuseBuffer
     cbuffer PerFrame
     {
         [Color]
-        //float4 colDefault;
-        //float sizeDefualt;
-        float Size;
+        float4 colDefualt;
+        float sizeDefualt;
     };
 
     stream float2 TexCoord;
     stream uint VertexID : SV_VertexID;
     stream float4 Color;
-
+    stream float Size;
 
     // VS ==============================================================================
 
     stage override void VSMain() 
     {
         uint id = streams.VertexID;
-        ParticleStruct p = ParticlesBuffer[id];
+        //  ParticlePos4Vel4 p = ParticlesBuffer[id];
 
         /*
         streams.PositionWS = float4(sbLoad(id, posBuffer, 0), 1);
         streams.Size = sbLoad(id, sizeBuffer, sizeDefualt);
         streams.Color = sbLoad(id, colBuffer, colDefualt);
         */
-/*
+
         streams.PositionWS = float4(posBuffer[id], 1);
         streams.Size = sizeDefualt;
         streams.Color = colDefualt;
-*/
-        streams.PositionWS = float4(p.Position, 1);
-        //streams.Size = sizeDefualt;
-        streams.Color = p.Color;
     }
 
     // GS ==============================================================================
@@ -90,7 +76,7 @@ shader FuseDrawSpritesParticle_DrawFX : VS_PS_Base, FuseBuffer
             streams.TexCoord  = QuadUV[i].xy;
             
             float4 posView = mul(streams.PositionWS, WorldView);
-            posView.xyz += QuadPositions[i].xyz *  Size;
+            posView.xyz += QuadPositions[i].xyz *  streams.Size;
             streams.ShadingPosition = mul(posView, Projection);
             
             triangleStream.Append(streams);

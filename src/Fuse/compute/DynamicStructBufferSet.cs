@@ -7,17 +7,15 @@ namespace Fuse.compute
     {
         private readonly GpuValue<Buffer> _buffer;
         private readonly GpuValue<int> _index;
-        private GpuValue<GpuStruct> _struct;
         private readonly GpuValue<GpuStruct> _value;
     
-        public DynamicStructBufferSet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theStruct, GpuValue<GpuStruct> theValue) : base( "setBuffer")
+        public DynamicStructBufferSet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theValue) : base( "setBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;
-            _struct = theStruct;
             _value = theValue;
             
-            Setup(new List<AbstractGpuValue>(){theBuffer,theIndex,theStruct, theValue});
+            Setup(new List<AbstractGpuValue>(){theBuffer,theIndex, theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

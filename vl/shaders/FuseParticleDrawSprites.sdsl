@@ -1,0 +1,56 @@
+﻿
+shader FuseParticleDrawSprites : VS_PS_Base, FuseBuffer, Texturing
+{
+    
+
+    // SPRITES UTILS ==============================================================
+ 
+    void CircleSpriteDiscard(float2 uv)
+    {
+        if(length(uv - 0.5f) > 0.5f)
+        {
+            discard;
+        }
+    }
+
+    static const float3 QuadPositions[4] = 
+    {
+        float3(-1, 1,0),
+        float3( 1, 1,0),
+        float3(-1, -1,0),
+        float3( 1, -1,0),
+    };
+
+    static const float2 QuadUV[4] = 
+    {
+        float2(0,1), 
+        float2(1,1),
+        float2(0,0),
+        float2(1,0)
+    };
+
+
+    // GS ==============================================================================
+
+   stream float Size;
+   stream uint VertexID : SV_VertexID;
+
+    [maxvertexcount(4)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        for(int i=0; i<4; i++)
+        {
+            streams.TexCoord  = QuadUV[i].xy;
+            
+            float4 posView = mul(streams.PositionWS, WorldView);
+            posView.xyz += QuadPositions[i].xyz *  10;
+            streams.ShadingPosition = mul(posView, Projection);
+            
+            triangleStream.Append(streams);
+        }
+       
+    }
+
+};

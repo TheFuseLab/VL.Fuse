@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Fuse.compute;
-using Stride.Core.Extensions;
+using Fuse.ShaderFX;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 
@@ -201,17 +200,6 @@ namespace Fuse.Tests
             var assign = new AssignNode<Vector2>(add.Output, add2.Output);
             
             Console.WriteLine(assign.BuildSourceCode());
-        }
-        
-        public static void TestToFloat()
-        {
-            var gpuValue0 = new GpuInput<Vector2>();
-            var gpuValue1 = new GpuInput<Vector2>();
-            var add = new OperatorNode<Vector2, Vector2>(new List<GpuValue<Vector2>> {gpuValue0.Output, gpuValue1.Output},ConstantHelper.FromFloat<Vector2>(0),"+");
-            
-            var toFloat4 = new ToFloat4<Vector2>(add.Output);
-            
-            Console.WriteLine(toFloat4.BuildSourceCode());
         }
 
         public static void Bits()

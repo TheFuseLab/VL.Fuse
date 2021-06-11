@@ -29,12 +29,15 @@ namespace Fuse
             }
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
-            public static void ConstrainTypesByBuffer<T>(GpuValue<T> input, GpuValue<Buffer<T>> input2) where T : struct
+            public static void ConstrainTypeByGpuValue<T>(GpuValue<T> input, T input2) where T : struct
             {
             }
+            
+             
+             
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
-            public static void ConstrainTypeByGpuValue<T>(GpuValue<T> input, T input2) where T : struct
+            public static void ConstrainTypesByBuffer<T>(GpuValue<T> input, GpuValue<Buffer<T>> input2) where T : struct
             {
             }
             
@@ -70,7 +73,7 @@ namespace Fuse
                     var vec4 = (Vector4) Convert.ChangeType(theValue, typeof(Vector4));
                     return $"float4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
                 }
-              
+         
                 if (typeof(T) == typeof(SamplerState))
                 {
                     return "Sampler";
@@ -126,9 +129,10 @@ namespace Fuse
                 
                 
                 {typeof(GpuStruct), "struct"},
-                
+              
                 {typeof(Texture), "Texture"},
                 {typeof(SamplerState), "Sampler"},
+                
                 {typeof(GpuVoid), "Void"},
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
@@ -153,6 +157,7 @@ namespace Fuse
                 
                 {typeof(Texture), "Texture"},
                 {typeof(SamplerState), "Sampler"},
+                
                 {typeof(GpuVoid), "Void"},
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
@@ -174,9 +179,10 @@ namespace Fuse
                 {typeof(bool), 1},
                 
                 {typeof(GpuStruct), 0},
-                
+               
                 {typeof(Texture), 0},
                 {typeof(SamplerState), 0},
+                
                 {typeof(GpuVoid), 0},
                 {typeof(Fuse.sdf.Ray), 0},
             };
@@ -242,6 +248,7 @@ namespace Fuse
                     GpuValue<Int2> _ => "int2",
                     GpuValue<Int3> _ => "int3",
                     GpuValue<Int4> _ => "int4",
+                    GpuValue<GpuVoid> _ => "void",
                     GpuValue<Fuse.sdf.Ray> _ => "Ray",
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
@@ -261,6 +268,7 @@ namespace Fuse
                     GpuValue<Int2> _ => 2 * 4,
                     GpuValue<Int3> _ => 3 * 4,
                     GpuValue<Int4> _ => 4 * 4,
+                    GpuValue<GpuVoid> _ => 0,
                     GpuValue<Fuse.sdf.Ray> _ => 4,
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
@@ -274,12 +282,34 @@ namespace Fuse
                     GpuValue<Vector2> _ => "Float2",
                     GpuValue<Vector3> _ => "Float3",
                     GpuValue<Vector4> _ => "Float4",
+                    GpuValue<Color4> _ => "Float4",
                     GpuValue<bool> _ => "Bool",
                     GpuValue<int> _ => "Int",
                     GpuValue<Int2> _ => "Int2",
                     GpuValue<Int3> _ => "Int3",
                     GpuValue<Int4> _ => "Int4",
+                    GpuValue<GpuVoid> _ => "Void",
                     GpuValue<Fuse.sdf.Ray> _ => "Ray",
+                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
+                };
+            }
+            
+            public static int GetDimensionByValue(AbstractGpuValue theValue)
+            {
+                return theValue switch
+                {
+                    GpuValue<float> _ => 1,
+                    GpuValue<Vector2> _ => 2,
+                    GpuValue<Vector3> _ => 3,
+                    GpuValue<Vector4> _ => 4,
+                    GpuValue<Color4> _ => 4,
+                    GpuValue<bool> _ => 1,
+                    GpuValue<int> _ => 1,
+                    GpuValue<Int2> _ => 2,
+                    GpuValue<Int3> _ => 3,
+                    GpuValue<Int4> _ => 4,
+                    GpuValue<GpuVoid> _ => 0,
+                    GpuValue<Fuse.sdf.Ray> _ => 1,
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
             }
@@ -311,6 +341,23 @@ namespace Fuse
                 if (theType == typeof(Int4)) return 4;
 
                 return 0;
+            }
+
+            public static List<string> GetDescription(AbstractGpuValue theValue)
+            {
+                var keys = new List<string>() { "x", "y", "z", "w"};
+                var dimension = GetDimensionByValue(theValue);
+                var result = new List<string>();
+                if (dimension == 1)
+                {
+                    result.Add(theValue.Name);
+                }else{
+                    for (var i = 0; i < dimension;i++)
+                    {
+                        result.Add(theValue.Name +"." + keys[i]);
+                    }
+                }
+                return result;
             }
 
             public static GpuValue<TOut> AdaptiveSignature<TIn,TOut>(string thePrepend, GpuValue<TIn> theValue, out string theSignature)

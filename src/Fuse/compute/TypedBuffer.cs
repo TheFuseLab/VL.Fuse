@@ -112,4 +112,58 @@ ${structMembers}
             });
         }
     }
+    
+    public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : struct
+    {
+        private readonly GpuValue<Buffer<T>> _buffer;
+        private readonly GpuValue<T> _value;
+    
+        public TypedBufferAppend(GpuValue<Buffer<T>> theBuffer, GpuValue<T> theValue) : base( "appendBuffer")
+        {
+            _buffer = theBuffer;
+            _value = theValue;
+            
+            Setup(new List<AbstractGpuValue>(){theBuffer,theValue});
+        }
+        
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${bufferName}.Append(${value});";
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"bufferName", _buffer.ID},
+                {"value", _value.ID}
+            });
+        }
+    }
+    
+    public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : struct
+    {
+        private readonly GpuValue<Buffer<T>> _buffer;
+        
+        public TypedBufferConsume(GpuValue<Buffer<T>> theBuffer, ConstantValue<T> theDefault) : base( "consumeBuffer", theDefault)
+        {
+            _buffer = theBuffer;
+            Setup(new List<AbstractGpuValue>(){theBuffer});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${bufferName}.Consume();";
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"bufferName", _buffer.ID}
+            });
+        }
+    }
 }
