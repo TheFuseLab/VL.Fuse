@@ -248,6 +248,7 @@ namespace Fuse
                     GpuValue<Int2> _ => "int2",
                     GpuValue<Int3> _ => "int3",
                     GpuValue<Int4> _ => "int4",
+                    GpuValue<GpuVoid> _ => "void",
                     GpuValue<Fuse.sdf.Ray> _ => "Ray",
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
@@ -267,6 +268,7 @@ namespace Fuse
                     GpuValue<Int2> _ => 2 * 4,
                     GpuValue<Int3> _ => 3 * 4,
                     GpuValue<Int4> _ => 4 * 4,
+                    GpuValue<GpuVoid> _ => 0,
                     GpuValue<Fuse.sdf.Ray> _ => 4,
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
@@ -286,6 +288,7 @@ namespace Fuse
                     GpuValue<Int2> _ => "Int2",
                     GpuValue<Int3> _ => "Int3",
                     GpuValue<Int4> _ => "Int4",
+                    GpuValue<GpuVoid> _ => "Void",
                     GpuValue<Fuse.sdf.Ray> _ => "Ray",
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
@@ -305,6 +308,7 @@ namespace Fuse
                     GpuValue<Int2> _ => 2,
                     GpuValue<Int3> _ => 3,
                     GpuValue<Int4> _ => 4,
+                    GpuValue<GpuVoid> _ => 0,
                     GpuValue<Fuse.sdf.Ray> _ => 1,
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
