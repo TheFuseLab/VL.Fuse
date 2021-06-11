@@ -3,9 +3,9 @@ using Stride.Core.Extensions;
 
 namespace Fuse.compute
 {
-    public class CallStack: ShaderNode<GpuVoid> 
+    public class GroupVoid: ShaderNode<GpuVoid> 
     {
-        public CallStack(IEnumerable<GpuValue<GpuVoid>> theInputs, string theOperator) : base("CallStack")
+        public GroupVoid(IEnumerable<GpuValue<GpuVoid>> theInputs, string theOperator) : base("CallStack")
         { 
             
             var abstractGpuValues = new List<GpuValue<GpuVoid>>();
