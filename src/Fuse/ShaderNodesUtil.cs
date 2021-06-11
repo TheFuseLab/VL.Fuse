@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using Stride.Core.Extensions;
+using Fuse.ShaderFX;
 using Stride.Engine;
 using Stride.Rendering;
 using Stride.Shaders.Compiler;
@@ -14,6 +14,25 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
+    
+    public static class DictionaryExtensions
+    {
+        public static void ForEach<TKey, TValue>(this Dictionary<TKey, TValue> dict, Action<KeyValuePair<TKey, TValue>> action)
+        {
+            foreach (var item in dict)
+                action(item);
+        }
+    }
+    
+    public static class EnumerableExtensionForEach
+    {
+        public static void ForEach<T>(this IEnumerable<T> list, Action<T> block) {
+            foreach (var item in list) {
+                block(item);
+            }
+        }
+    }
+    
     public static class ShaderNodesUtil
     {
         
