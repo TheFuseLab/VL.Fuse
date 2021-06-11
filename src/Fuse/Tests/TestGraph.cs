@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Fuse.compute;
-using Stride.Core.Extensions;
+using Fuse.ShaderFX;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 
