@@ -1,0 +1,42 @@
+shader PosNormMaterialExtension : PosNormOverride, ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase
+{
+/*
+    // override me
+    stage void posNormByFunction (out float3 p, out float3 n)
+    {
+        float2 uv = streams.TexCoord.xy;
+        p = float3(uv, 1.0);
+        p.z += sin(uv.x * 12.);
+        n = float3(0., 0., 1.);
+    }
+    */
+    // End of the VS (usually skinning)
+    stage override void PreTransformPosition() 
+    {
+        streams.PositionWS = streams.Position;
+    }
+
+    // End of tessellation (usually displacement mapping in world space, etc...)
+    stage override void TransformPosition() {}
+
+    // At the end of the geometry pipeline (to generate ShadingPosition)
+    stage override void PostTransformPosition()
+    {
+        streams.ShadingPosition = streams.Position;
+    }
+    
+    stage override float4 Shading() 
+    {
+
+        float3 p, n;
+        posNormByFunction(p, n);  // override me
+
+        streams.PositionWS = float4(p.xyz, 1);
+        float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+        streams.normalWS = n;
+        streams.meshNormalWS = n;
+        streams.DepthVS = PosWVP.w;
+        streams.Depth = PosWVP.z/PosWVP.w;
+        return base.Shading();
+    }
+};

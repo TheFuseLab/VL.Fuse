@@ -1,0 +1,14 @@
+shader PosNormOverride : Texturing
+{
+    // override me
+    // for use with PosNormMaterialExtension.sdsl to make your own surface (pos & normaal) to pass to the stride materials system
+
+    stage void posNormByFunction (out float3 p, out float3 n)
+    {
+        float2 uv = streams.TexCoord.xy;
+        p = float3(uv, 1.0);
+        p.z += sin(uv.x * 12.);
+        n = float3(0., 0., 1.);
+    }
+
+};
