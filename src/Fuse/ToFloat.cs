@@ -1,6 +1,6 @@
 ﻿namespace Fuse
 {
-    public class GpuVoid
+    public class ToFloat
     {
         
     }
