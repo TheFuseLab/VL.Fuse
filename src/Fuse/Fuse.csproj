@@ -1,21 +1,53 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <!--TargetFramework>net48</TargetFramework-->
+    <TargetFramework>net472</TargetFramework>
     <LangVersion>8.0</LangVersion>
     <Copyright>Copyright ©  2021</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
+
+  <!-- This replaces the okld AssemblyInfo.cs can be filled out at some point-->
+  <!--
+  <PropertyGroup>
+    <Company>Compiled Expericne</Company>
+    <Authors>Nigel Sampson</Authors>
+    <PackageId>AssemblyDemo</PackageId>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
+  </PropertyGroup>
+  -->
+
+
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\lib\</OutputPath>
     <DocumentationFile>..\..\lib\Fuse.xml</DocumentationFile>
+    <!-- TODO: i just added 1591 here temporarly. this disables the warnings about -->
+    <!-- missing dicumentation for public types. Should be removed at some point-->
+    <NoWarn>1701;1702;1591</NoWarn> 
+    
+    <!--This line avoids the copy of all dependencies to the Output-Dir-->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    
+    <!-- copied from vl.stride -->
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+
+    <!-- copied from vl.stride: The runtime identifier causes the build system to copy needed native libraries to the output folder -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
+
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\..\lib\</OutputPath>
     <DocumentationFile>..\..\lib\Fuse.xml</DocumentationFile>
   </PropertyGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Stride.Engine" Version="4.0.1.1401" />

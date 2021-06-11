@@ -36,8 +36,11 @@ namespace Fuse
 
         private readonly List<string> _definedStreams;
 
+        protected IDictionary<string, IDictionary<string, AbstractGpuValue>> _inputs;
+
         public AbstractShader(IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, Dictionary<string,string> theCustomTemplate, string theSource)
         {
+            _inputs = theInputs;
             _definedStreams = theDefinedStreams;
             var declarations = new HashSet<string>();
             var structs = new HashSet<string>();
@@ -86,6 +89,7 @@ namespace Fuse
             
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = ShaderNodesUtil.Evaluate(theSource, templateMap);
+            // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});

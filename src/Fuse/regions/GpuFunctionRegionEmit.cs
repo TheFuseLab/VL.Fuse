@@ -12,6 +12,7 @@ using VL.Model;
 
 namespace Fuse.regions
 {
+    /*
     partial class  GpuFunctionRegion : IEmittingPlugin
     {
         public void Emit(IRoslynPatchCompiler compiler, IPatchSymbol patch, INodeSymbol node, List<SyntaxNode> syntaxNodes, IBorderControlPointSymbol bcp)
@@ -358,5 +359,5 @@ namespace Fuse.regions
                     disposable.Dispose();
             }
         }
-    }
+    }*/
 }
