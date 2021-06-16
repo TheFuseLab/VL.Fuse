@@ -112,6 +112,57 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing, PositionStream
 	}
 
 
+
+	float3 rayMarch(float3 rayPos, float3 rayDir, float stepLength = .9, float minDist = 0.1, float maxDist = 200.0, int maxIter = 120)
+	{
+		float3 startPos = rayPos + rayDir * minDist;
+		float3 p = startPos;
+		float z = minDist;
+		maxDist -= minDist;
+		for(int i=0; i<maxIter; i++)
+		{
+			float dist = SDF(p);
+			float rayStep = stepLength * dist;
+			p += rayDir * rayStep;	
+			z += rayStep;
+			if(abs(dist) < 0.0001 * z || z > maxDist) break;
+		}
+		return p;
+	}
+	////////////////////////////////////////////////////////////////
+
+
+	
+	
+	void setupRay(float2 uv, out float3 ro, out float3 rd)
+	{	
+		// normal projection
+			rd = normalize(mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,-1,0),ViewInverse).xyz);
+			ro = ViewInverse[3].xyz;
+	}
+
+	// Raymarch a scene.  Takes uv and returns pos(p), normals(n) & distance(z)
+	void rayMarcher(float2 uv, out float3 p, out float3 n, out float3 rd, out float z)
+	{
+		// Paramerters
+		int marchMaxIterations = 120;
+		float marchMaxDistance = 200;
+		float marchMinDistance = 0.1f;
+		float marchStepLength = 0.75f;
+		float alpha = 1;
+
+		float3 ro;
+		setupRay(uv, ro, rd);
+
+		p = rayMarch(ro, rd, marchStepLength, marchMinDistance, marchMaxDistance, marchMaxIterations);
+		float ff=SDF(p);
+		if(abs(ff)>.5)discard;
+		z = length(p - ro);
+		n = SDFNormal(p);
+	}
+
+
+
 	float4 shadeRayNormals(Ray ray, bool viewFriendly)
 	{		
 		float4 c=1;

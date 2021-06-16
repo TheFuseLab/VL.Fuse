@@ -1,0 +1,30 @@
+[TextureSource]
+[Summary("Generates pixel noise from a value")]
+shader MyNoise_TextureFX : TextureFX
+{
+	float Amplitude=1;
+	float FrequencyBalance=0;
+	float RandomSeed=0;
+	[Summary("Pins can have summaries in the shader code.")]
+	float Z=0;
+	float MorphBalance=1;
+
+	stage override float4 Shading()
+	{
+		return octave(streams.TexCoord, 1);
+	}
+
+	float n1(float3 p)
+	{
+		return cos(length(sin(p*sqrt(3.3)+frac(sin(p.yzx*sqrt(5)+RandomSeed)*sqrt(8))*8))*288);
+	}
+
+	float octave(float2 x, float n)
+	{
+		float c=0;
+		float z=Z/pow(pow(2,MorphBalance),n-6);
+		float3 p=float3((x.xy+3)*sqrt(1111),floor(z));
+		c=lerp(n1(p),n1(p+float3(0,0,1)),frac(z));
+		return c/pow(pow(2,FrequencyBalance),n-4);
+	}
+};
