@@ -28,7 +28,7 @@ namespace Fuse
     public class ConstantValue<T>: GpuValue<T>
     {
         
-        private T _myValue;
+        private readonly T _myValue;
         public ConstantValue(T theValue) : base("constant")
         {
             _myValue = theValue;

@@ -38,7 +38,7 @@ namespace Fuse
             theCase.ParentNode.Children.ForEach(
             child =>
             {
-                if (!(child is AbstractShaderNode input)) return;
+                if (!(child is AbstractShaderNode)) return;
                
                 ((AbstractShaderNode)child).BuildChildrenSource(theSourceBuilder, theHashes);
             });

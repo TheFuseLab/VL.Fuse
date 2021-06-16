@@ -5,8 +5,8 @@ namespace Fuse
 {
     public class AssignNode<T> : ShaderNode<GpuVoid>
     {
-        private GpuValue<T> _target;
-        private GpuValue<T> _source;
+        private readonly GpuValue<T> _target;
+        private readonly GpuValue<T> _source;
         
         public AssignNode(GpuValue<T> theTarget, GpuValue<T> theSource) : base("Assign")
         {

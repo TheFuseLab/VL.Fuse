@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using Fuse;
-using VL.Lib.Adaptive;
 
 namespace Fuse
 {
@@ -13,11 +11,10 @@ namespace Fuse
         {
             
             var inputList = new List<AbstractGpuValue>();
-            if (theValue == null) theValue = ConstantHelper.FromFloat<T>(0);
-            if (theValue != null)
-            {
-                inputList.Add(theValue);
-            }
+            theValue ??= ConstantHelper.FromFloat<T>(0);
+          
+            inputList.Add(theValue);
+            
             Ins = inputList;
             Setup(Ins);
             Output = new GpuValue<T>("outputParam")
