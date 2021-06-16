@@ -1,0 +1,31 @@
+[Summary("Calculates a DeJong attractor in a buffer.")]
+shader PosToHeadingMatrix_ComputeFX : ComputeShaderBase
+{
+    float ABCDEF[6];
+
+    Buffer<float3> posBuffer;
+    Buffer<float3> prevPosBuffer;
+	RWStructuredBuffer<float4x4> Values;
+
+    override void Compute()
+    {
+        uint index = streams.DispatchThreadId.x;
+        
+        float4 v = Values[index];
+
+        float a = ABCDEF[0];
+        float b = ABCDEF[1];
+        float c = ABCDEF[2];
+        float d = ABCDEF[3];
+        float e = ABCDEF[4];
+        float f = ABCDEF[5];
+
+        v.x = sin(a * v.y) - cos(b * v.x);
+        v.y = sin(c * v.z) - cos(d * v.y);
+        v.z = sin(e * v.x) - cos(f * v.z);
+
+        v.w = 1;
+
+        Values[index] = v;
+    }
+};

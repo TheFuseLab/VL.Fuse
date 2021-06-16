@@ -1,0 +1,96 @@
+﻿
+shader FuseDrawSprites_DrawFX : VS_PS_Base, FuseBuffer
+{
+    StructuredBuffer<float3> posBuffer;
+    StructuredBuffer<float> sizeBuffer;
+    StructuredBuffer<float4> colBuffer;
+
+    // SPRITES UTILS ==============================================================
+ 
+    void CircleSpriteDiscard(float2 uv)
+    {
+        if(length(uv - 0.5f) > 0.5f)
+        {
+            discard;
+        }
+    }
+
+    static const float3 QuadPositions[4] = 
+    {
+        float3(-1, 1,0),
+        float3( 1, 1,0),
+        float3(-1, -1,0),
+        float3( 1, -1,0),
+    };
+
+    static const float2 QuadUV[4] = 
+    {
+        float2(0,1), 
+        float2(1,1),
+        float2(0,0),
+        float2(1,0)
+    };
+
+
+    cbuffer PerFrame
+    {
+        [Color]
+        float4 colDefualt;
+        float sizeDefualt;
+    };
+
+    stream float2 TexCoord;
+    stream uint VertexID : SV_VertexID;
+    stream float4 Color;
+    stream float Size;
+
+    // VS ==============================================================================
+
+    stage override void VSMain() 
+    {
+        uint id = streams.VertexID;
+        //  ParticlePos4Vel4 p = ParticlesBuffer[id];
+
+        /*
+        streams.PositionWS = float4(sbLoad(id, posBuffer, 0), 1);
+        streams.Size = sbLoad(id, sizeBuffer, sizeDefualt);
+        streams.Color = sbLoad(id, colBuffer, colDefualt);
+        */
+
+        streams.PositionWS = float4(posBuffer[id], 1);
+        streams.Size = sizeDefualt;
+        streams.Color = colDefualt;
+    }
+
+    // GS ==============================================================================
+
+   // stream float Size;
+
+    [maxvertexcount(4)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        for(int i=0; i<4; i++)
+        {
+            streams.TexCoord  = QuadUV[i].xy;
+            
+            float4 posView = mul(streams.PositionWS, WorldView);
+            posView.xyz += QuadPositions[i].xyz *  streams.Size;
+            streams.ShadingPosition = mul(posView, Projection);
+            
+            triangleStream.Append(streams);
+        }
+       
+    }
+
+
+    // PS ==============================================================================
+
+    stage override void PSMain()
+    {
+        CircleSpriteDiscard(streams.TexCoord);       
+        streams.ColorTarget = streams.Color;
+    }
+
+};

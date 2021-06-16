@@ -1,0 +1,20 @@
+shader PosNormExample_ShaderFX : PosNormOverride, ComputeFloat, ComputeFloat3
+{
+
+    compose ComputeFloat Value;
+    compose ComputeFloat3 Pos;
+    compose ComputeFloat3 Norm;
+
+    
+    override stage void posNormByFunction (out float3 p, out float3 n)
+    {
+        p = Pos.Compute();
+        n = Norm.Compute();
+    }
+    
+
+    override float Compute()
+    {
+        return Value.Compute();
+    }
+};

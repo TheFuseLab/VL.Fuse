@@ -1,8 +1,8 @@
-shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
+shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing, PositionStream4, NormalStream
 {
 	struct Ray
 	{
-		float3 ro, rd, sp, sn;
+		float3 ro, rd, sp, sn; // ray orign, ray direction, surface position, surface normal
 	};
 
 	Ray makeRay(float3 ro, float3 rd, float3 sp = 0.0, float3 sn = 0.0)
@@ -23,7 +23,10 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 	
 	// min max distances and early discard
 	abstract float2 cullRay(Ray ray);	
-	abstract void killRay();	
+	void killRay()
+	{
+		discard;
+	}
 	
 	// ray march loop
 	abstract void marchRay(inout Ray ray, float2 minMaxDist, int maxIter = 180);
@@ -50,6 +53,18 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float3 ro = ViewInverse[3].xyz;
 		return makeRay(ro, rd);
 	}
+	
+	float2 r2d(float2 x,float a){a*=acos(-1)*2;return float2(cos(a)*x.x+sin(a)*x.y,cos(a)*x.y-sin(a)*x.x);}
+	// equirectangular panorama version
+	Ray setupRayPano() 	
+	{	
+		float2 uv = streams.TexCoord;
+		float3 ro = ViewInverse[3].xyz;
+		float3 rd = float3(0, 0, 1);
+		rd.yz = r2d(rd.yz,-(uv.y-.5)*.5);
+		rd.xz = r2d(rd.xz,-uv.x);
+		return makeRay(ro, rd);
+	}
 
 	float2 cullRayDefualt(Ray ray, float2 minMaxDist =  float2(0.1, 200.))
 	{
@@ -57,10 +72,11 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 	}
 
 
+	// https://iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
 	float2 cullRayByBox(Ray ray, float3 pos = 0., float3 radius = 2.)  // bounding box
 	{
 		float3 m = 1.0 / ray.rd;
-		float3 n = m * (ray.ro - pos);
+		float3 n = m * ray.ro;
 		float3 k = abs(m) * radius;
 		float3 t1 = -n - k;
 		float3 t2 = -n + k;
@@ -68,10 +84,10 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float tN = max( max( t1.x, t1.y ), t1.z );
 		float tF = min( min( t2.x, t2.y ), t2.z );
 	
-		//if( tN > tF || tF < 0.0) killRay(); // no intersection
+		if( tN > tF || tF < 0.0) killRay(); // no intersection
 		tN = max(tN, 0); // avoid starting our ray behind us
 		//return float2( 0.01, 200 );
-		return float2(tN, tF );
+		return float2(tN, tF);
 	}
 
 	void killRayDiscard() {discard;};
@@ -81,7 +97,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 		float3 startPos = ray.ro + ray.rd * minMaxDist.x;
 		float3 p = startPos;
 		float z = minMaxDist.x;
-		minMaxDist.y -= minMaxDist.x;
+		//minMaxDist.y -= minMaxDist.x;
 		for(int i=0; i<maxIter; i++)
 		{
 			float dist = SDF(p);
@@ -92,26 +108,39 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing
 
 		if(z > minMaxDist.y) discard;
 		ray.sp = p;
+		ray.sn = SDFNormal(ray.sp);
 	}
 
 
-	float4 shadeRayNormals(Ray ray)
+	float4 shadeRayNormals(Ray ray, bool viewFriendly)
 	{		
 		float4 c=1;
 		c.rgb = ray.sn;
-		c.rgb = c.rgb * 0.5 + 0.5; // remap normals to 0-1
+		if(viewFriendly)c.rgb = c.rgb * 0.5 + 0.5; // remap normals to 0-1
 		c.a = 1;
 
+		float3 p = ray.sp;
+		float3 n = ray.sn;
 		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
 		streams.Depth = PosWVP.z/PosWVP.w;
+		streams.DepthVS = PosWVP.w;
+
+		/*
+		streams.PositionWS = float4(p.xyz, 1);
+		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+		streams.normalWS = n;
+		streams.meshNormalWS = n;
+		streams.DepthVS = PosWVP.w;
+		streams.Depth = PosWVP.z/PosWVP.w;
+		*/
 		return c;
 	}
 
-	float4 shadeRayGradient(Ray ray)
+	float4 shadeRayGradient(Ray ray, float4 col)
 	{		
 		float4 c=1;
 		float g = saturate(dot(ray.rd,-ray.sn));
-		c.rgb = g;
+		c.rgb = g * col.rgb;
 
 		float4 PosWVP = mul(float4(ray.sp, 1), ViewProjection);
 		streams.Depth = PosWVP.z/PosWVP.w;
