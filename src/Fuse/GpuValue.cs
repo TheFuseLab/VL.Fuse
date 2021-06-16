@@ -42,9 +42,15 @@
     {
        
         private GpuValue<T> _value;
-        public GpuValuePassThrough(GpuValue<T> theValue) : base(theValue.Name)
+        public GpuValuePassThrough(GpuValue<T> theValue) : base(theValue == null ? "": theValue.Name)
         {
-            _value = theValue;
+            _value = theValue ?? new GpuValue<T>("");
+        }
+
+        public void SetInput(GpuValue<T> theValue)
+        {
+            
+            _value = theValue ?? new GpuValue<T>("");
         }
         public override string ID => _value.ID;
     }

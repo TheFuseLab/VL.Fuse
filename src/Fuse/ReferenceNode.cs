@@ -2,15 +2,23 @@
 
 namespace Fuse
 {
-    public class ReferenceNode<T> : ShaderNode<T>
-    { 
+
+    public interface IReferenceNode
+    {
+        void SetAbstractInput(AbstractGpuValue theIn);
+    }
+    
+    public class ReferenceNode<T> : ShaderNode<T> , IReferenceNode
+    {
+
+        private readonly GpuValuePassThrough<T> _myValue;
         
-        public ReferenceNode(GpuValue<T> theIn) : base("Reference")
+        public ReferenceNode(AbstractGpuValue theIn) : base("Reference")
         {
             Setup(new List<AbstractGpuValue>{theIn});
 
             
-            Output = theIn == null ? new GpuValue<T>(""):new GpuValuePassThrough<T>(theIn);
+            Output = _myValue = new GpuValuePassThrough<T>(theIn as GpuValue<T>);
             Output.ParentNode = this;
         }
 
@@ -18,9 +26,14 @@ namespace Fuse
         {
             Setup(new List<AbstractGpuValue>{theIn});
 
-            
-            Output = theIn == null ? new GpuValue<T>(""):new GpuValuePassThrough<T>(theIn);
-            Output.ParentNode = this;
+            _myValue.SetInput(theIn);
+        }
+        
+        public void SetAbstractInput(AbstractGpuValue theIn)
+        {
+            Setup(new List<AbstractGpuValue>{theIn});
+
+            _myValue.SetInput(theIn as GpuValue<T>);
         }
 
         protected override string SourceTemplate()
