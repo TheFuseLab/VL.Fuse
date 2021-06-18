@@ -1,0 +1,55 @@
+﻿
+shader DrawParticles_DrawFX : VS_PS_Base, ParticleStructPos4Vel4, ShaderUtils
+{
+    StructuredBuffer<ParticlePos4Vel4> ParticlesBuffer;
+
+    cbuffer PerFrame
+    {
+        [Color]
+        float4 Col;
+        float ParticleSize;
+    };
+
+    stream float2 TexCoord;
+    stream uint VertexID : SV_VertexID;
+
+    // VS ==============================================================================
+
+    stage override void VSMain() 
+    {
+        uint id = streams.VertexID;
+        ParticlePos4Vel4 p = ParticlesBuffer[id];
+        streams.PositionWS = float4(p.Pos.xyz, 1);
+    }
+
+    // GS ==============================================================================
+
+    stream float Size;
+
+    [maxvertexcount(4)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        for(int i=0; i<4; i++)
+        {
+            streams.TexCoord  = QuadUV[i].xy;
+            
+            float4 posView = mul(streams.PositionWS, WorldView);
+            posView.xyz += QuadPositions[i].xyz * ParticleSize;
+            streams.ShadingPosition = mul(posView, Projection);
+            
+            triangleStream.Append(streams);
+        }
+    }
+
+
+    // PS ==============================================================================
+
+    stage override void PSMain()
+    {
+        CircleSpriteDiscard(streams.TexCoord);       
+        streams.ColorTarget = Col;
+    }
+
+};

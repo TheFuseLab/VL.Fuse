@@ -1,0 +1,63 @@
+shader GeometryShaderMaterialExtension : ParticleProvider, TransformationBase, PositionStream4, Texturing, ShadingBase, ShaderUtils
+{
+    //we cannot use data input here
+
+    // End of the VS (usually skinning)
+    stage override void PreTransformPosition() 
+    {
+        streams.VID = streams.VertexID;
+        streams.PositionWS = streams.Position;
+    }
+
+    // End of tessellation (usually displacement mapping in world space, etc...)
+    stage override void TransformPosition() {}
+
+    // At the end of the geometry pipeline (to generate ShadingPosition)
+    stage override void PostTransformPosition()
+    {
+        streams.ShadingPosition = streams.PositionWS; //not
+    }
+
+    [maxvertexcount(4)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        streams.PositionWS = GetWorldPosition();
+
+        float3 normWS = GetWorldNormal();
+        streams.normalWS = normWS;
+        streams.meshNormalWS = normWS;
+
+        float pSize = GetParticleSize();
+
+        for (int i=0; i<4; i++)
+        {
+            streams.TexCoord  = QuadUV[i].xy;
+
+            float4 posView = mul(streams.PositionWS, WorldView);
+            posView.xyz += QuadPositions[i].xyz * pSize;
+            streams.ShadingPosition = mul(posView, Projection);
+
+            triangleStream.Append(streams);
+        }     
+    }
+
+    stage override float4 Shading() 
+    {
+        float2 mapping = streams.TexCoord * 2 - 1;
+        float lenSqr = dot(mapping, mapping);
+        if (lenSqr > 1)
+            discard; // Circles
+        
+        float z = sqrt(1 - lenSqr);
+
+        float3 normal = float3(mapping, z);
+        normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
+
+        streams.normalWS = normal;
+        streams.meshNormalWS = normal;
+
+        return base.Shading();
+    }
+};

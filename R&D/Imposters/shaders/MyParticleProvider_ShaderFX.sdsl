@@ -1,0 +1,38 @@
+shader MyParticleProvider_ShaderFX : ComputeFloat, ParticleProvider, ParticleStructPos4Vel4
+{
+    cbuffer PerMaterial
+    {
+        stage float ParticleSize = 0.1;
+    }
+
+    rgroup PerMaterial
+    {
+        stage StructuredBuffer<ParticlePos4Vel4> ParticlesBuffer;
+    }
+
+    compose ComputeFloat Value;
+
+    stage stream float4 pNorm;
+    override stage float4 GetWorldPosition()
+    {
+        uint id = streams.VID;
+        ParticlePos4Vel4 p = ParticlesBuffer[id];
+        streams.pNorm = p.Vel;
+        return float4(p.Pos.xyz, 1);
+    }
+
+    override stage float3 GetWorldNormal()
+    {
+        return normalize(streams.PositionWS.xyz);
+    }
+
+    override stage float GetParticleSize()
+    {
+        return ParticleSize;
+    }
+
+    override float Compute()
+    {
+        return Value.Compute();
+    }
+};
