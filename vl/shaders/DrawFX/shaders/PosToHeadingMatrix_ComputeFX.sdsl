@@ -1,0 +1,26 @@
+[Summary("Calculates a transform buffer from a 3D heading.")]
+shader PosToHeadingMatrix_ComputeFX : ComputeShaderBase, FuseCoreTransform, FuseCommonBuffer
+{
+	Buffer<float3> posBuffer;
+	Buffer<float3> prevPosBuffer;
+	//RWStructuredBuffer<float4x4> bTransform;
+
+
+	
+	RWStructuredBuffer<mat4x4> OutputBuffer;
+
+	override void Compute()
+	{
+		uint index = streams.DispatchThreadId.x;
+		float3 pos = posBuffer[index];
+		float3 prevPos = prevPosBuffer[index];
+
+
+		float4x4 mT = identity4x4();
+		mT._41 = pos.x;
+		mT._42 = pos.y;
+		mT._43 = pos.z;
+
+		OutputBuffer[index].Matrix = mT;
+	}
+};
