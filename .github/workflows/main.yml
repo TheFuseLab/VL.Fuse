@@ -1,12 +1,12 @@
 name: push_nuget
 
-# on push on master
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - README.md
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to push'
+        required: false
+        default: 'X.X.X'
 
 jobs:
   build:
@@ -22,10 +22,9 @@ jobs:
       uses: nuget/setup-nuget@v1
 
     - name: Publish VL Nuget
-      uses: vvvv/PublishVLNuget@1.0.29
+      uses: vvvv/PublishVLNuget@1.0.41
       with:
-      #  csproj: src\VL.ShaderFXtension\VL.ShaderFXtension.csproj
-        nuspec: deployment\VL.Fuse.nuspec
-        icon-src: https://raw.githubusercontent.com/vvvv/PublicContent/master/nugeticon.png
-        icon-dst: ./deployment/nugeticon.png
+        csproj: src/Fuse/Fuse.csproj
+        nuspec: deployment/VL.Fuse.nuspec
+        version: ${{ github.event.inputs.version }}
         nuget-key: ${{ secrets.NUGET_KEY }}
