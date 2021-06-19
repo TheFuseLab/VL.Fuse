@@ -1,9 +1,9 @@
-﻿
-shader FuseCommonDrawSprites_DrawFX : VS_PS_Base, FuseCommonBuffer
+﻿shader FuseCommonDrawSprites_DrawFX : VS_PS_Base, FuseCommonBuffer
 {
     StructuredBuffer<float3> posBuffer;
     StructuredBuffer<float> sizeBuffer;
     StructuredBuffer<float4> colBuffer;
+
 
     // SPRITES UTILS ==============================================================
  
@@ -45,27 +45,16 @@ shader FuseCommonDrawSprites_DrawFX : VS_PS_Base, FuseCommonBuffer
     stream float Size;
 
     // VS ==============================================================================
-
     stage override void VSMain() 
     {
-        uint id = streams.VertexID;
-        //  ParticlePos4Vel4 p = ParticlesBuffer[id];
-
-        /*
-        streams.PositionWS = float4(sbLoad(id, posBuffer, 0), 1);
-        streams.Size = sbLoad(id, sizeBuffer, sizeDefualt);
-        streams.Color = sbLoad(id, colBuffer, colDefualt);
-        */
-
-        streams.PositionWS = float4(posBuffer[id], 1);
-        streams.Size = sizeDefualt;
-        streams.Color = colDefualt;
+       uint id = streams.VertexID;
+              
+       streams.PositionWS = float4(posBuffer[id], 1);
+       streams.Size = sbLoad(id, sizeBuffer, sizeDefualt);
+       streams.Color = sbLoad(id, colBuffer, colDefualt);
     }
 
     // GS ==============================================================================
-
-   // stream float Size;
-
     [maxvertexcount(4)]
     stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
     {
@@ -78,7 +67,6 @@ shader FuseCommonDrawSprites_DrawFX : VS_PS_Base, FuseCommonBuffer
             float4 posView = mul(streams.PositionWS, WorldView);
             posView.xyz += QuadPositions[i].xyz *  streams.Size;
             streams.ShadingPosition = mul(posView, Projection);
-            
             triangleStream.Append(streams);
         }
        
@@ -86,7 +74,6 @@ shader FuseCommonDrawSprites_DrawFX : VS_PS_Base, FuseCommonBuffer
 
 
     // PS ==============================================================================
-
     stage override void PSMain()
     {
         CircleSpriteDiscard(streams.TexCoord);       

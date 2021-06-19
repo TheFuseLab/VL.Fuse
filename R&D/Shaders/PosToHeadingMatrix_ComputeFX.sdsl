@@ -1,31 +1,29 @@
-[Summary("Calculates a DeJong attractor in a buffer.")]
-shader PosToHeadingMatrix_ComputeFX : ComputeShaderBase
+[Summary("Calculates a transform buffer from a 3D heading.")]
+shader PosToHeadingMatrix_ComputeFX : ComputeShaderBase, FuseCoreTransform, FuseCommonBuffer
 {
-    float ABCDEF[6];
-
     Buffer<float3> posBuffer;
     Buffer<float3> prevPosBuffer;
-	RWStructuredBuffer<float4x4> Values;
+    //RWStructuredBuffer<float4x4> bTransform;
+
+    struct float4x4Struct
+    {
+        float4x4 Matrix;
+    };
+    
+    RWStructuredBuffer<float4x4Struct> Output;
 
     override void Compute()
     {
         uint index = streams.DispatchThreadId.x;
-        
-        float4 v = Values[index];
+        float3 pos = posBuffer[index];
+        float3 prevPos = prevPosBuffer[index];
 
-        float a = ABCDEF[0];
-        float b = ABCDEF[1];
-        float c = ABCDEF[2];
-        float d = ABCDEF[3];
-        float e = ABCDEF[4];
-        float f = ABCDEF[5];
 
-        v.x = sin(a * v.y) - cos(b * v.x);
-        v.y = sin(c * v.z) - cos(d * v.y);
-        v.z = sin(e * v.x) - cos(f * v.z);
+        float4x4 mT = identity4x4();
+		mT._41 = pos.x;
+		mT._42 = pos.y;
+		mT._43 = pos.z;
 
-        v.w = 1;
-
-        Values[index] = v;
+        Output.Matrix[index] = mT;
     }
 };
