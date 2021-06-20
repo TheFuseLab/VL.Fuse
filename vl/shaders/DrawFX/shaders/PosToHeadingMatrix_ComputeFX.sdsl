@@ -21,6 +21,8 @@ shader PosToHeadingMatrix_ComputeFX : ComputeShaderBase, FuseCoreTransform, Fuse
 		mT._42 = pos.y;
 		mT._43 = pos.z;
 
-		OutputBuffer[index].Matrix = mT;
+		float4x4 mR = lookat4x4(prevPos - pos);
+
+		OutputBuffer[index].Matrix = mul(mR, mT);
 	}
 };
