@@ -1,78 +1,35 @@
-﻿shader Imposter_ShaderFX : ComputeFloat, Transformation, TransformationBase, PositionStream4, Texturing, ShadingBase, ShaderUtils, FuseCommonDrawPosNormOverride
+﻿shader Imposter_ShaderFX : ComputeFloat , SphereProvider , FuseCommonBuffer, Transformation, TransformationBase, PositionStream4, Texturing 
 {
 
 	compose ComputeFloat Value;
 
-	stage float size = 0.05;
-	Buffer<float3> posBuffer;
-	Buffer<float> sizeBuffer;
-
-	stage stream uint pid : SV_PrimitiveID;
-
-
-
-		// adapted from IQ raytrace sphere code.  Returns pos and normal in camera space 
-	void Impostor(float2 mapping, float sphereRadius, float3 cameraSpherePos, out float3 pos, out float3 normal)
+	
+	cbuffer PerMaterial
 	{
-		float3 cameraPlanePos = float3(mapping * sphereRadius, 0.0) + cameraSpherePos;
-		float3 rayDirection = normalize(cameraPlanePos);
-	
-		float B = 2.0 * dot(rayDirection, -cameraSpherePos);
-		float C = dot(cameraSpherePos, cameraSpherePos) - (sphereRadius * sphereRadius);
-	
-		float det = (B * B) - (4 * C);
-		if(det < 0.0)
-			discard;
-		
-		float sqrtDet = sqrt(det);
-		float posT = (-B + sqrtDet)/2;
-		float negT = (-B - sqrtDet)/2;
-	
-		float intersectT = min(posT, negT);
-		pos = rayDirection * intersectT;
-		normal = normalize(pos - cameraSpherePos);
+		stage float sizeDefualt = 0.1;
 	}
 
-
-
-
-	[maxvertexcount(4)]
-	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+	rgroup PerMaterial
 	{
-		streams = input[0];
-		streams.PositionWS = float4(posBuffer[3], 1);
-		float pSize = size;
-
-
-		float padding = 1.5;
-		float2 offset;
-		float4 cameraSpherePos = mul(streams.PositionWS, WorldView);
-		
-		for (int i = 0; i<4; i++) 
-		{
-
-			streams.TexCoord = QuadPositions[i].xy * padding;
-			offset = sign(QuadPositions[i].xy) * pSize;
-			float4 viewCornerPos = cameraSpherePos;
-			viewCornerPos.xy += offset * padding;
-			streams.ShadingPosition = mul(viewCornerPos, Projection);
-
-			triangleStream.Append(streams);
-		}
-
+		stage StructuredBuffer<float3> posBuffer;
+		stage StructuredBuffer<float> sizeBuffer;
 	}
-
-
 
 	
-	stage override void posNormByFunction (out float3 p, out float3 n)
+	override stage float3 getSpherePos()
 	{
-		//float size = GetParticleSize();
-		Impostor(streams.TexCoord, size, mul(streams.PositionWS, View).xyz, p, n); // last two are function outputs only
-		n = normalize(mul(float4(n, 0), ViewInverse).xyz);
-		p = (n * size) + streams.PositionWS.xyz;
-
+		uint id = streams.VID;
+		return posBuffer[id];
 	}
+
+	override stage float getSphereSize()
+	{
+		//return sizeDefualt;
+		uint id = streams.VID; //  did not work when calling from GS 
+		return sbLoad(id, sizeBuffer, sizeDefualt);
+	}
+	
+
 
 	// pass this through as dummy to material system
 	override float Compute()
@@ -81,8 +38,6 @@
 	}
 	
 	
-	
-
 
 
 };

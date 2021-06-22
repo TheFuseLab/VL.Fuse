@@ -23,6 +23,33 @@ shader GeometryShaderMaterialExtension_Imposter : ParticleProvider, Transformati
 		normal = normalize(pos - cameraSpherePos);
 	}
 
+	void sphereImpostor(float2 screenCoord, float3 spherePos, float sphereRadius, out float3 pos, out float3 normal)
+	{
+		float3 cameraSpherePos = mul(float4(spherePos, 1), View).xyz;
+
+		float3 cameraPlanePos = float3(screenCoord * sphereRadius, 0.0) + cameraSpherePos;
+		float3 rayDirection = normalize(cameraPlanePos);
+	
+		float B = 2.0 * dot(rayDirection, -cameraSpherePos);
+		float C = dot(cameraSpherePos, cameraSpherePos) - (sphereRadius * sphereRadius);
+	
+		float det = (B * B) - (4 * C);
+		if(det < 0.0)
+			discard;
+		
+		float sqrtDet = sqrt(det);
+		float posT = (-B + sqrtDet)/2;
+		float negT = (-B - sqrtDet)/2;
+	
+		float intersectT = min(posT, negT);
+		pos = rayDirection * intersectT;
+		normal = normalize(pos - cameraSpherePos);
+
+		// back to world space
+		normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
+		pos = (normal * sphereRadius) + spherePos;
+	}
+
 
 
 	//we cannot use data input here
@@ -94,14 +121,15 @@ shader GeometryShaderMaterialExtension_Imposter : ParticleProvider, Transformati
 	stage override float4 Shading() 
 	{
 
-		//return base.Shading();  // issue seems to be before this in the GS
 		float3 posWV, normWV;
 		float size = GetParticleSize();
-		Impostor(streams.TexCoord, size, mul(streams.PositionWS, View).xyz, posWV, normWV); // last two are function outputs only
-	
-		//float3 worldNormal = mul(normWV, (float3x3)tVI );
-		float3 worldNormal = normalize(mul(float4(normWV, 0), ViewInverse).xyz);
-		float3 worldPos = (worldNormal * size) + streams.PositionWS.xyz;
+		//Impostor(streams.TexCoord, size, mul(streams.PositionWS, View).xyz, posWV, normWV); // last two are function outputs only
+		//float3 worldNormal = normalize(mul(float4(normWV, 0), ViewInverse).xyz);
+		//float3 worldPos = (worldNormal * size) + streams.PositionWS.xyz;
+
+		float3 worldPos, worldNormal;
+		sphereImpostor(streams.TexCoord, streams.PositionWS.xyz, size, worldPos, worldNormal);
+
 	
 		streams.ShadingPosition = mul(float4(worldPos, 1), ViewProjection);
 
