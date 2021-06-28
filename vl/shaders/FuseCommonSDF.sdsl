@@ -214,6 +214,19 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 	//Rounded Cubes: 
 	float fRBox(float3 p,float3 b,float rad ) { return length(max(abs(p)-b+rad,0.0))-rad; }
 
+	// Box Frame
+	float fBoxFrame( float3 p, float3 b, float e)
+	{
+  
+		p = abs(p  )-b;
+	  float3 q = abs(p+e)-e;
+
+	  return min(min(
+		  length(max(float3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+		  length(max(float3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+		  length(max(float3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+	}
+
 	// Blobby ball object. You've probably seen it somewhere. This is not a correct distance bound, beware.
 	float fBlob(float3 p) 
 	{
@@ -520,6 +533,158 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 		}
 
 		return dis;
+	}
+
+	// Strut Lattices
+	// Matt Damon: https://www.shadertoy.com/view/llfGRj
+
+	// cube-centered lattice (cubic symmetry), 6 directions
+	float fStrutCC(float3 p) 
+	{
+		float3 o = p*p;    
+		float s = sqrt(o.x+o.y);
+		s = min(s, sqrt(o.x+o.z));
+		s = min(s, sqrt(o.y+o.z));
+		return s;
+	}
+
+	// body-centered lattice (octahedral symmetry), 8 directions
+	float fStrutBC(float3 p) 
+	{
+		float3 o = abs(p);    
+		return length( o - (o.x+o.y+o.z) / 3.0 );
+	}
+
+
+	// face-centered lattice (rhombic dodecahedral symmetry), 12 directions
+	float fStrutFC(float3 p) 
+	{
+		float3 o = abs(p);
+		float3 q = o / 2.0;
+		float s = length(float3(o.xy - (q.x + q.y), o.z));
+		s = min(s, length(float3(o.xz - (q.x + q.z), o.y)));
+		s = min(s, length(float3(o.yz - (q.y + q.z), o.x)));
+		return s;
+	}
+
+
+	float fLatticeSelect(float3 p, int i) 
+	{
+		if (i == 0) 
+		{ // 001
+			return fStrutCC(p);
+		} else if (i == 1) { 
+			return fStrutBC(p);
+		} else if (i == 2) { 
+			return fStrutFC(p);
+		} else if (i == 3) { 
+			return min(fStrutCC(p), fStrutBC(p));
+		} else if (i == 4) { 
+			return min(fStrutCC(p), fStrutFC(p));
+		} else if (i == 5) {
+			return min(fStrutFC(p), fStrutBC(p));
+		} else if (i == 6) { 
+			return min(fStrutCC(p), min(fStrutFC(p), fStrutBC(p)));
+		}
+		return 0.0;
+	}
+
+
+
+	// TPMS Lattices
+	// Triply periodic minimal surfaces
+
+	float fGyroidTPMS(float3 p)
+	{
+		p /= PI;
+		float3 sp = sin(p);
+		float3 cp = cos(p);
+		return sp.x * cp.y + sp.y * cp.z + sp.z * cp.x;
+	}
+
+	float fSchwartzPTPMS(float3 p)
+	{
+		p /= PI;
+		float3 cp = cos(p);
+		return cp.x + cp.y + cp.z;
+	}
+
+	float fDiamondTPMS(float3 p)
+	{
+		p /= PI;
+		float3 sp = sin(p);
+		float3 cp = cos(p);
+		return 
+		sp.x * sp.y * sp.z +
+		sp.x * cp.y * cp.z +
+		cp.x * sp.y * cp.z +
+		cp.x * cp.y * sp.z;
+	}
+
+	float fFischerKochTPMS(float3 p)
+	{
+		p /= PI;
+		float3 sp = sin(p);
+		float3 cp = cos(p);
+		float3 cp2 = cos(p * 2.);
+		return 
+		cp2.x * sp.y * cp.z +
+		cp2.y * sp.z * cp.x +
+		cp2.z * sp.x * cp.y;
+	}
+
+	float fLidinoidTPMS(float3 p)
+	{
+		p /= PI;
+		float3 sp = sin(p);
+		float3 cp = cos(p);
+		float3 cp2 = cos(p * 2.);
+		return 
+	
+		.5 * (
+		sp.x * cp.y * sp.z +
+		sp.y * cp.z * sp.y +
+		sp.z * cp.x * sp.y)
+		-
+		.5 * (
+		cp.x * cp2.y +
+		cp.y * cp2.z +
+		cp.z * cp2.x) + .15;
+	}
+
+
+	float fNeoviusTPMS(float3 p)
+	{
+		p /= PI;
+		float3 cp = cos(p);
+		return 
+		(3. * abs(cp.x + cp.y + cp.z)
+		+
+		4. * (cp.x * cp.y * cp.z))
+		/ 7.;
+	
+	}
+
+
+
+
+	float TPMSSelect(float3 p, int i) 
+	{
+		if (i == 0) 
+		{ // 001
+			return fGyroidTPMS(p);
+		} else if (i == 1) { 
+			return fSchwartzPTPMS(p);
+		} else if (i == 2) { 
+			return fDiamondTPMS(p);
+		} else if (i == 3) { 
+			return fFischerKochTPMS(p);
+		} else if (i == 4) { 
+			return fLidinoidTPMS(p);
+		} else if (i == 5) {
+			return fNeoviusTPMS(p);
+		}
+		return 0.0;
 	}
 
 	// causing errors atm
