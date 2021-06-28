@@ -41,7 +41,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing, PositionStream
 		float3 gradient = float3 (	(SDF(p + float3(e,0,0)) - SDF(p - float3(e,0,0))) / (2*e), 
 									(SDF(p + float3(0,e,0)) - SDF(p - float3(0,e,0))) / (2*e), 
 									(SDF(p + float3(0,0,e)) - SDF(p - float3(0,0,e))) / (2*e)	);
-		return normalize(gradient);
+		return normalize(gradient+0.0000001);
 
 	}
 
@@ -159,6 +159,7 @@ shader FuseRayMarch: ShaderBaseStream, Transformation, Texturing, PositionStream
 		if(abs(ff)>.5)discard;
 		z = length(p - ro);
 		n = SDFNormal(p);
+		//if (n != n) discard;
 	}
 
 
