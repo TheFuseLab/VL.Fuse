@@ -594,9 +594,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 	// TPMS Lattices
 	// Triply periodic minimal surfaces
 
+	// https://github.com/dbt-ethz/Axolotl/blob/master/code/lTMPS.py
+	// https://github.com/mengtinh/MiniSurf/blob/master/Source%20Code/matlab/document.xml
+
 	float fGyroidTPMS(float3 p)
 	{
-		p /= PI;
 		float3 sp = sin(p);
 		float3 cp = cos(p);
 		return sp.x * cp.y + sp.y * cp.z + sp.z * cp.x;
@@ -604,14 +606,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 
 	float fSchwartzPTPMS(float3 p)
 	{
-		p /= PI;
 		float3 cp = cos(p);
-		return cp.x + cp.y + cp.z;
+		return (cp.x + cp.y + cp.z) *.7;
 	}
 
 	float fDiamondTPMS(float3 p)
 	{
-		p /= PI;
 		float3 sp = sin(p);
 		float3 cp = cos(p);
 		return 
@@ -623,19 +623,17 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 
 	float fFischerKochTPMS(float3 p)
 	{
-		p /= PI;
 		float3 sp = sin(p);
 		float3 cp = cos(p);
 		float3 cp2 = cos(p * 2.);
-		return 
-		cp2.x * sp.y * cp.z +
+		return .7 *
+		(cp2.x * sp.y * cp.z +
 		cp2.y * sp.z * cp.x +
-		cp2.z * sp.x * cp.y;
+		cp2.z * sp.x * cp.y);
 	}
 
 	float fLidinoidTPMS(float3 p)
 	{
-		p /= PI;
 		float3 sp = sin(p);
 		float3 cp = cos(p);
 		float3 cp2 = cos(p * 2.);
@@ -655,18 +653,20 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 
 	float fNeoviusTPMS(float3 p)
 	{
-		p /= PI;
 		float3 cp = cos(p);
-		return 
+		return .25 *
 		(3. * abs(cp.x + cp.y + cp.z)
 		+
-		4. * (cp.x * cp.y * cp.z))
-		/ 7.;
-	
+		4. * (cp.x * cp.y * cp.z));
 	}
 
-
-
+	float fOctoTPMS (float3 p)
+	{
+		float3 cp = cos(p);
+		return .6 *(cp.x * cp.y + cp.y * cp.z + cp.z * cp.x) -
+		.4 * (cp.x + cp.y + cp.z) +.25;
+	}
+	//0.6*(cos(x).*cos(y)+cos(y).*cos(z)+cos(z).*cos(x))-0.4*(cos(x)+cos(y)+cos(z))+0.25
 
 	float TPMSSelect(float3 p, int i) 
 	{
@@ -683,8 +683,27 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 			return fLidinoidTPMS(p);
 		} else if (i == 5) {
 			return fNeoviusTPMS(p);
+		} else if (i == 6) {
+			return fOctoTPMS(p);
 		}
 		return 0.0;
+	}
+
+	// on patch side freq *= TwoPi , sheetWidth *= .5, center *= 1/TwoPi
+	float fTPMS(float3 p, float freq, float sheetWidth, float center, bool invert, int type)
+	{
+		float invFreq = 1.0 / freq;
+		p *= freq;
+		float surface = TPMSSelect(p, type);
+		surface *= invFreq;
+
+		surface += center;
+
+		// only do shelling op if width parameter is greter then zero
+		if (sheetWidth > 0.) surface = abs(surface) - sheetWidth * invFreq;
+		if(invert > .5) surface *= -1.;
+
+		return surface;
 	}
 
 	// causing errors atm
