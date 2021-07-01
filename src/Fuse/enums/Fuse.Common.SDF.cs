@@ -29,4 +29,10 @@ namespace Fuse.Common.SDF
 
     public enum GridSDF
     { Box, Triangle, Hexagon }
+
+    public enum TPMSSDF
+    { Gyroid, SchwartzP, Diamond, FischerKoch, Lidinoid, Neovius, Octo}
+
+    public enum StrutSDF
+    { CubeCenteredLattice, BodyCenteredLattice, FaceCenteredLattice, CubeAndBodyCenteredLattice, CubeAndFaceCenteredLattice, BodyAndFaceCenteredLattice, CubeAndBodyAndFaceCenteredLattice }
 }
