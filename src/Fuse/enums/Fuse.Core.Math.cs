@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Fuse.Core.Math
+﻿namespace Fuse.Core.Math
 {
-    public enum MapMode { map, mapClamp, mapWrap, mapMirror };
+    public enum Constrain { Off, Clamp, Wrap, Mirror };
 }
