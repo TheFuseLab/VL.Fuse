@@ -5,12 +5,12 @@ using Stride.Core.Shaders.Ast;
 
 namespace Fuse.controls
 {
-    public struct GradientPoint : IComparable<GradientPoint>
+    public readonly struct GradientPoint : IComparable<GradientPoint>
     {
-	    public float Position { get; set; }
-	    public Vector4 Color { get; private set; }
+	    public float Position { get; }
+	    public Color4 Color { get; }
 
-        public GradientPoint(float thePosition, Vector4 theColor) {
+        public GradientPoint(float thePosition, Color4 theColor) {
 	        Position = thePosition;
 	        Color = theColor;
         }
@@ -26,12 +26,8 @@ namespace Fuse.controls
     
     public class Gradient : List<GradientPoint>
     {
-        public Gradient(){
-		
-		}
-	
-	public void Add(float thePosition, Vector4 theColor){
-		Add(new GradientPoint(thePosition, theColor.DeepClone()));
+	    public void Add(float thePosition, Color4 theColor){
+		Add(new GradientPoint(thePosition, theColor));
 	}
 
 	public Gradient Clone(){
@@ -52,19 +48,30 @@ namespace Fuse.controls
 		Sort();
 	}
 	
+	private static float SmoothStep( float theEdge0,  float theEdge1,  float theValue) {
+		if (theValue <= theEdge0)
+			return 0;
+		if (theValue >= theEdge1)
+			return 1;
+		
+		return 3 * (float)Math.Pow((theValue-theEdge0)/(theEdge1-theEdge0), 2) - 2 * (float)Math.Pow((theValue-theEdge0)/(theEdge1-theEdge0), 3);
+	}
+	
 	/*
 	 * Interpolate a color on the gradient
 	 * @param theBlend a value from 0 to 1 that represent the position between the first control point and the last one
 	 * @return the position
 	 */
-	/*
-	public Vector4 Interpolate (double thePosition){
+	public Color4 Interpolate (float thePosition){
 		
-		if(Count == 0)return new Vector4();
-		if(Count == 1){
-			return this[0].Color;
+		switch (Count)
+		{
+			case 0:
+				return new Color4();
+			case 1:
+				return this[0].Color;
 		}
-		
+
 		var myIndex = -1;
 		
 		for(var i = 0; i < Count;i++)
@@ -74,28 +81,31 @@ namespace Fuse.controls
 			break;
 		}
 		
-		if(myIndex == -1)return this[Count - 1].Color;
-		if(myIndex == 0)return this[0].Color;
-		
-		double myPos0 = this[myIndex - 1].Position;
-		double myPos1 = this[myIndex].Position;
-		double myBlend = CCMath.smoothStep(myPos0, myPos1, thePosition);
-		
-		return Vector4.blend(this[myIndex - 1].Color, this[myIndex].Color, myBlend);
+		switch (myIndex)
+		{
+			case -1:
+				return this[Count - 1].Color;
+			case 0:
+				return this[0].Color;
+		}
+
+		var myPos0 = this[myIndex - 1].Position;
+		var myPos1 = this[myIndex].Position;
+		var myBlend = SmoothStep(myPos0, myPos1, thePosition);
+		return Color4.Lerp(this[myIndex - 1].Color, this[myIndex].Color, myBlend);
 	}
 
-	public Gradient Blend(Gradient theB, double theScalar) {
+	public Gradient Blend(Gradient theB, float theScalar) {
 		if(theScalar <= 0)return  Clone();
 		if(theScalar >= 1)return theB.Clone();
 		
 		var myResult = new Gradient();
 		
-		this.ForEach(myPoint => myResult.Add(new GradientPoint(myPoint.Position, Interpolate(myPoint.Position).blend(theB.Interpolate(myPoint.Position), theScalar))));
-		theB.ForEach(myPoint => myResult.Add(new GradientPoint(myPoint.Position, Interpolate(myPoint.Position).blend(theB.Interpolate(myPoint.Position), theScalar))));
+		ForEach(myPoint => myResult.Add(new GradientPoint(myPoint.Position, Color4.Lerp(Interpolate(myPoint.Position),theB.Interpolate(myPoint.Position), theScalar))));
+		theB.ForEach(myPoint => myResult.Add(new GradientPoint(myPoint.Position, Color4.Lerp(Interpolate(myPoint.Position),theB.Interpolate(myPoint.Position), theScalar))));
 
 		return myResult;
 	}
-	*/
 	
 	/*
 	@Override
