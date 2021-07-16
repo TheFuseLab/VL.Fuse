@@ -1,5 +1,14 @@
 shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 {
+	
+	
+	// glsl style mod.  Already in FuseCoreMath, but Stride VS plugin does not like using function like macros in mixins (works but will give syntax errors)
+	#ifndef mod
+	#define mod(x, y) (x - y * floor((x) / y))
+	#endif
+	
+	
+	
 	// largley based on hg_sdf GLSL lib by MERCURY (CC BY-NC 2016)  http://mercury.sexy/hg_sdf
 
 
@@ -16,10 +25,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 
 
 
-	// glsl style mod
-	#ifndef mod
-	#define mod(x, y) (x - y * floor((x) / y))
-	#endif
+
 
 	////////////////////////////////////////////////////////////////
 	//
