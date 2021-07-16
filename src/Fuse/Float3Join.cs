@@ -6,9 +6,9 @@ namespace Fuse
     public class Float3Join : ShaderNode<Vector3>
     {
         
-        private GpuValue<float> _x;
-        private GpuValue<float> _y;
-        private GpuValue<float> _z;
+        private readonly GpuValue<float> _x;
+        private readonly GpuValue<float> _y;
+        private readonly GpuValue<float> _z;
 
         public Float3Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z) : base("Float3Join")
         {

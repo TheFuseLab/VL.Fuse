@@ -6,23 +6,30 @@ namespace Fuse
 {
     public class SampleTextureNode : ShaderNode<Vector4>
     {
-        public SampleTextureNode(GpuValue<Texture> theTexture, GpuValue<SamplerState> theSampler, GpuValue<Vector2> theTexCoords, ConstantValue<Vector4> theDefault) : base( "sampleTexture", theDefault)
+
+        private readonly GpuValue<Texture> _texture;
+        private readonly GpuValue<SamplerState> _sampler;
+        private readonly GpuValue<Vector2> _texCoord;
+        private readonly GpuValue<float> _level;
+        public SampleTextureNode(GpuValue<Texture> theTexture, GpuValue<SamplerState> theSampler, GpuValue<Vector2> theTexCoords, GpuValue<float> theLevel, ConstantValue<Vector4> theDefault) : base( "sampleTexture", theDefault)
         {
-            Setup(
-                new List<AbstractGpuValue>() {theTexture, theSampler, theTexCoords},
-                new Dictionary<string, string>()
-                {
-                    {"texture", theTexture.ID}, 
-                    {"sampler", theSampler.ID}, 
-                    {"texCoords", theTexCoords.ID}
-                }
-            );
-
+            _texture = theTexture;
+            _sampler = theSampler;
+            _texCoord = theTexCoords;
+            _level = theLevel ?? new ConstantValue<float>(0);
+            Setup(new List<AbstractGpuValue>() {theTexture, theSampler, theTexCoords});
         }
-
+        
         protected override string SourceTemplate()
         {
-            return "${resultType} ${resultName} = ${texture}.Sample(${sampler},${texCoords});";
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${texture}.SampleLevel(${sampler},${texCoords}, ${level});", 
+                new Dictionary<string, string>
+                {
+                    {"texture", _texture.ID}, 
+                    {"sampler", _sampler.ID}, 
+                    {"texCoords", _texCoord.ID}, 
+                    {"level", _level.ID}
+                });
         }
     }
 }
