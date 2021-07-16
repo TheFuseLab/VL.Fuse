@@ -638,7 +638,6 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 		float3 cp = cos(p);
 		float3 cp2 = cos(p * 2.);
 		return 
-	
 		.5 * (
 		sp.x * cp.y * sp.z +
 		sp.y * cp.z * sp.y +
@@ -689,15 +688,16 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 		return 0.0;
 	}
 
-	// on patch side freq *= TwoPi , sheetWidth *= .5, center *= 1/TwoPi
-	float fTPMS(float3 p, float freq, float sheetWidth, float center, bool invert, int type)
+	// on patch side freq *= TwoPi , sheetWidth *= .5
+	float fTPMS(float3 p, float3 freq, float sheetWidth, float density, bool invert, int type)
 	{
-		float invFreq = 1.0 / freq;
+		float maxFreq = vmax(freq);
+		float invFreq = 1.0 / maxFreq;
 		p *= freq;
-		float surface = TPMSSelect(p, type);
-		surface *= invFreq;
 
-		surface += center * invFreq;
+		float center = density * PI - HALFPI; // map 0-1 to our trig functions
+		float surface = TPMSSelect(p, type) - center;
+		surface *= invFreq;
 
 		// only do shelling op if width parameter is greter then zero
 		if (sheetWidth > 0.) surface = abs(surface) - sheetWidth * invFreq;
