@@ -4,7 +4,7 @@ namespace Fuse
 {
     public class Negate<T> : ShaderNode<T>
     {
-        private GpuValue<T> _in;
+        private readonly GpuValue<T> _in;
 
         public Negate(GpuValue<T> theIn) : base("negate")
         {
