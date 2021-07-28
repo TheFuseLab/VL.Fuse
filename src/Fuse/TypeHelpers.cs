@@ -118,7 +118,7 @@ namespace Fuse
                 {typeof(Vector3), "float3"},
                 {typeof(Vector4), "float4"},
                 {typeof(Color4), "float4"},
-                {typeof(Matrix), "float4x4"},
+                {typeof(Matrix), "mat4x4"},
                 
                 {typeof(int), "int"},
                 {typeof(Int2), "int2"},
@@ -159,6 +159,11 @@ namespace Fuse
                 {typeof(SamplerState), "Sampler"},
                 
                 {typeof(GpuVoid), "Void"},
+                {typeof(Fuse.sdf.Ray), "Ray"},
+            };
+            
+            private static readonly Dictionary<Type, string> StructTypes = new Dictionary<Type, string>
+            {
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
@@ -217,7 +222,7 @@ namespace Fuse
 
             public static bool IsStructType(Type t)
             {
-                return KnownSignatureTypes.ContainsKey(t);
+                return StructTypes.ContainsKey(t);
             }
             
             
