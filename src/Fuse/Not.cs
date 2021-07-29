@@ -2,20 +2,20 @@
 
 namespace Fuse
 {
-    public class Negate<T> : ShaderNode<T>
+    public class Not: ShaderNode<bool>
     {
-        private readonly GpuValue<T> _in;
+        private readonly GpuValue<bool> _in;
 
-        public Negate(GpuValue<T> theIn) : base("negate")
+        public Not(GpuValue<bool> theIn) : base("not")
         {
-            _in = theIn ??  ConstantHelper.FromFloat<T>(0);
+            _in = theIn ??  new ConstantValue<bool>(false);
             
             Setup( new List<AbstractGpuValue>{_in});
         }
         
         protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = -${in};", 
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = !${in};", 
                 new Dictionary<string, string>
                 {
                     {"in", _in.ID},
