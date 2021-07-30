@@ -1,0 +1,17 @@
+[Summary("Calculates a transform buffer from a 3D heading.")]
+shader GetFuseMatrix_ComputeFX : ComputeShaderBase, FuseCommonTypes
+{
+
+
+	
+	RWStructuredBuffer<Matrix4x4> OutputBuffer;
+
+	compose ComputeMatrix fuseMatrix;
+
+	override void Compute()
+	{
+		uint index = streams.DispatchThreadId.x;
+
+		OutputBuffer[index].Matrix = fuseMatrix.Compute();
+	}
+};
