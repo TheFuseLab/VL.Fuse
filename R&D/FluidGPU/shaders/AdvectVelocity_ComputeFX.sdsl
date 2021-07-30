@@ -40,8 +40,8 @@ shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
     // Variables
     //--------------------------------------------------------------------------------------
 
-    float Modulate = 1.0f;
-    float Forward = 1.0f;
+    float VelMult = 1.0f;
+    float TimeSpeed = 1.0f;
     float3 CoordsOffset;
     int BorderMargin = 5;
     float BorderGamma = 1.0f;
@@ -66,7 +66,7 @@ shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
     {
         float3 pos = i;
     
-        pos -= Timestep * Forward *	Texture_Velocity[i];
+        pos -= Timestep * TimeSpeed *	Texture_Velocity[i];
     
         return pos;
     }
@@ -89,7 +89,7 @@ shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
         float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
         finalGrad = pow(finalGrad, BorderGamma);
      
-        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * Modulate * finalGrad;
+        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * VelMult * finalGrad;
     }
 
 };
