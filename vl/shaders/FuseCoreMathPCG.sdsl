@@ -1,0 +1,23 @@
+shader FuseCoreMathPCG
+{
+
+	float3 pcg3d(uint3 v) {
+
+		v = v * 1664525 + 1013904223;
+
+		v.x += v.y*v.z;
+		v.y += v.z*v.x;
+		v.z += v.x*v.y;
+
+		v = v ^ (v >> 16);
+
+		v.x += v.y*v.z;
+		v.y += v.z*v.x;
+		v.z += v.x*v.y;
+
+		return float3(v) * (1.0/float(0xffffffff));
+	}
+
+
+
+};
