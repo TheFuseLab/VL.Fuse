@@ -68,26 +68,24 @@ namespace Fuse{
              SetParameterValue(Parameters);
          }
 
-         public ParameterCollection Parameters { get; private set; }
+         private ParameterCollection Parameters { get; set; }
 
-         public TParameterKeyType ParameterKey { get; protected set;}
+         protected TParameterKeyType ParameterKey { get; set;}
 
-         public UnhandledResourcesAbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
+         protected UnhandledResourcesAbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
          {
              Value = theValue;
              Setup( new List<AbstractGpuValue>());
          }
 
-         public virtual string TypeName()
-         {
-             return TypeHelpers.GetGpuTypeForType<T>();
-         }
-         
          private T _inputValue;
 
+         // ReSharper disable once MemberCanBeProtected.Global
          public T Value
          {
              get => _inputValue;
+             // ReSharper disable once MemberCanBePrivate.Global
+             // is accessible from VL
              set
              {
                  //if (_inputValue != null && _inputValue.Equals(value)) return;
@@ -108,140 +106,104 @@ namespace Fuse{
      {
          protected AbstractInput(string theName, T theValue = default(T)): base(theName, theValue)
          {
-             Value = theValue;
              Setup( new List<AbstractGpuValue>());
              AddResource(Inputs, this);
-             AddResource(Declarations,ShaderNodesUtil.Evaluate(
+         }
+
+         private string BuildDeclaration(string theTypeName)
+         {
+             return ShaderNodesUtil.Evaluate(
                  DeclarationTemplate,
                  new Dictionary<string, string>
                  {
                      {"inputName", Output.ID},
-                     {"inputType", TypeName()}
-                 }));
+                     {"inputType", theTypeName}
+                 });
+         }
+
+         protected void SetFieldDeclaration(string theTypeName, string theComputeTypeName)
+         {
+             AddResource(Declarations,
+                 new FieldDeclaration(
+                     BuildDeclaration(theComputeTypeName),
+                     BuildDeclaration(theTypeName)
+                 )
+             );
+         }
+
+         protected void SetFieldDeclaration(string theTypeName)
+         {
+             SetFieldDeclaration(theTypeName,theTypeName);
          }
      }
 
-     public class TextureInput: AbstractInput<Texture, ObjectParameterKey<Texture>>, IGpuInput 
+     public class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>>
+     {
+         protected ObjectInput(string theName, T theValue = default) : base(theName, theValue)
+         {
+             ParameterKey = new ObjectParameterKey<T>(Output.ID);
+         }
+
+         public override void SetParameterValue(ParameterCollection theCollection)
+         {
+             theCollection.Set(ParameterKey, Value);
+         }
+     }
+
+     public class TextureInput: ObjectInput<Texture> 
      {
          public TextureInput(Texture theTexture) : base("TextureInput", theTexture)
          {
-             ParameterKey = new ObjectParameterKey<Texture>(Output.ID);
-         }
-
-         public override string TypeName()
-         {
-             return Value.Dimension switch
+             if (theTexture == null)
              {
-                 TextureDimension.Texture1D => "Texture1D",
-                 TextureDimension.Texture2D => "Texture2D",
-                 TextureDimension.Texture3D => "Texture3D",
-                 TextureDimension.TextureCube => "TextureCube",
-                 _ => "Texture2D"
-             };
-         }
-
-         public override void SetParameterValue(ParameterCollection theCollection)
-         {
-             theCollection.Set(ParameterKey, Value);
+                 SetFieldDeclaration("Texture2D");
+                 return;
+             }
+             SetFieldDeclaration(TypeHelpers.TextureTypeName(theTexture),
+                 theTexture.Dimension switch {
+                     TextureDimension.Texture1D => "Texture1D",
+                     TextureDimension.Texture2D => "Texture2D",
+                     TextureDimension.Texture3D => "Texture3D",
+                     TextureDimension.TextureCube => "TextureCube",
+                     _ => "Texture2D"
+                }
+             );
          }
      }
      
-     public class SamplerInput: AbstractInput<SamplerState, ObjectParameterKey<SamplerState>>, IGpuInput 
+     public class SamplerInput: ObjectInput<SamplerState>, IGpuInput 
      {
          public SamplerInput(string theName, SamplerState theSampler) : base("SamplerInput", theSampler)
          {
-             ParameterKey = new ObjectParameterKey<SamplerState>(Output.ID);
-         }
-         
-         public override string TypeName()
-         {
-             return "SamplerState ";
-         }
-
-         public override void SetParameterValue(ParameterCollection theCollection)
-         {
-             theCollection.Set(ParameterKey, Value);
+             SetFieldDeclaration("SamplerState", "SamplerState");
          }
      }
      
-     public class DynamicStructBufferInput: UnhandledResourcesAbstractInput<Buffer,ObjectParameterKey<Buffer>> 
+      
+
+     public class AbstractBufferInput : ObjectInput<Buffer>
      {
-
-         private readonly GpuValue<GpuStruct> _struct;
-
-         private readonly bool _append;
          
-         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
+         protected AbstractBufferInput(Buffer theBuffer) : base("BufferInput", theBuffer)
          {
-             _struct = theStruct;
-             _append = theAppend;
-             ParameterKey = new ObjectParameterKey<Buffer>(Output.ID);
-             
-             AddResource(Inputs, this);
-             AddResource(Declarations,ShaderNodesUtil.Evaluate(
-                 DeclarationTemplate,
-                 new Dictionary<string, string>
-                 {
-                     {"inputName", Output.ID},
-                     {"inputType", TypeName()}
-                 }));
          }
-         
-         public override string TypeName()
-         {
-             if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
-             {
-                 return "RWStructuredBuffer<"+_struct.TypeOverride+">";
-             }
-             if (Value != null && (Value.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
-             {
-                 if (_append)
-                 {
-                     return "AppendStructuredBuffer<"+_struct.TypeOverride+">";
-                 }
-                 return "ConsumeStructuredBuffer<"+_struct.TypeOverride+">";
-             }
-             return "StructuredBuffer<"+_struct.TypeOverride+">";
-         }
+     }
 
-         public override void SetParameterValue(ParameterCollection theCollection)
+     public class DynamicStructBufferInput: ObjectInput<Buffer>
+     {
+         
+         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
          {
-             theCollection.Set(ParameterKey, Value);
+             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend));
          }
      }
      
-     public class BufferInput<T>: AbstractInput<Buffer<T>, ObjectParameterKey<Buffer<T>>>, IGpuInput where T : struct
+     public class BufferInput<T>: ObjectInput<Buffer<T>> where T : struct
      {
 
-         private readonly bool _append;
-         
          public BufferInput(string theName, Buffer<T> theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
          {
-             ParameterKey = new ObjectParameterKey<Buffer<T>>(Output.ID);
-             _append = theAppend;
-         }
-         
-         public override string TypeName()
-         {
-             if (Value != null && (Value.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
-             {
-                 return "RWStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
-             }
-             if (Value != null && (Value.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
-             {
-                 if (_append)
-                 {
-                     return "AppendStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
-                 }
-                 return "ConsumeStructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
-                 
-             }
-             return "StructuredBuffer<"+TypeHelpers.GetGpuTypeForType<T>()+">";
-         }
-
-         public override void SetParameterValue(ParameterCollection theCollection)
-         {
-             theCollection.Set(ParameterKey, Value);
+             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend));
          }
      }
      
@@ -251,6 +213,7 @@ namespace Fuse{
         public GpuInput(): base("GPUInput")
         {
             ParameterKey = new ValueParameterKey<T>(Output.ID);
+            SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
         }
 
         public override void SetParameterValue(ParameterCollection theCollection)
