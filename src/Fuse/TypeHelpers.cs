@@ -377,5 +377,60 @@ namespace Fuse
             {
                 
             }
+            
+            public static string TextureTypeName(Texture theTexture)
+            {
+                if(theTexture == null)return "Texture2D<float4>";
+
+                var textureType = theTexture.Dimension switch
+                {
+                    TextureDimension.Texture1D => "Texture1D",
+                    TextureDimension.Texture2D => "Texture2D",
+                    TextureDimension.Texture3D => "Texture3D",
+                    TextureDimension.TextureCube => "TextureCube",
+                    _ => "Texture2D"
+                };
+
+                var textureDataType = theTexture.Format switch
+                {
+                    PixelFormat.R16_Float => "half",
+                    PixelFormat.R16G16_Float => "half2",
+                    PixelFormat.R16G16B16A16_Float => "half4",
+                    PixelFormat.R32_Float => "float",
+                    PixelFormat.R32G32_Float => "float2",
+                    PixelFormat.R32G32B32A32_Float => "float4",
+                    _ => "float4"
+                };
+                
+                if ((theTexture.Flags & TextureFlags.UnorderedAccess) == TextureFlags.UnorderedAccess)
+                {
+                    return "RW"+textureType+"<" + textureDataType + ">";
+                }
+
+                return textureType + "<" + textureDataType + ">";
+            }
+            
+            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend)
+            {
+                if(theBuffer == null)return "StructuredBuffer<" + theBufferType + ">";
+
+             
+                if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+                {
+                    return "RWStructuredBuffer<" + theBufferType + ">";
+                }
+
+                if ((theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
+                {
+                    if (theAppend)
+                    {
+                        return "AppendStructuredBuffer<" + theBufferType + ">";
+                    }
+
+                    return "ConsumeStructuredBuffer<" + theBufferType + ">";
+                }
+
+                return "StructuredBuffer<" + theBufferType + ">";
+            }
         }
 }
