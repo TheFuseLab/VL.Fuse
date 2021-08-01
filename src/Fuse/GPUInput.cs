@@ -106,8 +106,7 @@ namespace Fuse{
      
      public abstract class AbstractInput<T, TParameterKeyType> : UnhandledResourcesAbstractInput<T,TParameterKeyType> where TParameterKeyType : ParameterKey<T>
      {
-        
-         public AbstractInput(string theName, T theValue = default(T)): base(theName, theValue)
+         protected AbstractInput(string theName, T theValue = default(T)): base(theName, theValue)
          {
              Value = theValue;
              Setup( new List<AbstractGpuValue>());
@@ -131,7 +130,14 @@ namespace Fuse{
 
          public override string TypeName()
          {
-             return "Texture2D  ";
+             return Value.Dimension switch
+             {
+                 TextureDimension.Texture1D => "Texture1D",
+                 TextureDimension.Texture2D => "Texture2D",
+                 TextureDimension.Texture3D => "Texture3D",
+                 TextureDimension.TextureCube => "TextureCube",
+                 _ => "Texture2D"
+             };
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)

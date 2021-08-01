@@ -118,7 +118,7 @@ namespace Fuse
                 {typeof(Vector3), "float3"},
                 {typeof(Vector4), "float4"},
                 {typeof(Color4), "float4"},
-                {typeof(Matrix), "mat4x4"},
+                {typeof(Matrix), "float4x4"},
                 
                 {typeof(int), "int"},
                 {typeof(Int2), "int2"},
@@ -144,7 +144,7 @@ namespace Fuse
                 {typeof(Vector3), "Float3"},
                 {typeof(Vector4), "Float4"},
                 {typeof(Color4), "Float4"},
-                {typeof(Matrix), "Float4x4"},
+                {typeof(Matrix), "Matrix"},
                 
                 {typeof(int), "Int"},
                 {typeof(Int2), "Int2"},
@@ -248,6 +248,7 @@ namespace Fuse
                     GpuValue<Vector3> _ => "float3",
                     GpuValue<Vector4> _ => "float4",
                     GpuValue<Color4> _ => "float4",
+                    GpuValue<Matrix> _ => "float4x4",
                     GpuValue<bool> _ => "bool",
                     GpuValue<int> _ => "int",
                     GpuValue<Int2> _ => "int2",
@@ -268,6 +269,7 @@ namespace Fuse
                     GpuValue<Vector3> _ => 3 * 4,
                     GpuValue<Vector4> _ => 4 * 4,
                     GpuValue<Color4> _ => 4 * 4,
+                    GpuValue<Matrix> _ => 4 * 4 * 4,
                     GpuValue<bool> _ => 1,
                     GpuValue<int> _ => 4,
                     GpuValue<Int2> _ => 2 * 4,
