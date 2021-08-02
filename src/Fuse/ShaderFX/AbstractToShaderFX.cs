@@ -28,7 +28,7 @@ namespace Fuse.ShaderFX
             IDictionary<string,AbstractGpuValue> theResults, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
-            string theSource) : base(theInputs, theDefinedStreams, AppendTemplateValues(theCustomTemplate,theResults), theSource)
+            string theSource) : base(false, theInputs, theDefinedStreams, AppendTemplateValues(theCustomTemplate,theResults), theSource)
         {
         }
 
@@ -58,7 +58,7 @@ namespace Fuse.ShaderFX
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
             _parameters = context.Parameters;
-            _inputs.ForEach(shaderInputs =>
+            Inputs.ForEach(shaderInputs =>
             {
                 shaderInputs.Value.ForEach(gpuValue =>
                 {

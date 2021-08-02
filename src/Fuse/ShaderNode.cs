@@ -11,10 +11,32 @@ namespace Fuse
     public interface IShaderNode: Trees.IReadOnlyTreeNode
     {
 
-        string ID { get;  }
+        string Id { get;  }
     }
 
-    
+    public class FieldDeclaration
+    {
+        private readonly string _computeShaderDeclaration;
+        private readonly string _declaration;
+
+        public FieldDeclaration(string computeShaderDeclaration, string declaration)
+        {
+            _computeShaderDeclaration = computeShaderDeclaration;
+            _declaration = declaration;
+        }
+
+        public FieldDeclaration(string declaration)
+        {
+            _computeShaderDeclaration = declaration;
+            _declaration = declaration;
+        }
+
+        public string GetDeclaration(bool theIsComputeShader)
+        {
+            return theIsComputeShader && _computeShaderDeclaration != null ? _computeShaderDeclaration : _declaration;
+        }
+            
+    }
     
     public abstract class AbstractShaderNode : IShaderNode
     {
@@ -29,12 +51,12 @@ namespace Fuse
 
         protected AbstractShaderNode(string theId)
         {
-            ID = theId;
+            Id = theId;
         }
 
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
         
-        public string ID { get; }
+        public string Id { get; }
         
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
         {
@@ -87,7 +109,7 @@ namespace Fuse
             {
                 if (!(child is AbstractShaderNode input)) return;
                
-                ((AbstractShaderNode)child).BuildSource(theSourceBuilder, theHashes);
+                input.BuildSource(theSourceBuilder, theHashes);
             });
         }
 
@@ -122,11 +144,11 @@ namespace Fuse
             return result.ToList();
         }
         
-        private delegate List<Type> GetInfoElement<Type>(AbstractShaderNode theInput);
+        private delegate List<T> GetInfoElement<T>(AbstractShaderNode theInput);
         
-        private  List<Type> GetInfo<Type>(GetInfoElement<Type> theDelegate)
+        private  List<T> GetInfo<T>(GetInfoElement<T> theDelegate)
         {
-            var result = new HashSet<Type>();
+            var result = new HashSet<T>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
                 if(n is AbstractShaderNode input)result.AddRange(theDelegate(input));
@@ -178,19 +200,19 @@ namespace Fuse
             return result;
         }
         
-        public Dictionary<string, List<TRessource>> ResourcesForTree<TRessource>()
+        public Dictionary<string, List<TResource>> ResourcesForTree<TResource>()
         {
-            var result = new Dictionary<string, List<TRessource>>();
+            var result = new Dictionary<string, List<TResource>>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
                 if (!(n is AbstractShaderNode input)) return;
                 input.Resources.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TRessource>();
+                    var values = kv.Value.OfType<TResource>();
                     if (values.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
-                        result[kv.Key] = new List<TRessource>();
+                        result[kv.Key] = new List<TResource>();
                     }
                     values.ForEach(v => result[kv.Key].Add(v));
                 });
@@ -236,9 +258,9 @@ namespace Fuse
             return ResourceForTree<IGpuInput>(Inputs);
         }
         
-        public List<string> DeclarationList()
+        public List<FieldDeclaration> DeclarationList()
         {
-            return ResourceForTree<string>(Declarations);
+            return ResourceForTree<FieldDeclaration>(Declarations);
         }
         
         public List<string> StructList()
