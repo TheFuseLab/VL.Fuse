@@ -32,7 +32,7 @@ ${sourceCompute}
         {
             var streamBuilder = new StringBuilder();
            
-            theInput.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration));
+            theInput.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration.GetDeclaration(false)));
             theInput.ParentNode.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
             theInput.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
             theInput.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
