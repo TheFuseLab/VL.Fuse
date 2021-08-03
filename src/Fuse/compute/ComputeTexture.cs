@@ -63,4 +63,41 @@ namespace Fuse.compute
             });
         }
     }
+    
+    public class ComputeTextureAbstractSet : ShaderNode<GpuVoid> 
+    {
+        private readonly GpuValue<Texture> _texture;
+        private readonly AbstractGpuValue _index;
+        private readonly AbstractGpuValue _value;
+    
+        public ComputeTextureAbstractSet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, AbstractGpuValue theValue) : base( "setTextureValue")
+        {
+            _texture = theTexture;
+            _index = theIndex;
+            _value = theValue;
+            
+            Setup(new List<AbstractGpuValue>(){theTexture,theIndex,theValue});
+        }
+        
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${textureName}[${index}] = ${value};";
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"textureName", _texture.ID},
+                {"index", _index.ID},
+                {"value", _value.ID}
+            });
+        }
+    }
 }
