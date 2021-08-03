@@ -1,8 +1,14 @@
-﻿namespace Fuse
+﻿using Stride.Engine;
+
+namespace Fuse
 {
     public abstract class AbstractGpuValue
     {
         public  string Name{ get; set; }
+        
+        public Entity Helper{ get; set; }
+        
+        public bool HelperEnables{ get; set; }
 
         protected AbstractGpuValue(string theName)
         {
