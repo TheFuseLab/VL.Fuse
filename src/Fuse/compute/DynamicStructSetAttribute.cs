@@ -20,7 +20,7 @@ namespace Fuse.compute
         protected override string SourceTemplate()
         {
             return ShaderNodesUtil.Evaluate("${input}.${member} =  ${value};",new Dictionary<string, string> {
-                {"input", _struct == null? "" : _struct.ID},
+                {"input", _struct == null ? "" : _struct.ID},
                 {"member", _member},
                 {"value", _value.ID}
             });
