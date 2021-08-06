@@ -238,6 +238,12 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return as4x4(qRot3x3(q));
 	}
 
+	/// <summary>
+	/// Interpolates between two quaternions, using spherical linear interpolation.
+    /// </summary>
+    /// <param name="a">Start quaternion.</param>
+    /// <param name="b">End quaternion.</param>
+    /// <param name="t">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
 	float4 slerp (float4 a, float4 b, float t )
 	{
 		if ( t <= 0.0f )
@@ -274,6 +280,77 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 
 		return (sin((1.0f - t) * halftheta) * a + sin(t * halftheta) * c) / sin(halftheta);
 	}
+
+	/// <summary>
+    /// Creates a quaternion given a yaw, pitch, and roll value (angles in radians).
+    /// </summary>
+    /// <param name="yaw">The yaw of rotation in radians.</param>
+    /// <param name="pitch">The pitch of rotation in radians.</param>
+    /// <param name="roll">The roll of rotation in radians.</param>
+	float4 CreateQuatRotationYawPitchRoll(float yaw, float pitch, float roll){
+        float halfRoll = roll * 0.5f;
+        float halfPitch = pitch * 0.5f;
+        float halfYaw = yaw * 0.5f;
+            
+        float sinRoll = sin(halfRoll);
+        float cosRoll = cos(halfRoll);
+        float sinPitch = sin(halfPitch);
+        float cosPitch = cos(halfPitch);
+        float sinYaw = sin(halfYaw);
+        float cosYaw = cos(halfYaw);
+
+        float cosYawPitch = cosYaw * cosPitch;
+        float sinYawPitch = sinYaw * sinPitch;
+
+		return float4 (
+			(cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll),
+			(sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll),
+			(cosYawPitch * sinRoll) - (sinYawPitch * cosRoll),
+			(cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)
+		);
+	}
+
+	/// <summary>
+    /// Creates a quaternion given a rotation and an axis.
+    /// </summary>
+	/// <param name="axis">The axis of rotation.</param>
+    /// <param name="angle">The angle of rotation.</param>
+    float4 CreateQuatRotationAxis(float3 axis, float angle){
+        float3 normalized = normalize(axis);
+            
+        float halfAngle = angle * 0.5f;
+        float sinHalf = sin(halfAngle);
+        float cosHalf = cos(halfAngle);
+
+        return float4(normalized * sinHalf, cosHalf);
+    }
+
+	/// <summary>
+    /// Creates a quaternion that rotates around the x-axis.
+    /// </summary>
+    /// <param name="angle">Angle of rotation in radians.</param>
+    float4 CreateQuatRotationX(float angle){
+    	float halfAngle = angle * 0.5f;
+        return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
+    }
+
+    /// <summary>
+    /// Creates a quaternion that rotates around the y-axis.
+    /// </summary>
+    /// <param name="angle">Angle of rotation in radians.</param>
+    float4 CreateQuatRotationY(float angle){
+        float halfAngle = angle * 0.5f;
+        return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
+    }
+
+    /// <summary>
+    /// Creates a quaternion that rotates around the z-axis.
+    /// </summary>
+    /// <param name="angle">Angle of rotation in radians.</param>
+    float4 CreateQuatRotationZ(float angle){
+        float halfAngle = angle * 0.5f;
+        return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
+    }
 
 	float4 axisAngle2Quat(float3 a, float r)
 	{
