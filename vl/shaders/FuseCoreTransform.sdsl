@@ -214,9 +214,9 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	}
 
 	float3 rotateVector( float4 quat, float4 vec ) {
-        float4 qv = mulQuat( quat, vec );
-        return mulQuat( qv, float4(-quat.x, -quat.y, -quat.z, quat.w) ).xyz;
-    }
+		float4 qv = mulQuat( quat, vec );
+		return mulQuat( qv, float4(-quat.x, -quat.y, -quat.z, quat.w) ).xyz;
+	}
 
 	float3x3 qRot3x3(float4 q)
 	{
@@ -240,10 +240,10 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 
 	/// <summary>
 	/// Interpolates between two quaternions, using spherical linear interpolation.
-    /// </summary>
-    /// <param name="a">Start quaternion.</param>
-    /// <param name="b">End quaternion.</param>
-    /// <param name="t">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
+	/// </summary>
+	/// <param name="a">Start quaternion.</param>
+	/// <param name="b">End quaternion.</param>
+	/// <param name="t">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
 	float4 slerp (float4 a, float4 b, float t )
 	{
 		if ( t <= 0.0f )
@@ -282,25 +282,25 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	}
 
 	/// <summary>
-    /// Creates a quaternion given a yaw, pitch, and roll value (angles in radians).
-    /// </summary>
-    /// <param name="yaw">The yaw of rotation in radians.</param>
-    /// <param name="pitch">The pitch of rotation in radians.</param>
-    /// <param name="roll">The roll of rotation in radians.</param>
+	/// Creates a quaternion given a yaw, pitch, and roll value (angles in radians).
+	/// </summary>
+	/// <param name="yaw">The yaw of rotation in radians.</param>
+	/// <param name="pitch">The pitch of rotation in radians.</param>
+	/// <param name="roll">The roll of rotation in radians.</param>
 	float4 CreateQuatRotationYawPitchRoll(float yaw, float pitch, float roll){
-        float halfRoll = roll * 0.5f;
-        float halfPitch = pitch * 0.5f;
-        float halfYaw = yaw * 0.5f;
-            
-        float sinRoll = sin(halfRoll);
-        float cosRoll = cos(halfRoll);
-        float sinPitch = sin(halfPitch);
-        float cosPitch = cos(halfPitch);
-        float sinYaw = sin(halfYaw);
-        float cosYaw = cos(halfYaw);
+		float halfRoll = roll * 0.5f;
+		float halfPitch = pitch * 0.5f;
+		float halfYaw = yaw * 0.5f;
+			
+		float sinRoll = sin(halfRoll);
+		float cosRoll = cos(halfRoll);
+		float sinPitch = sin(halfPitch);
+		float cosPitch = cos(halfPitch);
+		float sinYaw = sin(halfYaw);
+		float cosYaw = cos(halfYaw);
 
-        float cosYawPitch = cosYaw * cosPitch;
-        float sinYawPitch = sinYaw * sinPitch;
+		float cosYawPitch = cosYaw * cosPitch;
+		float sinYawPitch = sinYaw * sinPitch;
 
 		return float4 (
 			(cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll),
@@ -311,46 +311,46 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	}
 
 	/// <summary>
-    /// Creates a quaternion given a rotation and an axis.
-    /// </summary>
+	/// Creates a quaternion given a rotation and an axis.
+	/// </summary>
 	/// <param name="axis">The axis of rotation.</param>
-    /// <param name="angle">The angle of rotation.</param>
-    float4 CreateQuatRotationAxis(float3 axis, float angle){
-        float3 normalized = normalize(axis);
-            
-        float halfAngle = angle * 0.5f;
-        float sinHalf = sin(halfAngle);
-        float cosHalf = cos(halfAngle);
+	/// <param name="angle">The angle of rotation.</param>
+	float4 CreateQuatRotationAxis(float3 axis, float angle){
+		float3 normalized = normalize(axis);
+			
+		float halfAngle = angle * 0.5f;
+		float sinHalf = sin(halfAngle);
+		float cosHalf = cos(halfAngle);
 
-        return float4(normalized * sinHalf, cosHalf);
-    }
+		return float4(normalized * sinHalf, cosHalf);
+	}
 
 	/// <summary>
-    /// Creates a quaternion that rotates around the x-axis.
-    /// </summary>
-    /// <param name="angle">Angle of rotation in radians.</param>
-    float4 CreateQuatRotationX(float angle){
-    	float halfAngle = angle * 0.5f;
-        return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
-    }
+	/// Creates a quaternion that rotates around the x-axis.
+	/// </summary>
+	/// <param name="angle">Angle of rotation in radians.</param>
+	float4 CreateQuatRotationX(float angle){
+		float halfAngle = angle * 0.5f;
+		return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
+	}
 
-    /// <summary>
-    /// Creates a quaternion that rotates around the y-axis.
-    /// </summary>
-    /// <param name="angle">Angle of rotation in radians.</param>
-    float4 CreateQuatRotationY(float angle){
-        float halfAngle = angle * 0.5f;
-        return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
-    }
+	/// <summary>
+	/// Creates a quaternion that rotates around the y-axis.
+	/// </summary>
+	/// <param name="angle">Angle of rotation in radians.</param>
+	float4 CreateQuatRotationY(float angle){
+		float halfAngle = angle * 0.5f;
+		return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
+	}
 
-    /// <summary>
-    /// Creates a quaternion that rotates around the z-axis.
-    /// </summary>
-    /// <param name="angle">Angle of rotation in radians.</param>
-    float4 CreateQuatRotationZ(float angle){
-        float halfAngle = angle * 0.5f;
-        return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
-    }
+	/// <summary>
+	/// Creates a quaternion that rotates around the z-axis.
+	/// </summary>
+	/// <param name="angle">Angle of rotation in radians.</param>
+	float4 CreateQuatRotationZ(float angle){
+		float halfAngle = angle * 0.5f;
+		return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
+	}
 
 	float4 axisAngle2Quat(float3 a, float r)
 	{
@@ -362,5 +362,134 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		res.z = a.z * sinr;
 		res.w = cosr;
 		return res;
+	}
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Transformations w/ inverse
+	// 	
+	////////////////////////////////////////////////////////////////
+
+	void TransformTSWithInverse(float3 translation, float3 scaling, out float4x4 m, out float4x4 im)
+	{
+		float3 inverseScaling = 1.0 / scaling;
+
+		m = identity4x4();
+		im = identity4x4();
+
+		// scale rows
+		m[0][0] = scaling.x;
+		m[1][1] = scaling.y;
+		m[2][2] = scaling.z;
+
+		// set position
+		m[3].xyz = translation.xyz;
+
+		// inv position
+		im[3].xyz = -translation.xyz * inverseScaling;
+
+		// inv scale
+		im[0][0] = inverseScaling.x;
+		im[1][1] = inverseScaling.y;
+		im[2][2] = inverseScaling.z;
+	}
+
+	void TransformTRWithInverse(float3 translation, float3 rotation, out float4x4 m, out float4x4 im)
+	{
+		im = identity4x4();
+
+		// calc rotation
+		m = rot4x4(rotation);
+		float4x4 inverseRotation = transpose(m);
+
+		// set position
+		m[3].xyz = translation.xyz;
+
+		// inv position
+		im[3].xyz = -translation.xyz;
+
+		// inv rotation
+		im = mul(im, inverseRotation);
+	}
+
+	// quaternion rotation
+	void TransformTRWithInverse(float3 translation, float4 rotation, out float4x4 m, out float4x4 im)
+	{
+		im = identity4x4();
+
+		// calc rotation
+		m = qRot4x4(rotation);
+		float4x4 inverseRotation = transpose(m);
+
+		// set position
+		m[3].xyz = translation.xyz;
+
+		// inv position
+		im[3].xyz = -translation.xyz;
+
+		// inv rotation
+		im = mul(im, inverseRotation);
+	}
+
+	void TransformTRSWithInverse(float3 translation, float3 rotation, float3 scaling, out float4x4 m, out float4x4 im)
+	{
+		float3 inverseScaling = 1.0 / scaling;
+
+		im = identity4x4();
+
+		// calc rotation
+		m = rot4x4(rotation);
+		float4x4 inverseRotation = transpose(m);
+
+		// scale rows
+		m[0] *= scaling.x;
+		m[1] *= scaling.y;
+		m[2] *= scaling.z;
+
+		// set position
+		m[3].xyz = translation.xyz;
+
+		// inv position
+		im[3].xyz = -translation.xyz;
+
+		// inv rotation
+		im = mul(im, inverseRotation);
+
+		// inv scale
+		im._11_21_31_41 *= inverseScaling.x;
+		im._12_22_32_42 *= inverseScaling.y;
+		im._13_23_33_43 *= inverseScaling.z;
+	}
+
+	// quaternion rotation
+	void TransformTRSWithInverse(float3 translation, float4 rotation, float3 scaling, out float4x4 m, out float4x4 im)
+	{
+		float3 inverseScaling = 1.0 / scaling;
+
+		im = identity4x4();
+
+		// calc rotation
+		m = qRot4x4(rotation);
+		float4x4 inverseRotation = transpose(m);
+
+		// scale rows
+		m[0] *= scaling.x;
+		m[1] *= scaling.y;
+		m[2] *= scaling.z;
+
+		// set position
+		m[3].xyz = translation.xyz;
+
+		// inv position
+		im[3].xyz = -translation.xyz;
+
+		// inv rotation
+		im = mul(im, inverseRotation);
+
+		// inv scale
+		im._11_21_31_41 *= inverseScaling.x;
+		im._12_22_32_42 *= inverseScaling.y;
+		im._13_23_33_43 *= inverseScaling.z;
 	}
 };
