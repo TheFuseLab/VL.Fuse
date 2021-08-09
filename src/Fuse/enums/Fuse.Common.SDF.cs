@@ -50,7 +50,11 @@ namespace Fuse.Common.SDF
         FischerKoch, 
         Lidinoid, 
         Neovius, 
-        Octo
+        Octo,
+        Kd,
+        iWP,
+        Dd
+
     }
 
     public enum StrutSDF

@@ -595,13 +595,22 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 		return 0.0;
 	}
 
+	float fStrut(float3 p, float3 freq, float nodeSize, float edgeWidth, float smooth, int type)
+	{
+		float maxFreq = vmax(freq);
+		float invFreq = 1.0 / maxFreq;
+		pMod3(p, invFreq);
+		float node = fSphere(p, nodeSize);
+		float edge = fLatticeSelect(p, type) - edgeWidth;
+		return fOpUnionRound(node, edge, smooth);
+	}
+
 
 
 	// TPMS Lattices
 	// Triply periodic minimal surfaces
 
-	// https://github.com/dbt-ethz/Axolotl/blob/master/code/lTMPS.py
-	// https://github.com/mengtinh/MiniSurf/blob/master/Source%20Code/matlab/document.xml
+	// distances are fudged a bit for raymarching
 
 	float fGyroidTPMS(float3 p)
 	{
@@ -620,11 +629,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 	{
 		float3 sp = sin(p);
 		float3 cp = cos(p);
-		return 
+		return .7 * (
 		sp.x * sp.y * sp.z +
 		sp.x * cp.y * cp.z +
 		cp.x * sp.y * cp.z +
-		cp.x * cp.y * sp.z;
+		cp.x * cp.y * sp.z);
 	}
 
 	float fFischerKochTPMS(float3 p)
@@ -659,10 +668,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 	float fNeoviusTPMS(float3 p)
 	{
 		float3 cp = cos(p);
-		return .25 *
-		(3. * abs(cp.x + cp.y + cp.z)
-		+
-		4. * (cp.x * cp.y * cp.z));
+		return .25 * (3. * (cp.x + cp.y + cp.z) + 4. * (cp.x * cp.y) * cp.z);
 	}
 
 	float fOctoTPMS (float3 p)
@@ -671,7 +677,35 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 		return .6 *(cp.x * cp.y + cp.y * cp.z + cp.z * cp.x) -
 		.4 * (cp.x + cp.y + cp.z) +.25;
 	}
-	//0.6*(cos(x).*cos(y)+cos(y).*cos(z)+cos(z).*cos(x))-0.4*(cos(x)+cos(y)+cos(z))+0.25
+
+
+	float fK_TPMS (float3 p)
+	{
+		float3 cp = cos(p);
+		float3 cp2 = cos(p * 2.);
+	
+		return .3 *(cp.x + cp.y + cp.z) + 
+				.3 * (cp.x * cp.y + cp.y * cp.z + cp.z * cp.x) -
+				.4 * (cp2.x + cp2.y + cp2.z) +.25;
+	}
+
+	float fIWP_TPMS (float3 p)
+	{
+		float3 cp = cos(p);
+		return .4 * (cp.x * cp.y + cp.y * cp.z + cp.z * cp.x - cp.x * cp.y * cp.z); 
+
+	}
+
+	float fD_TPMS (float3 p)
+	{
+		float3 cp = cos(p);
+		float3 sp = sin(p);
+		float3 sp2 = sin(p * 2.);
+		return .5* (.5 *(cp.x * cp.y * cp.z + cp.x * sp.y * sp.z + sp.x * cp.y * sp.y * cp.z) -
+				.5 * (sp2.x * sp2.y + sp2.y * sp2.z + sp2.z * sp2.x) - .2);		
+	}
+
+
 
 	float TPMSSelect(float3 p, int i) 
 	{
@@ -690,6 +724,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform
 			return fNeoviusTPMS(p);
 		} else if (i == 6) {
 			return fOctoTPMS(p);
+		} else if (i == 7) {
+			return fK_TPMS(p);
+		} else if (i == 8) {
+			return fIWP_TPMS(p);
+		} else if (i == 9) {
+			return fD_TPMS(p);
 		}
 		return 0.0;
 	}
