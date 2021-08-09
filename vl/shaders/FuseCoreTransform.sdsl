@@ -281,6 +281,10 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return (sin((1.0f - t) * halftheta) * a + sin(t * halftheta) * c) / sin(halftheta);
 	}
 
+
+	// Converting these quaternion function inputs from radians to revolutions, as that is the standerd usage in vvvv
+
+
 	/// <summary>
 	/// Creates a quaternion given a yaw, pitch, and roll value (angles in radians).
 	/// </summary>
@@ -288,9 +292,15 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// <param name="pitch">The pitch of rotation in radians.</param>
 	/// <param name="roll">The roll of rotation in radians.</param>
 	float4 CreateQuatRotationYawPitchRoll(float yaw, float pitch, float roll){
-		float halfRoll = roll * 0.5f;
-		float halfPitch = pitch * 0.5f;
-		float halfYaw = yaw * 0.5f;
+		//float halfRoll = roll * 0.5f;
+		//float halfPitch = pitch * 0.5f;
+		//float halfYaw = yaw * 0.5f;
+
+
+		//radians to revolutions
+		float halfRoll = roll * PI;
+		float halfPitch = pitch * PI;
+		float halfYaw = yaw * PI;
 			
 		float sinRoll = sin(halfRoll);
 		float cosRoll = cos(halfRoll);
@@ -310,15 +320,22 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		);
 	}
 
+
+
+
+
 	/// <summary>
 	/// Creates a quaternion given a rotation and an axis.
 	/// </summary>
 	/// <param name="axis">The axis of rotation.</param>
 	/// <param name="angle">The angle of rotation.</param>
-	float4 CreateQuatRotationAxis(float3 axis, float angle){
+	float4 CreateQuatRotationAxis(float3 axis, float angle)
+	{
 		float3 normalized = normalize(axis);
 			
-		float halfAngle = angle * 0.5f;
+		//angle *= TWOPI; // radians to revolutions
+		//float halfAngle = angle * 0.5f;
+		float halfAngle = angle * PI;
 		float sinHalf = sin(halfAngle);
 		float cosHalf = cos(halfAngle);
 
@@ -329,8 +346,11 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// Creates a quaternion that rotates around the x-axis.
 	/// </summary>
 	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationX(float angle){
-		float halfAngle = angle * 0.5f;
+	float4 CreateQuatRotationX(float angle)
+	{
+		//angle *= TWOPI; // radians to revolutions
+		//float halfAngle = angle * 0.5f;
+		float halfAngle = angle * PI;
 		return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
 	}
 
@@ -338,8 +358,11 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// Creates a quaternion that rotates around the y-axis.
 	/// </summary>
 	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationY(float angle){
-		float halfAngle = angle * 0.5f;
+	float4 CreateQuatRotationY(float angle)
+	{
+		//angle *= TWOPI; // radians to revolutions
+		//float halfAngle = angle * 0.5f;
+		float halfAngle = angle * PI;
 		return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
 	}
 
@@ -347,8 +370,11 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// Creates a quaternion that rotates around the z-axis.
 	/// </summary>
 	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationZ(float angle){
-		float halfAngle = angle * 0.5f;
+	float4 CreateQuatRotationZ(float angle)
+	{
+		//angle *= TWOPI; // radians to revolutions
+		//float halfAngle = angle * 0.5f;
+		float halfAngle = angle * PI;
 		return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
 	}
 
