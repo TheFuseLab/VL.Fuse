@@ -1,0 +1,380 @@
+shader FuseCoreDomain: FuseCoreMath
+{
+
+	////////////////////////////////////////////////////////////////
+	//
+	//             Coordinate Conversions
+	//
+	////////////////////////////////////////////////////////////////
+	float2 polarToCart(float2 coords)
+	{
+		float mag = coords[1];
+		float angle = -1.0 * coords[0] * 6.28319 + 1.57079633;
+
+		coords[0] = mag * cos(angle);
+		coords[1] = mag * sin(angle);
+		return coords;
+	}
+
+
+	float2 cartToPolar (float2 v)
+	{
+		float2 result;
+		float r;
+		//r = length(v);
+		r = v.x * v.x + v.y * v.y;
+	
+		if (r > 0)
+		{
+			r = sqrt(r);
+			float angle = atan2(v.y, v.x);
+			angle = -(angle+1.57079633)/6.28319;
+			result = float2(angle,r);		
+		}
+		else
+		{
+			result = 0;
+		}
+		return result;
+	}
+
+	float3 Cart2Polar(float3 v)
+	{
+		float3 result;
+		float r;
+		//r = length(v);
+		r = v.x * v.x + v.y * v.y + v.z * v.z;
+	
+		if (r > 0)
+		{
+			r = sqrt(r);
+			float p, y;
+			p = asin(v.y/r) / TWOPI;
+			y = 0;
+			if (v.z != 0) y = atan2(-v.x, -v.z);
+			else if (v.x > 0) y = -PI / 2;
+			else y = PI / 2;
+			y /=  TWOPI;
+			result = float3(p,y,r);		
+		}
+		else
+		{
+			result = 0;
+		}
+		return result;
+	}
+
+	float3 Polar2Cart(float3 v)
+	{
+	
+		v.xy *= TWOPI;
+		float cosp = -v.z * cos(v.x);
+		float3 result = float3(cosp * sin(v.y), v.z * sin(v.x),cosp * cos(v.y));
+		return result;
+	}
+	
+
+
+
+	////////////////////////////////////////////////////////////////
+	//
+	//             Tile Coords
+	//
+	////////////////////////////////////////////////////////////////
+	
+	// Tile coords inspired by Amit Patel http://www-cs-students.stanford.edu/~amitp/game-programming/grids/
+
+	#ifndef SQRT3
+	#define SQRT3 1.7320508
+	#endif
+
+	// hex coords
+	float2 worldToHex (float2 p)
+	{
+	  float3 c, r, dr;
+	  c.xz = float2 ((1./SQRT3) * p.x - (1./3.) * p.y, (2./3.) * p.y);
+	  c.y = - c.x - c.z;
+	  r = floor (c + 0.5);
+	  dr = abs (r - c);
+	  r -= step (dr.yzx, dr) * step (dr.zxy, dr) * dot (r, 1.);
+	  return r.xz;
+	}
+
+	float2 hexToWorld (float2 hex)
+	{
+	  return float2 (SQRT3 * (hex.x + 0.5 * hex.y), (3./2.) * hex.y);
+	}
+
+	float3 hexToCube(float2 hex)
+	{
+		float x = hex.x;
+		float z = hex.y;
+		float y = -x-z;
+		return float3(x, y, z);
+	}
+
+	float2 cubeToHex(float3 cube)
+	{
+		return cube.xz;
+	}
+
+	float hexDistance(float2 hex1, float2 hex2)
+	{
+		float3 a =  hexToCube(hex1);
+		float3 b =  hexToCube(hex2);
+		return max(abs(a.x - b.x), max(abs(a.y - b.y), abs(a.z - b.z)));
+	
+	}
+
+
+	// triangle coords
+	float2 worldToTri(float2 p) 
+	{
+		p.x *= 5./3.;
+		p = float2(p.x + p.y, -(p.x - p.y)); // shear pos
+		float2 uv = frac(p);
+		float isUp = (1-uv.y > uv.x);
+		p = floor(p);
+		p.y *= 2.;
+		p.y += isUp;
+		return p;
+	}
+
+	float2 triToWorld (float2 p)
+	{
+		float isUp = (p.y % 2 != 0);
+		p.y  *= -.5;
+		p = float2( (p.x - p.y), (p.x + p.y)); // unshear pos
+		p = float2(p.y, p.x);
+		p.x /= 5./3.;
+		p *= .5;
+		if(isUp) p += float2 (-.15, .58);  //fudged values!
+		else p += float2(0, .666667);
+		return p;
+	}
+
+	// box coords
+	float2 worldToBox(float2 p) 
+	{
+		return floor(p);
+	}
+
+	float2 boxToWorld(float2 p)
+	{
+		return p+.5;
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//                DOMAIN MANIPULATION OPERATORS
+	//
+	////////////////////////////////////////////////////////////////
+	//
+	// Conventions:
+	//
+	// Everything that modifies the domain is named pSomething.
+	//
+	// Many operate only on a subset of the three dimensions. For those,
+	// you must choose the dimensions that you want manipulated
+	// by supplying e.g. <p.x> or <p.zx>
+	//
+	// <inout p> is always the first argument and modified in place.
+	//
+	// Many of the operators partition space into cells. An identifier
+	// or cell index is returned, if possible. This return value is
+	// intended to be optionally used e.g. as a random seed to change
+	// parameters of the distance functions inside the cells.
+	//
+	// Unless stated otherwise, for cell index 0, <p> is unchanged and cells
+	// are centered on the origin so objects don't have to be moved to fit.
+	//
+	//
+	////////////////////////////////////////////////////////////////
+
+
+	// glsl style mod.  Already in FuseCoreMath, but Stride VS plugin does not like using function like macros in mixins (works but will give syntax errors)
+	#ifndef mod
+	#define mod(x, y) (x - y * floor((x) / y))
+	#endif
+
+	// Repeat space along one axis. Use like this to repeat along the x axis:
+	// <float cell = pMod1(p.x,5);> - using the return value is optional.
+	float pMod1(inout float p, float size) 
+	{
+		float halfsize = size*0.5;
+		float c = floor((p + halfsize)/size);
+		p = mod(p + halfsize, size) - halfsize;
+		return c;
+	}
+
+	// Same, but mirror every second cell so they match at the boundaries
+	float pModMirror1(inout float p, float size) 
+	{
+		float halfsize = size*0.5;
+		float c = floor((p + halfsize)/size);
+		p = mod(p + halfsize,size) - halfsize;
+		p *= mod(c, 2.0)*2 - 1;
+		return c;
+	}
+
+	// Repeat the domain only in positive direction. Everything in the negative half-space is unchanged.
+	float pModSingle1(inout float p, float size) 
+	{
+		float halfsize = size*0.5;
+		float c = floor((p + halfsize)/size);
+		if (p >= 0)
+			p = mod(p + halfsize, size) - halfsize;
+		return c;
+	}
+
+	// Repeat only a few times: from indices <start> to <stop> (similar to above, but more flexible)
+	float pModInterval1(inout float p, float size, float start, float stop) 
+	{
+		float halfsize = size*0.5;
+		float c = floor((p + halfsize)/size);
+		p = mod(p+halfsize, size) - halfsize;
+		if (c > stop) { //yes, this might not be the best thing numerically.
+			p += size*(c - stop);
+			c = stop;
+		}
+		if (c <start) {
+			p += size*(c - start);
+			c = start;
+		}
+		return c;
+	}
+
+
+	// Repeat around the origin by a fixed angle.
+	// For easier use, num of repetitions is use to specify the angle.
+	float pModPolar(inout float2 p, float repetitions) 
+	{
+		float angle = 2*PI/repetitions;
+		float a = atan2(p.y, p.x) + angle/2.;
+		float r = length(p);
+		float c = floor(a/angle);
+		a = abs(a%angle) - angle/2.;
+		p = float2(cos(a), sin(a))*r;
+		// For an odd number of repetitions, fix cell index of the cell in -x direction
+		// (cell index would be e.g. -5 and 5 in the two halves of the cell):
+		if (abs(c) >= (repetitions/2)) c = abs(c);
+		return c;
+	}
+
+	// Repeat in two dimensions
+	float2 pMod2(inout float2 p, float2 size) 
+	{
+		float2 halfsize = size * 0.5;
+		float2 c = floor((p + halfsize)/size);
+		p = mod(p + halfsize, size) - halfsize;
+		return c;
+	}
+
+	// Same, but mirror every second cell so all boundaries match
+	float2 pModMirror2(inout float2 p, float2 size) 
+	{
+		float2 halfsize = size*0.5;
+		float2 c = floor((p + halfsize)/size);
+		p = mod(p + halfsize, size) - halfsize;
+		p *= mod(c, 2) * 2 - 1;
+		return c;
+	}
+
+	// Same, but mirror every second cell at the diagonal as well
+	float2 pModGrid2(inout float2 p, float2 size) 
+	{
+		float2 halfsize = size*0.5;
+		float2 c = floor((p + halfsize)/size);
+		p = mod(p + halfsize, size) - halfsize;
+		p *= mod(c, 2) * 2 - 1;
+		p -= size/2;
+		if (p.x > p.y) p.xy = p.yx;
+		return floor(c/2);
+	}
+
+	// Repeat in three dimensions
+	float3 pMod3(inout float3 p, float3 size) 
+	{
+		float3 halfsize = size*0.5;
+		float3 c = floor((p + halfsize)/size);
+		p = mod(p + size * 0.5, size) - size * 0.5;
+		return c;
+	}
+
+	// Mirror at an axis-aligned plane which is at a specified distance <dist> from the origin.
+	float pMirror (inout float p, float dist) 
+	{
+		float s = sgn(p);
+		p = abs(p)-dist;
+		return s;
+	}
+
+	// Mirror in both dimensions and at the diagonal, yielding one eighth of the space.
+	// translate by dist before mirroring.
+	float2 pMirrorOctant (inout float2 p, float2 dist) 
+	{
+		float2 s = sgn(p);
+		pMirror(p.x, dist.x);
+		pMirror(p.y, dist.y);
+		if (p.y > p.x)
+			p.xy = p.yx;
+		return s;
+	}
+
+	// Reflect space at a plane
+
+	float pReflect(inout float2 p, float2 planeNormal, float offset) 
+	{
+		float t = dot(p, planeNormal)+offset;
+		if (t < 0) {
+			p = p - (2*t)*planeNormal;
+		}
+		return sgn(t);
+	}
+
+	float pReflect(inout float3 p, float3 planeNormal, float offset) 
+	{
+		float t = dot(p, planeNormal)+offset;
+		if (t < 0) {
+			p = p - (2*t)*planeNormal;
+		}
+		return sgn(t);
+	}
+
+	// Convert to spherical coordinates.  Does not maintain correct distance!
+	float3 pCart2Polar (float3 p)
+	{
+		float r = p.x * p.x + p.y * p.y + p.z * p.z;
+		if (r > 0)
+		{
+			r = (sqrt(r));
+			float pitch, yaw;
+			pitch = asin(p.y/r) / TWOPI;
+			yaw = 0;
+			if (p.z != 0) yaw = atan2(-p.x, -p.z);
+			else if (p.x > 0) yaw = -PI / 2;
+			else yaw = PI / 2;
+			yaw /=  TWOPI;
+			return float3(yaw,pitch,r);		
+		}
+		else return 0;
+	}
+
+	// Convert to polar coordinates.  Does not maintain correct distance!
+	float2 pCart2Polar (float2 p)
+	{
+		float r = p.x * p.x + p.y * p.y;
+		if (r > 0)
+		{
+			r = sqrt(r);
+			float yaw = 0;
+			if (p.y != 0) yaw = atan2(-p.x, -p.y);
+			else if (p.x > 0) yaw = -PI / 2;
+			else yaw = PI / 2;
+			yaw /=  TWOPI;
+			return float2(yaw, r);		
+		}
+		else return 0;	
+	}
+
+};
