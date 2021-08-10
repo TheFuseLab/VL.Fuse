@@ -612,9 +612,9 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 		float maxFreq = vmax(freq);
 		float invFreq = 1.0 / maxFreq;
 		pMod3(p, invFreq);
-		float node = fSphere(p, nodeSize);
-		float edge = fLatticeSelect(p, type) - edgeWidth;
-		return fOpUnionRound(node, edge, smooth);
+		float node = fSphere(p, nodeSize * invFreq);
+		float edge = fLatticeSelect(p, type) - edgeWidth * invFreq;
+		return fOpUnionRound(node, edge, smooth * invFreq);
 	}
 
 
