@@ -189,6 +189,15 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 		return length(p) - r;
 	}
 
+	// generic ellipsoid - improved approximated distance
+	float fEllipsoid( in float3 p, in float3 r ) 
+	{
+		float k0 = length(p/r);
+		float k1 = length(p/(r*r));
+		return k0*(k0-1.0)/k1;
+	}
+
+
 	// Plane with normal n (n is normalized) at some distance from the origin
 	float fPlane(float3 p,  float distanceFromOrigin = 0, float3 n = float3(0,1,0)) 
 	{
