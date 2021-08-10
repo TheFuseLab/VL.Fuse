@@ -378,7 +378,7 @@ namespace Fuse
                 
             }
             
-            public static string TextureTypeName(Texture theTexture)
+            public static string TextureTypeName(Texture theTexture, bool theUseRW)
             {
                 if(theTexture == null)return "Texture2D<float4>";
 
@@ -402,7 +402,7 @@ namespace Fuse
                     _ => "float4"
                 };
                 
-                if ((theTexture.Flags & TextureFlags.UnorderedAccess) == TextureFlags.UnorderedAccess)
+                if ((theTexture.Flags & TextureFlags.UnorderedAccess) == TextureFlags.UnorderedAccess && theUseRW)
                 {
                     return "RW"+textureType+"<" + textureDataType + ">";
                 }

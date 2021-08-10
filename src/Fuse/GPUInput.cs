@@ -152,14 +152,14 @@ namespace Fuse{
 
      public class TextureInput: ObjectInput<Texture> 
      {
-         public TextureInput(Texture theTexture) : base("TextureInput", theTexture)
+         public TextureInput(Texture theTexture, bool theUseRW = false) : base("TextureInput", theTexture)
          {
              if (theTexture == null)
              {
                  SetFieldDeclaration("Texture2D");
                  return;
              }
-             SetFieldDeclaration(TypeHelpers.TextureTypeName(theTexture),
+             SetFieldDeclaration(TypeHelpers.TextureTypeName(theTexture, theUseRW),
                  theTexture.Dimension switch {
                      TextureDimension.Texture1D => "Texture1D",
                      TextureDimension.Texture2D => "Texture2D",
