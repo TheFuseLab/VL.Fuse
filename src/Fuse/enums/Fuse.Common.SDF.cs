@@ -4,7 +4,14 @@ namespace Fuse.Common.SDF
 {
     // ReSharper disable UnusedType.Global
     // ReSharper disable UnusedMember.Global
-    
+
+    public enum CombineSDFSimple
+    {
+        Union,
+        Intersect,
+        Difference
+    }
+
     public enum CombineSDF
     {
         Union,
