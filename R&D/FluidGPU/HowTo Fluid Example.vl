@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="FCbB2Fb7rilL2IfRpLnqKM" LanguageVersion="2021.4.0.292" Version="0.128">
-  <NugetDependency Id="BNArUG5jkjILtzheJVHOHX" Location="VL.CoreLib" Version="2021.4.0-0292-ge535f70962" />
+<Document xmlns:p="property" Id="FCbB2Fb7rilL2IfRpLnqKM" LanguageVersion="2021.4.0.299" Version="0.128">
+  <NugetDependency Id="BNArUG5jkjILtzheJVHOHX" Location="VL.CoreLib" Version="2021.4.0-0299-g680dbe04b5" />
   <Patch Id="O2c3pY34PjdPTxY1Me4KRL">
     <Canvas Id="K90PzeHHxcDO7CFwylduhD" DefaultCategory="Main" CanvasType="FullCategory" />
     <!--
@@ -23,8 +23,16 @@
             <Pin Id="SL9h3wUSOhdNGfVN3l6YC4" Name="Resolution" Kind="InputPin" />
             <Pin Id="Qx2nK6UsVBSNh6An2UCAzr" Name="Transform" Kind="InputPin" />
             <Pin Id="Tm82i1ek5HZOlefCQAcC8H" Name="Fluid TimeStep" Kind="InputPin" />
-            <Pin Id="U537iGi1V2kOxfR48pZnhD" Name="Modulate" Kind="InputPin" />
-            <Pin Id="U2hNSydWFaOMKTPPp8sY16" Name="Jacobi Iterations" Kind="InputPin" />
+            <Pin Id="U537iGi1V2kOxfR48pZnhD" Name="Velocity Mult" Kind="InputPin" DefaultValue="0.44">
+              <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                <Choice Kind="TypeFlag" Name="Float32" />
+              </p:TypeAnnotation>
+            </Pin>
+            <Pin Id="U2hNSydWFaOMKTPPp8sY16" Name="Jacobi Iterations" Kind="InputPin" DefaultValue="6">
+              <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                <Choice Kind="TypeFlag" Name="Integer32" />
+              </p:TypeAnnotation>
+            </Pin>
             <Pin Id="No52kZuFqY6PBTO4XPhWsH" Name="Vorticity Strength" Kind="InputPin" />
             <Pin Id="G5oVgYGkm5dNzG0cKL4BQW" Name="Spherical Impulse Enabled" Kind="InputPin" />
             <Pin Id="JhewQReaWEANevjZtDyne7" Name="Obstacles Cylinder Enabled" Kind="InputPin" />
@@ -49,7 +57,7 @@
             <Pin Id="GARcyrBdFcjM8W052hTChv" Name="Output" Kind="StateOutputPin" />
             <Pin Id="IK2OgjvKZjnOocHEcDb821" Name="Debug Entity" Kind="OutputPin" />
           </Node>
-          <Pad Id="NAWC4Y0saMRMkGm5a5QiXj" Comment="Radius" Bounds="1281,550,35,15" ShowValueBox="true" isIOBox="true" Value="0.7">
+          <Pad Id="NAWC4Y0saMRMkGm5a5QiXj" Comment="Radius" Bounds="1281,550,35,15" ShowValueBox="true" isIOBox="true" Value="0.63">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
@@ -269,7 +277,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
             </p:NodeReference>
-            <Pin Id="I4oMIJsZZlbMKos1rJ98wU" Name="Bounds" Kind="InputPin" DefaultValue="4800.8, 417.6, 608, 496">
+            <Pin Id="I4oMIJsZZlbMKos1rJ98wU" Name="Bounds" Kind="InputPin" DefaultValue="1465.143, 116, 608, 496">
               <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="Rectangle" />
               </p:TypeAnnotation>
@@ -407,7 +415,7 @@
             <Pin Id="RdPNGCkySrqQQsuDDeaE51" Name="Result" Kind="OutputPin" />
             <Pin Id="QFJuX3nmGZDLR4dDkZTagh" Name="Input 2" Kind="InputPin" />
           </Node>
-          <Pad Id="FEVlqx35EC4PlH5kUT2nMu" Comment="Radius" Bounds="1724,543,35,15" ShowValueBox="true" isIOBox="true" Value="1.43">
+          <Pad Id="FEVlqx35EC4PlH5kUT2nMu" Comment="Radius" Bounds="1724,543,35,15" ShowValueBox="true" isIOBox="true" Value="2.19">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
@@ -568,7 +576,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RW8z8bG3apxL4tj8U5JUAm" Comment="Resolution" Bounds="136,690,35,43" ShowValueBox="true" isIOBox="true" Value="96, 96, 96">
+          <Pad Id="RW8z8bG3apxL4tj8U5JUAm" Comment="Resolution" Bounds="136,690,35,43" ShowValueBox="true" isIOBox="true" Value="128, 128, 128">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Int3" />
             </p:TypeAnnotation>
@@ -583,6 +591,21 @@
             <Pin Id="I5LnjrxAkoVMfxRLgO5L45" Name="Input 2" Kind="InputPin" />
             <Pin Id="GWJIzHZN9NrNWQpYlBjNBD" Name="Output" Kind="OutputPin" />
           </Node>
+          <Pad Id="Kj6UdFgsqFwNHKsKagIiKj" Comment="Velocity Mult" Bounds="230,767,35,15" ShowValueBox="true" isIOBox="true" Value="1">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="PQxZmGt15hEOuT2uRxdGWV" Comment="Jacobi Iterations" Bounds="274,796,35,15" ShowValueBox="true" isIOBox="true" Value="6">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="JfAliSi1rJyOWmHuzWIL9e" Comment="Vorticity Strength" Bounds="324,822,35,15" ShowValueBox="true" isIOBox="true" Value="0.06">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
         </Canvas>
         <Patch Id="PsECfHNmPW5NLQ3WaW8e5E" Name="Create" />
         <Patch Id="NGq44sWvsNLNYia8JKhHra" Name="Update" />
@@ -650,9 +673,12 @@
         <Link Id="GSIIs5rlZrUND1yKUZhpdw" Ids="JKpvsF3D4AxQVLRDaCvy5a,Bd0xImLTt0kMwJNE4sLEK8" />
         <Link Id="RTrsT7KtppXLLHcCIvMFKk" Ids="VNbZE1fY96zM0ozM571ivN,QFJuX3nmGZDLR4dDkZTagh" />
         <Link Id="LxZ59hokxrXLz183PwGctd" Ids="Mwz3Q9s6GeWMm8Z32m205B,D8JM6xWFBLIPbeiCXbcMPi" />
+        <Link Id="Ecv4V1RGdR3On2bC3rqoPL" Ids="Kj6UdFgsqFwNHKsKagIiKj,U537iGi1V2kOxfR48pZnhD" />
+        <Link Id="Ssmz8iCQTQ9QL4a8am2qcu" Ids="PQxZmGt15hEOuT2uRxdGWV,U2hNSydWFaOMKTPPp8sY16" />
+        <Link Id="UTRitIzPENdMf9LIpe1vsr" Ids="JfAliSi1rJyOWmHuzWIL9e,No52kZuFqY6PBTO4XPhWsH" />
       </Patch>
     </Node>
   </Patch>
   <DocumentDependency Id="S7SOWRZEOqNMYs86KQbLdN" Location="./FluidGPU.vl" />
-  <NugetDependency Id="B2THKxg3mjNPgnNLmudy53" Location="VL.Stride" Version="2021.4.0-0292-ge535f70962" />
+  <NugetDependency Id="B2THKxg3mjNPgnNLmudy53" Location="VL.Stride" Version="2021.4.0-0299-g680dbe04b5" />
 </Document>

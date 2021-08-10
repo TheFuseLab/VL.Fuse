@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="KeWf79wIWCVN4a6TzD33r2" LanguageVersion="2021.4.0.271" Version="0.128">
-  <NugetDependency Id="MQXeS5Eyym5NHw3QIl7Skp" Location="VL.CoreLib" Version="2021.4.0-0271-gce2bc2325b" />
+<Document xmlns:p="property" Id="KeWf79wIWCVN4a6TzD33r2" LanguageVersion="2021.4.0.299" Version="0.128">
+  <NugetDependency Id="MQXeS5Eyym5NHw3QIl7Skp" Location="VL.CoreLib" Version="2021.4.0-0299-g680dbe04b5" />
   <Patch Id="Lu8ZMmzEGehMMa4JsVWiC0">
     <Canvas Id="VGSTnZOO9oTMHg5fssi37N" DefaultCategory="GPUFluid3D" CanvasType="FullCategory">
       <!--
@@ -341,7 +341,7 @@
           <Link Id="T4KNASP3VrWN46uEcYfhqY" Ids="Kw2ZZFqm05XPCqTnZCXKcS,GJiPUECA5JbNbCf6IUxgEI" />
           <Link Id="VeNbjH0jqx5PupVgy5LfNu" Ids="TyJmPxIx0P4MKDaaSR3eLQ,Vu1oBOSGkmQMcv6TqmdHjO" />
           <Link Id="IlSXYtFGZQBPkwFNvefKLu" Ids="KCijwK6QLsNOsD6facyWH4,D28gcjCwgzvMsge3NnqtoI" />
-          <Slot Id="HYO0HuMdHidPZt9cANBsKC" Name="Modulate">
+          <Slot Id="HYO0HuMdHidPZt9cANBsKC" Name="Velocity Mult">
             <p:TypeAnnotation p:Type="TypeReference">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
@@ -373,7 +373,7 @@
                 <Choice Kind="TypeFlag" Name="Float32" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="R6O2blHOjS8LMI3bQ3BP8G" Name="Modulate" Kind="InputPin" DefaultValue="1">
+            <Pin Id="R6O2blHOjS8LMI3bQ3BP8G" Name="Velocity Mult" Kind="InputPin" DefaultValue="1">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="Float32" />
               </p:TypeAnnotation>
@@ -425,8 +425,8 @@
           <Patch Id="PBFCmEIzBecLv7Smx0ISJP" Name="GetGridPosition">
             <Pin Id="OVGrjhIKxVdPetCNlKvUZ9" Name="Grid Position" Kind="OutputPin" />
           </Patch>
-          <Patch Id="L93hiZH9RwCOSXWeLmXeZi" Name="GetModulate">
-            <Pin Id="Up8PtWAOs56MGszomId1pX" Name="Modulate" Kind="OutputPin" />
+          <Patch Id="L93hiZH9RwCOSXWeLmXeZi" Name="GetVelocityMult">
+            <Pin Id="Up8PtWAOs56MGszomId1pX" Name="Velocity Mult" Kind="OutputPin" />
           </Patch>
           <Patch Id="MCj9nh7ozH5NjTp8qw2vay" Name="GetSphericalImpulseEnabled">
             <Pin Id="CEjZr9Wq78gPdI0bE3HWwJ" Name="Spherical Impulse Enabled" Kind="OutputPin" />
@@ -1885,6 +1885,15 @@
               <Pin Id="IyvZ4roFW7pNPZlXolFTfk" Name="Output" Kind="StateOutputPin" />
               <Pin Id="FUPek4vOpI3QPwe4NpJMM0" Name="Fluid Settings" Kind="OutputPin" />
             </Node>
+            <Node Bounds="582,380,74,26" Id="Cb0tc3iFXeJPvHyndf2JWs">
+              <p:NodeReference>
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="GetVelocityMult" />
+              </p:NodeReference>
+              <Pin Id="M8ZQmxxSxr7PfL4BHNVeaL" Name="Input" Kind="StateInputPin" />
+              <Pin Id="UqkJYBfu6vbNYK1hGCSNgs" Name="Output" Kind="StateOutputPin" />
+              <Pin Id="MHvG3BDKbiaOKjTIVNfu1h" Name="Velocity Mult" Kind="OutputPin" />
+            </Node>
           </Canvas>
           <Patch Id="Sa7RKegypMPMmRcYLr6H0w" Name="Create" />
           <Patch Id="UuyiLZ5gdCnPnsykfbvd0Y" Name="Update" ManuallySortedPins="true">
@@ -1919,6 +1928,8 @@
           <Link Id="ALuELzFugOmMB0ggDoCsqC" Ids="FUPek4vOpI3QPwe4NpJMM0,FEVptS0hsUGNQvMbppjPoh" />
           <Link Id="QSORxezH6vJMNbgcm8tXeI" Ids="FUPek4vOpI3QPwe4NpJMM0,Ed8FhoJjnF9LaIJhUKZSvW" />
           <Link Id="SpReZX1C6XrLmJ1PsMLFB7" Ids="FUPek4vOpI3QPwe4NpJMM0,TBEl0N20NOUPDeRwF4QucH" />
+          <Link Id="HjJbfj9sPLPOCpuaYBJ9ev" Ids="IrIbV7VBZJTOXZ0Pbfr3Et,M8ZQmxxSxr7PfL4BHNVeaL" />
+          <Link Id="IYSeekdoWieMEHFfqD0XsC" Ids="MHvG3BDKbiaOKjTIVNfu1h,KkxLs9NNozGNgNIEyAKWCq" />
         </Patch>
       </Node>
       <!--
@@ -2175,7 +2186,7 @@
               <Pin Id="SsqDcNXydU1LhKhlEXe0Dg" Name="Output" Kind="StateOutputPin" />
               <Pin Id="JPYF7U1re18PQIIy3aNEhI" Name="Resolution" Kind="OutputPin" />
             </Node>
-            <Node Bounds="617,539,109,26" Id="NbrwjVwbdfJQaaGREk7vyG">
+            <Node Bounds="643,536,109,26" Id="NbrwjVwbdfJQaaGREk7vyG">
               <p:NodeReference LastCategoryFullName="GPUFluid3D.FluidSettings" LastSymbolSource="FluidGPU.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="OperationCallFlag" Name="GetFluidTimeStep" />
@@ -2977,11 +2988,6 @@
               <Pin Id="HY12ffbkC47P5UXuZad87B" Name="Thread Group Count" Kind="InputPin" />
               <Pin Id="DLEId0HCePTOx6tquDrkQn" Name="Output" Kind="OutputPin" />
             </Node>
-            <Pad Id="I6cMuX0jWZTOUV3jJ8jBVp" Comment="Modulate" Bounds="915,226,35,15" ShowValueBox="true" isIOBox="true" Value="1">
-              <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
-                <Choice Kind="TypeFlag" Name="Float32" />
-              </p:TypeAnnotation>
-            </Pad>
             <Node Bounds="696,264,109,26" Id="VqE78QspImDMIx2BX6I7sj">
               <p:NodeReference LastCategoryFullName="GPUFluid3D.FluidSettings" LastSymbolSource="FluidGPU.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -2999,15 +3005,6 @@
               <Pin Id="V1iCfmmVBbELrkd6KENutM" Name="Input" Kind="StateInputPin" />
               <Pin Id="NOaRd3ADsPtLAIwNhltvQq" Name="Output" Kind="StateOutputPin" />
               <Pin Id="G9T4TLVxr3aOlEJZCLVf0F" Name="Fluid TimeStep" Kind="OutputPin" />
-            </Node>
-            <Node Bounds="696,171,194,26" Id="UbkHZz6fxOZNxI7evechf3">
-              <p:NodeReference LastCategoryFullName="GPUFluid3D.FluidSettings" LastSymbolSource="FluidGPU.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="OperationCallFlag" Name="GetModulate" />
-              </p:NodeReference>
-              <Pin Id="IanB0NCLIa5O56BfTQhTqK" Name="Input" Kind="StateInputPin" />
-              <Pin Id="El4DOQsyIgyP7moul0MWst" Name="Output" Kind="StateOutputPin" />
-              <Pin Id="EvoTIUEwd6EN2nW7cCIFJq" Name="Modulate" Kind="OutputPin" />
             </Node>
             <ControlPoint Id="Pj4aXQuoJPnMSrVyotKYz9" Bounds="353,107" />
             <Node Bounds="352,125,68,26" Id="DVwaWHktplxOavgj46ZLCh">
@@ -3046,13 +3043,10 @@
           <Link Id="Q8CqSGx8l84O9wKiFxzixO" Ids="NOaRd3ADsPtLAIwNhltvQq,SbcQyQXfTxeMZtq5mWnxra" />
           <Link Id="ICeA050xIfTLNuQbzol9ik" Ids="B0mNKydT57aNVEjHhIJhuB,BGHriU4Opx0NVNMvXPnOvm" />
           <Link Id="OiSYwAxjmDAPbE0z5zYnch" Ids="G9T4TLVxr3aOlEJZCLVf0F,QGqiBfUWBWGM4F2phmlmp9" />
-          <Link Id="Awnd66rNVtBLo1BNpeq59i" Ids="El4DOQsyIgyP7moul0MWst,V1iCfmmVBbELrkd6KENutM" />
-          <Link Id="AH3P5pSQUXfNlgxzb1OaSo" Ids="EvoTIUEwd6EN2nW7cCIFJq,SZPpMmcVuXiNp22zqXo3n4" />
-          <Link Id="ArAmfu82hTULm89T047bm7" Ids="EvoTIUEwd6EN2nW7cCIFJq,I6cMuX0jWZTOUV3jJ8jBVp" />
           <Link Id="T8lnPLo78cAODc5aj8b8MB" Ids="Ls2sQowD6i2Msx4e4mU6o0,Pj4aXQuoJPnMSrVyotKYz9" IsHidden="true" />
           <Link Id="QdMtlJbWReePe07bSUMy8f" Ids="Pj4aXQuoJPnMSrVyotKYz9,J8QLAPJ9R4pQCvehQQ9eLo" />
           <Link Id="DkmWCGWQiMxPgfbfex4e18" Ids="GuyonLnEnD6OKamyrgal3X,Iic4254KMOqLf7ITwyuhmu" />
-          <Link Id="Hod65IETGBJLxILweVLuaG" Ids="GuyonLnEnD6OKamyrgal3X,IanB0NCLIa5O56BfTQhTqK" />
+          <Link Id="QImd9Tfod4xPArCydDNTDQ" Ids="GuyonLnEnD6OKamyrgal3X,V1iCfmmVBbELrkd6KENutM" />
         </Patch>
       </Node>
       <Overlay Id="CXoiENvcliANEdvGIFWXEv" Name="Processes" Bounds="75,486,417,841">
@@ -3149,7 +3143,6 @@
                 <Choice Kind="ProcessAppFlag" Name="ComputeStage" />
               </p:NodeReference>
               <Pin Id="AA5VniZKkKPLaTmekND80d" Name="Name" Kind="InputPin" />
-              <Pin Id="UM9Lb4yHnrSLQjBELnweI5" Name="ThreadGroupSize" Kind="InputPin" />
               <Pin Id="Q1dgPahFGPrMa9f5zL0dRd" Name="ShaderGraph" Kind="InputPin" />
               <Pin Id="Ud7EGGqPEBWL9PGiDhvbGU" Name="writeAttributes" Kind="InputPin" />
               <Pin Id="IkZUcz7Cn7eOSVtR3SqTRL" Name="Output" Kind="OutputPin" />
@@ -3177,16 +3170,14 @@
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="ComputeSystem (Spectral)" />
               </p:NodeReference>
-              <Pin Id="B7cmpbTaknBP7AclxdSYtZ" Name="ElementCount" Kind="InputPin" />
               <Pin Id="V3tlqNUTDuJOvRjr1Rfhck" Name="Name" Kind="InputPin" />
+              <Pin Id="VyTV18taZntLz9cJ6xk4u2" Name="ResourceHandler" Kind="InputPin" />
               <Pin Id="ECZIUZOj64jMQuLfzQSpYL" Name="Input 3" Kind="InputPin" />
               <Pin Id="RrCwkSiiKqiPyEQZlyKAIs" Name="Input 2" Kind="InputPin" />
               <Pin Id="BBgGv0buYOEOV9gBFItOAn" Name="Input" Kind="InputPin" />
               <Pin Id="KKSr16pK8XDL6Fxc6VeUFd" Name="GetHelperEntity" Kind="ApplyPin" />
               <Pin Id="M0CDiR18zqCOCABQTOXNZp" Name="Output" Kind="StateOutputPin" />
               <Pin Id="Ldbs69WQDi9Lfrp5PVlS1i" Name="Has Changed" Kind="OutputPin" />
-              <Pin Id="Q6tIzLxN0i3Onjtacn7slW" Name="Value" Kind="OutputPin" />
-              <Pin Id="H1JfV71i49DLHJj0WiEYaI" Name="resources" Kind="OutputPin" />
             </Node>
             <Pad Id="Klc7vlVdWL6PHTGsLWSsaF" Bounds="336,105,144,59" ShowValueBox="true" isIOBox="true" Value="Added here so that it gets computed in this moment">
               <p:TypeAnnotation>
@@ -3275,7 +3266,6 @@
           <Link Id="Edo94UGQKRiOuRfFsahMpY" Ids="FxTCJwcOOnSMFK1K7ckMGM,R2xvkNiSrRKL5ZTpEqXyr1" />
           <Link Id="J5JkZPTqKxGL94fegcsfZR" Ids="PtcXinbzPT7PS9vBzq8wFb,SWKYAH0cC41Nt1B9u6wCMv" />
           <Link Id="SJ8bndIbn3MMeNhs3BfBJh" Ids="CmnikmZRRLNOmH45P9u1pD,AA5VniZKkKPLaTmekND80d" />
-          <Link Id="FGOIwEjnAgJLHsVMG52ce7" Ids="QYqQvxkvHLTL7pdodwhcKn,UM9Lb4yHnrSLQjBELnweI5" />
           <Link Id="H54QhRt3K1KLbCexnMSmtR" Ids="Ubv8LlMUcbIPw9QJyS6cBM,FdpuQGTrOcsPee9QefZ0lZ" />
           <Link Id="F1GP6XrTvePOpZdVJtaPWZ" Ids="Ov8YJzAvf7cQNg3qQHnTTS,HJDvJEJ7JJAMljDBCWSJ6O" />
           <Link Id="JCLrk8nSiggQbV3oZh6Bni" Ids="TAESMQtJ0xMOus8Z7UbZJI,V3tlqNUTDuJOvRjr1Rfhck" />
@@ -3285,7 +3275,6 @@
           <Link Id="AknqlbrAqU2PHcNIGKS6tp" Ids="Mp0UTK3CCN4PQZcvX5yhd0,AkSsC4IcHMoQHeoVJ6Z4BU" />
           <Link Id="ArDwIUSFQbMNNPHgUqCc2U" Ids="M0CDiR18zqCOCABQTOXNZp,MHgSsOyZQi0QSDyDASVZ1E" />
           <Link Id="KTwSxqdg9nRNVhT8gYz2qG" Ids="F9jEjiOnn33N8vUAQqfdru,BFYxxcH5tTVOttYDmydBAv" />
-          <Link Id="AVTIy3vatDYPRXsUvFq1VG" Ids="QfhOY3kYw5UMTkln6hPPTO,B7cmpbTaknBP7AclxdSYtZ" />
         </Patch>
       </Node>
       <!--
@@ -4541,7 +4530,7 @@
               <Pin Id="CaRccQ2moWgOUM7hy6jx3A" Name="Resolution" Kind="InputPin" />
               <Pin Id="HKLg6YGXBVKNBxZyGz39s2" Name="Transform" Kind="InputPin" />
               <Pin Id="BEuR0n6cNC8QdthLZys4CQ" Name="Fluid TimeStep" Kind="InputPin" />
-              <Pin Id="EnmcnECMEdrMipO1ZulZdg" Name="Modulate" Kind="InputPin" />
+              <Pin Id="EnmcnECMEdrMipO1ZulZdg" Name="Velocity Mult" Kind="InputPin" />
               <Pin Id="HwMYnoU5FMMNXaaUAyqhn3" Name="Jacobi Iterations" Kind="InputPin" />
               <Pin Id="Iw4KjRIzV3cLhfgvPZzbRy" Name="Vorticity Strength" Kind="InputPin" />
               <Pin Id="HYQ7XKToMdkOhbReIuA5WU" Name="Spherical Impulse Enabled" Kind="InputPin" />
@@ -4754,7 +4743,7 @@
                 <Choice Kind="TypeFlag" Name="Float32" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="JzfS5pqZUMTMWxKUdzkyKD" Name="Modulate" Kind="InputPin" />
+            <Pin Id="JzfS5pqZUMTMWxKUdzkyKD" Name="Velocity Mult" Kind="InputPin" />
             <Pin Id="Ca97n9tHtquMwZMtNzmjLM" Name="Jacobi Iterations" Kind="InputPin" />
             <Pin Id="SkKFvfbM9G3OxG0beE37ZS" Name="Vorticity Strength" Kind="InputPin" DefaultValue="0.06">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -7655,7 +7644,7 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="LeGHAtZZQqxQO4xd3iQY10" Location="VL.Stride" IsFriend="true" Version="2021.4.0-0271-gce2bc2325b" />
+  <NugetDependency Id="LeGHAtZZQqxQO4xd3iQY10" Location="VL.Stride" IsFriend="true" Version="2021.4.0-0299-g680dbe04b5" />
   <PlatformDependency Id="QDzIiQKXKoKN5YrxdzGclM" Location="./src/FluidGPU/bin/Debug/net472/FluidGPU.dll" />
   <PlatformDependency Id="PAe1bxtBckzLPJ5eJRXEXh" Location="../../../../Program Files/vvvv/vvvv_gamma_2021.4.0-0064-g1b06d2b922/lib/Stride.Graphics.dll" />
   <NugetDependency Id="QmsxsFibAZULQ7VHEAeqs0" Location="VL.Fuse" Version="0.0.0.0" />
