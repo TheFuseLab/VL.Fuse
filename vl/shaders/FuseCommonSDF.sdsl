@@ -120,6 +120,16 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 	  return max((q.x * 0.866025 + q.y * 0.5), q.y) - radius;
 	}
 
+	float fPentagon( in float2 p, in float r )
+	{
+		const float3 k = float3(0.809016994,0.587785252,0.726542528);
+		p.x = abs(p.x);
+		p -= 2.0*min(dot(float2(-k.x,k.y),p),0.0)*float2(-k.x,k.y);
+		p -= 2.0*min(dot(float2( k.x,k.y),p),0.0)*float2( k.x,k.y);
+		p -= float2(clamp(p.x,-r*k.z,r*k.z),r);
+		return length(p)*sign(p.y);
+	}
+
 
 
 	////////////////////////////////////////////////////////////////
@@ -1119,6 +1129,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 		return fOpIntersectionRound(abs(p)-depth, d, r);
 	}
 
+	// Revolve a 2D signed distance field in to a third dimension
+	// called as sdf(fOpRevolution(p, w))
+	float2 fOpRevolution( in float3 p, float w )
+	{
+		return float2( length(p.xz) - w, p.y );
+	}
 
 
 	// The "Columns" flavour makes n-1 circular columns at a 45 degree angle:

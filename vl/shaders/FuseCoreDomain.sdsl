@@ -377,4 +377,13 @@ shader FuseCoreDomain: FuseCoreMath
 		else return 0;	
 	}
 
+	float3 pTwist(float3 p, float strength)
+	{
+		float c = cos(strength * p.y);
+		float s = sin(strength * p.y);
+		float2x2  m = float2x2(c, s, -s, c);
+		float3  q = float3(mul(p.xz, m), p.y);
+		return q.xzy;
+	}
+
 };
