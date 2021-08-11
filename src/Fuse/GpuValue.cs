@@ -1,4 +1,5 @@
 ﻿using Stride.Engine;
+using VL.Core;
 
 namespace Fuse
 {
@@ -22,6 +23,7 @@ namespace Fuse
         public AbstractShaderNode ParentNode { get; set; }
     }
 
+    [Monadic(typeof(GpuValueMonadicFactory<>))]
     public class GpuValue<T> : AbstractGpuValue
     {
 
