@@ -32,7 +32,7 @@ shader ObstaclesVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
-    Texture3D <float4> CylinderVelocity;
+    Texture3D <float4> Texture_ObstCylinder;
     RWTexture3D<float3> Texture_ObstVelocity; //Output Texture
     //Texture2DArray<float4> TexOV;
 
@@ -46,7 +46,7 @@ shader ObstaclesVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
         uint3 i = streams.DispatchThreadId;
 
         //Texture_ObstVelocity[i] = TexOV[i];
-        float3 cylinderVel = CylinderVelocity[i].xyz;
+        float3 cylinderVel = Texture_ObstCylinder[i].xyz;
 
         
         Texture_ObstVelocity[i] = cylinderVel;

@@ -9,7 +9,7 @@ shader ObstaclesCylinderVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
     StructuredBuffer<InvTransform> InstanceWorldInverse;
     Buffer<float4> VelBuffer;
     int CylinderCount;
-    RWTexture3D<float4> RWDistanceVolume;
+    RWTexture3D<float4> CylinderVelocityTexture;
 
     float SDFBorder = 0.1f;
     float SDFBorderPlus = 0.1f;
@@ -56,7 +56,7 @@ shader ObstaclesCylinderVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
                 if (dist < SDFBorder) obst = 1;
             }
         }
-        RWDistanceVolume[ti] = float4(vel, obst);
+        CylinderVelocityTexture[ti] = float4(vel, obst);
     }
    
 };

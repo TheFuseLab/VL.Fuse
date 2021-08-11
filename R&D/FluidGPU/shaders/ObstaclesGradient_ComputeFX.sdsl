@@ -33,7 +33,7 @@ shader ObstaclesGradient_ComputeFX : ComputeShaderBase, FluidGlobals
     // Textures
     //--------------------------------------------------------------------------------------
 
-    Texture3D <float4> CylinderVelocity;
+    Texture3D <float4> Texture_ObstaclesCylinder;
     RWTexture3D<float> Texture_Obstacles; //Output Texture
 
     //Texture2DArray<uint2> TexO;
@@ -75,7 +75,7 @@ shader ObstaclesGradient_ComputeFX : ComputeShaderBase, FluidGlobals
         */
 
 
-        float4 cylinderObs = CylinderVelocity[i];
+        float4 cylinderObs = Texture_ObstaclesCylinder[i];
         if(cylinderObs.w == 0.5) obstacle = 0.5;
         else if(cylinderObs.w == 1) obstacle = 1;
 

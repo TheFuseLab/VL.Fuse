@@ -33,7 +33,7 @@ shader ComputePressure_ComputeFX : ComputeShaderBase, FluidGlobals
     // Textures
     //--------------------------------------------------------------------------------------
 
-    Texture3D<float> Texture_Obstacles;
+    Texture3D<float> Texture_ObstaclesGradient;
     Texture3D<float> Texture_Divergence;
     Texture3D<float> Texture_PressureIn; //Input Texture
     RWTexture3D<float> Texture_Pressure; //Output Texture
@@ -45,7 +45,7 @@ shader ComputePressure_ComputeFX : ComputeShaderBase, FluidGlobals
 
     bool IsBoundaryCell( uint3 cellTexCoords )
     {
-        return (Texture_Obstacles[cellTexCoords].r > 0.9);
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.9);
     }
 
     //--------------------------------------------------------------------------------------
