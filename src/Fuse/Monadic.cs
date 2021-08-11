@@ -17,7 +17,7 @@ namespace Fuse
             if (typeof(T).IsValueType)
                 return Activator.CreateInstance(typeof(GpuValueBuilder<>).MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
             // Didn' test these ...
-            else if (typeof(T) == typeof(Texture))
+            if (typeof(T) == typeof(Texture))
                 return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
             throw new NotImplementedException();
         }
@@ -27,12 +27,12 @@ namespace Fuse
     sealed class GpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
         where T : struct
     {
-        private readonly GpuInput<T> gpuInput = new GpuInput<T>();
+        private readonly GpuInput<T> _gpuInput = new GpuInput<T>();
 
         public GpuValue<T> Return(T value)
         {
-            gpuInput.Value = value;
-            return gpuInput.Output;
+            _gpuInput.Value = value;
+            return _gpuInput.Output;
         }
 
         // Called by deserialization and value editor
@@ -47,23 +47,20 @@ namespace Fuse
     // Not sure about this one, never tested it ..
     sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, GpuValue<Texture>>
     {
-        private readonly TextureInput textureInput = new TextureInput(theTexture: null);
+        private readonly TextureInput _textureInput = new TextureInput(null);
 
         public GpuValue<Texture> Return(Texture value)
         {
-            textureInput.Value = value;
-            return textureInput.Output;
+            _textureInput.Value = value;
+            return _textureInput.Output;
         }
 
         // Shouldn't be called as there's no editor for Texture
         public Texture Extract(GpuValue<Texture> sink)
         {
-            if (sink?.ParentNode is TextureInput textureInput)
-            {
-                Debug.Assert(textureInput == this.textureInput);
-                return textureInput.Value;
-            }
-            return default;
+            if (!(sink?.ParentNode is TextureInput textureInput)) return default;
+            Debug.Assert(textureInput == _textureInput);
+            return textureInput.Value;
         }
     }
 }
