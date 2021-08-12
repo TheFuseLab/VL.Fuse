@@ -61,10 +61,6 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		streams.PositionWS = float4(getSpherePos(), 1);
 		float pSize = getSphereSize();
 
-		//streams.PositionWS = 0.;
-		//float pSize = .2;
-
-
 
 		for (int i=0; i<4; i++)
 		{
@@ -119,6 +115,7 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		posQuad.z += z;
 		float4 PosWVP = mul(posQuad, ViewProjection);
 		streams.DepthVS = PosWVP.w;
+		//streams.Depth = PosWVP.z/PosWVP.w;
 		streams.DepthLessEqual = PosWVP.z/PosWVP.w;
 
 		return base.Shading();

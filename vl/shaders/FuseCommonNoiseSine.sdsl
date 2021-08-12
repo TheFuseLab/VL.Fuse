@@ -36,4 +36,21 @@ shader FuseCommonNoiseSine
 		return dot(dot(dot(s.x, s.y), s.z), s.w);
 	}
 
+	// 3D with gradient
+	// TODO Replace with analytic 
+	float4 sineNoiseGrad (float3 p)
+	{
+		float n = sineNoise(p);
+		float3  result = n.xxx;
+		float e = 0.001;
+		for(int i = 0; i < 3; i++) 		// just a weird ass way of writing forward difference
+		{
+			float3 offset = .0;
+			offset[i] = e;
+			result[i] = (sineNoise(p + offset) -  result[i]) /  e;
+		}
+	   return float4(n, result);
+
+	}
+
 };
