@@ -34,7 +34,7 @@ shader ComputeVelocityDivergence_ComputeFX : ComputeShaderBase, FluidGlobals
     //--------------------------------------------------------------------------------------
 
     Texture3D<float3> Texture_Velocity;
-    Texture3D<float> Texture_Obstacles;
+    Texture3D<float> Texture_ObstaclesGradient;
     Texture3D<float3> Texture_ObstVelocity;
     RWTexture3D<float> Texture_Divergence; //Output Texture
 
@@ -49,7 +49,7 @@ shader ComputeVelocityDivergence_ComputeFX : ComputeShaderBase, FluidGlobals
 
     bool IsBoundaryCell( float3 cellTexCoords )
     {
-        return (Texture_Obstacles[cellTexCoords].r > 0.9);    
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.9);    
     }
 
     //--------------------------------------------------------------------------------------

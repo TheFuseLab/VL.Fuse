@@ -34,7 +34,7 @@ shader SphericalImpulse_ComputeFX : ComputeShaderBase, FluidGlobals
     //--------------------------------------------------------------------------------------
 
     RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
-    Texture3D<float> Texture_Obstacles;
+    Texture3D<float> Texture_ObstaclesGradient;
 
     //--------------------------------------------------------------------------------------
     // Variables
@@ -57,7 +57,7 @@ shader SphericalImpulse_ComputeFX : ComputeShaderBase, FluidGlobals
 
     bool IsNonEmptyCell( float3 cellTexCoords )
     {
-        return (Texture_Obstacles[cellTexCoords].r > 0.0);
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.0);
     }
     
     //--------------------------------------------------------------------------------------
