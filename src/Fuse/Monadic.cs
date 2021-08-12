@@ -1,6 +1,5 @@
 ﻿using Stride.Graphics;
 using System;
-using System.Diagnostics;
 using VL.Core;
 
 namespace Fuse
@@ -34,14 +33,6 @@ namespace Fuse
             _gpuInput.Value = value;
             return _gpuInput.Output;
         }
-
-        // Called by deserialization and value editor
-        public T Extract(GpuValue<T> sink)
-        {
-            if (sink?.ParentNode is GpuInput<T> gpuInput)
-                return gpuInput.Value;
-            return default;
-        }
     }
 
     // Not sure about this one, never tested it ..
@@ -53,14 +44,6 @@ namespace Fuse
         {
             _textureInput.Value = value;
             return _textureInput.Output;
-        }
-
-        // Shouldn't be called as there's no editor for Texture
-        public Texture Extract(GpuValue<Texture> sink)
-        {
-            if (!(sink?.ParentNode is TextureInput textureInput)) return default;
-            Debug.Assert(textureInput == _textureInput);
-            return textureInput.Value;
         }
     }
 }
