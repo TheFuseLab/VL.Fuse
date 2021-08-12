@@ -1,5 +1,5 @@
 ﻿//----------------------------------------------------------------------------------
-// File:   FluidSim.fx
+// File:  FluidSim.fx
 // Author: Sarah Tariq and Ignacio Llamas
 // Email:  sdkfeedback@nvidia.com
 //
@@ -27,31 +27,37 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader ComputeVelocityDivergence_ComputeFX : ComputeShaderBase, FluidGlobals
+shader SphericalImpulse_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
 
-    Texture3D<float3> Texture_Velocity;
+    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
     Texture3D<float> Texture_ObstaclesGradient;
-    Texture3D<float3> Texture_ObstVelocity;
-    RWTexture3D<float> Texture_Divergence; //Output Texture
 
+    //--------------------------------------------------------------------------------------
+    // Variables
+    //--------------------------------------------------------------------------------------
+    
+    float3 ScaleFactorInverse;
+
+    Buffer<float4> PosSizeBuffer;
+    Buffer<float4> VelBuffer;
+
+    int SphericalImpulseCount;
+
+
+    
     //--------------------------------------------------------------------------------------
     // Helper functions
     //--------------------------------------------------------------------------------------
 
-    float3 GetObstVelocity( float3 cellTexCoords )
+    bool IsNonEmptyCell( float3 cellTexCoords )
     {
-        return Texture_ObstVelocity[cellTexCoords];
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.0);
     }
-
-    bool IsBoundaryCell( float3 cellTexCoords )
-    {
-        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.9);    
-    }
-
+    
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
@@ -61,31 +67,30 @@ shader ComputeVelocityDivergence_ComputeFX : ComputeShaderBase, FluidGlobals
         uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
 
-        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
-        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
-        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
-        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
-        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
-        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
-       
-        float3 fieldL = Texture_Velocity[LEFTCELL];
-        float3 fieldR = Texture_Velocity[RIGHTCELL];
-        float3 fieldB = Texture_Velocity[BOTTOMCELL];
-        float3 fieldT = Texture_Velocity[TOPCELL];
-        float3 fieldD = Texture_Velocity[DOWNCELL];
-        float3 fieldU = Texture_Velocity[UPCELL];
+        if( IsNonEmptyCell(i) )
+        {
+            Texture_Velocity[i] = 0;
+            return; // !!!
+        }
 
-        if( IsBoundaryCell(LEFTCELL) )  fieldL = GetObstVelocity(LEFTCELL);
-        if( IsBoundaryCell(RIGHTCELL) ) fieldR = GetObstVelocity(RIGHTCELL);
-        if( IsBoundaryCell(BOTTOMCELL) )fieldB = GetObstVelocity(BOTTOMCELL);
-        if( IsBoundaryCell(TOPCELL) )   fieldT = GetObstVelocity(TOPCELL);
-        if( IsBoundaryCell(DOWNCELL) )  fieldD = GetObstVelocity(DOWNCELL);
-        if( IsBoundaryCell(UPCELL) )    fieldU = GetObstVelocity(UPCELL);
+        float3 AccumVel = Texture_Velocity[i];
 
-        float divergence =  0.5 *
-            ( ( fieldR.x - fieldL.x ) + ( fieldT.y - fieldB.y ) + ( fieldU.z - fieldD.z ) );
+        for(uint s=0 ; s<(uint)SphericalImpulseCount; s++)
+        {
+            float4 Source_PosSize = PosSizeBuffer[s];
+            float4 Source_Vel = VelBuffer[s];
 
-        Texture_Divergence[i] = divergence;
-    
+            float dist = length( i - Source_PosSize.xyz ) * Source_PosSize.w;
+            float4 result;
+            result.rgb = Source_Vel.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
+            result.a = exp( -dist*dist );
+                
+            AccumVel +=  result.xyz * result.a;
+
+        }
+
+
+    Texture_Velocity[i] = AccumVel;
+
     }
 };
