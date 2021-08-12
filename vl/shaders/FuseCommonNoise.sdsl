@@ -89,6 +89,45 @@ shader FuseCommonNoise :  FuseCommonNoiseSine, FuseCommonNoiseValueNoise, FuseCo
 		p2 = p1 + vectorValuedNoiseOffsets.x; p3 = p1 + vectorValuedNoiseOffsets.y; p4 = p1 + vectorValuedNoiseOffsets.z;
 	}
 
+	////////////////////////////////////////////////////////////////////////////////////
+	// DFV
+	// return a divergence-free 3D vector field 
+
+	float3 sineNoiseDFV(float3 p)
+	{
+	    float4 n1 = sineNoiseGrad(p);
+		float4 n2 = sineNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
+	float3 valueNoiseDFV(float3 p)
+	{
+	    float4 n1 = valueNoiseGrad(p);
+		float4 n2 = valueNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
+	float3 gradientNoiseDFV(float3 p)
+	{
+	    float4 n1 = gradientNoiseGrad(p);
+		float4 n2 = gradientNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
+	float3 simplexNoiseDFV(float3 p)
+	{
+	    float4 n1 = simplexNoiseGrad(p);
+		float4 n2 = simplexNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
+	float3 worleysimpleNoiseDFV(float3 p)
+	{
+	    float4 n1 = worleySimpleNoiseGrad(p);
+		float4 n2 = worleySimpleNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
 
 	////////////////////////////////////////////////////////////////
 	//
@@ -315,7 +354,6 @@ shader FuseCommonNoise :  FuseCommonNoiseSine, FuseCommonNoiseValueNoise, FuseCo
 	// 
 	////////////////////////////////////////////////////////////////
 
-	// just for study, but can in fact be a usefel cheap basis.  
 
 	// 1D
 	float gradientNoise11 (float p)

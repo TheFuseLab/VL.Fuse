@@ -1,4 +1,4 @@
-shader FuseCommonNoiseSine
+shader FuseCommonNoiseSine: FuseCoreMathHash
 {
 	////////////////////////////////////////////////////////////////
 	//
@@ -18,8 +18,22 @@ shader FuseCommonNoiseSine
 	float sineNoise (float2 p)
 	{
 		float2 s = sin(p*2.);
-
 		return dot(s.x,s.y);
+
+
+		// trying out something less regular
+		/*
+		int iter = 4;
+		float2 n = 0.;
+		for(int i=0; i < iter; i++)
+		{
+			float2 fm = hash22(float(i) * float2(34.7,93.27));
+			float2 am = hash22(float(i) * float2(542.98,73.82));
+			n += sin(p * fm) * am;
+		}
+		n /= float(iter);
+		return (n.x + n.y) * .5;
+		*/
 	}
 
 	// 3D
@@ -27,6 +41,7 @@ shader FuseCommonNoiseSine
 	{
 		float3 s = sin(p*2.);
 		return dot(dot(s.x, s.y), s.z);
+		return (s.x + s.y + s.z) / 3.;
 	}
 
 	// 4D
@@ -34,6 +49,23 @@ shader FuseCommonNoiseSine
 	{
 		float4 s = sin(p*2.);
 		return dot(dot(dot(s.x, s.y), s.z), s.w);
+	}
+
+	// 3D with gradient
+	// TODO Replace with analytic 
+	float4 sineNoiseGrad (float3 p)
+	{
+		float n = sineNoise(p);
+		float3  result = n.xxx;
+		float e = 0.001;
+		for(int i = 0; i < 3; i++) 		// just a weird ass way of writing forward difference
+		{
+			float3 offset = .0;
+			offset[i] = e;
+			result[i] = (sineNoise(p + offset) -  result[i]) /  e;
+		}
+	   return float4(n, result);
+
 	}
 
 };

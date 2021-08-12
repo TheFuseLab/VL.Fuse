@@ -1,0 +1,123 @@
+shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderUtils
+{
+
+	// End of the VS (usually skinning)
+	stage override void PreTransformPosition() 
+	{
+		streams.VID = streams.VertexID;
+		streams.PositionWS = streams.Position;
+	}
+
+	// End of tessellation (usually displacement mapping in world space, etc...)
+	stage override void TransformPosition() {}
+
+	// At the end of the geometry pipeline (to generate ShadingPosition)
+	stage override void PostTransformPosition()
+	{
+		streams.ShadingPosition = streams.PositionWS; //not
+	}
+
+	/*
+	static const float3 QuadPositions[4] = {
+	float3(-1, 1,0),
+	float3( 1, 1,0),
+	float3(-1, -1,0),
+	float3( 1, -1,0),
+	};
+	*/
+
+	/*
+	[maxvertexcount(4)]
+	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+	{
+		streams = input[0];
+		streams.PositionWS = float4(getSpherePos(), 1);
+		float size = getSphereSize();
+		streams.sphereSize = size;
+		float padding = 1.5;
+		float2 offset;
+		float4 cameraSpherePos = mul(streams.PositionWS, WorldView);
+		
+		for (int i = 0; i<4; i++) 
+		{
+
+			streams.TexCoord = QuadPositions[i].xy * padding;
+			offset = sign(QuadPositions[i].xy) * size;
+			float4 viewCornerPos = cameraSpherePos;
+			viewCornerPos.xy += offset * padding;
+			streams.ShadingPosition = mul(viewCornerPos, Projection);
+			triangleStream.Append(streams);
+		}
+
+	}
+	*/
+		// custom geometry shader, quad particle in this case
+	[maxvertexcount(4)]
+	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+	{
+		streams = input[0];
+
+		// get data from ParticleProvider implementation
+		streams.PositionWS = float4(getSpherePos(), 1);
+		float pSize = getSphereSize();
+
+
+		for (int i=0; i<4; i++)
+		{
+			streams.TexCoord  = QuadUV[i].xy * 2 - 1; //center and scale for sphere impostor
+
+			float4 posView = mul(streams.PositionWS, WorldView);
+			posView.xyz += QuadPositions[i].xyz * pSize;
+			streams.ShadingPosition = mul(posView, Projection);
+
+			triangleStream.Append(streams);
+		}     
+	}
+
+	/*
+	stage override float4 Shading() 
+	{
+
+		float3 p, n;
+		//float size = getSphereSize();
+		float size = streams.sphereSize;
+		sphereImpostor(streams.TexCoord, streams.PositionWS.xyz, size, p, n);
+
+		// take care for pipeline streams, should be abstracted
+		///////////////////////////////////////////////////////////////
+		streams.PositionWS = float4(p.xyz, 1);
+		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+		streams.normalWS = n;
+		streams.meshNormalWS = n;
+		streams.DepthVS = PosWVP.w;
+		streams.Depth = PosWVP.z/PosWVP.w;
+		return base.Shading();
+		////////////////////////////////////////////////////////////////
+	}
+	*/
+		//override shading, create sphere impostor in this case
+	stage override float4 Shading() 
+	{
+		float2 mapping = streams.TexCoord;
+		float lenSqr = dot(mapping, mapping);
+		if (lenSqr > 1)
+			discard; // Circles
+		
+		float z = sqrt(1 - lenSqr);
+
+		float3 normal = float3(mapping, z);
+		normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
+
+		streams.normalWS = normal;
+		streams.meshNormalWS = normal;
+
+		float4 posQuad = streams.PositionWS;
+		posQuad.z += z;
+		float4 PosWVP = mul(posQuad, ViewProjection);
+		streams.DepthVS = PosWVP.w;
+		//streams.Depth = PosWVP.z/PosWVP.w;
+		streams.DepthLessEqual = PosWVP.z/PosWVP.w;
+
+		return base.Shading();
+	}
+};
