@@ -27,21 +27,37 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader Confinement_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
-    
-    Texture3D<float3> Texture_Vorticity;
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
 
+    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+    Texture3D<float> Texture_ObstGradient;
+    Texture3D<float3> Texture_ObstVelocity;
+    Texture3D<float> Texture_Pressure;
+    
     //--------------------------------------------------------------------------------------
     // Variables
     //--------------------------------------------------------------------------------------
 
-    float Epsilon;
+    float Modulate = 1.0f;
 
+    //--------------------------------------------------------------------------------------
+    // Helper functions
+    //--------------------------------------------------------------------------------------
+
+    float3 GetObstVelocity( float3 cellTexCoords )
+    {
+        return Texture_ObstVelocity[cellTexCoords];
+    }
+
+    bool IsBoundaryCell( float3 cellTexCoords )
+    {   
+        return (Texture_ObstGradient[cellTexCoords].r > 0.9);    
+    }
+    
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
@@ -58,32 +74,46 @@ shader Confinement_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
         uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
         uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
-        // Texture_tempvector contains the vorticity computed by PS_VORTICITY
-        float3 omega = Texture_Vorticity[i];
+        if( IsBoundaryCell(i) )
+        {
+            Texture_Velocity[i] = GetObstVelocity(i);
+            return;
+        }
 
-        // Potential optimization: don't find length multiple times - do once for the entire texture
-        float omegaL = length( Texture_Vorticity[LEFTCELL]);
-        float omegaR = length( Texture_Vorticity[RIGHTCELL]);
-        float omegaB = length( Texture_Vorticity[BOTTOMCELL]);
-        float omegaT = length( Texture_Vorticity[TOPCELL]);
-        float omegaD = length( Texture_Vorticity[DOWNCELL]);
-        float omegaU = length( Texture_Vorticity[UPCELL]);
+        float pCenter = Texture_Pressure[i]; 
+        float pL = Texture_Pressure[LEFTCELL];
+        float pR = Texture_Pressure[RIGHTCELL];
+        float pB = Texture_Pressure[BOTTOMCELL];
+        float pT = Texture_Pressure[TOPCELL];
+        float pD = Texture_Pressure[DOWNCELL];
+        float pU = Texture_Pressure[UPCELL];
 
-        float3 eta = 0.5 * float3(omegaR - omegaL,
-                                  omegaT - omegaB,
-                                  omegaU - omegaD );
+        float3 velocity;
+        float3 obstV = float3(0,0,0);
+        float3 vMask = float3(1,1,1);
+        float3 v;
 
-        eta = normalize( eta + float3(0.001,0.001,0.001) );
+        float3 vLeft = GetObstVelocity(LEFTCELL);
+        float3 vRight = GetObstVelocity(RIGHTCELL);
+        float3 vBottom = GetObstVelocity(BOTTOMCELL);
+        float3 vTop = GetObstVelocity(TOPCELL);
+        float3 vDown = GetObstVelocity(DOWNCELL);
+        float3 vUp = GetObstVelocity(UPCELL);
 
-        float3 force;
-        force.xyz = Timestep * Epsilon * float3( eta.y * omega.z - eta.z * omega.y,
-                                                eta.z * omega.x - eta.x * omega.z,
-                                                eta.x * omega.y - eta.y * omega.x );
-    
-        // Note: the result is added to the current velocity at each cell using "additive blending"
-        float3 vel = Texture_Velocity[i];
-        Texture_Velocity[i] = vel + force;
-        
+        if( IsBoundaryCell(LEFTCELL) )  { pL = pCenter; obstV.x = vLeft.x; vMask.x = 0; }
+        if( IsBoundaryCell(RIGHTCELL) ) { pR = pCenter; obstV.x = vRight.x; vMask.x = 0; }
+        if( IsBoundaryCell(BOTTOMCELL) ){ pB = pCenter; obstV.y = vBottom.y; vMask.y = 0; }
+        if( IsBoundaryCell(TOPCELL) )   { pT = pCenter; obstV.y = vTop.y; vMask.y = 0; }
+        if( IsBoundaryCell(DOWNCELL) )  { pD = pCenter; obstV.z = vDown.z; vMask.z = 0; }
+        if( IsBoundaryCell(UPCELL) )    { pU = pCenter; obstV.z = vUp.z; vMask.z = 0; }
+
+        float3 velTex = Texture_Velocity[i];
+
+        v = (velTex - (0.5 * Modulate * float3( pR - pL, pT - pB, pU - pD )) );
+
+        velocity = (vMask * v) + obstV;
+
+        Texture_Velocity[i] = velocity;
     }
-   
+
 };

@@ -2,7 +2,7 @@
 // File:   FluidSim.fx
 // Author: Sarah Tariq and Ignacio Llamas
 // Email:  sdkfeedback@nvidia.com
-//
+// 
 // Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
 //
 // TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
@@ -27,30 +27,63 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader ObstaclesVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DConfinement_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
-    Texture3D <float4> Texture_ObstCylinder;
-    RWTexture3D<float3> Texture_ObstVelocity; //Output Texture
-    //Texture2DArray<float4> TexOV;
+    
+    Texture3D<float3> Texture_Vorticity;
+    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+
+    //--------------------------------------------------------------------------------------
+    // Variables
+    //--------------------------------------------------------------------------------------
+
+    float Epsilon;
 
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
-
+    
     override void Compute()
     {
-   
         uint3 i = streams.DispatchThreadId;
+        uint3 dim = FluidDimensions;
 
-        //Texture_ObstVelocity[i] = TexOV[i];
-        float3 cylinderVel = Texture_ObstCylinder[i].xyz;
+        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
+        // Texture_tempvector contains the vorticity computed by PS_VORTICITY
+        float3 omega = Texture_Vorticity[i];
+
+        // Potential optimization: don't find length multiple times - do once for the entire texture
+        float omegaL = length( Texture_Vorticity[LEFTCELL]);
+        float omegaR = length( Texture_Vorticity[RIGHTCELL]);
+        float omegaB = length( Texture_Vorticity[BOTTOMCELL]);
+        float omegaT = length( Texture_Vorticity[TOPCELL]);
+        float omegaD = length( Texture_Vorticity[DOWNCELL]);
+        float omegaU = length( Texture_Vorticity[UPCELL]);
+
+        float3 eta = 0.5 * float3(omegaR - omegaL,
+                                  omegaT - omegaB,
+                                  omegaU - omegaD );
+
+        eta = normalize( eta + float3(0.001,0.001,0.001) );
+
+        float3 force;
+        force.xyz = Timestep * Epsilon * float3( eta.y * omega.z - eta.z * omega.y,
+                                                eta.z * omega.x - eta.x * omega.z,
+                                                eta.x * omega.y - eta.y * omega.x );
+    
+        // Note: the result is added to the current velocity at each cell using "additive blending"
+        float3 vel = Texture_Velocity[i];
+        Texture_Velocity[i] = vel + force;
         
-        Texture_ObstVelocity[i] = 0;//cylinderVel;
-
     }
-
+   
 };

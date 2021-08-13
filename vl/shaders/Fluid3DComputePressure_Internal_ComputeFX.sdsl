@@ -2,7 +2,7 @@
 // File:   FluidSim.fx
 // Author: Sarah Tariq and Ignacio Llamas
 // Email:  sdkfeedback@nvidia.com
-// 
+//
 // Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
 //
 // TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
@@ -27,45 +27,35 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader ProjectVelocity_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DComputePressure_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
 
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
-    Texture3D<float> Texture_ObstGradient;
-    Texture3D<float3> Texture_ObstVelocity;
-    Texture3D<float> Texture_Pressure;
-    
-    //--------------------------------------------------------------------------------------
-    // Variables
-    //--------------------------------------------------------------------------------------
-
-    float Modulate = 1.0f;
+    Texture3D<float> Texture_ObstaclesGradient;
+    Texture3D<float> Texture_Divergence;
+    Texture3D<float> Texture_PressureIn; //Input Texture
+    RWTexture3D<float> Texture_Pressure; //Output Texture
+    float3 CoordsOffset;
 
     //--------------------------------------------------------------------------------------
     // Helper functions
     //--------------------------------------------------------------------------------------
 
-    float3 GetObstVelocity( float3 cellTexCoords )
+    bool IsBoundaryCell( uint3 cellTexCoords )
     {
-        return Texture_ObstVelocity[cellTexCoords];
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.9);
     }
 
-    bool IsBoundaryCell( float3 cellTexCoords )
-    {   
-        return (Texture_ObstGradient[cellTexCoords].r > 0.9);    
-    }
-    
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
-    
+
     override void Compute()
     {
-        uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
+        uint3 i = streams.DispatchThreadId + CoordsOffset;
 
         uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
         uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
@@ -74,46 +64,36 @@ shader ProjectVelocity_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
         uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
         uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
-        if( IsBoundaryCell(i) )
-        {
-            Texture_Velocity[i] = GetObstVelocity(i);
-            return;
-        }
+        float pCenter = Texture_PressureIn[i];
+    
+        float pL = Texture_PressureIn[LEFTCELL];
+        float pR = Texture_PressureIn[RIGHTCELL];
+        float pB = Texture_PressureIn[BOTTOMCELL];
+        float pT = Texture_PressureIn[TOPCELL];
+        float pD = Texture_PressureIn[DOWNCELL];
+        float pU = Texture_PressureIn[UPCELL];
 
-        float pCenter = Texture_Pressure[i]; 
-        float pL = Texture_Pressure[LEFTCELL];
-        float pR = Texture_Pressure[RIGHTCELL];
-        float pB = Texture_Pressure[BOTTOMCELL];
-        float pT = Texture_Pressure[TOPCELL];
-        float pD = Texture_Pressure[DOWNCELL];
-        float pU = Texture_Pressure[UPCELL];
+        i = streams.DispatchThreadId;
 
-        float3 velocity;
-        float3 obstV = float3(0,0,0);
-        float3 vMask = float3(1,1,1);
-        float3 v;
+        LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
-        float3 vLeft = GetObstVelocity(LEFTCELL);
-        float3 vRight = GetObstVelocity(RIGHTCELL);
-        float3 vBottom = GetObstVelocity(BOTTOMCELL);
-        float3 vTop = GetObstVelocity(TOPCELL);
-        float3 vDown = GetObstVelocity(DOWNCELL);
-        float3 vUp = GetObstVelocity(UPCELL);
+        // Texture_tempvector contains the "divergence" computed by PS_DIVERGENCE
+        float bC = Texture_Divergence[streams.DispatchThreadId];
 
-        if( IsBoundaryCell(LEFTCELL) )  { pL = pCenter; obstV.x = vLeft.x; vMask.x = 0; }
-        if( IsBoundaryCell(RIGHTCELL) ) { pR = pCenter; obstV.x = vRight.x; vMask.x = 0; }
-        if( IsBoundaryCell(BOTTOMCELL) ){ pB = pCenter; obstV.y = vBottom.y; vMask.y = 0; }
-        if( IsBoundaryCell(TOPCELL) )   { pT = pCenter; obstV.y = vTop.y; vMask.y = 0; }
-        if( IsBoundaryCell(DOWNCELL) )  { pD = pCenter; obstV.z = vDown.z; vMask.z = 0; }
-        if( IsBoundaryCell(UPCELL) )    { pU = pCenter; obstV.z = vUp.z; vMask.z = 0; }
+        if( IsBoundaryCell(LEFTCELL) )  pL = pCenter;
+        if( IsBoundaryCell(RIGHTCELL) ) pR = pCenter;
+        if( IsBoundaryCell(BOTTOMCELL) )pB = pCenter;
+        if( IsBoundaryCell(TOPCELL) )   pT = pCenter; 
+        if( IsBoundaryCell(DOWNCELL) )  pD = pCenter;  
+        if( IsBoundaryCell(UPCELL) )    pU = pCenter;
 
-        float3 velTex = Texture_Velocity[i];
+        Texture_Pressure[streams.DispatchThreadId] = ( pL + pR + pB + pT + pU + pD - bC ) / 6.0;
 
-        v = (velTex - (0.5 * Modulate * float3( pR - pL, pT - pB, pU - pD )) );
-
-        velocity = (vMask * v) + obstV;
-
-        Texture_Velocity[i] = velocity;
     }
 
 };

@@ -1,8 +1,8 @@
 ﻿//----------------------------------------------------------------------------------
-// File:  FluidSim.fx
+// File:   FluidSim.fx
 // Author: Sarah Tariq and Ignacio Llamas
 // Email:  sdkfeedback@nvidia.com
-//
+// 
 // Copyright (c) 2007 NVIDIA Corporation. All rights reserved.
 //
 // TO  THE MAXIMUM  EXTENT PERMITTED  BY APPLICABLE  LAW, THIS SOFTWARE  IS PROVIDED
@@ -27,70 +27,43 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader SphericalImpulse_Internal_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DVorticity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
-
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
-    Texture3D<float> Texture_ObstaclesGradient;
-
-    //--------------------------------------------------------------------------------------
-    // Variables
-    //--------------------------------------------------------------------------------------
     
-    float3 ScaleFactorInverse;
+    Texture3D<float3> Texture_Velocity;
+    RWTexture3D<float3> Texture_Vorticity; //Output Texture
 
-    Buffer<float4> PosSizeBuffer;
-    Buffer<float4> VelBuffer;
-
-    int SphericalImpulseCount;
-
-
-    
-    //--------------------------------------------------------------------------------------
-    // Helper functions
-    //--------------------------------------------------------------------------------------
-
-    bool IsNonEmptyCell( float3 cellTexCoords )
-    {
-        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.0);
-    }
-    
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
-
+    
     override void Compute()
     {
         uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
 
-        if( IsNonEmptyCell(i) )
-        {
-            Texture_Velocity[i] = 0;
-            return; // !!!
-        }
+        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
+        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
+        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
+        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
+        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
+        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
+    
+        float3 L = Texture_Velocity[LEFTCELL];
+        float3 R = Texture_Velocity[RIGHTCELL];
+        float3 B = Texture_Velocity[BOTTOMCELL];
+        float3 T = Texture_Velocity[TOPCELL];
+        float3 D = Texture_Velocity[DOWNCELL];
+        float3 U = Texture_Velocity[UPCELL];
 
-        float3 AccumVel = Texture_Velocity[i];
+        float3 vorticity;
+        vorticity.xyz = 0.5 * float3( (( T.z - B.z ) - ( U.y - D.y )) ,
+                                     (( U.x - D.x ) - ( R.z - L.z )) ,
+                                     (( R.y - L.y ) - ( T.x - B.x )) );
 
-        for(uint s=0 ; s<(uint)SphericalImpulseCount; s++)
-        {
-            float4 Source_PosSize = PosSizeBuffer[s];
-            float4 Source_Vel = VelBuffer[s];
-
-            float dist = length( i - Source_PosSize.xyz ) * Source_PosSize.w;
-            float4 result;
-            result.rgb = Source_Vel.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
-            result.a = exp( -dist*dist );
-                
-            AccumVel +=  result.xyz * result.a;
-
-        }
-
-
-    Texture_Velocity[i] = AccumVel;
-
+        Texture_Vorticity[i] = vorticity.xyz;
     }
 };
