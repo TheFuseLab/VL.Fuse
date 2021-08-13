@@ -82,4 +82,11 @@ namespace Fuse.Common.SDF
         Positive,
         Interval
     }
+
+    public enum SDFPolarity
+    {
+        Inside,
+        Outside,
+        Both
+    }
 }
