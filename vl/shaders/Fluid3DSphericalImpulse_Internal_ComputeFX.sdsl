@@ -1,5 +1,5 @@
 ﻿//----------------------------------------------------------------------------------
-// File:   FluidSim.fx
+// File:  FluidSim.fx
 // Author: Sarah Tariq and Ignacio Llamas
 // Email:  sdkfeedback@nvidia.com
 //
@@ -27,50 +27,37 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
-    
-    Texture3D<float3> Texture_VelocityIn; 
-    RWTexture3D<float3> Texture_Velocity; //Output Texture
+
+    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+    Texture3D<float> Texture_ObstaclesGradient;
 
     //--------------------------------------------------------------------------------------
     // Variables
     //--------------------------------------------------------------------------------------
+    
+    float3 ScaleFactorInverse;
 
-    float VelMult = 1.0f;
-    float TimeSpeed = 1.0f;
-    float3 CoordsOffset;
-    int BorderMargin = 5;
-    float BorderGamma = 1.0f;
+    Buffer<float4> PosSizeBuffer;
+    Buffer<float4> VelBuffer;
 
-    //--------------------------------------------------------------------------------------
-    // Pipeline State Definitions
-    //--------------------------------------------------------------------------------------
+    int SphericalImpulseCount;
 
-    SamplerState samLinear : IMMUTABLE
-    {
-        Filter = MIN_MAG_MIP_LINEAR;
-        AddressU = Clamp;
-        AddressV = Clamp;
-        AddressW = Clamp;
-    };
+
     
     //--------------------------------------------------------------------------------------
     // Helper functions
     //--------------------------------------------------------------------------------------
 
-    float3 GetAdvectedPosTexCoords(uint3 i)
+    bool IsNonEmptyCell( float3 cellTexCoords )
     {
-        float3 pos = i;
-    
-        pos -= Timestep * TimeSpeed *	Texture_Velocity[i];
-    
-        return pos;
+        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.0);
     }
-
+    
     //--------------------------------------------------------------------------------------
     // Compute Shader
     //--------------------------------------------------------------------------------------
@@ -80,16 +67,30 @@ shader AdvectVelocity_ComputeFX : ComputeShaderBase, FluidGlobals
         uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
 
-        float3 npos = ((GetAdvectedPosTexCoords((int3)i) + (int3)CoordsOffset) + 0.5f) / dim;
+        if( IsNonEmptyCell(i) )
+        {
+            Texture_Velocity[i] = 0;
+            return; // !!!
+        }
 
-        float3 BorderFader;
-        uint3 halfDim = FluidDimensions/2;
-        int3 borderGradient = abs((int3)halfDim - (int3)i);
-        BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
-        float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
-        finalGrad = pow(finalGrad, BorderGamma);
-     
-        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * VelMult * finalGrad;
+        float3 AccumVel = Texture_Velocity[i];
+
+        for(uint s=0 ; s<(uint)SphericalImpulseCount; s++)
+        {
+            float4 Source_PosSize = PosSizeBuffer[s];
+            float4 Source_Vel = VelBuffer[s];
+
+            float dist = length( i - Source_PosSize.xyz ) * Source_PosSize.w;
+            float4 result;
+            result.rgb = Source_Vel.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
+            result.a = exp( -dist*dist );
+                
+            AccumVel +=  result.xyz * result.a;
+
+        }
+
+
+    Texture_Velocity[i] = AccumVel;
+
     }
-
 };

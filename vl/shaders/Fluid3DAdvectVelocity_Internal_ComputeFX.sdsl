@@ -27,25 +27,48 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader ComputePressure_ComputeFX : ComputeShaderBase, FluidGlobals
+shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
+    
+    Texture3D<float3> Texture_VelocityIn; 
+    RWTexture3D<float3> Texture_Velocity; //Output Texture
 
-    Texture3D<float> Texture_ObstaclesGradient;
-    Texture3D<float> Texture_Divergence;
-    Texture3D<float> Texture_PressureIn; //Input Texture
-    RWTexture3D<float> Texture_Pressure; //Output Texture
+    //--------------------------------------------------------------------------------------
+    // Variables
+    //--------------------------------------------------------------------------------------
+
+    float VelMult = 1.0f;
+    float TimeSpeed = 1.0f;
     float3 CoordsOffset;
+    int BorderMargin = 5;
+    float BorderGamma = 1.0f;
 
+    //--------------------------------------------------------------------------------------
+    // Pipeline State Definitions
+    //--------------------------------------------------------------------------------------
+
+    SamplerState samLinear : IMMUTABLE
+    {
+        Filter = MIN_MAG_MIP_LINEAR;
+        AddressU = Clamp;
+        AddressV = Clamp;
+        AddressW = Clamp;
+    };
+    
     //--------------------------------------------------------------------------------------
     // Helper functions
     //--------------------------------------------------------------------------------------
 
-    bool IsBoundaryCell( uint3 cellTexCoords )
+    float3 GetAdvectedPosTexCoords(uint3 i)
     {
-        return (Texture_ObstaclesGradient[cellTexCoords].r > 0.9);
+        float3 pos = i;
+    
+        pos -= Timestep * TimeSpeed *	Texture_Velocity[i];
+    
+        return pos;
     }
 
     //--------------------------------------------------------------------------------------
@@ -54,46 +77,19 @@ shader ComputePressure_ComputeFX : ComputeShaderBase, FluidGlobals
 
     override void Compute()
     {
+        uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
-        uint3 i = streams.DispatchThreadId + CoordsOffset;
 
-        uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
-        uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
-        uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
-        uint3 TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
-        uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
-        uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
+        float3 npos = ((GetAdvectedPosTexCoords((int3)i) + (int3)CoordsOffset) + 0.5f) / dim;
 
-        float pCenter = Texture_PressureIn[i];
-    
-        float pL = Texture_PressureIn[LEFTCELL];
-        float pR = Texture_PressureIn[RIGHTCELL];
-        float pB = Texture_PressureIn[BOTTOMCELL];
-        float pT = Texture_PressureIn[TOPCELL];
-        float pD = Texture_PressureIn[DOWNCELL];
-        float pU = Texture_PressureIn[UPCELL];
-
-        i = streams.DispatchThreadId;
-
-        LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
-        RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
-        BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
-        TOPCELL = uint3(i.x, min(i.y + 1, dim.y - 1), i.z);
-        DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
-        UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
-
-        // Texture_tempvector contains the "divergence" computed by PS_DIVERGENCE
-        float bC = Texture_Divergence[streams.DispatchThreadId];
-
-        if( IsBoundaryCell(LEFTCELL) )  pL = pCenter;
-        if( IsBoundaryCell(RIGHTCELL) ) pR = pCenter;
-        if( IsBoundaryCell(BOTTOMCELL) )pB = pCenter;
-        if( IsBoundaryCell(TOPCELL) )   pT = pCenter; 
-        if( IsBoundaryCell(DOWNCELL) )  pD = pCenter;  
-        if( IsBoundaryCell(UPCELL) )    pU = pCenter;
-
-        Texture_Pressure[streams.DispatchThreadId] = ( pL + pR + pB + pT + pU + pD - bC ) / 6.0;
-
+        float3 BorderFader;
+        uint3 halfDim = FluidDimensions/2;
+        int3 borderGradient = abs((int3)halfDim - (int3)i);
+        BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
+        float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
+        finalGrad = pow(finalGrad, BorderGamma);
+     
+        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * VelMult * finalGrad;
     }
 
 };

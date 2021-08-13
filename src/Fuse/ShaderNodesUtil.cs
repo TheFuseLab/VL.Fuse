@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Fuse.compute;
 using Fuse.ShaderFX;
+using Stride.Core.Mathematics;
 using Stride.Engine;
 using Stride.Graphics;
 using Stride.Rendering;
@@ -116,6 +117,13 @@ namespace Fuse
             var toShaderFx = new ToShaderFX<T>(theGpuValue);
             AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
             return toShaderFx;
+        }
+        
+        public static ToComputeMatrix RegisterComputeMatrix(Game game, GpuValue<Matrix> theGpuValue) 
+        {
+            var toComputeMatrix = new ToComputeMatrix(theGpuValue);
+            AddShaderSource(game, toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
+            return toComputeMatrix;
         }
         
         public static IDictionary<string, AbstractGpuValue> AbstractMembers(GpuValue<GpuStruct> theStruct, IEnumerable<AbstractGpuValue> theMembers)

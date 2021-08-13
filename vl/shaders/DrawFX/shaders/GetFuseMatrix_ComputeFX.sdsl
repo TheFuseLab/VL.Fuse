@@ -12,6 +12,10 @@ shader GetFuseMatrix_ComputeFX : ComputeShaderBase, FuseCommonTypes
 	{
 		uint index = streams.DispatchThreadId.x;
 
-		OutputBuffer[index].Matrix = fuseMatrix.Compute();
+		float4x4 mat = fuseMatrix.Compute();
+		//mat[0] += float4(streams.DispatchThreadId.x,1,1,1);
+		OutputBuffer[index].Matrix = mat;
+
+		//OutputBuffer[index].Matrix[0] += float4(1,1,1,1);
 	}
 };
