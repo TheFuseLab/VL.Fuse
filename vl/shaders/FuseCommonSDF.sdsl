@@ -1261,6 +1261,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 		return min(a, max(a - ra, abs(b) - rb));
 	}
 
+	float fOpPolarity(float d, int mode)
+	{
+		if(mode == 1) return -d;		//  Flip sign if 'Inside' mode
+		else if(mode==2) return abs(d); // 'Symmetrical' mode
+		else return d;					// Just return distance for 'Outside' mode
+	}
 	////////////////////////////////////////////////////////////////
 	//
 	//             COMPOUND OBJECTS 
