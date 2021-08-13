@@ -2418,7 +2418,7 @@
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
-          <Patch Id="Ny7u4vUbNOpP1nOEPJC7iZ" IsGeneric="true">
+          <Patch Id="Ny7u4vUbNOpP1nOEPJC7iZ" IsGeneric="true" ExplicitTypeParameters="TIn,TOut">
             <Canvas Id="ECwdIE8w2RYPgmpQEfBpoa" CanvasType="Group">
               <ControlPoint Id="GRb8WMKN1h5PyCIpC3DThz" Bounds="90,81" />
               <ControlPoint Id="BDPyrLrcDttMYfAkhkIU11" Bounds="233,821" />
@@ -2445,17 +2445,6 @@
                 <Patch Id="J7j7IXcPJ63OXgvzRSIuHH" ManuallySortedPins="true">
                   <Patch Id="O4RBZhyBiAEOKZVtgW0QPd" Name="Create" ManuallySortedPins="true" />
                   <Patch Id="CU8MCWUX3Q9PtSsYp9geVq" Name="Then" ManuallySortedPins="true" />
-                  <Node Bounds="577,739,87,19" Id="SqzumPVlVuFLh5scTlZCCj">
-                    <p:NodeReference LastCategoryFullName="Primitive.TypeHelpers" LastSymbolSource="CoreLibBasics.vl">
-                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                      <Choice Kind="OperationCallFlag" Name="ConstrainTypes" />
-                      <CategoryReference Kind="Category" Name="TypeHelpers" NeedsToBeDirectParent="true" />
-                    </p:NodeReference>
-                    <Pin Id="TJmIC1nJ1WVOGwNwLRHmzS" Name="Input" Kind="InputPin" />
-                    <Pin Id="TZgOiYXEq9ENxrVpyoI4fZ" Name="Input 2" Kind="InputPin" />
-                    <Pin Id="KcdIOFsternOlCcWJCJEZ6" Name="Input 3" Kind="InputPin" />
-                    <Pin Id="UcoUGB6M0HlOMdsFHFnlIe" Name="Input 4" Kind="InputPin" />
-                  </Node>
                   <Node Bounds="231,639,185,19" Id="SHDckLXH4rtPOr3Bg1KnsD">
                     <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                       <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -2583,10 +2572,8 @@
             <Link Id="LzheAplqhgeQYgiPZPEQgp" Ids="TLBBd9ibtNBM7CeUraGChv,BlMzcsX9zYlLuLc41lIBcl" IsHidden="true" />
             <Link Id="DxjE6N68ndFOp4wdBGV5xP" Ids="KYdKpM9hP8AOt7Br5iOp7t,BLU4JIHJv6eNUamG3wgRP9" IsHidden="true" />
             <Link Id="EKptgcMNvNMNMrkjq8dj0G" Ids="GRb8WMKN1h5PyCIpC3DThz,FRBlEH6JgYFPAq0hU2FfL7" />
-            <Link Id="QIAjmRIRP6oPE69kNp71mC" Ids="NgpZlIxG7saNKRarbC65m5,TZgOiYXEq9ENxrVpyoI4fZ" />
             <Link Id="QSNOyla7sMPMtgKznBs0QI" Ids="PdjmJIZW0BULRy134EtJAc,MnafqBLpBpKNbE9rorLvPg" />
             <Link Id="MCFGaWYbkBOPZqgAPXdMMF" Ids="LrLjsyGjUSNOzWIMtHTldC,Uj8XBEFKPb6ObI8UgGUf0z" />
-            <Link Id="CoQLsbVHxJiO1UtOUV7hS7" Ids="PdjmJIZW0BULRy134EtJAc,TJmIC1nJ1WVOGwNwLRHmzS" />
             <Link Id="SMrsJ3aJno8LK4vSltgE1l" Ids="PyB8Q32oWwJPUg5PeLJnUy,ETzEQKSZ1eaQE8RdCRCmnx" />
             <Link Id="BwnaNbTqgEWP19BvlHO34Y" Ids="S1rhl8hH7ZxLI81KwziSXb,VCceNFFlTZoOXWFxQKFTF5" />
             <Link Id="THaYnqJBgDELM7dC72HtDO" Ids="TfEoJHqcsB1Pq0xF9OUUrp,DuiYPmVNyjYMoIjSwHUXgg" IsHidden="true" />
@@ -2626,6 +2613,11 @@
               <Pin Id="Q0TNIclBDcmLY3zhXQT66R" Name="Input" Kind="InputPin">
                 <p:TypeAnnotation>
                   <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="TIn" />
+                    </TypeReference>
+                  </p:TypeArguments>
                 </p:TypeAnnotation>
               </Pin>
               <Pin Id="Lf7gCpOwPuvMp0pCzVjo9Z" Name="Gain" Kind="InputPin">
@@ -2675,10 +2667,24 @@
               </Pin>
               <Pin Id="JsGXWAM8R2QLTDcjd6Vm6d" Name="functionName" Kind="InputPin" />
               <Pin Id="GrJgYfXiCoQP4tCMv3IgDW" Name="codeTemplate" Kind="InputPin" />
-              <Pin Id="EmKo9pQwuMJN7AXETBZ7x0" Name="Noise" Kind="InputPin" />
+              <Pin Id="EmKo9pQwuMJN7AXETBZ7x0" Name="Noise" Kind="InputPin">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="TOut" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="DV2KC3QWYIOQdEysj1eJlo" Name="Output" Kind="OutputPin">
                 <p:TypeAnnotation>
                   <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="TOut" />
+                    </TypeReference>
+                  </p:TypeArguments>
                 </p:TypeAnnotation>
               </Pin>
             </Patch>
