@@ -1,6 +1,6 @@
 ﻿using Stride.Engine;
 using VL.Core;
-
+using VL.UI.Core;
 namespace Fuse
 {
     public abstract class AbstractGpuValue
@@ -8,8 +8,10 @@ namespace Fuse
         public  string Name{ get; set; }
         
         public Entity Helper{ get; set; }
-        
-        public bool HelperEnables{ get; set; }
+
+        public object ToolTip { get; set; }
+
+        public bool HelperEnabled{ get; set; }
 
         protected AbstractGpuValue(string theName)
         {
