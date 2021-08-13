@@ -1,4 +1,4 @@
-shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
+shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCoreMathMap
 {
 	
 	
@@ -1261,6 +1261,28 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain
 		return min(a, max(a - ra, abs(b) - rb));
 	}
 
+	float fOpPolarity(float d, int mode)
+	{
+		if(mode == 1) return d;			//  Just return distance for 'Outside' mode
+		else if(mode==2) return abs(d); // 'Symmetrical' mode
+		else return -d;					//  Flip sign if 'Inside' mode
+	}
+
+	float fOpFalloff (float d, float radius, float biasControl, int polarityMode)
+	{
+		d = fOpPolarity(d, polarityMode);
+		return bias(mapClamp(d, 0, radius, 0., 1.), biasControl);
+	}
+
+	// 	Elongate- strech a SDF primitive.  Should be used like so: 
+	//	float4 w = pElongate(p);
+	//	float Distance = SDF(w.xyz) + w.w;
+	float4 fOpElongate( in float3 p, in float3 h )
+	{
+		//return float3( p-clamp(p,-h,h)); // faster, but produces zero in the interior elongated box
+		float3 q = abs(p)-h;
+		return float4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
+	}
 	////////////////////////////////////////////////////////////////
 	//
 	//             COMPOUND OBJECTS 
