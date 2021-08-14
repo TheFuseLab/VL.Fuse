@@ -17,40 +17,7 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		streams.ShadingPosition = streams.PositionWS; //not
 	}
 
-	/*
-	static const float3 QuadPositions[4] = {
-	float3(-1, 1,0),
-	float3( 1, 1,0),
-	float3(-1, -1,0),
-	float3( 1, -1,0),
-	};
-	*/
 
-	/*
-	[maxvertexcount(4)]
-	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
-	{
-		streams = input[0];
-		streams.PositionWS = float4(getSpherePos(), 1);
-		float size = getSphereSize();
-		streams.sphereSize = size;
-		float padding = 1.5;
-		float2 offset;
-		float4 cameraSpherePos = mul(streams.PositionWS, WorldView);
-		
-		for (int i = 0; i<4; i++) 
-		{
-
-			streams.TexCoord = QuadPositions[i].xy * padding;
-			offset = sign(QuadPositions[i].xy) * size;
-			float4 viewCornerPos = cameraSpherePos;
-			viewCornerPos.xy += offset * padding;
-			streams.ShadingPosition = mul(viewCornerPos, Projection);
-			triangleStream.Append(streams);
-		}
-
-	}
-	*/
 		// custom geometry shader, quad particle in this case
 	[maxvertexcount(4)]
 	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
@@ -60,6 +27,7 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		// get data from ParticleProvider implementation
 		streams.PositionWS = float4(getSpherePos(), 1);
 		float pSize = getSphereSize();
+		streams.sphereSize = pSize;
 
 
 		for (int i=0; i<4; i++)
@@ -74,28 +42,8 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		}     
 	}
 
-	/*
-	stage override float4 Shading() 
-	{
 
-		float3 p, n;
-		//float size = getSphereSize();
-		float size = streams.sphereSize;
-		sphereImpostor(streams.TexCoord, streams.PositionWS.xyz, size, p, n);
-
-		// take care for pipeline streams, should be abstracted
-		///////////////////////////////////////////////////////////////
-		streams.PositionWS = float4(p.xyz, 1);
-		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
-		streams.normalWS = n;
-		streams.meshNormalWS = n;
-		streams.DepthVS = PosWVP.w;
-		streams.Depth = PosWVP.z/PosWVP.w;
-		return base.Shading();
-		////////////////////////////////////////////////////////////////
-	}
-	*/
-		//override shading, create sphere impostor in this case
+	//override shading, create sphere impostor in this case
 	stage override float4 Shading() 
 	{
 		float2 mapping = streams.TexCoord;
@@ -108,6 +56,10 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		float3 normal = float3(mapping, z);
 		normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
 
+		// code from VL.Stride help example
+		// this seems to be using the acutal quad to write depth and normals etc, we want them to be from the sphere.  
+		// Note spheres are 100%  dark or light from shadows
+		/*
 		streams.normalWS = normal;
 		streams.meshNormalWS = normal;
 
@@ -115,8 +67,17 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		posQuad.z += z;
 		float4 PosWVP = mul(posQuad, ViewProjection);
 		streams.DepthVS = PosWVP.w;
-		//streams.Depth = PosWVP.z/PosWVP.w;
 		streams.DepthLessEqual = PosWVP.z/PosWVP.w;
+		*/
+		
+		// new code to write pos & depth
+		// Shadows look correct now, but if you move the camera away have other weirdness
+		streams.PositionWS = float4((normal * streams.sphereSize) + streams.PositionWS.xyz, 1); //		pos = (normal * sphereRadius) + spherePos;
+		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+		streams.normalWS = normal;
+		streams.meshNormalWS = normal;
+		streams.Depth = PosWVP.z/PosWVP.w;
+		
 
 		return base.Shading();
 	}
