@@ -58,7 +58,7 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 
 		// code from VL.Stride help example
 		// this seems to be using the acutal quad to write depth and normals etc, we want them to be from the sphere.  
-		// Note spheres are 100%  dark or light from shadows
+		// note spheres are 100%  dark or light from shadows
 		/*
 		streams.normalWS = normal;
 		streams.meshNormalWS = normal;
@@ -71,13 +71,14 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		*/
 		
 		// new code to write pos & depth
-		// Shadows look correct now, but if you move the camera away have other weirdness
+		// Shadows look correct now, but if you move the camera a distance away have other weirdness
+		// /*
 		streams.PositionWS = float4((normal * streams.sphereSize) + streams.PositionWS.xyz, 1); //		pos = (normal * sphereRadius) + spherePos;
 		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
 		streams.normalWS = normal;
 		streams.meshNormalWS = normal;
 		streams.Depth = PosWVP.z/PosWVP.w;
-		
+		// */
 
 		return base.Shading();
 	}
