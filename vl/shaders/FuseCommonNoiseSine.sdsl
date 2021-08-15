@@ -1,4 +1,4 @@
-shader FuseCommonNoiseSine: FuseCoreMathHash
+shader FuseCommonNoiseSine: FuseCoreMath, FuseCoreMathHash
 {
 	////////////////////////////////////////////////////////////////
 	//
@@ -18,7 +18,7 @@ shader FuseCommonNoiseSine: FuseCoreMathHash
 	float sineNoise (float2 p)
 	{
 		float2 s = sin(p*2.);
-		return dot(s.x,s.y);
+		return sumComponent2(s) * .5;
 
 
 		// trying out something less regular
@@ -40,15 +40,14 @@ shader FuseCommonNoiseSine: FuseCoreMathHash
 	float sineNoise (float3 p)
 	{
 		float3 s = sin(p*2.);
-		return dot(dot(s.x, s.y), s.z);
-		return (s.x + s.y + s.z) / 3.;
+		return sumComponent3(s) * .33333333333333;
 	}
 
 	// 4D
 	float sineNoise (float4 p)
 	{
 		float4 s = sin(p*2.);
-		return dot(dot(dot(s.x, s.y), s.z), s.w);
+		return sumComponent4(s) * .25;
 	}
 
 	// 3D with gradient

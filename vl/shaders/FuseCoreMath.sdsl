@@ -31,6 +31,31 @@ shader FuseCoreMath{
 	float sumComponent4(float4 theValue){
 		return theValue + theValue.y + theValue.z + theValue.w;
 	}
+	// ^
+
+	// for functions like this where the signiture is distinct I think we should just overload the function.  
+	// This is cleaner and will also reduce patch boilerplate for the correct mixin function 
+
+	// eg
+	float minComponent(float theValue)
+	{
+		return theValue;
+	}
+
+	float minComponent(float2 theValue)
+	{
+		return max(theValue.x, theValue.y);
+	}
+
+	float minComponent(float3 theValue)
+	{
+		return max(max(theValue.x, theValue.y), theValue.z);
+	}
+
+	float minComponent(float4 theValue)
+	{
+		return max(max(theValue.x, theValue.y),max(theValue.z, theValue.w));
+	}
 
 	////////////////////////////////////////////////////////////////
 	//
