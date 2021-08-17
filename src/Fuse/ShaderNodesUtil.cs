@@ -167,5 +167,12 @@ namespace Fuse
             var getComputeTextureGetInstance = Activator.CreateInstance(getComputeTextureGetType,  theTexture, theIndex, null ) as AbstractShaderNode;
             return getComputeTextureGetInstance?.AbstractOutput();
         }
+
+        public static void ListInputs(List<IGpuInput> theInputs, AbstractGpuValue theGpuValue)
+        {
+            if (theGpuValue?.ParentNode == null) return;
+            
+            theInputs.AddRange(theGpuValue.ParentNode.InputList());
+        }
     }
 }
