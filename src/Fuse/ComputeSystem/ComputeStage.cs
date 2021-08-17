@@ -26,11 +26,15 @@ namespace Fuse.ComputeSystem
 
     public class ComputeStage :IComputeStage
     {
+#pragma warning disable 649
         private IResourceHandler _resourceHandler;
+#pragma warning restore 649
 
         public bool WriteAttributes { get; set; }
 
+#pragma warning disable 169
         private ResourceManager _resourceManager;
+#pragma warning restore 169
 
         public void Draw(RenderDrawContext context)
         {
