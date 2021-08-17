@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="JPmuEharYwiLQs6dOuoEQQ" Summary="Input to the gpu world" LanguageVersion="2021.4.0.303" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.0-0303-g4b58026559" />
+<Document xmlns:p="property" Id="JPmuEharYwiLQs6dOuoEQQ" Summary="Input to the gpu world" LanguageVersion="2021.4.0.302" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.0-0302-g2b83b75aca" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Draw" CanvasType="FullCategory">
       <!--
@@ -1192,6 +1192,14 @@
               </p:TypeAnnotation>
             </Pad>
             <ControlPoint Id="JH4wRgQjwODL85OjnGOKjx" Bounds="911,779" />
+            <Node Bounds="1246,896,67,19" Id="Nle29ncdOT8LlVETu4rKd3">
+              <p:NodeReference LastCategoryFullName="VL.Stride.Graphics.BlendStateDescriptions" LastSymbolSource="VL.Stride.Runtime.dll">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="AlphaBlend" />
+                <CategoryReference Kind="AssemblyCategory" Name="BlendStateDescriptions" NeedsToBeDirectParent="true" />
+              </p:NodeReference>
+              <Pin Id="GdZMi32ja5uNimdzRx8Jpq" Name="Alpha Blend" Kind="OutputPin" />
+            </Node>
           </Canvas>
           <ProcessDefinition Id="KkT4097frfIN00c1nw4WQ2">
             <Fragment Id="CoeoDyzDldQNfIwq9E4ayi" Patch="P6GQirwyIOxMwtehqHf3f3" Enabled="true" />
@@ -1230,7 +1238,11 @@
             </Pin>
             <Pin Id="FNakb3pzfD3PZlHqBVEMzQ" Name="Format" Kind="InputPin" Bounds="1205,853" />
             <Pin Id="I6a80OAwKaMP4JvtAD9K9P" Name="Clear" Kind="InputPin" Bounds="1286,835" />
-            <Pin Id="PnHfihp5aNWLaxTpcoyqUg" Name="Clear Color" Kind="InputPin" Bounds="1262,892" />
+            <Pin Id="PnHfihp5aNWLaxTpcoyqUg" Name="Clear Color" Kind="InputPin" Bounds="1262,892" DefaultValue="0, 0, 0, 0">
+              <p:TypeAnnotation LastCategoryFullName="Color" LastSymbolSource="CoreLibBasics.vl">
+                <Choice Kind="TypeFlag" Name="RGBA" />
+              </p:TypeAnnotation>
+            </Pin>
             <Pin Id="JQ1iz4BCtTyNsmLWefvVzy" Name="Convert SRGB to RGB" Kind="InputPin" Bounds="1284,533" />
             <Pin Id="HPuuH57AMoTQJuWTkqV9m4" Name="Texture" Kind="OutputPin" Bounds="1029,1167" />
             <Pin Id="VSzJyecJrYVOETef2XXBYR" Name="lastError" Kind="OutputPin" Bounds="1143,1147" />
@@ -1240,6 +1252,7 @@
           <Link Id="RGEaGkjJubdMkZaz87DvRV" Ids="T8GtCAENmDaLr5gVMA0CtD,HLXM6GNXBOLNM0eUPGXogP" />
           <Link Id="LadRyBPAvPbOKRPe3uMhtf" Ids="T8GtCAENmDaLr5gVMA0CtD,KDKkQSRU66gOrhybjAHOQP" />
           <Link Id="DamHdFxoSAQOtbgi5buevI" Ids="JbzsLKOQlssOux40ZGVl8N,OqUuYwa7Tl7O9BljYfbuAh" />
+          <Link Id="S3V3HuAuAA7QA4DXS2mPBE" Ids="GdZMi32ja5uNimdzRx8Jpq,AosvNjvMrXULsHNicrn2OI" />
         </Patch>
       </Node>
       <Pad Id="GPqXRn0UiueL1SNGxLBiqv" Bounds="598,722,224,66" ShowValueBox="true" isIOBox="true" Value="Load a matieral override from file.  Used atm, but should switch to patched version below">
@@ -1303,7 +1316,7 @@
                 <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
                 <CategoryReference Kind="Category" Name="Stride" NeedsToBeDirectParent="true" />
               </p:NodeReference>
-              <Pin Id="Ub5jtMQlJhNNn83h5mLjK7" Name="Bounds" Kind="InputPin" DefaultValue="1370.286, 336, 624.5714, 608.5714">
+              <Pin Id="Ub5jtMQlJhNNn83h5mLjK7" Name="Bounds" Kind="InputPin" DefaultValue="1370, 336, 624, 608">
                 <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="Rectangle" />
                 </p:TypeAnnotation>
@@ -1332,7 +1345,11 @@
               </p:NodeReference>
               <Pin Id="KXuLkEgOBXdMKyiCqyzva7" Name="Transformation" Kind="InputPin" />
               <Pin Id="CqpMdQbeFZkLhIj5nVce64" Name="Input" Kind="InputPin" />
-              <Pin Id="MRKyMiDwZBwOPQ9Nk1hrg8" Name="Render Stage" Kind="InputPin" />
+              <Pin Id="MRKyMiDwZBwOPQ9Nk1hrg8" Name="Render Stage" Kind="InputPin" DefaultValue="Transparent">
+                <p:TypeAnnotation LastCategoryFullName="VL.Stride.Rendering" LastSymbolSource="VL.Stride.Runtime.dll">
+                  <Choice Kind="TypeFlag" Name="DrawerRenderStage" />
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="KOrollq4DHHNKJpsBeekR7" Name="Single Call Per Frame" Kind="InputPin" />
               <Pin Id="UP3f5ho0oVQNaMaoV6OHCl" Name="Render Group" Kind="InputPin" />
               <Pin Id="VkFRHaKlydDMqVwjxOmOdd" Name="Components" Kind="InputPin" />
@@ -1349,7 +1366,11 @@
               <Pin Id="Rv7jpTyMyWQQI5YLO1BZTx" Name="Input" Kind="InputPin" />
               <Pin Id="CnN197dNHN4Oz3DEauB1JW" Name="Size" Kind="InputPin" />
               <Pin Id="Rk0gld3dItTLdmaB4lRfp3" Name="Format" Kind="InputPin" />
-              <Pin Id="QtRfdZNwMRCNjKzdwtR56Y" Name="Clear" Kind="InputPin" />
+              <Pin Id="QtRfdZNwMRCNjKzdwtR56Y" Name="Clear" Kind="InputPin" DefaultValue="True">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="Boolean" />
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="MZk0RzctorJPRDCBR5SkoT" Name="Clear Color" Kind="InputPin" />
               <Pin Id="AYEPv3ElouLQQQIs4Phd8v" Name="Convert SRGB to RGB" Kind="InputPin" />
               <Pin Id="GbJsPZEJcudMay4tTEiTAR" Name="Texture" Kind="OutputPin" />
@@ -1377,6 +1398,26 @@
               </p:TypeAnnotation>
             </Pad>
             <ControlPoint Id="JEUGL1BwJ7lPpVOmQnmVLo" Bounds="907,549" />
+            <Node Bounds="1099,709" Id="IzVXdoD1STZO8RuZVmfAlk">
+              <p:NodeReference LastCategoryFullName="Stride.Materials.MiscAttributes.Transparency" LastSymbolSource="VL.Stride.Rendering.Nodes">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="ProcessNode" Name="Blend" />
+                <CategoryReference Kind="Category" Name="Transparency" NeedsToBeDirectParent="true" />
+              </p:NodeReference>
+              <Pin Id="OnTQC5DL8RHMJUrLpjibp9" Name="Alpha" Kind="InputPin" />
+              <Pin Id="T4b7KmsQUSbNQrasHF1jQp" Name="Tint" Kind="InputPin" />
+              <Pin Id="SfWUBtyfb16Nbny9IH4nKG" Name="Enabled" Kind="InputPin" />
+              <Pin Id="VSs1qYQTj7LNOWEoEJ9qyd" Name="Output" Kind="OutputPin" />
+            </Node>
+            <Node Bounds="1101,773" Id="B4QNkbhy3HcMIAZ1gNNyBy">
+              <p:NodeReference LastCategoryFullName="VL.Stride.Graphics.BlendStateDescriptions" LastSymbolSource="VL.Stride.Runtime.dll">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="AlphaBlend" />
+                <CategoryReference Kind="AssemblyCategory" Name="BlendStateDescriptions" NeedsToBeDirectParent="true" />
+              </p:NodeReference>
+              <Pin Id="J43aKZZuF4eMQoev9vt1sM" Name="Alpha Blend" Kind="OutputPin" />
+            </Node>
+            <ControlPoint Id="BHQiygp0SOtOUeGqe4MsgN" Bounds="1012,552" />
           </Canvas>
           <ProcessDefinition Id="Ub9ShsuGCkRMriWBb6zEGC">
             <Fragment Id="NligKbE6lp1LdNltuWA9yG" Patch="QvtAvzvzNBXQNnfcz4gEYV" Enabled="true" />
@@ -1385,6 +1426,7 @@
           <Patch Id="QvtAvzvzNBXQNnfcz4gEYV" Name="Create" />
           <Patch Id="HIrdMofpz7OMbrS5XVqrAM" Name="Update">
             <Pin Id="Sb6CaY7n7u5OG6cGimGKwG" Name="Input" Kind="InputPin" Bounds="963,633" />
+            <Pin Id="L0jtpKsA0mDMYs8tmUuFoN" Name="Convert SRGB to RGB" Kind="InputPin" Bounds="1047,580" />
           </Patch>
           <Link Id="K1bYgQjctNXLpFGW6KqN1u" Ids="RCqYTH4Ckm7P7y3HT5cS97,NWC8RuKIYUqNlHLgFpSd18" />
           <Link Id="M9xZO2ohipcLHrRil6sYC2" Ids="SGWExjhSU4PQBhxhbbrxil,KPY4UfXbKaYP4XRzAG450w" />
@@ -1393,6 +1435,9 @@
           <Link Id="IVmnUGemwIkNsrGd7YxHQa" Ids="TD2ro7IuvmqMfbvUBo6toj,CnN197dNHN4Oz3DEauB1JW" />
           <Link Id="FUBoBIW4lDfOk9ATDLnEAn" Ids="JEUGL1BwJ7lPpVOmQnmVLo,Rv7jpTyMyWQQI5YLO1BZTx" />
           <Link Id="NetKulEsSRiM1ZrrCsEg5V" Ids="Sb6CaY7n7u5OG6cGimGKwG,JEUGL1BwJ7lPpVOmQnmVLo" IsHidden="true" />
+          <Link Id="Ume9PaIVnojLZz17QE63OH" Ids="J43aKZZuF4eMQoev9vt1sM,Trk3drTFpqVOFKRvrp1qVW" />
+          <Link Id="Meca0RRC2W7OinEBkTFLMt" Ids="BHQiygp0SOtOUeGqe4MsgN,AYEPv3ElouLQQQIs4Phd8v" />
+          <Link Id="CZTRhAVvtMaPDCT05vx3Zu" Ids="L0jtpKsA0mDMYs8tmUuFoN,BHQiygp0SOtOUeGqe4MsgN" IsHidden="true" />
         </Patch>
       </Node>
     </Canvas>
@@ -1417,11 +1462,11 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.0-0303-g4b58026559" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.0-0302-g2b83b75aca" />
   <DocumentDependency Id="IP8LS5YJ8ZuQYmCDcNjRsh" Location="./Fuse.Core.vl" />
-  <NugetDependency Id="EhjUULRVeDINHUsf8JBt65" Location="VL.Stride.Runtime" Version="2021.4.0-0303-g4b58026559" />
-  <NugetDependency Id="VA4xICjze1pL7uMeEOdB9E" Location="VL.Stride.Windows" Version="2021.4.0-0303-g4b58026559" />
+  <NugetDependency Id="EhjUULRVeDINHUsf8JBt65" Location="VL.Stride.Runtime" Version="2021.4.0-0302-g2b83b75aca" />
+  <NugetDependency Id="VA4xICjze1pL7uMeEOdB9E" Location="VL.Stride.Windows" Version="2021.4.0-0302-g2b83b75aca" />
   <PlatformDependency Id="SVeysndmoxKNSyLNn0DbBx" Location="../../../../../../../../Program Files/vvvv/vvvv_gamma_2021.4.0-0124-g1a5958a1bd/lib/VL.Stride.Runtime.dll" />
-  <NugetDependency Id="NG7zMiDNhLVLr7WgurLiXu" Location="VL.EditingFramework" Version="2021.4.0-0303-g4b58026559" />
+  <NugetDependency Id="NG7zMiDNhLVLr7WgurLiXu" Location="VL.EditingFramework" Version="2021.4.0-0302-g2b83b75aca" />
   <DocumentDependency Id="SeUUqfWWWrvMyAPcc4P1wD" Location="./shaders/DrawFX/FuseDrawFX.vl" IsForward="true" />
 </Document>
