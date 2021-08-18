@@ -1283,6 +1283,28 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float3 q = abs(p)-h;
 		return float4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
 	}
+
+
+
+
+	// https://www.shadertoy.com/view/XsyGRW
+	//TODO fix for res (R)
+	float3 draw_line(float d, float thickness, float2 R=1024) {const float aa = 3.0;return smoothstep(0.0, aa / R.y, max(0.0, abs(d) - thickness));}
+	float3 draw_line(float d) {return draw_line(d, 0.0025);}
+	float draw_solid(float d, float2 R=1024) {return smoothstep(0.0, 3.0 / R.y, max(0.0, d));}
+	float4 fOpDebugSDF(float d, float4 colA, float4 colB) 
+	{
+		float t = clamp(d * .85, 0.0, 1.0);
+		float4 grad = lerp(colA, colB, t);
+		float d0 = abs(1.0 - draw_line(mod(d + 0.1, 0.2) - 0.1).x);
+		float d1 = abs(1.0 - draw_line(mod(d + 0.025, 0.05) - 0.025).x);
+		float d2 = abs(1.0 - draw_line(d).x);
+		float rim = max(d2 * 0.85, max(d0 * 0.25, d1 * 0.06125));
+		grad -= rim;
+		grad.rgb *= lerp(.75, 1., draw_solid(d));
+		return grad;
+	}
+
 	////////////////////////////////////////////////////////////////
 	//
 	//             COMPOUND OBJECTS 
