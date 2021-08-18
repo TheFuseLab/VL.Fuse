@@ -57,13 +57,16 @@ shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream,
 		streams = input[0];
 		streams.PositionWS = float4(getSpherePos(), 1);
 		float size = getSphereSize();
-		streams.sphereSize = size;
+
+
 		float padding = 1.5;
 		float2 offset;
 		float4 cameraSpherePos = mul(streams.PositionWS, WorldView);
 		
 		for (int i = 0; i<4; i++) 
 		{
+			streams.sphereSize = size;
+			streams.spherePos = streams.PositionWS;
 
 			streams.TexCoord = QuadPositions[i].xy * padding;
 			offset = sign(QuadPositions[i].xy) * size;
@@ -81,7 +84,7 @@ shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream,
 		float3 p, n;
 		//float size = getSphereSize();
 		float size = streams.sphereSize;
-		sphereImpostor(streams.TexCoord, streams.PositionWS.xyz, size, p, n);
+		sphereImpostor(streams.TexCoord, streams.spherePos.xyz, size, p, n);
 
 		// take care for pipeline streams, should be abstracted
 		///////////////////////////////////////////////////////////////
