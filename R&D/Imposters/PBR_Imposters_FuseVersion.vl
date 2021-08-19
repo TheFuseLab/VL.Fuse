@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="IZNEdmWwsqTPmRYNCw6rdu" LanguageVersion="2021.4.0.302" Version="0.128">
-  <NugetDependency Id="UMjQW1rcsHzLbQEEvmlyux" Location="VL.CoreLib" Version="2021.4.0-0302-g2b83b75aca" />
+<Document xmlns:p="property" Id="IZNEdmWwsqTPmRYNCw6rdu" LanguageVersion="2021.4.0.304" Version="0.128">
+  <NugetDependency Id="UMjQW1rcsHzLbQEEvmlyux" Location="VL.CoreLib" Version="2021.4.0-0304-gdc45069143" />
   <Patch Id="E3ImUTd2YNGObBvmdtwudp">
     <Canvas Id="UxUkpQTPbkoLBVXkPUqMgv" DefaultCategory="Main" CanvasType="FullCategory">
       <!--
@@ -897,7 +897,7 @@
                 <Choice Kind="TypeFlag" Name="Float32" />
               </p:TypeAnnotation>
             </Pad>
-            <Overlay Id="Ms0QcGcySbIM1STBtdnrjP" Name="Sphere Imposter Module" Bounds="699,551,905,282" />
+            <Overlay Id="Ms0QcGcySbIM1STBtdnrjP" Name="Sphere Imposter Module" Bounds="699,551,905,268" />
             <Pad Id="C8Oyn0hPcMQOLl6M7I59El" Comment="Size Buffer" Bounds="1133,515" isIOBox="true">
               <p:TypeAnnotation LastCategoryFullName="Stride.API.Graphics" LastSymbolSource="VL.Stride.Runtime.TypeForwards.vl">
                 <Choice Kind="TypeFlag" Name="Buffer" />
@@ -930,6 +930,11 @@
               <Pin Id="Kilu6AiaQd3NxUmL81hyjM" Name="Draw Count" Kind="InputPin" />
               <Pin Id="BNbfW59hk13MRVNoDeD8gh" Name="Is Shadow Caster" Kind="InputPin" />
               <Pin Id="JvxRS13pBPcOD1DLMlh2y3" Name="Bounding Box" Kind="InputPin" />
+              <Pin Id="GHQSeuueWyfNgCCCSWsOHi" Name="Enabled" Kind="InputPin" DefaultValue="True">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="Boolean" />
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="Ehzuh3b3QPNQMiM6Lw9EkI" Name="Entity" Kind="OutputPin" />
             </Node>
             <Pad Id="APrEcQZE9HyNqLUz0y1tX7" Comment="Draw Perspective" Bounds="1256,513,35,35" ShowValueBox="true" isIOBox="true" Value="True">
@@ -945,15 +950,6 @@
                 <Choice Kind="TypeFlag" Name="Material" />
               </p:TypeAnnotation>
             </Pad>
-            <Node Bounds="1270,729" Id="QO5uRfsZdGLM5LUmwEUcnO">
-              <p:NodeReference LastCategoryFullName="3D.AlignedBox" LastSymbolSource="CoreLibBasics.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="OperationCallFlag" Name="AlignedBox (Join)" />
-              </p:NodeReference>
-              <Pin Id="GukEASfQeCkPPViMKysagg" Name="Minimum" Kind="InputPin" />
-              <Pin Id="ENNsc1cqCapQGmK4h7InWW" Name="Maximum" Kind="InputPin" />
-              <Pin Id="UQRU6NF28w1MLnGkqSTNKw" Name="Output" Kind="StateOutputPin" />
-            </Node>
             <Pad Id="Uz1vKDUTMwoOJqA1QzkXPs" Comment="Center" Bounds="1703,69,35,43" ShowValueBox="true" isIOBox="true" Value="0.45, 0.09999999, 0.03">
               <p:TypeAnnotation LastCategoryFullName="3D" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="Vector3" />
@@ -990,6 +986,49 @@
                 <Choice Kind="TypeFlag" Name="Float32" />
               </p:TypeAnnotation>
             </Pad>
+            <Node Bounds="1197,701,125,19" Id="VwMp376qI93MxinJtldzaC">
+              <p:NodeReference LastCategoryFullName="Fuse.Common.Draw" LastSymbolSource="Fuse.Common.Draw.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="ProcessAppFlag" Name="Sprite" />
+              </p:NodeReference>
+              <Pin Id="MBRLmUmPeJ2LxCp1Bv94gG" Name="Position 3D Buffer" Kind="InputPin" />
+              <Pin Id="JpKdrIGnk3COTd9alcXo9u" Name="Size Buffer" Kind="InputPin" />
+              <Pin Id="MED0y7MFuUAPWMMG9Yd7iM" Name="Size Default" Kind="InputPin" />
+              <Pin Id="EbmvzDeKPr4Obj9fP7pf1u" Name="Color Buffer" Kind="InputPin" />
+              <Pin Id="VCetbEKyr5BOMzfmKSQGcy" Name="Color Defualt" Kind="InputPin" />
+              <Pin Id="R9TGaaRQy0YPNL6U0iaeOD" Name="World" Kind="InputPin" />
+              <Pin Id="EBbw3unezc5QV268fAyOWW" Name="Count" Kind="InputPin" />
+              <Pin Id="HYZr7gT2B3uMYo9J4pCH9m" Name="Output" Kind="OutputPin" />
+            </Node>
+            <Node Bounds="1174,730,165,19" Id="LSWC4tt2RGXNIAIxNyAuxd">
+              <p:NodeReference LastCategoryFullName="Stride.Rendering" LastSymbolSource="VL.Stride.Engine.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="ProcessAppFlag" Name="RenderEntity" />
+              </p:NodeReference>
+              <Pin Id="NPR2LfWuAKSPRof2w33mVp" Name="Transformation" Kind="InputPin" />
+              <Pin Id="QEgU8xhs1DqMiPlJPggxjO" Name="Input" Kind="InputPin" />
+              <Pin Id="Q6q7DrsuRT2P19CGwH0DIw" Name="Render Stage" Kind="InputPin" />
+              <Pin Id="BKYqwsWhvHCOJRZJUsEgoW" Name="Single Call Per Frame" Kind="InputPin" />
+              <Pin Id="AjNYGCvzvtRLCGcMJTJHBc" Name="Render Group" Kind="InputPin" />
+              <Pin Id="KM49hOAkFy9QSv4aiOAy1A" Name="Components" Kind="InputPin" />
+              <Pin Id="JWxsjxHr50TLO2Oa0QmuyG" Name="Children" Kind="InputPin" />
+              <Pin Id="Qw3cFuscdnCOlNJmViTa23" Name="Name" Kind="InputPin" />
+              <Pin Id="AGKeV9x71v6Plc0h7bwLpy" Name="Enabled" Kind="InputPin" />
+              <Pin Id="GIEqWCJGN3oO8GQnxzHfFB" Name="Output" Kind="OutputPin" />
+            </Node>
+            <Node Bounds="916,825" Id="RfVH4Qi18ikMj9FFYpZjDR">
+              <p:NodeReference LastCategoryFullName="Stride" LastSymbolSource="VL.Stride.Engine.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="ProcessAppFlag" Name="Group" />
+                <CategoryReference Kind="Category" Name="Stride" NeedsToBeDirectParent="true" />
+              </p:NodeReference>
+              <Pin Id="G7BINGB7F3iMNR89mltVhk" Name="Transformation" Kind="InputPin" />
+              <Pin Id="DQ0eECW4EcLMPUd7Ks2cYg" Name="Child" Kind="InputPin" />
+              <Pin Id="U4Drg02PLNJOfRXzkIGz3Z" Name="Child 2" Kind="InputPin" />
+              <Pin Id="UkZddnKE1pfLX3VM5TzjDd" Name="Name" Kind="InputPin" />
+              <Pin Id="GRSxmi8Om4ULY6VSbaSF83" Name="Enabled" Kind="InputPin" />
+              <Pin Id="Kr9lHoW4ME6LbewcFyPrDX" Name="Output" Kind="OutputPin" />
+            </Node>
           </Canvas>
           <ProcessDefinition Id="Kg5hCwbCqQYN57I5kF4o6O">
             <Fragment Id="CkYCBqrxqOaNKIgdk5RXL0" Patch="KHxRIGIn6R8MnklE5HmneZ" Enabled="true" />
@@ -1051,16 +1090,20 @@
           <Link Id="OA359iOVZh1LR2xrWlVIm2" Ids="HEmIQOw9paCPnTf8EIM4cw,Kilu6AiaQd3NxUmL81hyjM" />
           <Link Id="KAuxfpSbDoiP7aLl0Na5AO" Ids="BllYcqXkjLEQE4puStdAc1,GT8SU3eaaPULHeWmM4HMCN" />
           <Link Id="OlWsQe4g4G7MZiu6pQsfUB" Ids="C8Oyn0hPcMQOLl6M7I59El,O95eXMAMTM1PBUcBpsjXFL" />
-          <Link Id="BJ7jG5mFPlDMBq49IWoCUB" Ids="Ehzuh3b3QPNQMiM6Lw9EkI,TpZHR7wTsPtM5q0hnyiM0K" />
           <Link Id="HJoJ4NZmdCWQP5NxiW72Rs" Ids="APrEcQZE9HyNqLUz0y1tX7,FHEmSRr9v7gLIhUobu5O1S" />
           <Link Id="EoXiM7y33BfPQO5l2k0pV5" Ids="T841gJjmcawLWVjA3JYGPA,I6CL1iOaVSKMU9A4wLRzq9" />
-          <Link Id="Od9x34ZAJy5Pcmj6p7SwJ4" Ids="UQRU6NF28w1MLnGkqSTNKw,JvxRS13pBPcOD1DLMlh2y3" />
           <Link Id="MHP1CYmrA6sNSBhPN8pu3A" Ids="Uz1vKDUTMwoOJqA1QzkXPs,NetgrRjfi9bPitmXaysxyj" />
           <Link Id="Pxk7T7wOYavPbbxFl6yynl" Ids="VxNDE1nU4LSLZy1Kbax8Sy,MUTrxadgK5INXNM1CLt98h" />
           <Link Id="DMFLc7ofjIiPQ1FNu8pQxr" Ids="JypL3RsSkSKPJSkBwYnULN,DFJLGjZYol9O3vWNNxn7nm" />
           <Link Id="OCjSzAwaSMoMnap8MKzyeq" Ids="CTXlvhYRIMoPvWADhnBIUw,GVBFMqRAWGrPJJUzLxmF93" />
           <Link Id="TfqGeFTcf8SPSThy9U1cqB" Ids="G0TniZ41DfFPO9IZ3XSi7V,NVENhp4NR3ALfOY6Ogmmhy" />
           <Link Id="IO3z5FKX5u2LoWMsZi3jI0" Ids="NtZryRVVpIlPLcuz55KcD7,Opc2z3XERHoNlRlEXH7KzP" />
+          <Link Id="OfB8qFI0ZyNPsU9T3X3VRQ" Ids="HYZr7gT2B3uMYo9J4pCH9m,QEgU8xhs1DqMiPlJPggxjO" />
+          <Link Id="UoWTfIgogTsPMNSpYdBdDt" Ids="Ehzuh3b3QPNQMiM6Lw9EkI,DQ0eECW4EcLMPUd7Ks2cYg" />
+          <Link Id="Nmnhi5AtryNLtWDuJVrM1j" Ids="GIEqWCJGN3oO8GQnxzHfFB,U4Drg02PLNJOfRXzkIGz3Z" />
+          <Link Id="D3U5zVxIO0IMOyidXhTcIs" Ids="Kr9lHoW4ME6LbewcFyPrDX,TpZHR7wTsPtM5q0hnyiM0K" />
+          <Link Id="K6o2PuUJaH5PkwbaZ4aPES" Ids="BllYcqXkjLEQE4puStdAc1,MBRLmUmPeJ2LxCp1Bv94gG" />
+          <Link Id="KVE0gz7oIhaNi52rYnp3iY" Ids="C8Oyn0hPcMQOLl6M7I59El,JpKdrIGnk3COTd9alcXo9u" />
         </Patch>
       </Node>
       <!--
@@ -1600,7 +1643,7 @@
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="KJ4KpIKdFd3LoVlEQQ7DdG" Comment="Exponent" Bounds="240,325,35,25" ShowValueBox="true" isIOBox="true" Value="12">
+          <Pad Id="KJ4KpIKdFd3LoVlEQQ7DdG" Comment="Exponent" Bounds="240,325,35,25" ShowValueBox="true" isIOBox="true" Value="10">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Integer32" />
             </p:TypeAnnotation>
@@ -1782,10 +1825,10 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="Dy0zFD8uTmYMzk069ST9sM" Location="VL.CoreLib" Version="2021.4.0-0302-g2b83b75aca" />
-  <NugetDependency Id="Lp16f7qHFemQFVwR2545bJ" Location="VL.Stride.Runtime" Version="2021.4.0-0302-g2b83b75aca" />
+  <NugetDependency Id="Dy0zFD8uTmYMzk069ST9sM" Location="VL.CoreLib" Version="2021.4.0-0304-gdc45069143" />
+  <NugetDependency Id="Lp16f7qHFemQFVwR2545bJ" Location="VL.Stride.Runtime" Version="2021.4.0-0304-gdc45069143" />
   <PlatformDependency Id="Op16f7qHFemQFVwR2545bJ" Location="VL.Stride.Runtime.dll" />
-  <NugetDependency Id="IS68NBjN33xNudq4Meb8FU" Location="VL.EditingFramework" Version="2021.4.0-0302-g2b83b75aca" />
-  <NugetDependency Id="N2EmPdu0p2zMRRd7X1tgPt" Location="VL.Stride.Windows" Version="2021.4.0-0302-g2b83b75aca" />
+  <NugetDependency Id="IS68NBjN33xNudq4Meb8FU" Location="VL.EditingFramework" Version="2021.4.0-0304-gdc45069143" />
+  <NugetDependency Id="N2EmPdu0p2zMRRd7X1tgPt" Location="VL.Stride.Windows" Version="2021.4.0-0304-gdc45069143" />
   <NugetDependency Id="A0QVCGjUVM7PpZQ4cAxnyu" Location="VL.Fuse" Version="0.0.0.0" />
 </Document>
