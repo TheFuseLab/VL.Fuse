@@ -1295,13 +1295,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	float4 fOpDebugSDF(float d, float4 colA, float4 colB) 
 	{
 		float t = clamp(d * .85, 0.0, 1.0);
-		float4 grad = lerp(colA, colB, t);
+		float4 grad = lerp(colA, colB, draw_solid(d));
 		float d0 = abs(1.0 - draw_line(mod(d + 0.1, 0.2) - 0.1).x);
 		float d1 = abs(1.0 - draw_line(mod(d + 0.025, 0.05) - 0.025).x);
 		float d2 = abs(1.0 - draw_line(d).x);
 		float rim = max(d2 * 0.85, max(d0 * 0.25, d1 * 0.06125));
 		grad -= rim;
-		grad.rgb *= lerp(.75, 1., draw_solid(d));
 		return grad;
 	}
 
