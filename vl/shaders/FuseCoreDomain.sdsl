@@ -6,6 +6,20 @@ shader FuseCoreDomain: FuseCoreMath
 	//             Coordinate Conversions
 	//
 	////////////////////////////////////////////////////////////////
+
+	// convert between uv and screen space (vvvv)
+	float2 screenToUV(float2 p)
+	{
+		p.y *= -1;
+		return p *.5 + .5;
+	};
+
+	float2 UVToScreen(float2 uvcoord)
+	{
+		uvcoord.y = 1. - uvcoord.y;
+		return uvcoord * 2. - 1.;
+	};
+
 	float2 polarToCart(float2 coords)
 	{
 		float mag = coords[1];
