@@ -1286,12 +1286,13 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 
 
 
-
+	// Preview SDF Distance
 	// https://www.shadertoy.com/view/XsyGRW
 	//TODO fix for res (R)
 	float3 draw_line(float d, float thickness, float2 R=1024) {const float aa = 3.0;return smoothstep(0.0, aa / R.y, max(0.0, abs(d) - thickness));}
 	float3 draw_line(float d) {return draw_line(d, 0.0025);}
 	float draw_solid(float d, float2 R=1024) {return smoothstep(0.0, 3.0 / R.y, max(0.0, d));}
+
 	float4 fOpDebugSDF(float d, float4 colA, float4 colB) 
 	{
 		float t = clamp(d * .85, 0.0, 1.0);
@@ -1302,6 +1303,26 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float rim = max(d2 * 0.85, max(d0 * 0.25, d1 * 0.06125));
 		grad -= rim;
 		return float4(grad, 1.);
+	}
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// From "Texturing and Modeling. A Procedural Approach" Chapter 6 by STEVEN WORLEY
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// returns height bevel from a distance function
+	float fOpSDFToBump(float dist, float depth = 1.0, float bevelWidth = 0.1, float2 bevelControl = 0.0)
+	{
+		float mu = saturate(dist / bevelWidth); 
+		float mu2 = mu * mu;
+		float mu3 = mu2 * mu;
+	
+		float p1 = 2 * mu3 - 3 * mu2 + 1;
+		float r1 = mu3 - 2 * mu2 + mu;
+		float r4 = mu3 - mu2;
+		float height =  p1 + bevelControl.x * r1 + bevelControl.y * r4;
+
+		return height * depth;
 	}
 
 	////////////////////////////////////////////////////////////////
