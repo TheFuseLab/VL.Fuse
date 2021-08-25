@@ -1,0 +1,13 @@
+shader EmitElement_ComputeFX :  ComputeShaderBase
+{
+    ConsumeStructuredBuffer<int> AvailableIndices;
+    RWStructuredBuffer<float> ElementBuffer;
+
+    override void Compute()
+    {
+        uint AvailableIndex = AvailableIndices.Consume();
+        
+        ElementBuffer[AvailableIndex] = 0;
+    }
+
+};
