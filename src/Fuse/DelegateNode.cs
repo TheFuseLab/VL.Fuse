@@ -48,9 +48,7 @@ namespace Fuse
         public void Remap(List<AbstractGpuValue> theParameters)
         {
             if (id >= theParameters.Count()) return;
-            Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
             Output.Name = "arg_"+theParameters[id].ID;
-            Console.WriteLine(Output.ID + " : " + theParameters[id].ID);
         }
 
         public void DeleteRemap()
