@@ -159,7 +159,7 @@ ${structMembers}
 
         protected override string SourceTemplate()
         {
-            const string shaderCode = "${bufferName}.Consume();";
+            const string shaderCode = "${resultType} ${resultName} = ${bufferName}.Consume();";
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"bufferName", _buffer.ID}
