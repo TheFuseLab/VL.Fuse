@@ -62,7 +62,7 @@ namespace Fuse.ShaderFX
             {
                 shaderInputs.Value.ForEach(gpuValue =>
                 {
-                    gpuValue.Value.ParentNode.InputList().ForEach(input => input.SetParameters(_parameters));
+                    gpuValue.Value.ParentNode.InputList().ForEach(input => input.AddParameters(_parameters));
                 });
             });//input.ParentNode.SetParameters(_parameters)
             return new ShaderClassSource(ShaderName);
