@@ -9,8 +9,8 @@ namespace Fuse.Tests
     {
         public static void TestDelegateFunction()
         {
-            var delegate0 = new DelegateParameter<float>(new ConstantValue<float>(0),0);
-            var delegate1 = new DelegateParameter<float>(new ConstantValue<float>(0),1);
+            var delegate0 = new FunctionParameter<float>(new ConstantValue<float>(0),0);
+            var delegate1 = new FunctionParameter<float>(new ConstantValue<float>(0),1);
             
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
@@ -20,7 +20,7 @@ namespace Fuse.Tests
                 "sin", new ConstantValue<float>(0));
             var operatorNode = new OperatorNode<float, float>(new List<GpuValue<float>> {sin2.Output, delegate1.Output},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new DelegateNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, "delegate");
+            var delegateNode = new FunctionInvokeNode<float>(operatorNode.Output, new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, "delegate");
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             
@@ -31,7 +31,7 @@ namespace Fuse.Tests
 
         public static void TestTemplateDelegateFunction()
         {
-            var offset = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
+            var offset = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
 
             const string cellDistanceCode = @"float get(float2 offset)
  {
@@ -46,7 +46,7 @@ namespace Fuse.Tests
             );
             
             
-            var f1f2 = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
+            var f1f2 = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
             const string cellFunctionCode = @"float get(float2 offset)
 {
     return  sqrt(dot( offset, offset ));
@@ -101,10 +101,10 @@ float ${signature}(float2 p)
                 "worley",
                 worleyCode, 
                 new ConstantValue<float>(0),  
-                new List<IDelegateNode>
+                new List<IFunctionInvokeNode>
                 {
-                    new DelegateNode<float>(cellDistance.Output, new List<AbstractGpuValue> {x.Output},"cellDistance"),
-                    new DelegateNode<float>(cellFunction.Output, new List<AbstractGpuValue> {f1f2.Output},"cellFunction")
+                    new FunctionInvokeNode<float>(cellDistance.Output, new List<AbstractGpuValue> {x.Output},"cellDistance"),
+                    new FunctionInvokeNode<float>(cellFunction.Output, new List<AbstractGpuValue> {f1f2.Output},"cellFunction")
                 }
             );
             Console.WriteLine(customFunction.FunctionMap());
@@ -113,7 +113,7 @@ float ${signature}(float2 p)
 
         public static void TestFBM()
         {
-            var noiseDelegateParameter = new DelegateParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
+            var noiseDelegateParameter = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
             var noiseFunction = new MixinFunctionNode<float>(
                 new List<AbstractGpuValue>(){noiseDelegateParameter.Output}, 
                 "gradientNoise12",
@@ -123,15 +123,15 @@ float ${signature}(float2 p)
             var fbmTypeCode =@"${resultType} ${signature}(${argumentType} p){
     return ${noise}(p);
 }";
-            var fbmTypeDelegateParameter = new DelegateParameter<float>(new ConstantValue<float>(0));
+            var fbmTypeDelegateParameter = new FunctionParameter<float>(new ConstantValue<float>(0));
             var fbmTypeFunction = new CustomFunctionNode<float>(
                 new List<AbstractGpuValue>(){fbmTypeDelegateParameter.Output}, 
                 "fbmType",
                 fbmTypeCode,
                 new ConstantValue<float>(0),
-                new List<IDelegateNode>
+                new List<IFunctionInvokeNode>
                 {
-                    new DelegateNode<float>(noiseFunction.Output, new List<AbstractGpuValue> {fbmTypeDelegateParameter.Output},"noise")
+                    new FunctionInvokeNode<float>(noiseFunction.Output, new List<AbstractGpuValue> {fbmTypeDelegateParameter.Output},"noise")
                 }
             );
 
@@ -168,9 +168,9 @@ float ${signature}(float2 p)
                 "fbm",
                 fbmCode,
                 new ConstantValue<float>(0),
-                new List<IDelegateNode>
+                new List<IFunctionInvokeNode>
                 {
-                    new DelegateNode<float>(fbmTypeFunction.Output, new List<AbstractGpuValue> {gpuValue0.Output},"fbmType")
+                    new FunctionInvokeNode<float>(fbmTypeFunction.Output, new List<AbstractGpuValue> {gpuValue0.Output},"fbmType")
                 }
             );
             

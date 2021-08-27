@@ -1,0 +1,30 @@
+﻿
+
+shader Air_Emission_EmittedParticlesWriter: ComputeShaderBase, Air_ParticleStruct
+{   
+    uint ParticlesCount;
+
+    // RESOURCES ---------------------------------------------------------------------
+
+    StructuredBuffer<AirParticle> EmittedParticlesBuffer;
+    StructuredBuffer<uint> EmissionIndexOffsetBuffer;
+    StructuredBuffer<uint> EmittedParticlesCountBuffer;
+
+    stage RWStructuredBuffer<AirParticle> ParticlesBuffer;
+
+    // =====================================================================
+    // CS ==================================================================
+    // =====================================================================
+
+    override void Compute()
+    {
+        uint id = streams.DispatchThreadId.x;
+
+        if(id >= EmittedParticlesCountBuffer[0]) return;
+
+        uint ParticlesBufferIndex = (id + EmissionIndexOffsetBuffer[0]) % ParticlesCount;
+
+        ParticlesBuffer[ParticlesBufferIndex] =  EmittedParticlesBuffer[id];
+    }
+};
+

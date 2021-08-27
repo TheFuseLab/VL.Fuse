@@ -1,0 +1,11 @@
+shader Initialize_ComputeFX :  ComputeShaderBase
+{
+    AppendStructuredBuffer<int> AvailableIndices;
+    RWStructuredBuffer<float> ElementBuffer;
+
+    override void Compute()
+    {
+        AvailableIndices.Append(streams.DispatchThreadId.x);
+        ElementBuffer[streams.DispatchThreadId.x] = -1;
+    }
+};
