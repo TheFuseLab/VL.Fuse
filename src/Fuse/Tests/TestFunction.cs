@@ -8,8 +8,8 @@ namespace Fuse.Tests
     {
         public static void TestPatchedFunction()
         {
-            var functionParameter0 = new PatchedFunctionParameter<float>(new ConstantValue<float>(0),0);
-            var functionParameter1 = new PatchedFunctionParameter<float>(new ConstantValue<float>(0),1);
+            var functionParameter0 = new FunctionParameter<float>(new ConstantValue<float>(0),0);
+            var functionParameter1 = new FunctionParameter<float>(new ConstantValue<float>(0),1);
             
             
             var sin2 = new IntrinsicFunctionNode<float>(

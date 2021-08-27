@@ -7,10 +7,10 @@ using System.Text;
 namespace Fuse
 {
 
-    public class DelegateValue<T> : GpuValue<T>
+    public class FunctionParameterValue<T> : GpuValue<T>
     {
 
-        public DelegateValue(string theName) : base(theName)
+        public FunctionParameterValue(string theName) : base(theName)
         {
         }
 
@@ -18,7 +18,7 @@ namespace Fuse
 
     }
     
-    public interface IDelegateParameter : IShaderNode
+    public interface IFunctionParameter : IShaderNode
     {
         string TypeName();
 
@@ -28,15 +28,22 @@ namespace Fuse
 
         void DeleteRemap();
     }
+
+    public enum InputModifier
+    {
+        In,
+        Out,
+        InOut
+    }
     
-    public class DelegateParameter<T> : ShaderNode<T> , IDelegateParameter
+    public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
         private string _name = "";
         private int id;
 
-        public DelegateParameter(GpuValue<T> theType, int theId = 0): base("delegate", null,"delegate")
+        public FunctionParameter(GpuValue<T> theType, int theId = 0): base("delegate", null,"delegate")
         {
-            Output = new DelegateValue<T>("val" + GetHashCode())
+            Output = new FunctionParameterValue<T>("val" + GetHashCode())
             {
                 ParentNode = this
             };
@@ -72,7 +79,7 @@ namespace Fuse
         }
     }
     
-    public interface IDelegateNode
+    public interface IFunctionInvokeNode
     {
          string Name { get; }
          string FunctionName { get;  }
@@ -83,9 +90,9 @@ namespace Fuse
          Dictionary<string, IList> ResourcesForTree();
     }
 
-    public class DelegateNode<T> : ShaderNode<T>, IDelegateNode
+    public class FunctionInvokeNode<T> : ShaderNode<T>, IFunctionInvokeNode
     {
-        public DelegateNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, ConstantValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
+        public FunctionInvokeNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, ConstantValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
         {
             Functions = new Dictionary<string, string>();
 
@@ -94,7 +101,7 @@ namespace Fuse
             
             var gpuValues = theParameters.ToList();
             
-            AddDelegate(FunctionName,theDelegate, gpuValues);
+            AddFunctionInvoke(FunctionName,theDelegate, gpuValues);
             
             var valueMap = new Dictionary<string, string>
             {
@@ -103,7 +110,7 @@ namespace Fuse
             Setup(gpuValues, valueMap);
         }
 
-        private void AddDelegate(string theFunctionName, AbstractGpuValue theDelegate, List<AbstractGpuValue> theParameters)
+        private void AddFunctionInvoke(string theFunctionName, AbstractGpuValue theDelegate, List<AbstractGpuValue> theParameters)
         {
             if (theDelegate == null) return;
             var delegates = theDelegate.ParentNode.Delegates();
