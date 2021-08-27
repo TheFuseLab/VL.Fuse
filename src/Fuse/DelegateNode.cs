@@ -90,7 +90,7 @@ namespace Fuse
             Functions = new Dictionary<string, string>();
 
             Name = theId;
-            FunctionName = theId + GetHashCode();
+            FunctionName = theId + theDelegate.GetHashCode();
             
             var gpuValues = theParameters.ToList();
             
@@ -128,12 +128,6 @@ ${functionImplementation}
             {
                 AddResources(kv.Key, kv.Value );
             });
-            /*
-            AddResources(Mixins,theDelegate.ParentNode.MixinList());
-            Declarations.AddRange(theDelegate.ParentNode.DeclarationList());
-            Structs.AddRange(theDelegate.ParentNode.StructList());
-            Inputs.AddRange(theDelegate.ParentNode.InputList());
-            */
             
             delegates.ForEach(input => input.DeleteRemap());
         }
