@@ -134,12 +134,12 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
         
-        public List<IDelegateParameter> Delegates()
+        public List<IFunctionParameter> Delegates()
         {
-            var result = new HashSet<IDelegateParameter>();
+            var result = new HashSet<IFunctionParameter>();
             Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
             {
-                if(n is IDelegateParameter input)result.Add(input);
+                if(n is IFunctionParameter input)result.Add(input);
             });
             return result.ToList();
         }
@@ -285,10 +285,6 @@ namespace Fuse
             });
             return result;
         }
-        
-        
-        
-        
     }
     
     public abstract class ShaderNode<T> : AbstractShaderNode
