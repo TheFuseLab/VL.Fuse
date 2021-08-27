@@ -285,10 +285,6 @@ namespace Fuse
             });
             return result;
         }
-        
-        
-        
-        
     }
     
     public abstract class ShaderNode<T> : AbstractShaderNode
