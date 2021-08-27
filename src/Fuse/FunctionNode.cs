@@ -67,7 +67,7 @@ namespace Fuse
             string theFunction, 
             string theCodeTemplate, 
             ConstantValue<T> theDefault, 
-            IEnumerable<IDelegateNode> theDelegates = null, 
+            IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false
@@ -100,7 +100,7 @@ namespace Fuse
             Setup(inputs, new Dictionary<string, string> {{"function", signature}});
         }
         
-        private void HandleDelegates(IEnumerable<IDelegateNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             theDelegates?.ForEach(delegateNode =>
             {
@@ -118,35 +118,6 @@ namespace Fuse
         public override IDictionary<string, string> Functions { get; }
     }
     
-    public sealed class PatchedFunctionParameter<T> : ShaderNode<T> 
-    {
-
-        public PatchedFunctionParameter(GpuValue<T> theType, int theId = 0): base("argument", null,"argument")
-        {
-            Output = new DelegateValue<T>("val" + GetHashCode())
-            {
-                ParentNode = this
-            };
-            Ins = new List<AbstractGpuValue>();
-            Output.Name = "arg_"+theId;
-        }
-
-        public string TypeName()
-        {
-            return TypeHelpers.GetGpuTypeForType<T>();
-        }
-
-        public string Name()
-        {
-            return Output.ID;
-        }
-
-        protected override string SourceTemplate()
-        {
-            return "";
-        }
-    }
-    
     public sealed class PatchedFunctionNode<T>: AbstractFunctionNode<T>
     {
         
@@ -155,7 +126,7 @@ namespace Fuse
             AbstractGpuValue theFunction,
             string theName,
             ConstantValue<T> theDefault, 
-            IEnumerable<IDelegateNode> theDelegates = null, 
+            IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null
         ) : base(theArguments, "patchedFunction", theDefault)
@@ -195,7 +166,7 @@ ${functionImplementation}
             
         }
         
-        private void HandleDelegates(IEnumerable<IDelegateNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             theDelegates?.ForEach(delegateNode =>
             {
