@@ -1,0 +1,32 @@
+shader PosNormUVOverride
+{
+
+	struct MeshSurface
+	{
+		float3 p; 
+		float3 n; 
+		float2 uv;
+	};
+
+	//stage stream MeshSurface PosNormUV;  // didn't seem happy about streaming struct
+	stage stream float3 mp;
+	stage stream float3 mn;
+	stage stream float2 muv;
+
+	stage MeshSurface makeSurface(float3 p, float3 n, float2 uv)
+	{
+		MeshSurface surface;
+		surface.p = p;
+		surface.n = n;
+		surface.uv = uv;
+		return surface;
+	};
+
+	stage void modifyMeshSurface (MeshSurface surface)
+	{
+		streams.mp = surface.p;
+		streams.mn = surface.n;
+		streams.muv = surface.uv;
+	}
+
+};
