@@ -97,7 +97,7 @@ namespace Fuse
             Functions = new Dictionary<string, string>();
 
             Name = theId;
-            FunctionName = theId + theDelegate.GetHashCode();
+            FunctionName = theId + (theDelegate?.GetHashCode() ?? GetHashCode());
             
             var gpuValues = theParameters.ToList();
             

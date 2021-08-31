@@ -12,19 +12,16 @@ shader FuseMaterialOverrides :  ShaderBaseStream, Camera, MaterialVertexStream, 
 
 
 	// should just be void, as all we need is to read and write from the streams
-	float bumpMap(float bump, float3 grad, float bumpAmt)
+	float bumpMap(float nastyPassthroughValue, float bump, float3 grad, float bumpAmt)
 	{
 		float3 p = streams.PositionWS;
 		float3 n = streams.normalWS;
-
 		p += bump * n * bumpAmt; 
-		//n += calcGradS3(INPUTBUMP, pp, 0.01)* bumpAmt;
 		n += grad * bumpAmt;
 		n = normalize(n);
-
 		streams.PositionWS = float4(p, 1);
 		streams.normalWS = n;
-		return .5;
+		return nastyPassthroughValue;
 	}
 
 

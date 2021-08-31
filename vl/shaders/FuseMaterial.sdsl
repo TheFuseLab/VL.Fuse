@@ -1,0 +1,76 @@
+shader FuseMaterial: FuseCoreTransform
+{
+
+
+	// vector displacment w/ normals
+	float3 displaceNorm(inout float3 pos, float3 n, float amount = 1.0, float eps = 0.01)
+	{
+
+		float3x3 lkt=lookat(n);
+
+		float3 up=float3(0,1,0);
+		float3 z=normalize(n);float3 x=normalize(cross(up,z)); float3 y = normalize(cross(z,x));
+		float3x3 lkt = float3x3(x,y,z);
+
+		float3 v1=float3(1,0,0);
+		float3 v2=float3(0,0,1);
+		v1=normalize(mul(v1,(lkt)));
+		v2=normalize(cross(n,v1));
+
+		float3 p0 = pos;
+		float3 p1 = p0 + v1 * eps;
+		float3 p2 = p0 + v2 * eps;
+
+	//	p0 += VF3D(p0) * amount;
+	//	p1 += VF3D(p1) * amount;
+	//	p2 += VF3D(p2) * amount;
+
+		v1=normalize(p1-p0);
+		v2=normalize(p2-p0);
+
+		pos.xyz=p0;							// pass out the displaced position
+		return normalize(cross(v1,v2));  	// normals perturbed by the function
+	}
+
+
+
+	// Blending Normal methods: http://blog.selfshadow.com/publications/blending-in-detail/
+	float3 BlendLinear(float3 n1, float3 n2)
+	{
+		return normalize(n1 + n2);
+	}
+
+	float3 BlendPartialDerivative(float3 n1, float3 n2)
+	{
+		return normalize(float3(n1.xy*n2.z + n2.xy*n1.z, n1.z*n2.z));
+	}
+
+	float3 BlendPartialDerivative(float3 n1, float3 n2, float blend)
+	{
+		float2 pd = lerp(n1.xy/(n1.z + 0.00001), n2.xy/(n2.z + 0.00001), blend);
+		return normalize(float3(pd, 1));
+	}
+
+	float3 BlendWhiteout(float3 n1, float3 n2)
+	{
+		return float3(n1.xy + n2.xy, n1.z*n2.z);
+	}
+
+	float3 BlendUDN(float3 n1, float3 n2)
+	{
+		return normalize(float3(n1.xy + n2.xy, n1.z));
+	}
+
+	float3 BlendRNM(float3 n1, float3 n2)
+	{
+		// TEMP try to keep length
+		var length_n1n2 = length(n1+n2);
+		n1 = normalize(n1);
+		n2 = normalize(n2);
+
+		float3 t = n1 + float3(0, 0,  1);
+		float3 u = float3(-n2.x, -n2.y, n2.z);
+		float3 r = t*dot(t, u) - u*t.z;
+		return normalize(r) * length_n1n2;
+	}
+};
