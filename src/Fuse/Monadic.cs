@@ -1,5 +1,6 @@
 ﻿using Stride.Graphics;
 using System;
+using System.Collections.Generic;
 using VL.Core;
 
 namespace Fuse
@@ -10,11 +11,14 @@ namespace Fuse
         public static readonly GpuValueMonadicFactory<T> Default = new GpuValueMonadicFactory<T>();
 
         // Will be called once for each data source. The patch editor will also create instances as needed during interaction.
-        public IMonadBuilder<T, GpuValue<T>> GetMonadBuilder()
+        public IMonadBuilder<T, GpuValue<T>> GetMonadBuilder(bool isConstant)
         {
             // Can't call the constructor directly due to value type constraint
             if (typeof(T).IsValueType)
-                return Activator.CreateInstance(typeof(GpuValueBuilder<>).MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
+            {
+                var builderType = isConstant ? typeof(ConstantGpuValueBuilder<>) : typeof(GpuValueBuilder<>);
+                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
+            }
             // Didn' test these ...
             if (typeof(T) == typeof(Texture))
                 return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
@@ -32,6 +36,42 @@ namespace Fuse
         {
             _gpuInput.Value = value;
             return _gpuInput.Output;
+        }
+    }
+
+    sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
+        where T : struct
+    {
+        private static readonly EqualityComparer<T> equalityComparer = EqualityComparer<T>.Default;
+
+        private ConstantValue<T> _constantValue;
+        private GpuInput<T> _gpuInput;
+
+        public GpuValue<T> Return(T value)
+        {
+            if (_gpuInput != null)
+            {
+                // The value changed in the past. Stick with the less performant constant buffer upload
+                _gpuInput.Value = value;
+                return _gpuInput.Output;
+            }
+
+            if (_constantValue is null)
+            {
+                // First time
+                return _constantValue = new ConstantValue<T>(value);
+            }
+            else if (equalityComparer.Equals(value, _constantValue.Value))
+            {
+                // Value stayed the same
+                return _constantValue;
+            }
+            else
+            {
+                // Value is changing - switch to different strategy where we upload via constant buffer
+                (_gpuInput ??= new GpuInput<T>()).Value = value;
+                return _gpuInput.Output;
+            }
         }
     }
 
