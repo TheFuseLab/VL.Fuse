@@ -33,13 +33,18 @@ shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, Tr
     stage override void TransformPosition() 
     {
         base.TransformPosition();
+        base.GenerateNormal_VS();
         float3 p =  streams.PositionWS.xyz;
-        p = modifyPos(p);
-        streams.PositionWS.xyz = p;
-
+        float3 n = streams.normalWS.xyz;
         float2 uv = streams.TexCoord.xy;
-        uv = modifyUV(uv);
-        streams.TexCoord.xy = uv;
+        MeshSurface surface = makeSurface(p, n, uv);
+        modifyMeshSurface(surface);
+
+        streams.PositionWS.xyz = streams.mp;
+        streams.normalWS.xyz = streams.mn;
+        streams.TexCoord.xy = streams.muv;
+
+
 
     }
 
@@ -47,9 +52,7 @@ shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, Tr
     override stage void GenerateNormal_VS()
     {
         base.GenerateNormal_VS();
-        float3 n = streams.normalWS.xyz;
-        n = modifyNorm(n);
-        streams.normalWS.xyz = n;
+        streams.normalWS.xyz = streams.mn;
     }
     
 
