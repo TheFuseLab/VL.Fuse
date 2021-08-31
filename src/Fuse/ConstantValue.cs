@@ -33,6 +33,8 @@ namespace Fuse
         {
             _myValue = theValue;
         }
+
+        public T Value => _myValue;
         
         public override string ID => TypeHelpers.GetDefaultForType<T>(_myValue);
     }
