@@ -1,4 +1,4 @@
-shader VertexExtension : PosNormOverride, ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase
+shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase, NormalBase
 {
 
     // override me
@@ -33,15 +33,26 @@ shader VertexExtension : PosNormOverride, ShaderBaseStream, Transformation, Tran
     stage override void TransformPosition() 
     {
         base.TransformPosition();
-        float3 p = streams.PositionWS.xyz;
-        float3 n = streams.normalWS.xyz;
+        float3 p =  streams.PositionWS.xyz;
+        p = modifyPos(p);
+        streams.PositionWS.xyz = p;
+
         float2 uv = streams.TexCoord.xy;
-        setPosNormUV(p, n, uv);
-        streams.PositionWS = float4(p.xyz, 1);
-        streams.normalWS = n;
+        uv = modifyUV(uv);
         streams.TexCoord.xy = uv;
 
     }
+
+    
+    override stage void GenerateNormal_VS()
+    {
+        base.GenerateNormal_VS();
+        float3 n = streams.normalWS.xyz;
+        n = modifyNorm(n);
+        streams.normalWS.xyz = n;
+    }
+    
+
 
     // At the end of the geometry pipeline (to generate ShadingPosition)
     /*
@@ -64,6 +75,8 @@ shader VertexExtension : PosNormOverride, ShaderBaseStream, Transformation, Tran
         streams.meshNormalWS = n;
         streams.DepthVS = PosWVP.w;
         streams.Depth = PosWVP.z/PosWVP.w;
+
+
         return base.Shading();
        
     }

@@ -1,0 +1,47 @@
+shader PosNormUVOverride
+{
+
+	struct MeshSurface
+	{
+		float3 p; 
+		float3 n; 
+		float2 uv;
+	};
+
+	stage stream MeshSurface PosNormUV;
+
+
+	
+	stage float3 modifyPos(float3 p)
+	{
+		return p;
+	}
+
+	stage float3 modifyNorm(float3 n)
+	{
+		return n;
+	}
+
+	stage float2 modifyUV(float2 uv)
+	{
+		return uv;
+	}
+
+	stage MeshSurface makeMeshSurface (float3 p, float3 n, float2 uv)
+	{
+		MeshSurface meshSurface;
+		meshSurface.p = p;
+		meshSurface.n = n;
+		meshSurface.uv = uv;
+		return meshSurface;
+	}
+
+	/*
+	stage void setPosNormUV (float3 p, float3 n, float2 uv)
+	{
+	
+		streams.meshSurface = {p, n, uv};
+	}
+	*/
+
+};

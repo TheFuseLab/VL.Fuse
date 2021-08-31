@@ -1,18 +1,14 @@
-shader OverrideTest : PosNormOverride
+shader OverrideTest : PosNormUVOverride
 {
 
-	float passMe(float value, float3 vec)
+	float3 myFunc(float3 p)
 	{
-		return value;
+		return p +1;
 	}
 
-
-	stage override void posNormByFunction (out float3 p, out float3 n)
+	stage override float3 modifyPos (float3 p)
 	{
-		float2 uv = streams.TexCoord.xy;
-		p = float3(uv, 1.0);
-		p.z += sin(uv.x * 36.) *.05;
-		n = float3(0., 0., 1.);
+		p = myFunc(p);
 	}
 
 	/*
