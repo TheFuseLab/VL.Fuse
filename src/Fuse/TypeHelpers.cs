@@ -414,12 +414,6 @@ namespace Fuse
             {
                 if(theBuffer == null)return "StructuredBuffer<" + theBufferType + ">";
 
-             
-                if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
-                {
-                    return "RWStructuredBuffer<" + theBufferType + ">";
-                }
-
                 if ((theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
                 {
                     if (theAppend)
@@ -429,7 +423,12 @@ namespace Fuse
 
                     return "ConsumeStructuredBuffer<" + theBufferType + ">";
                 }
-
+             
+                if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+                {
+                    return "RWStructuredBuffer<" + theBufferType + ">";
+                }
+                
                 return "StructuredBuffer<" + theBufferType + ">";
             }
         }
