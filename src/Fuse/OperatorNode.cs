@@ -9,18 +9,9 @@ namespace Fuse
 
         private readonly string _operator;
         public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
-        { 
-            
+        {
             _operator = theOperator;
-            
-            var abstractGpuValues = new List<GpuValue<TIn>>();
-            theInputs.ForEach(input =>
-            {
-                if (input == null) return;
-                abstractGpuValues.Add(input);
-            });
-            
-            Setup(abstractGpuValues);
+            Setup(theInputs);
         }
 
         public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, ConstantValue<TOut> theDefault, string theOperator) :

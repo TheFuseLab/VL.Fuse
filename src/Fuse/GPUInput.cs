@@ -8,7 +8,7 @@ namespace Fuse{
     {
         void SetParameterValue(ParameterCollection theCollection);
 
-        void SetParameters(ParameterCollection theCollection);
+        void AddParameters(ParameterCollection theCollection);
 
         void UpdateParameter();
     }
@@ -35,7 +35,7 @@ namespace Fuse{
         {
         }
 
-        public void SetParameters(ParameterCollection theCollection)
+        public void AddParameters(ParameterCollection theCollection)
         {
         }
 
@@ -57,24 +57,24 @@ namespace Fuse{
         stage ${inputType} ${inputName};";
 
 
-         public void SetParameters(ParameterCollection theCollection)
+         public void AddParameters(ParameterCollection theCollection)
          {
-             Parameters = theCollection;
+             Parameters.Add(theCollection);
          }
 
          public void UpdateParameter()
          {
-             if (Parameters == null) return;
-             SetParameterValue(Parameters);
+             Parameters?.ForEach(SetParameterValue);
          }
 
-         private ParameterCollection Parameters { get; set; }
+         public HashSet<ParameterCollection> Parameters { get;  }
 
          protected TParameterKeyType ParameterKey { get; set;}
 
          protected UnhandledResourcesAbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
          {
              Value = theValue;
+             Parameters = new HashSet<ParameterCollection>();
              Setup( new List<AbstractGpuValue>());
          }
 
@@ -90,8 +90,7 @@ namespace Fuse{
              {
                  //if (_inputValue != null && _inputValue.Equals(value)) return;
                  _inputValue = value;
-                 if (Parameters == null) return;
-                 SetParameterValue(Parameters);
+                 UpdateParameter();
              }
          } 
          public abstract void SetParameterValue(ParameterCollection theCollection);
