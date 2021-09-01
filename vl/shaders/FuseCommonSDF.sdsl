@@ -59,11 +59,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return length(p) - radius;
 	}
 
-	float fEclipse(float2 p, float2 r)
+	float fEllipse(float2 p, float2 r)
 	{
 		float a2 = r.x * r.x;
 		float b2 = r.y * r.y;
-		return (b2 * p.x * p.x + a2 * p.y * p.y - a2 * b2) / (a2 * b2);
+		return (b2 * p.x * p.x + a2 * p.y * p.y - a2 * b2) / (a2 * b2) * .5;  // not sure if the .5 factor is safe
 	}
 
 	// Cheap Box: distance to corners is overestimated
