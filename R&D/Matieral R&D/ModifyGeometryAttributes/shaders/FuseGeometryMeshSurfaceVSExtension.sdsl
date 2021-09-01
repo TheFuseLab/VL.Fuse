@@ -1,30 +1,12 @@
-shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase, NormalBase
+shader FuseGeometryMeshSurfaceVSExtension : FuseGeometryMeshSurface, ShaderBaseStream, TransformationBase, PositionStream4, Texturing, ShadingBase, NormalBase
 {
 
-    // override me
-    /*
-    stage void posNormByFunction (out float3 p, out float3 n)
-    {
-        float2 uv = streams.TexCoord.xy;
-        p = float3(uv, 1.0);
-        p.z += sin(uv.x * 12.);
-        n = float3(0., 0., 1.);
-    }
-    */
-    
     // End of the VS (usually skinning)
+    // could also put override here to do things sooner
     /*
     stage override void PreTransformPosition() 
     {
         base.PreTransformPosition();
-        float3 p = streams.PositionWS.xyz;
-        float3 n = streams.normalWS.xyz;
-        float2 uv = streams.TexCoord.xy;
-        setPosNormUV(p, n, uv);
-        //streams.PositionWS = float4(p.xyz, 1);
-        //streams.normalWS = n;
-        //streams.TexCoord.xy = uv;
-
     }
     */
     
@@ -32,23 +14,23 @@ shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, Tr
     // End of tessellation (usually displacement mapping in world space, etc...)
     stage override void TransformPosition() 
     {
+        // run base functions first
         base.TransformPosition();
         base.GenerateNormal_VS();
+
+        // had to do a little juggling to make this work, looks like it should be compacted, but just leave it ;)
         float3 p =  streams.PositionWS.xyz;
         float3 n = streams.normalWS.xyz;
         float2 uv = streams.TexCoord.xy;
         MeshSurface surface = makeSurface(p, n, uv);
         modifyMeshSurface(surface);
-
         streams.PositionWS.xyz = streams.msP;
         streams.normalWS.xyz = streams.msN;
         streams.TexCoord.xy = streams.msUV;
-
-
-
     }
 
     
+    // normals handled a little seperatly 
     override stage void GenerateNormal_VS()
     {
         base.GenerateNormal_VS();
@@ -61,27 +43,13 @@ shader VertexExtension : PosNormUVOverride, ShaderBaseStream, Transformation, Tr
     /*
     stage override void PostTransformPosition()
     {
-        streams.ShadingPosition = streams.Position;
     }
     */
 
     /*
     stage override float4 Shading() 
     {
-
-        float3 p, n;
-        posNormByFunction(p, n);  // override me
-
-        streams.PositionWS = float4(p.xyz, 1);
-        float4 PosWVP = mul(streams.PositionWS, ViewProjection);
-        streams.normalWS = n;
-        streams.meshNormalWS = n;
-        streams.DepthVS = PosWVP.w;
-        streams.Depth = PosWVP.z/PosWVP.w;
-
-
         return base.Shading();
-       
     }
      */
 };
