@@ -1,6 +1,19 @@
-shader FuseMaterial: FuseCoreTransform
+shader FuseMaterial: FuseCoreTransform, MaterialVertexStream, MaterialPixelStream
 {
 
+
+	// should just be void, as all we need is to read and write from the streams
+	float bumpMap(float nastyPassthroughValue, float bump, float3 grad, float bumpAmt)
+	{
+		float3 p = streams.PositionWS;
+		float3 n = streams.normalWS;
+		p += bump * n * bumpAmt; 
+		n += grad * bumpAmt;
+		n = normalize(n);
+		streams.PositionWS = float4(p, 1);
+		streams.normalWS = n;
+		return nastyPassthroughValue;
+	}
 
 	// vector displacment w/ normals
 	float3 displaceNorm(inout float3 pos, float3 n, float amount = 1.0, float eps = 0.01)
