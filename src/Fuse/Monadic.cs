@@ -16,7 +16,8 @@ namespace Fuse
             // Can't call the constructor directly due to value type constraint
             if (typeof(T).IsValueType)
             {
-                var builderType = isConstant ? typeof(ConstantGpuValueBuilder<>) : typeof(GpuValueBuilder<>);
+                // Shader constants disabled for now
+                var builderType = /*isConstant ? typeof(ConstantGpuValueBuilder<>) :*/ typeof(GpuValueBuilder<>);
                 return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
             }
             // Didn' test these ...
