@@ -5,13 +5,13 @@ shader FuseMaterial: FuseCoreTransform, MaterialVertexStream, MaterialPixelStrea
 	// should just be void, as all we need is to read and write from the streams
 	float bumpMap(float nastyPassthroughValue, float bump, float3 grad, float bumpAmt)
 	{
-		float3 p = streams.PositionWS;
-		float3 n = streams.normalWS;
+		float3 p = streams.PositionWS.xyz;
+		float3 n = streams.normalWS.xyz;
 		p += bump * n * bumpAmt; 
 		n += grad * bumpAmt;
 		n = normalize(n);
-		streams.PositionWS = float4(p, 1);
-		streams.normalWS = n;
+		streams.PositionWS.xyz = p;
+		streams.normalWS.xyz = n;
 		return nastyPassthroughValue;
 	}
 
