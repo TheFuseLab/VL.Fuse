@@ -13,9 +13,12 @@ namespace Fuse
 
         public bool HelperEnabled{ get; set; }
 
+        public readonly int HashCode;
+
         protected AbstractGpuValue(string theName)
         {
             Name = theName;
+            HashCode = ShaderNodesUtil.GenerateID();
         }
 
         public abstract string ID { get; }
@@ -44,7 +47,7 @@ namespace Fuse
             return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        public override string ID => Name + "_" + GetHashCode();
+        public override string ID => Name + "_" + HashCode;
 
     }
 

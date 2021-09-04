@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Fuse
 {
@@ -28,6 +29,15 @@ namespace Fuse
         {
             if(_value == null)return "${resultType} ${resultName};";
             return "${resultType} ${resultName} = " + _value.ID+";";
+        }
+        
+        public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theMember)
+        {
+            var getDeclareBaseType = typeof(DeclareValue<>);
+            var dataType = new[] { theMember.GetType().GetGenericArguments()[0]};
+            var getDeclareType = getDeclareBaseType.MakeGenericType(dataType);
+            var getDeclareInstance = Activator.CreateInstance(getDeclareType,  new object[]{null} ) as AbstractShaderNode;
+            return getDeclareInstance?.AbstractOutput();
         }
     }
 }

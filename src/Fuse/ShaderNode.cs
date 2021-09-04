@@ -48,10 +48,12 @@ namespace Fuse
 
         protected IDictionary<string, string> CustomTemplateValues;
 
+        protected readonly int HashCode;
 
         protected AbstractShaderNode(string theId)
         {
             Id = theId;
+            HashCode = ShaderNodesUtil.GenerateID();
         }
 
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
@@ -118,7 +120,7 @@ namespace Fuse
             BuildChildrenSource(theSourceBuilder, theHashes);
 
             var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(GetHashCode()))
+            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(HashCode))
             {
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }
@@ -133,15 +135,20 @@ namespace Fuse
             
             return myStringBuilder.ToString();
         }
+
+        public List<TNode> ChildrenOfType<TNode>()
+        {
+            var result = new HashSet<TNode>();
+            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            {
+                if(n is TNode input)result.Add(input);
+            });
+            return result.ToList();
+        }
         
         public List<IFunctionParameter> Delegates()
         {
-            var result = new HashSet<IFunctionParameter>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
-            {
-                if(n is IFunctionParameter input)result.Add(input);
-            });
-            return result.ToList();
+            return ChildrenOfType<IFunctionParameter>();
         }
         
         private delegate List<T> GetInfoElement<T>(AbstractShaderNode theInput);
@@ -284,6 +291,23 @@ namespace Fuse
                 
             });
             return result;
+        }
+    }
+
+    public abstract class MultiOutputNode : AbstractShaderNode
+    {
+        public  IEnumerable<AbstractGpuValue> Outputs { get; protected set; }
+        protected MultiOutputNode(string theId,string outputName = "result") : base(theId)
+        {
+        }
+
+        protected void Setup(
+            IEnumerable<AbstractGpuValue> theIns, IEnumerable<AbstractGpuValue> theOuts, IDictionary<string, string> theCustomValues = null)
+        {
+            CustomTemplateValues = theCustomValues;
+            Ins = theIns.ToList();
+            Outputs = theOuts.ToList();
+            Outputs.ForEach(output => output.ParentNode = this);
         }
     }
     
