@@ -2,7 +2,7 @@
 
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)
 
-A library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
+An open source library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
 
 It is built for use in [vvvv gamma](https://visualprogramming.net/) and follows it’s "always runtime" model allowing for fast design and programming work with no build or compile process in between you and your results.
 
