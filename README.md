@@ -28,17 +28,17 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 
 ## Supporters
 ### Gold Sponsors
-* Refik Anadol Studio     https://refikanadolstudio.com/
+* Refik Anadol Studio   https://refikanadolstudio.com/
 ### Sponsors
-* M-Box             https://www.m-box.de/
-* Quayola         https://quayola.com/
-* Schnellebuntebilder     http://schnellebuntebilder.de/
-* Wirmachenbunt     https://wirmachenbunt.de/
+* M-Box             	https://www.m-box.de/
+* Quayola         		https://quayola.com/
+* Schnellebuntebilder   http://schnellebuntebilder.de/
+* Wirmachenbunt     	https://wirmachenbunt.de/
 ### Super Backers
-* MESO             https://meso.design/en
+* MESO             		https://meso.design/en
 * Analog Native         https://analognative.net/
-* Takuma Nakata     https://www.takumanakata.com/
-* Naut             https://naut.ch/
+* Takuma Nakata     	https://www.takumanakata.com/
+* Naut             		https://naut.ch/
  
 ### Backers
-Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, m4d, circuitb, karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, studio temp
+Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, m4d, circuitb, karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, studio temp, motzi
