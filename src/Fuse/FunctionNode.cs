@@ -11,11 +11,11 @@ namespace Fuse
         private bool _isGroupable;
 
         private string _functionName;
-        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theRegionInputs, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
+        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
             _isGroupable = theIsGroupable;
             _functionName = theFunction;
-            Setup(theRegionInputs, new Dictionary<string, string> {{"function", theFunction}});
+            Setup(theArguments, new Dictionary<string, string> {{"function", theFunction}});
         }
 
 
@@ -44,7 +44,7 @@ namespace Fuse
     public class IntrinsicFunctionNode<T> : AbstractFunctionNode<T>
     {
         
-        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> theRegionInputs, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theRegionInputs, theFunction, theDefault, theIsGroupable)
+        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theArguments, theFunction, theDefault, theIsGroupable)
         {
             
         }
@@ -53,7 +53,7 @@ namespace Fuse
     public class MixinFunctionNode<T> : AbstractFunctionNode<T>
     {
 
-        public MixinFunctionNode(IEnumerable<AbstractGpuValue> theRegionInputs, string theFunction, ConstantValue<T> theDefault, string theMixin, bool theIsGroupable = false) : base(theRegionInputs,theFunction, theDefault, theIsGroupable)
+        public MixinFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, string theMixin, bool theIsGroupable = false) : base(theArguments,theFunction, theDefault, theIsGroupable)
         {
             AddResource(Mixins, theMixin);
         }
@@ -63,7 +63,7 @@ namespace Fuse
     {
         
         public CustomFunctionNode(
-            IEnumerable<AbstractGpuValue> theRegionInputs, 
+            IEnumerable<AbstractGpuValue> theArguments, 
             string theFunction, 
             string theCodeTemplate, 
             ConstantValue<T> theDefault, 
@@ -71,7 +71,7 @@ namespace Fuse
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false
-        ) : base(theRegionInputs, theFunction, theDefault, theIsGroupable)
+        ) : base(theArguments, theFunction, theDefault, theIsGroupable)
         {
 
             if (theMixins != null)
@@ -90,7 +90,7 @@ namespace Fuse
                 {"signature", signature}
             };
 
-            var inputs = theRegionInputs.ToList();
+            var inputs = theArguments.ToList();
             Ins = inputs;
             HandleDelegates(theDelegates,functionValueMap);
 
