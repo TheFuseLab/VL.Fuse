@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="RGYLe02tPXEQEO6aJ6Qsjm" Summary="Input to the gpu world" LanguageVersion="2021.4.0.333" Version="0.128">
+<Document xmlns:p="property" Id="RGYLe02tPXEQEO6aJ6Qsjm" Summary="Input to the gpu world" LanguageVersion="2021.4.0.350" Version="0.128">
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Raymarching" CanvasType="FullCategory">
       <!--
@@ -14,7 +14,7 @@
         </p:NodeReference>
         <Patch Id="KHZrfKRFdtNOriZmdGYqTp">
           <Canvas Id="DJBvO0DbEWONCcn59Ahszd" CanvasType="Group">
-            <Node Bounds="437,810,1014,661" Id="D4PfuRFD0mvLavwU8AWkjq">
+            <Node Bounds="437,810,1014,662" Id="D4PfuRFD0mvLavwU8AWkjq">
               <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
                 <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
                 <Choice Kind="ProcessStatefulRegion" Name="Cache" />
@@ -64,7 +64,7 @@
                     <Choice Kind="TypeFlag" Name="String" />
                   </p:TypeAnnotation>
                 </Pad>
-                <Node Bounds="875,1239,39,19" Id="P3eVhqjS3FUNXUZbBPAflZ">
+                <Node Bounds="889,1306,39,19" Id="P3eVhqjS3FUNXUZbBPAflZ">
                   <p:NodeReference LastCategoryFullName="Collections.Spread" LastSymbolSource="VL.Collections.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="OperationCallFlag" Name="Cons" />
@@ -256,10 +256,20 @@
                   <Pin Id="MzHfFkujBViPSrhSwNxyMJ" Name="The Override" Kind="InputPin" />
                   <Pin Id="GCV6wgucTUjOvo40ahV2ip" Name="Output" Kind="OutputPin" />
                 </Node>
+                <Pad Id="B2YLGiST4yDPIg1mhk8YrK" Comment="" Bounds="941,1266,138,26" ShowValueBox="true" isIOBox="true" Value="PositionStream4">
+                  <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                    <Choice Kind="TypeFlag" Name="String" />
+                  </p:TypeAnnotation>
+                </Pad>
+                <Pad Id="JoG7nt6HbLpMZO2KBegcmM" Comment="" Bounds="960,1305,119,8" ShowValueBox="true" isIOBox="true" Value="NormalStream">
+                  <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                    <Choice Kind="TypeFlag" Name="String" />
+                  </p:TypeAnnotation>
+                </Pad>
               </Patch>
               <ControlPoint Id="ThVEzZlxRXLMDEQe47hU4l" Bounds="467,1466" Alignment="Bottom" />
             </Node>
-            <Pad Id="T7QMxKwPMKnOVIqoTYE0iL" Comment="" Bounds="559,424,532,253" ShowValueBox="true" isIOBox="true" Value="// raymarcher&#xD;&#xA;float SDF(float3 p) // should be override unless it's the first imp.  Gets called by the other functions&#xD;&#xA;{&#xD;&#xA;&#x9;return ${SDF}(p);&#xD;&#xA;}&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;float4 ${signature}(int maxIter, float4 col)&#xD;&#xA;{&#xD;&#xA;&#x9;Ray ray = ${SETUP}();&#xD;&#xA;&#x9;float2 minMaxDist = ${CULL}(ray);&#xD;&#xA;&#x9;${MARCH}(ray, minMaxDist, maxIter);&#xD;&#xA;&#x9;return ${SHADE};&#xD;&#xA;}">
+            <Pad Id="T7QMxKwPMKnOVIqoTYE0iL" Comment="" Bounds="559,424,551,256" ShowValueBox="true" isIOBox="true" Value="// raymarcher&#xD;&#xA;float SDF(float3 p) // should be override unless it's the first imp.  Gets called by the other functions&#xD;&#xA;{&#xD;&#xA;&#x9;return ${SDF}(p);&#xD;&#xA;}&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;float4 ${signature}(int maxIter, float4 col)&#xD;&#xA;{&#xD;&#xA;&#x9;Ray ray = ${SETUP}();&#xD;&#xA;&#x9;float2 minMaxDist = ${CULL}(ray);&#xD;&#xA;&#x9;${MARCH}(ray, minMaxDist, maxIter);&#xD;&#xA;&#xD;&#xA;&#x9;//streams.PositionWS.xyz = ray.sp;&#xD;&#xA;    //streams.normalWS.xyz = ray.sn;&#xD;&#xA;&#x9;return ${SHADE};&#xD;&#xA;}&#xD;&#xA;">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
@@ -374,6 +384,52 @@
             <ControlPoint Id="ByhrJIfHJ4cQCjJ0KeMDER" Bounds="1639,1560" />
             <ControlPoint Id="UqO8WwLiZ82PPWC1t6X5ZC" Bounds="1111,1722" />
             <ControlPoint Id="CHYNaZHhH1KLLoSFm0NkGf" Bounds="954,1722" />
+            <Pad Id="DwjnjWiHJHHNULbL0PRpUt" Bounds="269,611,282,19" ShowValueBox="true" isIOBox="true" Value="Fails without error if we try to write to these &gt;">
+              <p:TypeAnnotation>
+                <Choice Kind="TypeFlag" Name="String" />
+              </p:TypeAnnotation>
+              <p:ValueBoxSettings>
+                <p:fontsize p:Type="Int32">9</p:fontsize>
+                <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+              </p:ValueBoxSettings>
+            </Pad>
+            <Pad Id="AEqrniIISbzPVPNlSN5K8X" Bounds="154,715,230,15" ShowValueBox="true" isIOBox="true" Value="float4 PositionWS : POSITION_WS;">
+              <p:TypeAnnotation>
+                <Choice Kind="TypeFlag" Name="String" />
+                <FullNameCategoryReference ID="Primitive" />
+              </p:TypeAnnotation>
+            </Pad>
+            <Node Bounds="161,731,65,19" Id="SCKVbtbEljRMxSg9a7BGKW">
+              <p:NodeReference LastCategoryFullName="Collections.Spread" LastSymbolSource="VL.Collections.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="FromValue" />
+                <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
+              </p:NodeReference>
+              <Pin Id="V57nFazLw2jOgy28ANVrz9" Name="Input" Kind="InputPin" />
+              <Pin Id="AbTpXOwGBUbQQ8qWOfAZ4y" Name="Result" Kind="OutputPin" />
+            </Node>
+            <Node Bounds="161,754,50,26" Id="NsAbJGmjxA9MtHvTeipfOy">
+              <p:NodeReference LastCategoryFullName="Collections.Sequence" LastSymbolSource="VL.Collections.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="ToList" />
+              </p:NodeReference>
+              <Pin Id="B8jCxRgBKlLNr8H8OtE6Pu" Name="Input" Kind="StateInputPin" />
+              <Pin Id="GwrJ2tJWinOPVww6kkacaE" Name="Result" Kind="OutputPin" />
+            </Node>
+            <Pad Id="GEBY7bzYxwVMUNGX4VZk9o" Bounds="207,767,195,19" ShowValueBox="true" isIOBox="true" Value="Do need to do something here?">
+              <p:TypeAnnotation>
+                <Choice Kind="TypeFlag" Name="String" />
+              </p:TypeAnnotation>
+              <p:ValueBoxSettings>
+                <p:fontsize p:Type="Int32">9</p:fontsize>
+                <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+              </p:ValueBoxSettings>
+            </Pad>
+            <Pad Id="IYYmm9Oczz7QWZaOirkRcz" Comment="TheTemplate" Bounds="-242,672,376,242" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, PositionStream4${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;    }&#xD;&#xA;};">
+              <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                <Choice Kind="TypeFlag" Name="String" />
+              </p:TypeAnnotation>
+            </Pad>
           </Canvas>
           <ProcessDefinition Id="Py6Uv1As9S4M0FG3utAaiD">
             <Fragment Id="Jn0zST0NiypNeVRk5V0r71" Patch="LrAMu3fjIXbOneTFlLL3SK" Enabled="true" />
@@ -484,6 +540,8 @@
           <Link Id="TYhXAegmo2CN9kD62K9kBs" Ids="FukBtp9EWCoPiJygnjC1Pi,AkiERtQl35qQd4fnCRHRw5" />
           <Link Id="SXh5bqIZoMAM24S1DeKbIE" Ids="IiO3F5rm9RRQXXc2nqZugR,BCDNZ8FJkiyNHgZJIgArW9" />
           <Link Id="IdBLkSDKjCgOK9F7dGT8xT" Ids="GCV6wgucTUjOvo40ahV2ip,GQd2KjE945hP5e3oUO16QW" />
+          <Link Id="FpyutaQ5iSqLkzR5rkAgis" Ids="AEqrniIISbzPVPNlSN5K8X,V57nFazLw2jOgy28ANVrz9" />
+          <Link Id="Aputt8LKKjKLAVIzaPcayl" Ids="AbTpXOwGBUbQQ8qWOfAZ4y,B8jCxRgBKlLNr8H8OtE6Pu" />
         </Patch>
       </Node>
       <!--
@@ -2272,9 +2330,9 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="G6Db96TymfLMy5IFR12Wro" Location="VL.CoreLib" Version="2021.4.0-0333-g73b4631ce4" />
-  <NugetDependency Id="DvUhaYWhgJ8LKqWi3Y10Il" Location="VL.HDE" Version="2021.4.0-0333-g73b4631ce4" />
-  <NugetDependency Id="BfwvD1QmK4bQWsFBNVL3LA" Location="VL.Stride" Version="2021.4.0-0333-g73b4631ce4" />
+  <NugetDependency Id="G6Db96TymfLMy5IFR12Wro" Location="VL.CoreLib" Version="2021.4.0-0350-g4b9fb382f8" />
+  <NugetDependency Id="DvUhaYWhgJ8LKqWi3Y10Il" Location="VL.HDE" Version="2021.4.0-0350-g4b9fb382f8" />
+  <NugetDependency Id="BfwvD1QmK4bQWsFBNVL3LA" Location="VL.Stride" Version="2021.4.0-0350-g4b9fb382f8" />
   <DocumentDependency Id="KV4JewY3j9yMC788ZTBfsT" Location="./Fuse.Common.Draw.vl" />
   <PlatformDependency Id="M2xnDrx9I6WLaR8HHqzOtO" Location="../lib/net472/Fuse.dll" />
   <DocumentDependency Id="QY2YiRzHQG7M0Jd246eD3x" Location="./Fuse.Core.vl" />
