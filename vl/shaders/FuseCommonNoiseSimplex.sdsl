@@ -118,7 +118,8 @@ shader FuseCommonNoiseSimplex : FuseCoreMathHash
 		float i = floor(v);
 		float f = frac(v);
 		float u = f * f * (3.0 - 2.0 * f);
-		return  lerp(hash11(i + 0.0), hash11(i + 1.0), u);
+		float result = lerp(hash11(i + 0.0), hash11(i + 1.0), u);
+		return result * 2.0 - 1.0;
 	}
 
 	// 2D
