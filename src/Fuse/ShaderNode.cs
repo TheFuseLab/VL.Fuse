@@ -293,27 +293,12 @@ namespace Fuse
             return result;
         }
     }
-
-    public abstract class MultiOutputNode : AbstractShaderNode
-    {
-        public  IEnumerable<AbstractGpuValue> Outputs { get; protected set; }
-        protected MultiOutputNode(string theId,string outputName = "result") : base(theId)
-        {
-        }
-
-        protected void Setup(
-            IEnumerable<AbstractGpuValue> theIns, IEnumerable<AbstractGpuValue> theOuts, IDictionary<string, string> theCustomValues = null)
-        {
-            CustomTemplateValues = theCustomValues;
-            Ins = theIns.ToList();
-            Outputs = theOuts.ToList();
-            Outputs.ForEach(output => output.ParentNode = this);
-        }
-    }
     
     public abstract class ShaderNode<T> : AbstractShaderNode
     {
         public  GpuValue<T> Output { get; protected set; }
+
+        public List<AbstractGpuValue> OptionalOutputs { get; protected set; }
         public  ConstantValue<T> Default { get; protected set; }
 
         protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
