@@ -11,11 +11,46 @@ namespace Fuse
         private bool _isGroupable;
 
         private string _functionName;
-        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
+        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false, IEnumerable<InputModifier> theModifiers = null) : base(theFunction, theDefault)
         {
             _isGroupable = theIsGroupable;
             _functionName = theFunction;
-            Setup(theArguments, new Dictionary<string, string> {{"function", theFunction}});
+            OptionalOutputs = new List<AbstractGpuValue>();
+            
+            
+
+            
+        }
+
+        protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
+        {
+            var abstractGpuValues = theArguments.ToList();
+            if (theModifiers == null || theModifiers.Count() != abstractGpuValues.Count())
+            {
+                Setup(theArguments, new Dictionary<string, string> {{"function", theFunction}});
+                return;
+            }
+            
+            var myInputs = new List<AbstractGpuValue>();
+            var myModifiers = theModifiers.ToList();
+
+            for (var i = 0; i < abstractGpuValues.Count(); i++)
+            {
+                var myModifier = myModifiers[i];
+                if (myModifier == InputModifier.In)
+                {
+                    myInputs.Add(abstractGpuValues[i]);
+                    continue;
+                }
+
+                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(abstractGpuValues[i]);
+                myInputs.Add(myDeclareValue);
+                var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
+                myPass.ParentNode = this;
+                OptionalOutputs.Add(myPass);
+                _isGroupable = false;
+            }
+            Setup(myInputs, new Dictionary<string, string> {{"function", theFunction}});
         }
 
 
@@ -44,18 +79,32 @@ namespace Fuse
     public class IntrinsicFunctionNode<T> : AbstractFunctionNode<T>
     {
         
-        public IntrinsicFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theArguments, theFunction, theDefault, theIsGroupable)
+        public IntrinsicFunctionNode(
+            IEnumerable<AbstractGpuValue> theArguments, 
+            string theFunction, 
+            ConstantValue<T> theDefault, 
+            bool theIsGroupable = false, 
+            IEnumerable<InputModifier> theModifiers = null
+            ) : base(theArguments, theFunction, theDefault, theIsGroupable, theModifiers)
         {
-            
+            Setup(theArguments, theModifiers, theFunction);
         }
     }
     
     public class MixinFunctionNode<T> : AbstractFunctionNode<T>
     {
 
-        public MixinFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, string theMixin, bool theIsGroupable = false) : base(theArguments,theFunction, theDefault, theIsGroupable)
+        public MixinFunctionNode(
+            IEnumerable<AbstractGpuValue> theArguments, 
+            string theFunction, 
+            ConstantValue<T> theDefault, 
+            string theMixin, 
+            bool theIsGroupable = false, 
+            IEnumerable<InputModifier> theModifiers = null
+            ) : base(theArguments,theFunction, theDefault, theIsGroupable, theModifiers)
         {
             AddResource(Mixins, theMixin);
+            Setup(theArguments, theModifiers, theFunction);
         }
     }
     
@@ -70,8 +119,9 @@ namespace Fuse
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
-            bool theIsGroupable = false
-        ) : base(theArguments, theFunction, theDefault, theIsGroupable)
+            bool theIsGroupable = false,
+            IEnumerable<InputModifier> theModifiers = null
+        ) : base(theArguments, theFunction, theDefault, theIsGroupable, theModifiers)
         {
 
             if (theMixins != null)
@@ -97,7 +147,9 @@ namespace Fuse
             theCodeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
             theFunctionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
             Functions.Add(signature, ShaderNodesUtil.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
-            Setup(inputs, new Dictionary<string, string> {{"function", signature}});
+            //Setup(inputs, new Dictionary<string, string> {{"function", signature}});
+            
+            Setup(theArguments, theModifiers, signature);
         }
         
         private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
