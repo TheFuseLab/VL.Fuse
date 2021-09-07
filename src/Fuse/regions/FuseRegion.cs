@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Fuse.compute;
 
 namespace Fuse.regions
 {
@@ -10,7 +11,7 @@ namespace Fuse.regions
         
     }
     
-    public class FuseRegion : MultiOutputNode
+    public class FuseRegion : ShaderNode<GpuVoid>
     {
         private ISet<IRegionParameter> _myRegionParameter = new HashSet<IRegionParameter>();
         
