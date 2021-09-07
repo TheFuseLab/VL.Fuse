@@ -55,7 +55,10 @@ namespace Fuse
         
         public static AbstractGpuValue AbstractGpuValuePassThrough(AbstractGpuValue theValue)
         {
-            return CreateAbstract(theValue, typeof(GpuValuePassThrough<>), new object[]{null});
+            var getBaseType = typeof(GpuValuePassThrough<>);
+            var dataType = new[] { theValue.GetType().GetGenericArguments()[0] };
+            var getType = getBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractGpuValue;
         }
         
         public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theValue)
@@ -70,6 +73,11 @@ namespace Fuse
             var getMemberType = getMemberBaseType.MakeGenericType(dataType);
             var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
             return getMemberInstance?.AbstractOutput();
+        }
+        
+        public static AbstractGpuValue AbstractDeclareValueAssigned(AbstractGpuValue theMember)
+        {
+            return CreateAbstract(theMember, typeof(DeclareValue<>), new object[] {theMember});
         }
     }
     
