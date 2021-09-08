@@ -129,6 +129,26 @@ namespace Fuse
             );
         }
 
+        public static string EvaluateIDs(string theShaderTemplate)
+        {
+            var id = 0;
+            var idMap = new Dictionary<string, string>();
+            return Regex.Replace(
+                theShaderTemplate, 
+                @"\$\{#(?<key>[^}]+)\}", 
+                m =>
+                {
+                    var key = m.Groups["key"].Value;
+                    if (!idMap.ContainsKey(key))
+                    {
+                        idMap[key] = id + "";
+                        id++;
+                    }
+
+                    return idMap[key];
+                });
+        }
+
         private static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
         {
             var effectSystem = game.EffectSystem;
