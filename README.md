@@ -41,4 +41,4 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 * Naut             		https://naut.ch/
  
 ### Backers
-Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, m4d, circuitb, karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, studio temp, motzi
+Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, m4d, circuitb, karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, motzi
