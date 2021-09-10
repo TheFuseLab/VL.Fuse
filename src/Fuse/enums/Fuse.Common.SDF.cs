@@ -49,6 +49,13 @@ namespace Fuse.Common.SDF
         Hexagon
     }
 
+    public enum TruchetSDF
+    {
+        Line,
+        Circle,
+        Octogon
+    }
+
     public enum TPMSSDF
     {
         Gyroid, 

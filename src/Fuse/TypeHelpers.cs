@@ -346,6 +346,7 @@ namespace Fuse
                 if (theType == typeof(Int2)) return 2;
                 if (theType == typeof(Int3)) return 3;
                 if (theType == typeof(Int4)) return 4;
+                if (theType == typeof(bool)) return 1;
 
                 return 0;
             }

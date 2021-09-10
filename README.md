@@ -2,7 +2,7 @@
 
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)
 
-A library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
+An open source library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
 
 It is built for use in [vvvv gamma](https://visualprogramming.net/) and follows it’s "always runtime" model allowing for fast design and programming work with no build or compile process in between you and your results.
 
@@ -23,3 +23,22 @@ nuget install VL.Fuse -pre
 ## Getting started
 
 With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browser. You'll see some explanations and howtos to get you started
+
+
+
+## Supporters
+### Gold Sponsors
+* Refik Anadol Studio   https://refikanadolstudio.com/
+### Sponsors
+* M-Box             	https://www.m-box.de/
+* Quayola         		https://quayola.com/
+* Schnellebuntebilder   http://schnellebuntebilder.de/
+* Wirmachenbunt     	https://wirmachenbunt.de/
+### Super Backers
+* MESO             		https://meso.design/en
+* Analog Native         https://analognative.net/
+* Takuma Nakata     	https://www.takumanakata.com/
+* Naut             		https://naut.ch/
+ 
+### Backers
+Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, M4d, Circuitb, Karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, Motzi

@@ -38,24 +38,24 @@ namespace Fuse
     
     public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
-        private string _name = "";
-        private int id;
+        private readonly string _name;
+        private readonly int _id;
 
         public FunctionParameter(GpuValue<T> theType, int theId = 0): base("delegate", null,"delegate")
         {
-            Output = new FunctionParameterValue<T>("val" + GetHashCode())
+            Output = new FunctionParameterValue<T>("arg_" + theId)
             {
                 ParentNode = this
             };
-            _name = "val" + GetHashCode();
+            _name = "arg_" + theId;
             Ins = new List<AbstractGpuValue>();
-            id = theId;
+            _id = theId;
         }
 
         public void Remap(List<AbstractGpuValue> theParameters)
         {
-            if (id >= theParameters.Count()) return;
-            Output.Name = "arg_"+theParameters[id].ID;
+            if (_id >= theParameters.Count()) return;
+            Output.Name = "arg_"+theParameters[_id].ID;
         }
 
         public void DeleteRemap()
@@ -97,7 +97,7 @@ namespace Fuse
             Functions = new Dictionary<string, string>();
 
             Name = theId;
-            FunctionName = theId + (theDelegate?.GetHashCode() ?? GetHashCode());
+            FunctionName = theId + (theDelegate?.HashCode ?? HashCode);
             
             var gpuValues = theParameters.ToList();
             

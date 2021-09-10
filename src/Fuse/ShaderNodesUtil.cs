@@ -36,9 +36,59 @@ namespace Fuse
             }
         }
     }
+
+    public static class AbstractCreation
+    {
+        public static AbstractGpuValue CreateAbstract(AbstractGpuValue theValue, Type theType, object[] theArguments )
+        {
+            var getBaseType = theType;
+            var dataType = new[] { theValue.GetType().GetGenericArguments()[0]};
+            var getType = getBaseType.MakeGenericType(dataType);
+            var getInstance = Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
+            return getInstance?.AbstractOutput();
+        }
+        
+        public static AbstractGpuValue AbstractComputeTextureGet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, AbstractGpuValue theValue)
+        {
+            return CreateAbstract(theValue, typeof(GpuValuePassThrough<>), new object[]{theTexture, theIndex, null});
+        }
+        
+        public static AbstractGpuValue AbstractGpuValuePassThrough(AbstractGpuValue theValue)
+        {
+            var getBaseType = typeof(GpuValuePassThrough<>);
+            var dataType = new[] { theValue.GetType().GetGenericArguments()[0] };
+            var getType = getBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractGpuValue;
+        }
+        
+        public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theValue)
+        {
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{null});
+        }
+        
+        public static AbstractGpuValue AbstractGetMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
+        {
+            var getMemberBaseType = typeof(GetMember<,>);
+            var dataType = new Type[] {typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
+            var getMemberType = getMemberBaseType.MakeGenericType(dataType);
+            var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
+            return getMemberInstance?.AbstractOutput();
+        }
+        
+        public static AbstractGpuValue AbstractDeclareValueAssigned(AbstractGpuValue theMember)
+        {
+            return CreateAbstract(theMember, typeof(DeclareValue<>), new object[] {theMember});
+        }
+    }
     
     public static class ShaderNodesUtil
     {
+
+        private static int id = 0;
+        public static int GenerateID()
+        {
+            return id++;
+        }
         
         public static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
         {
@@ -77,6 +127,26 @@ namespace Fuse
                 @"\$\{(?<key>[^}]+)\}", 
                 m => theKeys.ContainsKey(m.Groups["key"].Value) ? theKeys[m.Groups["key"].Value] : m.Value
             );
+        }
+
+        public static string EvaluateIDs(string theShaderTemplate)
+        {
+            var id = 0;
+            var idMap = new Dictionary<string, string>();
+            return Regex.Replace(
+                theShaderTemplate, 
+                @"\$\{#(?<key>[^}]+)\}", 
+                m =>
+                {
+                    var key = m.Groups["key"].Value;
+                    if (!idMap.ContainsKey(key))
+                    {
+                        idMap[key] = id + "";
+                        id++;
+                    }
+
+                    return idMap[key];
+                });
         }
 
         private static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
@@ -125,48 +195,6 @@ namespace Fuse
             var toComputeMatrix = new ToComputeMatrix(theGpuValue);
             AddShaderSource(game, toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
             return toComputeMatrix;
-        }
-        
-        public static IDictionary<string, AbstractGpuValue> AbstractMembers(GpuValue<GpuStruct> theStruct, IEnumerable<AbstractGpuValue> theMembers)
-        {
-            var getMemberBaseType = typeof(GetMember<,>);
-            
-            var members = new Dictionary<string, AbstractGpuValue>();
-            theMembers.ForEach(member =>
-            {
-                var dataType = new Type [] { typeof(GpuStruct), member.GetType().GetGenericArguments()[0]};
-                var getMemberType = getMemberBaseType.MakeGenericType(dataType);
-                var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, member.Name, null) as AbstractShaderNode;
-                members[member.Name] = getMemberInstance?.AbstractOutput();
-            });
-            return members;
-        }
-        
-        public static AbstractGpuValue AbstractGetMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
-        {
-            var getMemberBaseType = typeof(GetMember<,>);
-            var dataType = new Type [] { typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
-            var getMemberType = getMemberBaseType.MakeGenericType(dataType);
-            var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
-            return getMemberInstance?.AbstractOutput();
-        }
-        
-        public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theMember)
-        {
-            var getDeclareBaseType = typeof(DeclareValue<>);
-            var dataType = new Type [] { theMember.GetType().GetGenericArguments()[0]};
-            var getDeclareType = getDeclareBaseType.MakeGenericType(dataType);
-            var getDeclareInstance = Activator.CreateInstance(getDeclareType,  new object[]{null} ) as AbstractShaderNode;
-            return getDeclareInstance?.AbstractOutput();
-        }
-        
-        public static AbstractGpuValue AbstractComputeTextureGet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, AbstractGpuValue theMember)
-        {
-            var getComputeTextureGetBaseType = typeof(ComputeTextureGet<>);
-            var dataTypes = new Type [] {theMember.GetType().GetGenericArguments()[0]};
-            var getComputeTextureGetType = getComputeTextureGetBaseType.MakeGenericType(dataTypes);
-            var getComputeTextureGetInstance = Activator.CreateInstance(getComputeTextureGetType,  theTexture, theIndex, null ) as AbstractShaderNode;
-            return getComputeTextureGetInstance?.AbstractOutput();
         }
 
         public static void ListInputs(List<IGpuInput> theInputs, AbstractGpuValue theGpuValue)

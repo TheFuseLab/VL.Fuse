@@ -57,7 +57,7 @@ namespace Fuse
             
             _inCheck.ParentNode.BuildSource(theSourceBuilder, theHashes);
 
-            if (!theHashes.Add(GetHashCode())) return;
+            if (!theHashes.Add(HashCode)) return;
 
             const string shaderCode = @"
         if(${check}){

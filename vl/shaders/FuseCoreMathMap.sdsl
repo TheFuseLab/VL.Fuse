@@ -80,10 +80,31 @@ shader FuseCoreMathMap: FuseCoreMath
 	//
 	////////////////////////////////////////////////////////////////
 
-	 float smoothstep2 (float onMin, float onMax, float offMin, float offMax, float input)
+	 float smoothstep2 (float input, float onMin, float onMax, float offMin, float offMax)
 	 {
-		input = smoothstep(onMin, onMax, input) * (1 - smoothstep(offMin, offMax, input));
-		return input;
+		return smoothstep(onMin, onMax, input) * (1 - smoothstep(offMin, offMax, input));
+
+	 }
+
+	 float2 smoothstep2 (float2 input, float2 onMin, float2 onMax, float2 offMin, float2 offMax)
+	 {
+		return float2(	smoothstep2(input.x, onMin.x, onMax.x, offMin.x, offMax.x),
+						smoothstep2(input.y, onMin.y, onMax.y, offMin.y, offMax.y));
+	 }
+
+	 float3 smoothstep2 (float3 input, float3 onMin, float3 onMax, float3 offMin, float3 offMax)
+	 {
+		return float3(	smoothstep2(input.x, onMin.x, onMax.x, offMin.x, offMax.x),
+						smoothstep2(input.y, onMin.y, onMax.y, offMin.y, offMax.y),
+						smoothstep2(input.z, onMin.z, onMax.z, offMin.z, offMax.z));
+	 }
+
+	 float4 smoothstep2 (float4 input, float4 onMin, float4 onMax, float4 offMin, float4 offMax)
+	 {
+		return float4(	smoothstep2(input.x, onMin.x, onMax.x, offMin.x, offMax.x),
+						smoothstep2(input.y, onMin.y, onMax.y, offMin.y, offMax.y),
+						smoothstep2(input.z, onMin.z, onMax.z, offMin.z, offMax.z),
+						smoothstep2(input.w, onMin.w, onMax.w, offMin.w, offMax.w));
 	 }
 
 
@@ -95,6 +116,27 @@ shader FuseCoreMathMap: FuseCoreMath
 		if(input > slopeWidth) return 0.0f;
 		input /= slopeWidth;
 		return 1.0 - input;
+	}
+
+	float2 pulse(float2 input, float2 center, float2 slopeWidth, float2 centerWidth = 0.0)
+	{
+		return float2(	pulse(input.x, center.x, slopeWidth.x, centerWidth.x), 
+						pulse(input.y, center.y, slopeWidth.y, centerWidth.y));
+	}
+
+	float3 pulse(float3 input, float3 center, float3 slopeWidth, float3 centerWidth = 0.0)
+	{
+		return float3(	pulse(input.x, center.x, slopeWidth.x, centerWidth.x), 
+						pulse(input.y, center.y, slopeWidth.y, centerWidth.y),
+						pulse(input.z, center.z, slopeWidth.z, centerWidth.z));
+	}
+
+	float4 pulse(float4 input, float4 center, float4 slopeWidth, float4 centerWidth = 0.0)
+	{
+		return float4(	pulse(input.x, center.x, slopeWidth.x, centerWidth.x), 
+						pulse(input.y, center.y, slopeWidth.y, centerWidth.y),
+						pulse(input.z, center.z, slopeWidth.z, centerWidth.z),
+						pulse(input.w, center.w, slopeWidth.w, centerWidth.w));
 	}
 
 	float cubicPulse(float input, float center, float width)
