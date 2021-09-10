@@ -1,13 +1,5 @@
-﻿shader Imposter_ShaderFX : ComputeFloat , SphereProvider, FuseCommonBuffer, Transformation, TransformationBase, PositionStream4, Texturing 
+﻿shader Imposter_ShaderFX : SphereProvider, FuseCommonBuffer, Transformation, TransformationBase, PositionStream4, Texturing 
 {
-
-	compose ComputeFloat Value;
-
-	
-	cbuffer PerMaterial
-	{
-		stage float sizeDefualt = 0.1;
-	}
 
 	rgroup PerMaterial
 	{
@@ -15,7 +7,21 @@
 		stage StructuredBuffer<float> sizeBuffer;
 	}
 
-	
+	cbuffer PerMaterial
+	{
+		stage float SizeDefualt = 0.1;
+	}
+
+	stage stream uint VertexID : SV_VertexID;
+    stage stream uint VID;
+
+	// assign VID
+	stage override void PreTransformPosition() 
+	{
+		streams.VID = streams.VertexID;
+		streams.PositionWS = streams.Position;
+	}
+
 	override stage float3 getSpherePos()
 	{
 		uint id = streams.VID;
@@ -24,21 +30,7 @@
 
 	override stage float getSphereSize()
 	{
-		//return sizeDefualt;
-		uint id = streams.VID; //  did not work when calling from GS 
-		//return sizeBuffer[id];
-		return sbLoad(id, sizeBuffer, sizeDefualt);
+		uint id = streams.VID; 
+		return sbLoad(id, sizeBuffer, SizeDefualt);
 	}
-	
-
-
-	// pass this through as dummy to material system
-	override float Compute()
-	{
-		return Value.Compute();
-	}
-	
-	
-
-
 };

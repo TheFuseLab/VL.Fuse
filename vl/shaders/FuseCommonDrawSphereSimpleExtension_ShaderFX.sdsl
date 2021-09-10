@@ -1,12 +1,12 @@
-shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderUtils
+shader FuseCommonDrawSphereSimpleExtension_ShaderFX : ShaderBaseStream, TransformationBase, Transformation, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderUtils
 {
+	compose SphereProvider Provider;
+
+	stage stream float sphereSize;
+    stage stream float3 spherePos;
 
 	// End of the VS (usually skinning)
-	stage override void PreTransformPosition() 
-	{
-		streams.VID = streams.VertexID;
-		streams.PositionWS = streams.Position;
-	}
+	stage override void PreTransformPosition() {}
 
 	// End of tessellation (usually displacement mapping in world space, etc...)
 	stage override void TransformPosition() {}
@@ -14,7 +14,7 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 	// At the end of the geometry pipeline (to generate ShadingPosition)
 	stage override void PostTransformPosition()
 	{
-		streams.ShadingPosition = streams.PositionWS; //not
+		streams.ShadingPosition = streams.Position; // must be assigned to something
 	}
 
 
@@ -25,18 +25,15 @@ shader FuseCommonDrawSphereSimpleExtension : SphereProvider, ShaderBaseStream, T
 		streams = input[0];
 
 		// get data from ParticleProvider implementation
-		streams.PositionWS = float4(getSpherePos(), 1);
-		float pSize = getSphereSize();
-		streams.sphereSize = pSize;
-
+		streams.PositionWS = float4(Provider.getSpherePos(), 1);
+		streams.sphereSize = Provider.getSphereSize();
+		float4 posView = mul(streams.PositionWS, WorldView);
 
 		for (int i=0; i<4; i++)
 		{
 			streams.TexCoord  = QuadUV[i].xy * 2 - 1; //center and scale for sphere impostor
-
-			float4 posView = mul(streams.PositionWS, WorldView);
-			posView.xyz += QuadPositions[i].xyz * pSize;
-			streams.ShadingPosition = mul(posView, Projection);
+			float4 viewCornerPos = float4(posView.xyz + QuadPositions[i].xyz * streams.sphereSize, 1);
+			streams.ShadingPosition = mul(viewCornerPos, Projection);
 
 			triangleStream.Append(streams);
 		}     

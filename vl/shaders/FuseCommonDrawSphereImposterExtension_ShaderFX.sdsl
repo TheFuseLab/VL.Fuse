@@ -1,5 +1,21 @@
-shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase
+shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase
 {
+	compose SphereProvider Provider;
+
+	stage stream float sphereSize;
+    stage stream float3 spherePos;
+
+    	// End of the VS (usually skinning)
+	stage override void PreTransformPosition() {}
+
+	// End of tessellation (usually displacement mapping in world space, etc...)
+	stage override void TransformPosition() {}
+
+	// At the end of the geometry pipeline (to generate ShadingPosition)
+	stage override void PostTransformPosition()
+	{
+		streams.ShadingPosition = streams.PositionWS; // must be assigned to something
+	}
 
 	void sphereImpostor(float2 screenCoord, float3 spherePos, float sphereRadius, out float3 pos, out float3 normal)
 	{
@@ -28,35 +44,20 @@ shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream,
 		pos = (normal * sphereRadius) + spherePos;
 	}
 	
-	// End of the VS (usually skinning)
-	stage override void PreTransformPosition() 
-	{
-	    streams.VID = streams.VertexID;
-		streams.PositionWS = streams.Position;
-	}
-
-	// End of tessellation (usually displacement mapping in world space, etc...)
-	stage override void TransformPosition() {}
-
-	// At the end of the geometry pipeline (to generate ShadingPosition)
-	stage override void PostTransformPosition()
-	{
-		streams.ShadingPosition = streams.PositionWS; //not
-	}
 
 	static const float3 QuadPositions[4] = {
-	float3(-1, 1,0),
-	float3( 1, 1,0),
-	float3(-1, -1,0),
-	float3( 1, -1,0),
+        float3(-1, 1,0),
+        float3( 1, 1,0),
+        float3(-1, -1,0),
+        float3( 1, -1,0),
 	};
 
 	[maxvertexcount(4)]
 	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
 	{
 		streams = input[0];
-		streams.PositionWS = float4(getSpherePos(), 1);
-		float size = getSphereSize();
+		streams.spherePos = float4(Provider.getSpherePos(), 1);
+		streams.sphereSize = Provider.getSphereSize();
 
 
 		float padding = 1.5;
@@ -65,11 +66,8 @@ shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream,
 		
 		for (int i = 0; i<4; i++) 
 		{
-			streams.sphereSize = size;
-			streams.spherePos = streams.PositionWS;
-
 			streams.TexCoord = QuadPositions[i].xy * padding;
-			offset = sign(QuadPositions[i].xy) * size;
+			offset = sign(QuadPositions[i].xy) * streams.sphereSize;
 			float4 viewCornerPos = cameraSpherePos;
 			viewCornerPos.xy += offset * padding;
 			streams.ShadingPosition = mul(viewCornerPos, Projection);
@@ -88,8 +86,8 @@ shader FuseCommonDrawSphereImposterExtension : SphereProvider, ShaderBaseStream,
 
 		// take care for pipeline streams, should be abstracted
 		///////////////////////////////////////////////////////////////
-		streams.PositionWS = float4(p.xyz, 1);
-		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
+		streams.spherePos = float4(p.xyz, 1);
+		float4 PosWVP = mul(streams.spherePos, ViewProjection);
 		streams.normalWS = n;
 		streams.meshNormalWS = n;
 		streams.DepthVS = PosWVP.w;
