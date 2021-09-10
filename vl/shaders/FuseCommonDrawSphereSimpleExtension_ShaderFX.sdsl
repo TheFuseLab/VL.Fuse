@@ -1,4 +1,4 @@
-shader FuseCommonDrawSphereSimpleExtension_ShaderFX : ShaderBaseStream, TransformationBase, Transformation, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderUtils
+shader FuseCommonDrawSphereSimpleExtension_ShaderFX : MaterialExtension, ShaderUtils
 {
 	compose SphereProvider Provider;
 
@@ -41,7 +41,7 @@ shader FuseCommonDrawSphereSimpleExtension_ShaderFX : ShaderBaseStream, Transfor
 
 
 	//override shading, create sphere impostor in this case
-	stage override float4 Shading() 
+	stage override float4 Shading()
 	{
 		float2 mapping = streams.TexCoord;
 		float lenSqr = dot(mapping, mapping);
@@ -52,31 +52,13 @@ shader FuseCommonDrawSphereSimpleExtension_ShaderFX : ShaderBaseStream, Transfor
 
 		float3 normal = float3(mapping, z);
 		normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
-
-		// code from VL.Stride help example
-		// this seems to be using the acutal quad to write depth and normals etc, we want them to be from the sphere.  
-		// note spheres are 100%  dark or light from shadows
-		/*
-		streams.normalWS = normal;
-		streams.meshNormalWS = normal;
-
-		float4 posQuad = streams.PositionWS;
-		posQuad.z += z;
-		float4 PosWVP = mul(posQuad, ViewProjection);
-		streams.DepthVS = PosWVP.w;
-		streams.DepthLessEqual = PosWVP.z/PosWVP.w;
-		*/
 		
 		// new code to write pos & depth
 		// Shadows look correct now, but if you move the camera a distance away have other weirdness
 		// /*
-		streams.PositionWS = float4((normal * streams.sphereSize) + streams.PositionWS.xyz, 1); //		pos = (normal * sphereRadius) + spherePos;
-		float4 PosWVP = mul(streams.PositionWS, ViewProjection);
-		streams.normalWS = normal;
-		streams.meshNormalWS = normal;
-		streams.Depth = PosWVP.z/PosWVP.w;
+		float4 worldPos = float4((normal * streams.sphereSize) + streams.PositionWS.xyz, 1);
 		// */
 
-		return base.Shading();
+		return StrideShadingWorldNormal(worldPos, normal);
 	}
 };

@@ -1,6 +1,5 @@
-﻿shader Imposter_ShaderFX : SphereProvider, FuseCommonBuffer, Transformation, TransformationBase, PositionStream4, Texturing 
+﻿shader Imposter_ShaderFX : SphereProvider, FuseCommonBuffer, TransformationBase, VertexIDStream
 {
-
 	rgroup PerMaterial
 	{
 		stage StructuredBuffer<float3> posBuffer;
@@ -12,25 +11,21 @@
 		stage float SizeDefualt = 0.1;
 	}
 
-	stage stream uint VertexID : SV_VertexID;
-    stage stream uint VID;
-
-	// assign VID
-	stage override void PreTransformPosition() 
+	// assign VertexID
+	stage override void PreTransformPosition()
 	{
-		streams.VID = streams.VertexID;
-		streams.PositionWS = streams.Position;
+		AssignVertexID();
 	}
 
 	override stage float3 getSpherePos()
 	{
-		uint id = streams.VID;
+		uint id = streams.VertexID;
 		return posBuffer[id];
 	}
 
 	override stage float getSphereSize()
 	{
-		uint id = streams.VID; 
+		uint id = streams.VertexID; 
 		return sbLoad(id, sizeBuffer, SizeDefualt);
 	}
 };

@@ -1,9 +1,9 @@
-shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transformation, TransformationBase, PositionStream4, NormalStream, Texturing, ShadingBase, ShaderBase
+shader FuseCommonDrawSphereImposterExtension_ShaderFX : MaterialExtension
 {
 	compose SphereProvider Provider;
 
+    // to pass sphere size from geom shader to pixel shader
 	stage stream float sphereSize;
-    stage stream float3 spherePos;
 
     	// End of the VS (usually skinning)
 	stage override void PreTransformPosition() {}
@@ -14,7 +14,7 @@ shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transf
 	// At the end of the geometry pipeline (to generate ShadingPosition)
 	stage override void PostTransformPosition()
 	{
-		streams.ShadingPosition = streams.PositionWS; // must be assigned to something
+		streams.ShadingPosition = streams.Position; // must be assigned to something
 	}
 
 	void sphereImpostor(float2 screenCoord, float3 spherePos, float sphereRadius, out float3 pos, out float3 normal)
@@ -44,7 +44,6 @@ shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transf
 		pos = (normal * sphereRadius) + spherePos;
 	}
 	
-
 	static const float3 QuadPositions[4] = {
         float3(-1, 1,0),
         float3( 1, 1,0),
@@ -56,9 +55,8 @@ shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transf
 	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
 	{
 		streams = input[0];
-		streams.spherePos = float4(Provider.getSpherePos(), 1);
+		streams.PositionWS = float4(Provider.getSpherePos(), 1);
 		streams.sphereSize = Provider.getSphereSize();
-
 
 		float padding = 1.5;
 		float2 offset;
@@ -73,26 +71,17 @@ shader FuseCommonDrawSphereImposterExtension_ShaderFX : ShaderBaseStream, Transf
 			streams.ShadingPosition = mul(viewCornerPos, Projection);
 			triangleStream.Append(streams);
 		}
-
 	}
 
-	stage override float4 Shading() 
+	stage override float4 Shading()
 	{
-
 		float3 p, n;
-		//float size = getSphereSize();
 		float size = streams.sphereSize;
-		sphereImpostor(streams.TexCoord, streams.spherePos.xyz, size, p, n);
+		sphereImpostor(streams.TexCoord, streams.PositionWS.xyz, size, p, n);
 
-		// take care for pipeline streams, should be abstracted
+		// call stride shading
 		///////////////////////////////////////////////////////////////
-		streams.spherePos = float4(p.xyz, 1);
-		float4 PosWVP = mul(streams.spherePos, ViewProjection);
-		streams.normalWS = n;
-		streams.meshNormalWS = n;
-		streams.DepthVS = PosWVP.w;
-		streams.Depth = PosWVP.z/PosWVP.w;
-		return base.Shading();
+        return StrideShadingWorldNormal(p, n);
 		////////////////////////////////////////////////////////////////
 	}
 };
