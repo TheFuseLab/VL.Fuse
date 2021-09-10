@@ -1,0 +1,26 @@
+shader FuseCommonDrawPosNormExtension_ShaderFX : MaterialExtension
+{
+    compose FuseCommonDrawPosNorm Surface;
+
+    // End of the VS (usually skinning)
+    stage override void PreTransformPosition() 
+    {
+        streams.PositionWS = streams.Position;
+    }
+
+    // End of tessellation (usually displacement mapping in world space, etc...)
+    stage override void TransformPosition() {}
+
+    // At the end of the geometry pipeline (to generate ShadingPosition)
+    stage override void PostTransformPosition()
+    {
+        streams.ShadingPosition = streams.Position;
+    }
+    
+    stage override float4 Shading() 
+    {
+        float3 p, n;
+        Surface.posNormByFunction(p, n);
+        return StrideShadingWorldNormal(p, n);
+    }
+};
