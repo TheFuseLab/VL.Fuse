@@ -1,35 +1,12 @@
-shader FuseGeometryMeshSurface
+shader FuseGeometryMeshSurface : FuseGeometryMeshSurfaceStream
 {
-// Helpers for working with mesh data in the format of pos, normals and uv
-
-	// the struct
-	struct MeshSurface
-	{
-		float3 p; 
-		float3 n; 
-		float2 uv;
-	};
-
-	//stage stream MeshSurface PosNormUV;  // didn't seem happy about streaming a struct ??
-	stage stream float3 msP;
-	stage stream float3 msN;
-	stage stream float2 msUV;
-
-	// MeshSurface Constructor
-	stage MeshSurface makeSurface(float3 p, float3 n, float2 uv)
+	// Helpers for working with mesh data in the format of pos, normals and uv
+	MeshSurface makeSurface(float3 p, float3 n, float2 uv)
 	{
 		MeshSurface surface;
 		surface.p = p;
 		surface.n = n;
 		surface.uv = uv;
 		return surface;
-	};
-
-	stage void modifyMeshSurface (MeshSurface surface)
-	{
-		streams.msP = surface.p;
-		streams.msN = surface.n;
-		streams.msUV = surface.uv;
 	}
-
 };

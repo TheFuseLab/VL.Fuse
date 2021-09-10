@@ -1,0 +1,24 @@
+shader FuseGeometryMeshSurfaceStream
+{
+	// Helpers for working with mesh data in the format of pos, normals and uv
+
+	// the struct
+	struct MeshSurface
+	{
+		float3 p; 
+		float3 n; 
+		float2 uv;
+	};
+
+	// stage stream MeshSurface PosNormUV;  // didn't seem happy about streaming a struct ??
+	stage stream float3 msP;
+	stage stream float3 msN;
+	stage stream float2 msUV;
+
+	stage void assignMeshSurfaceStreams(MeshSurface surface)
+	{
+		streams.msP = surface.p;
+		streams.msN = surface.n;
+		streams.msUV = surface.uv;
+	}
+};
