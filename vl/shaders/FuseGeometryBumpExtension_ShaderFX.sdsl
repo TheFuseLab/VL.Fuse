@@ -1,0 +1,47 @@
+shader FuseGeometryBumpExtension_ShaderFX : MaterialExtension, FuseGeometryMeshSurfaceStream
+{
+	compose bumpTest_ShaderFX bumpValues;
+	//compose ComputeFloat bump;
+	//compose ComputeFloat3 grad; 
+	//compose ComputeFloat bumpAmt;
+
+	stage override float4 Shading() 
+	{
+		float bump;
+		float3 grad;
+		float bumpAmt;
+		bumpValues.getBumpValues(bump, grad, bumpAmt);
+		float3 p =  streams.PositionWS.xyz;
+		float3 n = streams.normalWS.xyz;
+		float bumpFactor = bumpAmt;
+		p += bump * n * bumpAmt; 
+		n += grad * bumpAmt;
+		n = normalize(n);
+
+		streams.PositionWS.xyz = p;
+		streams.normalWS.xyz = n;
+  
+		//float nLenSqr = dot(streams.msN, streams.msN); //check whether normal has a value
+		//float3 normal = nLenSqr > 0 ? streams.msN : streams.normalWS.xyz;
+
+		return base.Shading();
+		
+	}
+	 
+};
+
+
+/*
+	// should just be void, as all we need is to read and write from the streams
+	float bumpMap(float nastyPassthroughValue, float bump, float3 grad, float bumpAmt)
+	{
+		float3 p = streams.PositionWS.xyz;
+		float3 n = streams.normalWS.xyz;
+		p += bump * n * bumpAmt; 
+		n += grad * bumpAmt;
+		n = normalize(n);
+		streams.PositionWS.xyz = p;
+		streams.normalWS.xyz = n;
+		return nastyPassthroughValue;
+	}
+*/

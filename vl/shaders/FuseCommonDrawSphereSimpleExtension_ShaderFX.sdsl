@@ -1,0 +1,64 @@
+shader FuseCommonDrawSphereSimpleExtension_ShaderFX : MaterialExtension, ShaderUtils
+{
+	compose SphereProvider Provider;
+
+	stage stream float sphereSize;
+    stage stream float3 spherePos;
+
+	// End of the VS (usually skinning)
+	stage override void PreTransformPosition() {}
+
+	// End of tessellation (usually displacement mapping in world space, etc...)
+	stage override void TransformPosition() {}
+
+	// At the end of the geometry pipeline (to generate ShadingPosition)
+	stage override void PostTransformPosition()
+	{
+		streams.ShadingPosition = streams.Position; // must be assigned to something
+	}
+
+
+		// custom geometry shader, quad particle in this case
+	[maxvertexcount(4)]
+	stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+	{
+		streams = input[0];
+
+		// get data from ParticleProvider implementation
+		streams.PositionWS = float4(Provider.getSpherePos(), 1);
+		streams.sphereSize = Provider.getSphereSize();
+		float4 posView = mul(streams.PositionWS, WorldView);
+
+		for (int i=0; i<4; i++)
+		{
+			streams.TexCoord  = QuadUV[i].xy * 2 - 1; //center and scale for sphere impostor
+			float4 viewCornerPos = float4(posView.xyz + QuadPositions[i].xyz * streams.sphereSize, 1);
+			streams.ShadingPosition = mul(viewCornerPos, Projection);
+
+			triangleStream.Append(streams);
+		}     
+	}
+
+
+	//override shading, create sphere impostor in this case
+	stage override float4 Shading()
+	{
+		float2 mapping = streams.TexCoord;
+		float lenSqr = dot(mapping, mapping);
+		if (lenSqr > 1)
+			discard; // Circles
+		
+		float z = sqrt(1 - lenSqr);
+
+		float3 normal = float3(mapping, z);
+		normal = normalize(mul(float4(normal, 0), ViewInverse).xyz);
+		
+		// new code to write pos & depth
+		// Shadows look correct now, but if you move the camera a distance away have other weirdness
+		// /*
+		float4 worldPos = float4((normal * streams.sphereSize) + streams.PositionWS.xyz, 1);
+		// */
+
+		return StrideShadingWorldNormal(worldPos, normal);
+	}
+};

@@ -1,15 +1,13 @@
-shader FuseGeometryMeshSurfaceVSExtension : FuseGeometryMeshSurface, ShaderBaseStream, TransformationBase, PositionStream4, Texturing, ShadingBase, NormalBase
+shader FuseGeometryMeshSurfaceVSExtension_ShaderFX : MaterialExtension, FuseGeometryMeshSurfaceStream
 {
-
+    compose FuseGeometryMeshSurface Surface;
     // End of the VS (usually skinning)
     // could also put override here to do things sooner
-    /*
+
     stage override void PreTransformPosition() 
     {
         base.PreTransformPosition();
     }
-    */
-    
 
     // End of tessellation (usually displacement mapping in world space, etc...)
     stage override void TransformPosition() 
@@ -22,34 +20,26 @@ shader FuseGeometryMeshSurfaceVSExtension : FuseGeometryMeshSurface, ShaderBaseS
         float3 p =  streams.PositionWS.xyz;
         float3 n = streams.normalWS.xyz;
         float2 uv = streams.TexCoord.xy;
-        MeshSurface surface = makeSurface(p, n, uv);
-        modifyMeshSurface(surface);
-        streams.PositionWS.xyz = streams.msP;
-        streams.normalWS.xyz = streams.msN;
+
+        MeshSurface surface = Surface.makeSurface(p, n, uv);
+        assignMeshSurfaceStreams(surface);
+
+        streams.PositionWS.xyz = streams.msP;       
+        float nLenSqr = dot(streams.msN, streams.msN); //check whether normal has a value
+        float3 normal = nLenSqr > 0 ? streams.msN : streams.normalWS.xyz;
+        streams.normalWS = normal;
         streams.TexCoord.xy = streams.msUV;
     }
 
-    
     // normals handled a little seperatly 
     override stage void GenerateNormal_VS()
     {
-        base.GenerateNormal_VS();
-        streams.normalWS.xyz = streams.msN;
+        //dont do anything here, already done in TransformPosition()
     }
     
-
-
-    // At the end of the geometry pipeline (to generate ShadingPosition)
-    /*
-    stage override void PostTransformPosition()
-    {
-    }
-    */
-
-    /*
     stage override float4 Shading() 
     {
         return base.Shading();
+        //return float4(abs(streams.msN), 1);
     }
-     */
 };

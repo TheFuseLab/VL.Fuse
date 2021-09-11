@@ -1,0 +1,21 @@
+shader FuseGeometryMeshSurfacePSExtension_ShaderFX : MaterialExtension, FuseGeometryMeshSurfaceStream
+{
+    compose FuseGeometryMeshSurface Surface;
+
+    stage override float4 Shading() 
+    {
+        float3 p =  streams.PositionWS.xyz;
+        float3 n = streams.normalWS.xyz;
+        float2 uv = streams.TexCoord.xy;
+        MeshSurface surface = Surface.makeSurface(p, n, uv);
+        assignMeshSurfaceStreams(surface);
+  
+        float nLenSqr = dot(streams.msN, streams.msN); //check whether normal has a value
+        float3 normal = nLenSqr > 0 ? streams.msN : streams.normalWS.xyz;
+        streams.normalWS = normal;
+        streams.TexCoord.xy = streams.msUV;
+
+        return StrideShadingWorldNormal(streams.msP, normal);
+    }
+     
+};
