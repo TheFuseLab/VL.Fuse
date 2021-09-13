@@ -21,10 +21,12 @@ namespace MyTests
     [TestFixture]
     public class PatchTests
     {
+
+        static string VLVersion = "2021.4.0-0387-g2b032b9108";
         static string[] Packs = new string[]{ 
         
         //  FIX ME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            @"C:\Program Files\vvvv\vvvv_gamma_2021.4.0-0387-g2b032b9108\lib\packs",
+            @"C:\Program Files\vvvv\vvvv_gamma_" + VLVersion + @"\lib\packs",
 
         };
 
