@@ -4,7 +4,9 @@
 
 An open source library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
 
-It is built for use in [vvvv gamma](https://visualprogramming.net/) and follows it’s "always runtime" model allowing for fast design and programming work with no build or compile process in between you and your results.
+It is built for use in [vvvv gamma](https://visualprogramming.net/) and follows its "always runtime" model allowing for fast design and programming work with no build or compile process in between you and your results.
+
+Rendering uses the [Stride 3D Engine](https://stride3d.net/) integration for vvvv, allowing for game engine style PBR materials, lighting & post effects all without having to write a single script.
 
 As a community supported effort we make it to use in real world projects and aim to share the fruits of its research & development with our peers in the creative coding and generative design communities.
 
