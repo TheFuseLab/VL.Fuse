@@ -23,19 +23,4 @@ shader FuseCommonDrawPosNormExtension_ShaderFX : ShadingBase, ShaderBaseStream, 
         Surface.posNormByFunction(p, n);
         return StrideShadingWorldNormal(p, n);
     }
-
-
-
-    
-    stage float4 StrideShadingWorldNormal(float3 worldPos, float3 normal)
-    {
-        streams.PositionWS = float4(worldPos, 1);
-        float4 posWVP = mul(streams.PositionWS, ViewProjection);
-        streams.normalWS = normal;
-        streams.meshNormalWS = normal;
-        streams.DepthVS = posWVP.w;
-        streams.Depth = posWVP.z/posWVP.w;
-        return base.Shading();
-    }
-    
 };
