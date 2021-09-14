@@ -23,6 +23,10 @@ namespace Fuse
             // Didn' test these ...
             if (typeof(T) == typeof(Texture))
                 return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
+            
+            if (typeof(T) == typeof(SamplerInput))
+                return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
+            
             throw new NotImplementedException();
         }
     }
@@ -85,6 +89,17 @@ namespace Fuse
         {
             _textureInput.Value = value;
             return _textureInput.Output;
+        }
+    }
+    
+    sealed class SamplerStateGpuValueBuilder : IMonadBuilder<SamplerState, GpuValue<SamplerState>>
+    {
+        private readonly SamplerInput _samplerInput = new SamplerInput(null);
+
+        public GpuValue<SamplerState> Return(SamplerState value)
+        {
+            _samplerInput.Value = value;
+            return _samplerInput.Output;
         }
     }
 }

@@ -172,7 +172,7 @@ namespace Fuse{
      
      public class SamplerInput: ObjectInput<SamplerState>, IGpuInput 
      {
-         public SamplerInput(string theName, SamplerState theSampler) : base("SamplerInput", theSampler)
+         public SamplerInput(SamplerState theSampler) : base("SamplerInput", theSampler)
          {
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
