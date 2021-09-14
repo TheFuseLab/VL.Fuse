@@ -1,6 +1,8 @@
 # VL.Fuse
 
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 
 An open source library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
 
