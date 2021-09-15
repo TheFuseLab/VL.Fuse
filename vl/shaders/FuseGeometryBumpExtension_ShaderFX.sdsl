@@ -1,16 +1,19 @@
 shader FuseGeometryBumpExtension_ShaderFX : MaterialExtension, FuseGeometryMeshSurfaceStream
 {
-	compose ComputeFloat bump;
-	compose ComputeFloat3 grad; 
+	//compose ComputeFloat bump;
+	compose ComputeFloat4 bumpgrad; 
 	compose ComputeFloat bumpAmt;
 
 	stage override float4 Shading() 
 	{
 		float3 p =  streams.PositionWS.xyz;
 		float3 n = streams.normalWS.xyz;
+		float4 bumpAndGradient = bumpgrad.Compute();
+		float bump = bumpAndGradient.x;
+		float3 grad = bumpAndGradient.yzw;
 		float bumpFactor = bumpAmt.Compute();
-		p += bump.Compute() * n * bumpFactor; 
-		n += grad.Compute() * bumpFactor;
+		p += bump * n * bumpFactor; 
+		n += grad * bumpFactor;
 		n = normalize(n);
 
 		streams.PositionWS.xyz = p;
