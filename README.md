@@ -12,6 +12,8 @@ Rendering uses the [Stride 3D Engine](https://stride3d.net/) integration for vvv
 
 As a community supported effort we make it to use in real world projects and aim to share the fruits of its research & development with our peers in the creative coding and generative design communities.
 
+Here is the preview release presentation: [Release Presentation: FUSE](https://youtu.be/4xDShgbKTsQ?t=920)
+
 ## Installing
 
 The library is still in a preview state. Before installing it, please make sure you have the [latest vvvv gamma preview](https://visualprogramming.net/#Download).
@@ -23,6 +25,8 @@ nuget install VL.Fuse -pre
 ```
 
 - Press <kbd>Enter</kbd> and wait for the end of the installation process
+
+Here is a video of the steps above: [HOW TO INSTALL FUSE (from scratch)](https://youtu.be/496WNsDc1v8)
 
 ## Getting started
 
