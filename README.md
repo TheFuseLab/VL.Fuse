@@ -1,6 +1,6 @@
 # VL.Fuse
 
-[![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 ![](/documentation/fuse_banner.png)
 
