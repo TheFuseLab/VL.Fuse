@@ -1,7 +1,6 @@
 # VL.Fuse
 
-[![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/VL.Fuse?logo=nuget&style=flat-square)](https://www.nuget.org/packages/VL.Fuse/) [![Matrix](https://img.shields.io/matrix/VL.Fuse:matrix.org?label=chat%20on%20element&logo=element&style=flat-square)](https://app.element.io/#/room/#VL.Fuse:matrix.org)[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 
 An open source library for visually programming on the GPU, built to enable rapid workflows and modular approaches to accelerated graphics, logic and computation. 
@@ -47,6 +46,6 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 * Analog Native         https://analognative.net/
 * Takuma Nakata     	https://www.takumanakata.com/
 * Naut             		https://naut.ch/
- 
+
 ### Backers
 Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, M4d, Circuitb, Karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, Motzi
