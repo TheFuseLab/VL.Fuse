@@ -13,6 +13,7 @@ using Stride.Rendering;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Lib.Collections;
+using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
 
@@ -172,12 +173,11 @@ namespace Fuse
             return new DynamicEffectInstance(theDrawShader.ShaderName);
         }
 
-        public static ComputeEffectDispatcher RegisterComputeShader(Game game, ToComputeFx theComputeFx)
+        public static VLComputeEffectShader RegisterComputeShader(Game game, ToComputeFx theComputeFx)
         {
             AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
             var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-            computeShader.ShaderSourceName = theComputeFx.ShaderName;
             return computeShader;
         }
 
