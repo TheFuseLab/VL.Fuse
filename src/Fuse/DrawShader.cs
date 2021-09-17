@@ -147,6 +147,8 @@ namespace Fuse
         {
             "ShadingPosition",
             
+            "Color",
+            
             "ColorTarget",
             "ColorTarget1",
             "ColorTarget2",
@@ -168,7 +170,7 @@ namespace Fuse
             "TexCoord9",
         };
         //VS_PS_Base
-        private const string DrawShaderSource = @"shader ${shaderID} : VS_PS_Base, Texturing${mixins}
+        private const string DrawShaderSource = @"shader ${shaderID} : VS_PS_Base, ColorBase, Texturing${mixins}
 {
     cbuffer Inputs{
 ${declarations}
