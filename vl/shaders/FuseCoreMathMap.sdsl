@@ -442,7 +442,7 @@ shader FuseCoreMathMap: FuseCoreMath
 		return t == 1.0 ? t : 1.0 - pow(2.0, -10.0 * t);
 	}
 
-	#define ease_linear(t) t
+	float ease_linear(float t) {return t;}
 
 	float ease_quadraticInOut(float t) 
 	{
@@ -479,9 +479,11 @@ shader FuseCoreMathMap: FuseCoreMath
 
 	float ease_qinticInOut(float t) 
 	{
-		return t < 0.5
-		? +16.0 * pow(t, 5.0)
-		: -0.5 * pow(2.0 * t - 2.0, 5.0) + 1.0;
+		//return t < 0.5
+		//? +16.0 * pow(t, 5.0)
+		//: -0.5 * pow(2.0 * t - 2.0, 5.0) + 1.0;
+		//: -0.5 * pow(2.0 * t - 2.0, 5.0) + 1.0;
+		return t < 0.5 ? 16 * t * t * t * t * t : 1 - pow(-2 * t + 2, 5) / 2; // could be optimized, orignal code above seemed broken for this one
 	}
 
 	float ease_qinticIn(float t) 
