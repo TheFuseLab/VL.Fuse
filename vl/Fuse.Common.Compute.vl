@@ -10105,7 +10105,7 @@
               <Overlay Id="TA1U4nYH5IENvp61ZgUl6G" Name="DefaultColorTarget (Internal)" Bounds="140,191,294,493">
                 <p:ColorIndex p:Type="Int32">10</p:ColorIndex>
               </Overlay>
-              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;    }&#xD;&#xA;};">
+              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;    }&#xD;&#xA;};">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
@@ -10132,6 +10132,7 @@
                 <Pin Id="A9ET4iLcNMUMR2nfpi7iag" Name="PositionWS" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="PKd6Oh0nMsEPuwYwoRMIWC" Name="Size" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="QnOwued6QVtNJbs7BfacFG" Name="Color" Kind="InputPin" PinGroupName="Input" />
+                <Pin Id="FnV0OgvGe8MNoW1XUedx1V" Name="Skip" Kind="InputPin" PinGroupName="Input" />
               </Node>
               <Node Bounds="1243,246,36,19" Id="CZAl98JwBg1MpTlkfyMDzg">
                 <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
@@ -10162,6 +10163,7 @@
                 <p:Value>
                   <Item>Size</Item>
                   <Item>PositionWS</Item>
+                  <Item>Skip</Item>
                 </p:Value>
               </Pad>
               <Node Bounds="710,620,125,26" Id="RJu6G1RlKBXPWTQgd4LngG">
@@ -10212,8 +10214,8 @@
               <ControlPoint Id="MsjHzAQgG1TLbx8Xk1ChDq" Bounds="1364,392" />
               <ControlPoint Id="ASQ6cw9cBJePt25Q7UOAQH" Bounds="731,562" />
               <ControlPoint Id="PywUvSWiocVN2TQLWI3Yuz" Bounds="769,222" />
-              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="913,222" />
-              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="1055,224" />
+              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="867,221" />
+              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="964,222" />
               <ControlPoint Id="O753LryFLNkOCvM9uFTvqO" Bounds="1207,221" />
               <Node Bounds="811,375,36,19" Id="DjiVkhy4rs1O8oHZpFI6LT">
                 <p:NodeReference>
@@ -10271,6 +10273,7 @@
                 <Pin Id="Qy4kfjsHatUNvFAv5ZCNmB" Name="xyz" Kind="OutputPin" />
               </Node>
               <ControlPoint Id="RYMfFLEhqlKOVzIkMgibVd" Bounds="626,477" />
+              <ControlPoint Id="SgNYyuRtkR3NlXgTotiK4h" Bounds="1060,226" />
             </Canvas>
             <Link Id="Oqar0O6RYQsPguC3CjfGoC" Ids="OjvJd5zLSSxMbZRE0pPXQV,Mpo7lUyg8MPORGMpZG1eQI" />
             <Link Id="R22ulp6CwwxOh1TZvjFGJ4" Ids="QBX1fMqTXp7OYr9oURB0zM,QIN6Z8j5lnXPfmt1WSbv4z" />
@@ -10332,6 +10335,8 @@
             <Link Id="HW5XQCEKovXMwQtJLDaxMY" Ids="Il8WLIZhI1LPRqtlqbPGPm,PKd6Oh0nMsEPuwYwoRMIWC" />
             <Link Id="GrRcMB7CcWLMq5LQ7lIYiC" Ids="M15OKuMlJTwPfRogt98A2P,QnOwued6QVtNJbs7BfacFG" />
             <Link Id="FhwhTR0QE3KQCBQ8kQ0tbH" Ids="CkKT4FdM4hdLFlQbjeNiJP,JeABthWrpYlNe5EvWJbxaP" />
+            <Link Id="SV5GQQjm2aqLVtPBpwyYhU" Ids="PEl6olUGsEoQT5rLKCuB2o,SgNYyuRtkR3NlXgTotiK4h" IsHidden="true" />
+            <Link Id="L87iKwJtEXBPdRxVEt4PR9" Ids="SgNYyuRtkR3NlXgTotiK4h,FnV0OgvGe8MNoW1XUedx1V" />
             <Patch Id="PZ0jHFIk53KNq5JxK3RmR8" Name="Create" />
             <Patch Id="DxkRLevn4qJMj4niqcC8iO" Name="Update" ParticipatingElements="EZ8nYLD5yctQKECHnvIJGw,RJu6G1RlKBXPWTQgd4LngG,N2qG1KOiXM4PVvn0POyimd,ECdUPcBhPHSOLji4eBAiEI,JnuQwOQ3UzVP7u6DzmZBRt,KtUmNQtnQlyQDx7FohrLHg,UuCPwPZi4ujLqZ4dQcXSis,PMCor85SdvsNSMSgxtc3XQ,NWhLWotV9JBNro7Kk60L2A,VZ9IS2IWjl3Pv9qO7qqWyA,CrYhyIXSZMgNITK9y7XeLe,KiSnJseVpVTLRjRjbUoSbK,AXmbUMvnr1ROkVq2xbRdEE">
               <Pin Id="PvwBMVuuZGnNLxoaXanu7j" Name="Depth Stencil State" Kind="InputPin" Bounds="980,477" />
@@ -10353,6 +10358,16 @@
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
+              <Pin Id="PEl6olUGsEoQT5rLKCuB2o" Name="Skip" Kind="InputPin">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="Boolean" />
                     </TypeReference>
                   </p:TypeArguments>
                 </p:TypeAnnotation>
