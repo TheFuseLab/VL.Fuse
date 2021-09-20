@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="FCbB2Fb7rilL2IfRpLnqKM" LanguageVersion="2021.4.0.388" Version="0.128">
-  <NugetDependency Id="BNArUG5jkjILtzheJVHOHX" Location="VL.CoreLib" Version="2021.4.0-0388-ge2a327dce8" />
+<Document xmlns:p="property" Id="FCbB2Fb7rilL2IfRpLnqKM" LanguageVersion="2021.4.0.398" Version="0.128">
+  <NugetDependency Id="BNArUG5jkjILtzheJVHOHX" Location="VL.CoreLib" Version="2021.4.0-0398-gd9934a6501" />
   <Patch Id="O2c3pY34PjdPTxY1Me4KRL">
     <Canvas Id="K90PzeHHxcDO7CFwylduhD" DefaultCategory="Main" CanvasType="FullCategory" />
     <!--
@@ -32,9 +32,6 @@
             <Pin Id="U2hNSydWFaOMKTPPp8sY16" Name="Jacobi Iterations" Kind="InputPin" />
             <Pin Id="No52kZuFqY6PBTO4XPhWsH" Name="Vorticity Strength" Kind="InputPin" />
             <Pin Id="Tf3LPZHQoGePnqWETaPkXg" Name="Components" Kind="InputPin" />
-            <Pin Id="F8o5Yj3V5jAPAyV1V68cYV" Name="Reset" Kind="InputPin" />
-            <Pin Id="CSAI9FX3iOANMLbZ7peOcX" Name="Update" Kind="InputPin" />
-            <Pin Id="T8idtv3CBUzLyDftcCZMM5" Name="Volume Frame Helper Enabled" Kind="InputPin" />
             <Pin Id="AnDiRfVXpTYN8TKVCwELT2" Name="Volume Raymarching Helper Enabled" Kind="InputPin" />
             <Pin Id="GHgt6fiUcuOOkE31piB6f7" Name="Raymarching Fluid Texture Index" Kind="InputPin" />
             <Pin Id="F9SCPm4XlcrMspxmE1HEJz" Name="Helper Enabled" Kind="InputPin" DefaultValue="True">
@@ -42,13 +39,15 @@
                 <Choice Kind="TypeFlag" Name="Boolean" />
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="F8o5Yj3V5jAPAyV1V68cYV" Name="Reset" Kind="InputPin" />
+            <Pin Id="I65BxxtettwOEXbPGrCcLi" Name="Simulation Enabled" Kind="InputPin" />
             <Pin Id="CEvVceOkLXQN8XDoWcYOnD" Name="Velocity Texture" Kind="OutputPin" />
             <Pin Id="TeOewMdAKgUL2kCYK45MWM" Name="Pressure Texture" Kind="OutputPin" />
             <Pin Id="JAh1FR3De1INpJ9HaXOo4z" Name="Vorticity Texture" Kind="OutputPin" />
             <Pin Id="MG6v3HFjKGYNROcTa2PTde" Name="Divergence Texture" Kind="OutputPin" />
             <Pin Id="ErbFa6w7mgFQawbKKwq0Cr" Name="Obstacles Gradient Texture" Kind="OutputPin" />
             <Pin Id="LzSts6c6Q5GPewR7B397hn" Name="Obstacles Velocity Texture" Kind="OutputPin" />
-            <Pin Id="IK2OgjvKZjnOocHEcDb821" Name="Debug Entity" Kind="OutputPin" />
+            <Pin Id="U2CePbhSdpBPjj2M23uqXZ" Name="Helper Entity" Kind="OutputPin" />
           </Node>
           <Pad Id="NAWC4Y0saMRMkGm5a5QiXj" Comment="Radius" Bounds="3077,512,35,15" ShowValueBox="true" isIOBox="true" Value="10">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -111,7 +110,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
             </p:NodeReference>
-            <Pin Id="I4oMIJsZZlbMKos1rJ98wU" Name="Bounds" Kind="InputPin" DefaultValue="1063, 62, 786, 432">
+            <Pin Id="I4oMIJsZZlbMKos1rJ98wU" Name="Bounds" Kind="InputPin" DefaultValue="1360.667, 64.66666, 786, 432">
               <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
                 <Choice Kind="TypeFlag" Name="Rectangle" />
               </p:TypeAnnotation>
@@ -173,14 +172,6 @@
             <Pin Id="JKpvsF3D4AxQVLRDaCvy5a" Name="Output" Kind="StateOutputPin" />
             <Pin Id="CoebA1wtHsOOVByvmQTfEP" Name="Helper Entity" Kind="OutputPin" />
           </Node>
-          <Pad Id="UQ7fVvLorVuMe6QjZe3KQD" Comment="Update" Bounds="2758,944,98,74" ShowValueBox="true" isIOBox="true" Value="True">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
-              <Choice Kind="TypeFlag" Name="Boolean" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
-            </p:ValueBoxSettings>
-          </Pad>
           <Node Bounds="3048,577,39,19" Id="MZgUExMpA9xPb18zfrW93r">
             <p:NodeReference LastCategoryFullName="Collections.Spread" LastSymbolSource="VL.Collections.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -205,14 +196,6 @@
               <Choice Kind="TypeFlag" Name="Int3" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="1149,2780,101,19" Id="DHw3DjoWF74LJHbnAx4X6U">
-            <p:NodeReference LastCategoryFullName="Stride.Utils" LastSymbolSource="VL.Stride.Games.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="RendererScheduler" />
-            </p:NodeReference>
-            <Pin Id="UvKaQdl9D3bM8mODQPJNzy" Name="Renderer" Kind="InputPin" />
-            <Pin Id="DP0fhs5C0XmQGB9Ab9rpKK" Name="Output" Kind="OutputPin" />
-          </Node>
           <Pad Id="TPK9rXghKb2PCVGMEn3mFl" Comment="Name" Bounds="1201,1961,89,15" ShowValueBox="true" isIOBox="true" Value="Particles Update">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -230,6 +213,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ComputeStage" />
             </p:NodeReference>
+            <Pin Id="EfAPXotmKyiPopLDlaH2qI" Name="SetPrevious" Kind="InputPin" />
             <Pin Id="J0dfDqWdlyiMTIcIeEUTdt" Name="Name" Kind="InputPin" />
             <Pin Id="AowKB35mCjGQca7kqTtuyG" Name="ShaderGraph" Kind="InputPin" />
             <Pin Id="H4GTe4NLYanLGvQQQBLTYt" Name="writeAttributes" Kind="InputPin" DefaultValue="True">
@@ -270,7 +254,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Node Bounds="1492,2657,795,19" Id="SOPSmYaFrO5QXE2sXICctp">
-            <p:NodeReference LastCategoryFullName="Fuse.Particles.Drawer" LastSymbolSource="Fuse.Particles.vl">
+            <p:NodeReference LastCategoryFullName="Fuse.Common.Compute.Draw" LastSymbolSource="Fuse.Common.Compute.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ImposterRenderer" />
             </p:NodeReference>
@@ -284,12 +268,13 @@
             <Pin Id="Vij4Ovb5NnhLfJzonmG6Zx" Name="Roughness" Kind="InputPin" />
             <Pin Id="TrbCj8KQZjGPNk4420Yoy3" Name="Emission" Kind="InputPin" />
             <Pin Id="B7VwPs6rRvaLnuuuT79aOo" Name="EmissionIntensity" Kind="InputPin" />
+            <Pin Id="VGrWzGy50Q8LD5modufH2t" Name="DoDraw" Kind="InputPin" />
             <Pin Id="BvDTEpKPsxvP6S4bzTzW4f" Name="Enabled" Kind="InputPin" />
             <Pin Id="Pd8i7JYO60UPv23deyQhsS" Name="Draw Perspective" Kind="InputPin" />
             <Pin Id="LveHQNoyoT2PxSkg2MCatb" Name="Bounding Box" Kind="InputPin" />
             <Pin Id="HeFH80MXhXsPjtZOhniYay" Name="ComputeStage" Kind="OutputPin" />
-            <Pin Id="HuwjLV7MAaJL0TClV7rZoj" Name="Ticket" Kind="OutputPin" />
             <Pin Id="NF5Nw5zrgCQOf2PYsLEiVp" Name="Entity" Kind="OutputPin" />
+            <Pin Id="HuwjLV7MAaJL0TClV7rZoj" Name="Ticket" Kind="OutputPin" />
           </Node>
           <Node Bounds="1232,1889,839,19" Id="Lu1lMDq00JkMwB2vBgriZS">
             <p:NodeReference>
@@ -620,15 +605,6 @@
           <Overlay Id="RpI2KztPmJDORuW4T1NCxX" Name="Draw" Bounds="1458,2080,1050,678">
             <p:ColorIndex p:Type="Int32">0</p:ColorIndex>
           </Overlay>
-          <Pad Id="RONbdVAyolnONa4n1OKzEm" Comment="Volume Frame Helper Enabled" Bounds="2957,887,35,35" ShowValueBox="true" isIOBox="true" Value="True">
-            <p:TypeAnnotation>
-              <Choice Kind="TypeFlag" Name="Boolean" />
-              <FullNameCategoryReference ID="Primitive" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
-            </p:ValueBoxSettings>
-          </Pad>
           <Pad Id="HGrB2wB1di2NvMYRm6PDed" Comment="Volume Raymarching Helper Enabled" Bounds="2957,944,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
@@ -1736,6 +1712,15 @@
             <Pin Id="LR5hGZGgo7XNCmVSBzWpcj" Name="Input 2" Kind="InputPin" DefaultValue="0.5" />
             <Pin Id="UFD03N5gZA5M6sUE2c44Ho" Name="Output" Kind="OutputPin" />
           </Node>
+          <Pad Id="U4KajQ55juLOOvcE6IF6DC" Comment="Simulation Enabled" Bounds="2765,940,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation>
+              <Choice Kind="TypeFlag" Name="Boolean" />
+              <FullNameCategoryReference ID="Primitive" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <Patch Id="PsECfHNmPW5NLQ3WaW8e5E" Name="Create" />
         <Patch Id="NGq44sWvsNLNYia8JKhHra" Name="Update" />
@@ -1751,7 +1736,6 @@
         <Link Id="MAYj7qNRWXYNqRanU9CV1h" Ids="CelW1zoQYpXL3kUTxG5Q4o,Qx2nK6UsVBSNh6An2UCAzr" />
         <Link Id="CApEdiWI6eAMUNqEN9hxnZ" Ids="Cv8XVNUuco6LPJN5zjA3G9,F8o5Yj3V5jAPAyV1V68cYV" />
         <Link Id="OinB4xWiIObMlga9wmEZ6H" Ids="MIsxSdSmDD0LcSc4jx2xDw,PqnG6Dggti8MYcjPT0q8i5" />
-        <Link Id="UThQRB8sCXyL2tinnGUGGa" Ids="UQ7fVvLorVuMe6QjZe3KQD,CSAI9FX3iOANMLbZ7peOcX" />
         <Link Id="GSIIs5rlZrUND1yKUZhpdw" Ids="JKpvsF3D4AxQVLRDaCvy5a,Bd0xImLTt0kMwJNE4sLEK8" />
         <Link Id="Eh4m3PbNNtGN6McGjsVQC3" Ids="TPK9rXghKb2PCVGMEn3mFl,J0dfDqWdlyiMTIcIeEUTdt" />
         <Link Id="KY8AZwCGR05LeEvcAeWXV2" Ids="CXShSnKsfFvP1cGdHroCOe,AowKB35mCjGQca7kqTtuyG" />
@@ -1793,7 +1777,6 @@
         <Link Id="FoHi9RghPQOOdsG9LJlYIE" Ids="RxORox8UAgNNb9gq82ObDH,IwhxRDhPo4iNG5GIApYZFf" />
         <Link Id="U2fuVjvm88tQPv9MyjDEbp" Ids="HeFH80MXhXsPjtZOhniYay,T1NyJEcaCGbMusYLnM5i8B" />
         <Link Id="I5Qj6bVv6s4PuBnBgUvrQS" Ids="LAqcCDWqcPANzcCWZfiryF,Ny06CDsNCPtMo2u2TVcFLW" />
-        <Link Id="LFpIvLW46eaQMIPRwpRwVg" Ids="RONbdVAyolnONa4n1OKzEm,T8idtv3CBUzLyDftcCZMM5" />
         <Link Id="II44fyGEjpLMa42OCGonNN" Ids="HGrB2wB1di2NvMYRm6PDed,AnDiRfVXpTYN8TKVCwELT2" />
         <Link Id="BB7PwtGkkCcMC1zhKDt7WV" Ids="EDbgMWeDZHkLpoQTEWBnZf,FLoCzJoixm8QSE4hPgITjR" />
         <Link Id="FiKWlLa98kINWJKfZcuzAS" Ids="Tve5HRt9vnXL3gQseifbl3,AoaoxIHMlaeLt2MoOV6GyO" />
@@ -1862,7 +1845,6 @@
         <Link Id="LBFQLBITWisN1sYlyE1lEW" Ids="I7AF9TCz3CGPbq46ABNjHW,PvKIrRvZ3CsLI7nGHcKfUW" />
         <Link Id="MRfiK8ri6gBPAS8lxXqD15" Ids="Mo68FrZaVmaNtzmZOA8A2F,UNcHGsRJ9plPFlCZT0waeF" />
         <Link Id="ERTW6oi6XZGQL0uyxlgYXW" Ids="Ib6Ro7G45PDQVltjolARYp,Lp4HHAUVY1yNyJfeevunF5" />
-        <Link Id="Mn7GCkRGFNsL0h8eVEJiHH" Ids="BnzR8hpEOh7PHNKBoKZpQh,UvKaQdl9D3bM8mODQPJNzy" />
         <Link Id="OE7Hlyzx8NEPN2dDaTdxJ3" Ids="HEGwmaNoRyTOhfBo3y3WjZ,TAZ84kf3zweOvSUmJmcIOa" />
         <Link Id="K79JCgqEtlWMGykPKQYn8X" Ids="OLNffmhc3oPOjFzzLlQG82,UTLZq0YebcCLpHppOUmVEc" />
         <Link Id="Tqyo32l3UJtL2HbjUhe6nx" Ids="Cpk3z34Rt2uMqsfCaUBlsJ,SdjFUfJ3cJ5PbC6jMYayL8" />
@@ -1912,14 +1894,15 @@
         <Link Id="CdIqPz2p9DhLznfEKRsxPl" Ids="M4tkgyyUv26PSw2GoSkwmf,Chs89RKcM2hMmu8brx5Sf3,HHlTz2B1rHDPeXJ36TuPtf" />
         <Link Id="FsyWU2JawndNnqtLdwu4g2" Ids="M4tkgyyUv26PSw2GoSkwmf,J4d7L2YTUjdPfpJ0VktECw,HmW5fqkT3HYLZ9xb7tAZte" />
         <Link Id="K6C97b9xJ5mNyBp2g8zwMA" Ids="UCzhj2VCOBVN4sf8BPwzhG,CJPhHfxKgbjMM9AnJa1ADD,GhW6XJqEebfLNhATT46T9T" />
-        <Link Id="P1yaQ0qQgdgLGSFuAoWQne" Ids="IK2OgjvKZjnOocHEcDb821,DrtPiYAa6yMNzIOypM87j9" />
         <Link Id="MB8wlVjmWutLUmTjMzT9Ay" Ids="JxE3zjJau1dO2z4JbMTW3a,LNzR6BZfXi9Lj3trp3xhEv" />
         <Slot Id="JS9hdfdzibdNZ0bgjyqQxx" Name="Fluid Debug Entity" />
         <Link Id="PkSC9P8CcDPPWo7AcBk0BE" Ids="UFD03N5gZA5M6sUE2c44Ho,FHBaaR6h6enL5jLReLbeoi" />
         <Link Id="TCmWPInZDT5LS3sAOnSHvw" Ids="ScpWvvXQSqEMubF5oiGxkn,RYdEJVp0gybQABIhu2dKSO" />
+        <Link Id="Su48rpUxanRLJDuwbaFQvN" Ids="U4KajQ55juLOOvcE6IF6DC,I65BxxtettwOEXbPGrCcLi" />
+        <Link Id="KRQoZ3ix4WUQX8qsdz9VC8" Ids="U2CePbhSdpBPjj2M23uqXZ,DrtPiYAa6yMNzIOypM87j9" />
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="B2THKxg3mjNPgnNLmudy53" Location="VL.Stride" Version="2021.4.0-0388-ge2a327dce8" />
+  <NugetDependency Id="B2THKxg3mjNPgnNLmudy53" Location="VL.Stride" Version="2021.4.0-0398-gd9934a6501" />
   <NugetDependency Id="OmAO24SVzCIOo8IdaMZEFg" Location="VL.Fuse" Version="0.0.0.0" />
 </Document>
