@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="QrPtyHtciC6LRDSBwOF4U6" LanguageVersion="2021.4.0.398" Version="0.128">
-  <NugetDependency Id="Qg9XmWBMiocNWySSrzNFd2" Location="VL.CoreLib" Version="2021.4.0-0398-gd9934a6501" />
+<Document xmlns:p="property" Id="QrPtyHtciC6LRDSBwOF4U6" LanguageVersion="2021.4.0.406" Version="0.128">
+  <NugetDependency Id="Qg9XmWBMiocNWySSrzNFd2" Location="VL.CoreLib" Version="2021.4.0-0406-g88de5ca43d" />
   <Patch Id="M3ivezWZOwzQNKDPNu6C2x">
     <Canvas Id="IJS0I5ttC9yP9wVsd85H3y" DefaultCategory="FuseParticles" CanvasType="FullCategory" />
     <!--
@@ -256,8 +256,10 @@
             <Pin Id="Vi2zDN7c6DzOp4LDE9BxVQ" Name="Sampler" Kind="InputPin" />
             <Pin Id="QsIyaaLFUdrPo5gPWZhYxm" Name="Level" Kind="InputPin" />
             <Pin Id="JOObrGE4f0uNmtwCYCOgHk" Name="Helper Enabled" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="PotIkiFMrs8OeUS8kGbBA2" Name="UV Projection Method" Kind="InputPin" />
+            <Pin Id="MkBiSynhTupQUVVH4QIc8r" Name="Helper Texture Enabled" Kind="InputPin" />
             <Pin Id="J9sCrx0T9Y5P7HVYlhP9BC" Name="Output" Kind="OutputPin" />
-            <Pin Id="Jpsw5Bz4GCpNi2a0lWsADu" Name="Transformed Position" Kind="OutputPin" />
+            <Pin Id="LQLYsp9HCHOMCV5V8ynhCM" Name="UVZ Projected Coordinates" Kind="OutputPin" />
             <Pin Id="JfQGFsdFudmPBiu6iBGCsG" Name="Helper" Kind="OutputPin" />
           </Node>
           <Node Bounds="158,514,22,19" Id="Dbsk9NX35dENJSckwVsEEE">
@@ -380,23 +382,24 @@
           <Node Bounds="651,502,145,19" Id="RyXWoTWSkymP17HclQdju5">
             <p:NodeReference LastCategoryFullName="Fuse.Particles.Force" LastSymbolSource="Fuse.Particles.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="Texture2DForceField" />
+              <Choice Kind="ProcessAppFlag" Name="Texture2DForceField (Particle)" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="OjT8cvxXYKHOKyZ2qsBOPt" Name="Texture" Kind="InputPin" />
             <Pin Id="H6bWUZIsoPJLQvSefsasYw" Name="Normalized Texture Data" Kind="InputPin" />
             <Pin Id="KlOEvI6qhoCP3u3ylCABaj" Name="Transformation" Kind="InputPin" />
             <Pin Id="MMZF4iCHc0cMaSkk87TcWd" Name="Strength" Kind="InputPin" />
-            <Pin Id="OOYpVpWAYUVPIMt98U56nY" Name="UV Projection Method" Kind="InputPin" />
-            <Pin Id="Dih3zo8YDpINOyUB1IbucY" Name="CoDomain Transformation" Kind="InputPin" />
-            <Pin Id="EvoCEBJWjIKNZv3CTL8dn2" Name="Z Box Confinement Enabled" Kind="InputPin" />
-            <Pin Id="HP1PJxdA3UoMcz1omoFeiS" Name="Helper Texture Enabled" Kind="InputPin" />
+            <Pin Id="OOYpVpWAYUVPIMt98U56nY" Name="~UV Projection Method" Kind="InputPin" />
+            <Pin Id="Dih3zo8YDpINOyUB1IbucY" Name="~Vector Transformation Function" Kind="InputPin" />
+            <Pin Id="RDtut85cIoPNr9MT7Y3QAm" Name="Z Box Force Confinement Enabled" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="HP1PJxdA3UoMcz1omoFeiS" Name="Helper Texture Enabled" Kind="InputPin" DefaultValue="False" />
             <Pin Id="B26HXPNMl5aOm6XaKztaX9" Name="Helper Enabled" Kind="InputPin" />
             <Pin Id="DbRBxaqc0ZpOwQIDQMzYCb" Name="Enabled" Kind="InputPin" />
             <Pin Id="MGNpgvaTZA6QDGKJNnwNqo" Name="Output" Kind="OutputPin" />
+            <Pin Id="NPuqXWJwAZuQBhi8evzpy0" Name="UVZ Projected Coordinates" Kind="OutputPin" />
             <Pin Id="J22mJe7HW9rQPQ9WbzOcds" Name="Helper" Kind="OutputPin" />
           </Node>
-          <Pad Id="BosKEdn2D6RMQqT2LkrhLT" Comment="Strength" Bounds="758,478,35,15" ShowValueBox="true" isIOBox="true" Value="0.15">
+          <Pad Id="BosKEdn2D6RMQqT2LkrhLT" Comment="Strength" Bounds="741,465,35,15" ShowValueBox="true" isIOBox="true" Value="0.15">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
@@ -441,6 +444,26 @@
             <Pin Id="Ic7zKzzECStQRxbEpxH9Yp" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="SUjqKnjScz6OZQ7EoJ0a14" Comment="Helper Enabled" Bounds="250,912,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation>
+              <Choice Kind="TypeFlag" Name="Boolean" />
+              <FullNameCategoryReference ID="Primitive" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="890,429,111,19" Id="DjzN2OcdOxaMu1ackhsU0p">
+            <p:NodeReference>
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="VolumeZGradientControl" />
+            </p:NodeReference>
+            <Pin Id="PEratWYCUY9LV021fdOJxA" Name="Z Center Mode" Kind="InputPin" DefaultValue="1" />
+            <Pin Id="FYiLkYb79UcOTvFURxBwDR" Name="Z From XY Length" Kind="InputPin" />
+            <Pin Id="PXR2LUAKwO5OcIruNnmk5p" Name="Bias" Kind="InputPin" />
+            <Pin Id="A1BY8NmY9WAOCzVLqx1WHh" Name="Ease Mode" Kind="InputPin" />
+            <Pin Id="RJH90GEwCHJQaELk7LRvvf" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="IKCzPsAfdxsMkKoJ0XCVyr" Comment="Enabled" Bounds="860,489,35,35" ShowValueBox="true" isIOBox="true" Value="True">
             <p:TypeAnnotation>
               <Choice Kind="TypeFlag" Name="Boolean" />
               <FullNameCategoryReference ID="Primitive" />
@@ -503,11 +526,12 @@
         <Link Id="EVlPuSFFQp1OmH4u8pc3G2" Ids="SUjqKnjScz6OZQ7EoJ0a14,ClW1JUMkJJUNsQ2WJ7O0gd" />
         <Link Id="FJU2TQYeTftOFojRUNaOlk" Ids="MGNpgvaTZA6QDGKJNnwNqo,AAYl1Kt0mMeMQx3fzjh6Pf" />
         <Link Id="TtgS8AV3VmvNrnRhyRu2As" Ids="RfWHEgDwhXIOYPyOtsJV6M,Ghq0qHep7IvLPKs5b2FVWP" />
+        <Link Id="EzmqfulJ8WCMNqYcELfFim" Ids="IKCzPsAfdxsMkKoJ0XCVyr,DbRBxaqc0ZpOwQIDQMzYCb" />
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="PqYonFcf6zgMtemJwPDJTs" Location="VL.Stride" Version="2021.4.0-0398-gd9934a6501" />
+  <NugetDependency Id="PqYonFcf6zgMtemJwPDJTs" Location="VL.Stride" Version="2021.4.0-0406-g88de5ca43d" />
   <NugetDependency Id="ERe8HcPz5gPP5XtWGnFX2d" Location="VL.Fuse" Version="0.0.0.0" />
-  <NugetDependency Id="EottoN6NWkiNqDrQCVCoKZ" Location="VL.Stride.Runtime" Version="2021.4.0-0398-gd9934a6501" />
+  <NugetDependency Id="EottoN6NWkiNqDrQCVCoKZ" Location="VL.Stride.Runtime" Version="2021.4.0-0406-g88de5ca43d" />
   <PlatformDependency Id="SKfRqP83K95NoI8W7Stc1I" Location="C:/Program Files/vvvv/vvvv_gamma_2021.4.0-0208-g006008faa3/lib/VL.Stride.Runtime.dll" />
 </Document>
