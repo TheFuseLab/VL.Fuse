@@ -1,0 +1,20 @@
+shader GetItemFloat4Instance_ShaderFX : ComputeFloat4, ShaderBaseStream
+{
+    cbuffer PerMaterial
+    {
+        
+    }
+
+    rgroup PerMaterial
+    {
+        stage Buffer<float4> Colors;
+    }
+
+    
+
+    override float4 Compute()
+    {
+        uint id = streams.InstanceID;
+        return Colors[id];
+    }
+};

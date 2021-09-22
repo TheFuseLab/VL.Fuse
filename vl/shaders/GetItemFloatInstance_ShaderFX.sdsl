@@ -1,0 +1,20 @@
+shader GetItemFloatInstance_ShaderFX : ComputeFloat, ShaderBaseStream
+{
+    cbuffer PerMaterial
+    {
+        
+    }
+
+    rgroup PerMaterial
+    {
+        stage Buffer<float> Values;
+    }
+
+    
+
+    override float Compute()
+    {
+        uint id = streams.InstanceID;
+        return Values[id];
+    }
+};
