@@ -1,0 +1,30 @@
+[Summary("Increments values in a buffer.")]
+shader FuseInstancedGenerateTransformations_ComputeFX : ComputeShaderBase, ParticleStructPos4Vel4, TransformUtils
+{
+    struct Transform //needed put float4x4 into a structured buffer
+    {
+        float4x4 Matrix;
+    };
+
+    float3 ParticleSize;
+	StructuredBuffer<float3> Position;
+	StructuredBuffer<float3> Velocity;
+	RWStructuredBuffer<Transform> InstanceWorld;
+	RWStructuredBuffer<Transform> InstanceWorldInverse;
+
+    override void Compute()
+    {
+        uint index = streams.DispatchThreadId.x;
+        
+        float3 pos = Position[index];
+        float3 vel = Velocity[index];
+
+        float4x4 world;
+        float4x4 worldInverse;
+
+        TransformTRSWithInverse(pos, vel, ParticleSize, world, worldInverse);
+
+        InstanceWorld[index].Matrix = world;
+        InstanceWorldInverse[index].Matrix = worldInverse;
+    }
+};
