@@ -115,7 +115,11 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	float3x3 rot3x3(float pitch, float yaw, float roll)
 	{
 		float3 z=float3(-pitch,yaw,-roll)*acos(-1)*2;float3 x=cos(z),y=sin(z);
-		return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
+		return float3x3(
+			x.y * x.z + y.x * y.y * y.z, -x.x * y.z,  y.x * x.y * y.z-y.y * x.z, 
+			x.y * y.z - y.x * y.y * x.z,  x.x * x.z, -y.y * y.z - y.x * x.y * x.z,
+			x.x * y.y, y.x, x.x * x.y
+		);
 	}
 
 	float3x3 rot3x3(float3 rotation)
