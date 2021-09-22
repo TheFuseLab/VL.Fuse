@@ -16,6 +16,8 @@ Here is the preview release presentation: [Release Presentation: FUSE](https://y
 
 ## Installing
 
+New to vvvv? We have a short video tutorial that will show you how to install vvvv and VL.Fuse : [How to install vvvv and VL.Fuse](https://youtu.be/25sk7_NaEgM)
+
 The library is still in a preview state. Before installing it, please make sure you have the [latest vvvv gamma preview](https://visualprogramming.net/#Download).
 
 - Go to vvvv gamma's _Quad menu_, then click on _Manage Nugets_ and _Commandline_. Once you have the command line open, type :
@@ -26,13 +28,9 @@ nuget install VL.Fuse -pre
 
 - Press <kbd>Enter</kbd> and wait for the end of the installation process
 
-Here is a video of the steps above: [HOW TO INSTALL FUSE (from scratch)](https://youtu.be/496WNsDc1v8)
-
 ## Getting started
 
 With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browser. You'll see some explanations and howtos to get you started
-
-
 
 ## Supporters
 ### Gold Sponsors
