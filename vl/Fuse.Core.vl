@@ -8022,7 +8022,7 @@
                 <Fragment Id="IgJ0xtnFck2Mm0xZ3w7xZE" Patch="T2R8RIMT1Y1L3LkQxuPw5B" Enabled="true" />
                 <Fragment Id="SlLiV9Zg1NYQTd0bfxlo5O" Patch="GrRg2Gx4mCmLsr2Yyfgn9X" Enabled="true" />
                 <Fragment Id="K6ZPBfCFr9ANAiK3iHs0QI" Patch="U8RXy4mzn9kNfjV3tSgMAi" />
-                <Fragment Id="TbnlLFFX8VCOyTiupcwaGn" Patch="TrC8bQfriq0OlAbM8ILPgS" />
+                <Fragment Id="TbnlLFFX8VCOyTiupcwaGn" Patch="TrC8bQfriq0OlAbM8ILPgS" Enabled="true" />
                 <Fragment Id="RjaBlkEgCPaNJl99rlWgwh" Patch="K1ObfTYiTbkPHFOebb7N0A" />
                 <Fragment Id="Lzi9QGfYUdBOMELXZgIowA" Patch="QEXidR8EqUHLCC1xAyMqHG" />
                 <Fragment Id="SBCSKUhkkkSNV7RSELuq44" Patch="UJXe6U90JxaMfS46sn4Ej3" />
@@ -8189,11 +8189,14 @@
                   <Pin Id="HYu1TPsJs9AM0DmbQf02jD" Name="Name" Kind="InputPin" />
                   <Pin Id="Q1Xi4AWjqqwNGtwaiXKL9Q" Name="Fields" Kind="InputPin" />
                   <Pin Id="UewHkiA5NCbOmumHgI2Pas" Name="Output" Kind="OutputPin" />
+                  <Pin Id="NbQt5ysw28pLJaPUe8sPeB" Name="Dynamic Struct" Kind="OutputPin" />
                 </Node>
                 <ControlPoint Id="BrjmUg1ychVOx6oW2UjbWF" Bounds="488,254" />
+                <ControlPoint Id="SRTt7Cg5saQL4TjY5QqTCw" Bounds="475,397" />
               </Canvas>
               <Patch Id="EKXXBNLFfZWMQLT0hG1oKJ" Name="Create" ParticipatingElements="JritbhAY555PbyVJsuLpj5">
                 <Pin Id="BvrVkmHRqg1L6jgi1bB76y" Name="The Name" Kind="InputPin" />
+                <Pin Id="Crmb7GAiWrPN5Ya78FdeWA" Name="Dynamic Struct Gpu" Kind="OutputPin" />
               </Patch>
               <ProcessDefinition Id="KZvnZGW0e2DQMarw2GMig7">
                 <Fragment Id="So5ZPnan4v6PL15ORc94M5" Patch="EKXXBNLFfZWMQLT0hG1oKJ" Enabled="true" />
@@ -8221,6 +8224,8 @@
               <Patch Id="BgduT3QZu3qM2qYU37DJBj" Name="GetOutput">
                 <Pin Id="AjAHHZ94MMDPWFXP32rV2Q" Name="Output" Kind="OutputPin" />
               </Patch>
+              <Link Id="SF8y29VxdRPP2y9UY0dWiE" Ids="SRTt7Cg5saQL4TjY5QqTCw,Crmb7GAiWrPN5Ya78FdeWA" IsHidden="true" />
+              <Link Id="SZRkAf022DDMk5Udtqi7ej" Ids="NbQt5ysw28pLJaPUe8sPeB,SRTt7Cg5saQL4TjY5QqTCw" />
             </Patch>
           </Node>
           <!--
@@ -19703,8 +19708,12 @@
                 <Pin Id="Bva4nM90nZsQaaif9OuFHv" Name="Default" Kind="InputPin" />
                 <Pin Id="AjrwBVPbrL1O1IsNoro5Sa" Name="Mixins" Kind="InputPin" />
                 <Pin Id="LaPNmsFpJCfLYfsugF9s9G" Name="Is Groupable" Kind="InputPin" />
+                <Pin Id="HnVm2EmaFffQO0xI1b5nyO" Name="The Modifiers" Kind="InputPin" />
                 <Pin Id="JS2YSGCVnKHMz0ClAnvyXh" Name="Output" Kind="OutputPin" />
+                <Pin Id="S3c2Rph16DiLraXhpuG77T" Name="Additional Outputs" Kind="OutputPin" />
               </Node>
+              <ControlPoint Id="B2Qf4kDwtkwLA6LwdYAE2N" Bounds="383,430" />
+              <ControlPoint Id="ThOOmwMe2EvM54I7SfXDwH" Bounds="383,514" />
             </Canvas>
             <ProcessDefinition Id="O3wJ2GgiNUHNHoizzESq7e">
               <Fragment Id="PHkUfPsSo4NLY578Bf9xFk" Patch="RwMKKKtJm1RP6XCRLllwwx" Enabled="true" />
@@ -19730,7 +19739,7 @@
                 </p:TypeAnnotation>
               </Pin>
               <Pin Id="Hxq0cKmuAGiOOtou5EjCl1" Name="Function Name" Kind="InputPin" />
-              <Pin Id="HfA8fbwnkvxP0HUu7IdXBX" Name="Default" Kind="InputPin" />
+              <Pin Id="HfA8fbwnkvxP0HUu7IdXBX" Name="Default" Kind="InputPin" Visibility="Optional" />
               <Pin Id="GdEFUkz7jecPaEQtqDWmEm" Name="Mixins" Kind="InputPin">
                 <p:TypeAnnotation>
                   <Choice Kind="TypeFlag" Name="String" />
@@ -19738,7 +19747,22 @@
               </Pin>
               <Pin Id="C9ghitgbhNRQUZVnL5Rp8L" Name="Is Groupable" Kind="InputPin" Visibility="Optional" />
               <Pin Id="R7SHb1tOYk1OMnYtQinnlv" Name="Output" Kind="OutputPin" />
+              <Pin Id="PAGJvycCNaXO7hAbxiyxeM" Name="The Modifiers" Kind="InputPin" Visibility="Optional">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="Sequence" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="InputModifier" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
+              <Pin Id="ROb1tX2dcvkPEf3jbxX93T" Name="Additional Outputs" Kind="OutputPin" Visibility="Optional" />
             </Patch>
+            <Link Id="ISWDGnbsVGOMieth50t3d7" Ids="PAGJvycCNaXO7hAbxiyxeM,B2Qf4kDwtkwLA6LwdYAE2N" IsHidden="true" />
+            <Link Id="EcS06idK0XtNgcICoJDNyJ" Ids="B2Qf4kDwtkwLA6LwdYAE2N,HnVm2EmaFffQO0xI1b5nyO" />
+            <Link Id="K3Y3NjuPZVDQP1ART7HW0i" Ids="ThOOmwMe2EvM54I7SfXDwH,ROb1tX2dcvkPEf3jbxX93T" IsHidden="true" />
+            <Link Id="Jx0ds27MOUuNz8qlUGiPi2" Ids="S3c2Rph16DiLraXhpuG77T,ThOOmwMe2EvM54I7SfXDwH" />
           </Patch>
         </Node>
         <!--
@@ -19794,7 +19818,9 @@
                     <Pin Id="FHtglo2gIraOu8EzOKhNhH" Name="Default" Kind="InputPin" />
                     <Pin Id="MKLxc30ajr6L9nUsG3UGxv" Name="Mixins" Kind="InputPin" />
                     <Pin Id="ErJkCFJer2EP3uBB02Vy8Y" Name="Is Groupable" Kind="InputPin" />
+                    <Pin Id="Qgq7RTKlO6zNSQOnsveB24" Name="The Modifiers" Kind="InputPin" />
                     <Pin Id="GA1eDuQDlTxO33ERZyQpoU" Name="Output" Kind="OutputPin" />
+                    <Pin Id="B9s8zqRfDbXLm5DR0shC0s" Name="Additional Outputs" Kind="OutputPin" />
                   </Node>
                   <Node Bounds="398,277,99,19" Id="MUzp3MK9VrTPTM9C8jktuo">
                     <p:NodeReference LastCategoryFullName="Fuse.TypeHelpers" LastSymbolSource="Fuse.dll">
@@ -19975,7 +20001,7 @@
           <Patch Id="IiKGXvhdqnqMqX5ZuNA8OE" IsGeneric="true">
             <Canvas Id="AgvGpNbaYF2PpcCbxq0syP" CanvasType="Group">
               <ControlPoint Id="Moxdyb74FXQOFAf9PMsvtq" Bounds="339,670" />
-              <Node Bounds="262,388,121,210" Id="L7b5rzrrwJjOPWbrgS10Zc">
+              <Node Bounds="262,388,218,210" Id="L7b5rzrrwJjOPWbrgS10Zc">
                 <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
                   <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
                   <Choice Kind="ProcessStatefulRegion" Name="Cache" />
@@ -19984,12 +20010,12 @@
                 <Pin Id="Et9NkDW6ZuXO0m5yna94cb" Name="Force" Kind="InputPin" />
                 <Pin Id="NiY6lMvoeWRNZMei2EyLO8" Name="Dispose Cached Outputs" Kind="InputPin" />
                 <Pin Id="CToZJgJ048pMotcqhubz1m" Name="Has Changed" Kind="OutputPin" />
-                <ControlPoint Id="IhstIWovBi8NS4pzUZM86z" Bounds="276,394" Alignment="Top" />
-                <ControlPoint Id="Cu3QnIISbE4M0qR9CuXvJm" Bounds="300,394" Alignment="Top" />
-                <ControlPoint Id="RucsSOLbLazOXH6KrhHUS3" Bounds="324,394" Alignment="Top" />
+                <ControlPoint Id="IhstIWovBi8NS4pzUZM86z" Bounds="277,394" Alignment="Top" />
+                <ControlPoint Id="Cu3QnIISbE4M0qR9CuXvJm" Bounds="297,394" Alignment="Top" />
+                <ControlPoint Id="RucsSOLbLazOXH6KrhHUS3" Bounds="317,394" Alignment="Top" />
                 <ControlPoint Id="CbEFySu5cIRMzKrLn6wNcc" Bounds="340,592" Alignment="Bottom" />
-                <ControlPoint Id="GTP9zqTU3LxK9itViLECe3" Bounds="346,394" Alignment="Top" />
-                <ControlPoint Id="UDHKnaW4YPlM99K6qiNcfX" Bounds="368,394" Alignment="Top" />
+                <ControlPoint Id="GTP9zqTU3LxK9itViLECe3" Bounds="337,394" Alignment="Top" />
+                <ControlPoint Id="UDHKnaW4YPlM99K6qiNcfX" Bounds="357,394" Alignment="Top" />
                 <Patch Id="OAEsVfJLWaILznotXdarRy" ManuallySortedPins="true">
                   <Patch Id="LmDFU6e50RDQNcFv190Rn2" Name="Create" ManuallySortedPins="true" />
                   <Patch Id="Fh7TZS2COFPOVdUL3SH0no" Name="Then" ManuallySortedPins="true" />
@@ -20017,13 +20043,27 @@
                     <Pin Id="IInmYg5gjJBP8SL4PzvteL" Name="The Modifiers" Kind="InputPin" />
                     <Pin Id="QKfyWbDqSc2OHwlZkfxKpN" Name="Output" Kind="StateOutputPin" />
                   </Node>
+                  <Node Bounds="376,531,92,26" Id="UDjqlkCLnIuOQkArscKlAd">
+                    <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ShaderNode" LastSymbolSource="Fuse.Core.Base.vl">
+                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                      <CategoryReference Kind="ClassType" Name="ShaderNode" />
+                      <Choice Kind="OperationCallFlag" Name="OptionalOutputs" />
+                    </p:NodeReference>
+                    <Pin Id="VTZDVhzi40ONlLFhq3NQKt" Name="Input" Kind="StateInputPin" />
+                    <Pin Id="Mv5zJSpvxo4OfRUnkQX44U" Name="Output" Kind="StateOutputPin" />
+                    <Pin Id="SVo9L9KesyqQRjO5BkVmEq" Name="Optional Outputs" Kind="OutputPin" />
+                  </Node>
                 </Patch>
+                <ControlPoint Id="QPE4q1sxbDPQCasfVmngHT" Bounds="377,394" Alignment="Top" />
+                <ControlPoint Id="ON5Fb6EmBuIOdohIHnS2Fp" Bounds="465,592" Alignment="Bottom" />
               </Node>
-              <ControlPoint Id="JdxJ93wI0oqNa1Dvhm55oI" Bounds="276,262" />
-              <ControlPoint Id="TDfFZXQMsQzQUk0zWfkU23" Bounds="300,288" />
-              <ControlPoint Id="SdR2GoB8SFTMwAXPsupUlb" Bounds="324,312" />
-              <ControlPoint Id="KIWAPHLAlApQXFLko4D6VU" Bounds="347,333" />
-              <ControlPoint Id="Clh4HneQtWFO8mRvVtT8Uw" Bounds="368,358" />
+              <ControlPoint Id="JdxJ93wI0oqNa1Dvhm55oI" Bounds="277,270" />
+              <ControlPoint Id="TDfFZXQMsQzQUk0zWfkU23" Bounds="297,288" />
+              <ControlPoint Id="SdR2GoB8SFTMwAXPsupUlb" Bounds="317,312" />
+              <ControlPoint Id="KIWAPHLAlApQXFLko4D6VU" Bounds="337,333" />
+              <ControlPoint Id="Clh4HneQtWFO8mRvVtT8Uw" Bounds="357,352" />
+              <ControlPoint Id="Ve9AqJlJmd6O5OUu2A4E9Q" Bounds="377,371" />
+              <ControlPoint Id="Ry4dBGQxLbSLUnCHhtrVZ3" Bounds="465,662" />
             </Canvas>
             <Patch Id="Du6g0YZJoq0NtwWZ47RgoS" Name="Create" />
             <Patch Id="PJpAjkWJL83QcpskHM8VGr" Name="Update">
@@ -20034,13 +20074,15 @@
                 </p:TypeAnnotation>
               </Pin>
               <Pin Id="M1GkNEhbKRQNJpuOvC9eAv" Name="Function Name" Kind="InputPin" />
-              <Pin Id="P3xoUoSdDpbM2oAWS2cvbh" Name="Default" Kind="InputPin" />
+              <Pin Id="P3xoUoSdDpbM2oAWS2cvbh" Name="Default" Kind="InputPin" Visibility="Optional" />
               <Pin Id="Js0tsBG8q87NHza6B5IWiO" Name="Mixins" Kind="InputPin">
                 <p:TypeAnnotation>
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
               </Pin>
-              <Pin Id="HoELh0SE6uAQC5j2drKO9L" Name="Is Groupable" Kind="InputPin" />
+              <Pin Id="HoELh0SE6uAQC5j2drKO9L" Name="Is Groupable" Kind="InputPin" Visibility="Optional" />
+              <Pin Id="K8zxFoPIIPdQXTa1TYcBSK" Name="The Modifiers" Kind="InputPin" Visibility="Optional" />
+              <Pin Id="JE6ictpavSIO6smojPbafM" Name="Additional Outputs" Kind="OutputPin" Visibility="Optional" />
             </Patch>
             <ProcessDefinition Id="GPXb8MVBZTGPV3qJoWWQQu">
               <Fragment Id="Gn9QF653p5EN652ISaYoI2" Patch="Du6g0YZJoq0NtwWZ47RgoS" Enabled="true" />
@@ -20065,6 +20107,13 @@
             <Link Id="TginTe8fYnxLhDpdtTsPUb" Ids="UDHKnaW4YPlM99K6qiNcfX,NsBTyMfdfiJLAQaSgW7Z3F" />
             <Link Id="Lgpd62rQZrEMNxdxPyXP7K" Ids="HoELh0SE6uAQC5j2drKO9L,Clh4HneQtWFO8mRvVtT8Uw" IsHidden="true" />
             <Link Id="BkTx6Eu9bWON3Ms16igJFX" Ids="Clh4HneQtWFO8mRvVtT8Uw,UDHKnaW4YPlM99K6qiNcfX" />
+            <Link Id="UEHhFVhrTdeLjsp0pUbaxM" Ids="QPE4q1sxbDPQCasfVmngHT,IInmYg5gjJBP8SL4PzvteL" />
+            <Link Id="FGQ7988zfBkM9i7pvIsm53" Ids="K8zxFoPIIPdQXTa1TYcBSK,Ve9AqJlJmd6O5OUu2A4E9Q" IsHidden="true" />
+            <Link Id="T3DfTx7nKrYMwx4ochAwBv" Ids="Ve9AqJlJmd6O5OUu2A4E9Q,QPE4q1sxbDPQCasfVmngHT" />
+            <Link Id="TofMJ8auFVqN5ZOuQ8HQpX" Ids="QKfyWbDqSc2OHwlZkfxKpN,VTZDVhzi40ONlLFhq3NQKt" />
+            <Link Id="Cnge1Bo98jhONOKffEa4Cn" Ids="SVo9L9KesyqQRjO5BkVmEq,ON5Fb6EmBuIOdohIHnS2Fp" />
+            <Link Id="REJ9cAa5iecOBGBkkE40Nt" Ids="Ry4dBGQxLbSLUnCHhtrVZ3,JE6ictpavSIO6smojPbafM" IsHidden="true" />
+            <Link Id="IkO3DgajImzPFouGa3pAYK" Ids="ON5Fb6EmBuIOdohIHnS2Fp,Ry4dBGQxLbSLUnCHhtrVZ3" />
           </Patch>
         </Node>
         <!--
@@ -20227,7 +20276,7 @@
                   </p:TypeArguments>
                 </p:TypeAnnotation>
               </Pin>
-              <Pin Id="I4aZLpPXjrAMCrsdmTHC7t" Name="Is Groupable" Kind="InputPin" />
+              <Pin Id="I4aZLpPXjrAMCrsdmTHC7t" Name="Is Groupable" Kind="InputPin" Visibility="Optional" />
               <Pin Id="FdoMdOlYNpZMRj1DNXf7Ql" Name="Output" Kind="OutputPin" />
               <Pin Id="QF96GPVK3XyOtKUBISXRsD" Name="The Modifiers" Kind="InputPin" Visibility="Optional" />
               <Pin Id="EF73378MNLxOQ7SxNAPKPN" Name="AdditionalOutputs" Kind="OutputPin" Visibility="Optional" />
