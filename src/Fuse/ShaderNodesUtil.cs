@@ -183,7 +183,7 @@ namespace Fuse
 
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, GpuValue<T> theGpuValue) where T : struct
+        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, GpuValue<T> theGpuValue, bool isCompute = true) where T : struct
         {
             var toShaderFx = new ToShaderFX<T>(theGpuValue);
             AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
