@@ -48,4 +48,5 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 * Noir                https://www.instagram.com/random_noir/
 
 ### Backers
-Tally Yalesford, Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, M4d, Circuitb, Karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, Motzi, Achim Stromberger
+Tally Yalesford, Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, M4d, Circuitb, Karafiat, Konstantin Semilakovs, Martin Bvoerhof, Arístides García, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, Motzi, Achim Stromberger, Robe Santoro, Andreu Lucio
+
