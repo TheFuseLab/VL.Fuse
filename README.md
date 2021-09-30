@@ -35,15 +35,15 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 ## Supporters
 ### Gold Sponsors
 * Refik Anadol Studio   https://refikanadolstudio.com/
+* Takuma Nakata     	  https://www.takumanakata.com/
 ### Sponsors
 * M-Box             	https://www.m-box.de/
 * Quayola         		https://quayola.com/
-* Schnellebuntebilder   http://schnellebuntebilder.de/
+* Schnellebuntebilder http://schnellebuntebilder.de/
 * Wirmachenbunt     	https://wirmachenbunt.de/
 ### Super Backers
 * MESO             		https://meso.design/en
-* Analog Native         https://analognative.net/
-* Takuma Nakata     	https://www.takumanakata.com/
+* Analog Native       https://analognative.net/
 * Naut             		https://naut.ch/
 * Noir                https://www.instagram.com/random_noir/
 
