@@ -80,6 +80,11 @@ namespace Fuse
         {
             return CreateAbstract(theMember, typeof(DeclareValue<>), new object[] {theMember});
         }
+        
+        public static AbstractGpuValue AbstractAssignNode(AbstractGpuValue theTarget, AbstractGpuValue theSource)
+        {
+            return CreateAbstract(theTarget, typeof(AssignNode<>), new object[] {theTarget, theSource});
+        }
     }
     
     public static class ShaderNodesUtil
