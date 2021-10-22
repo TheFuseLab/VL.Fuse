@@ -67,12 +67,7 @@ namespace MyTests
             // Also add the "vl-libs" folder. The folder that contains our library.
             AssemblyLoader.AddPackageRepositories(RepositoriesPath);
 
-
-            if (SynchronizationContext.Current == null)
-                SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
-
-
-            Session = new VLSession("gamma", SynchronizationContext.Current, includeUserPackages: false)
+            Session = new VLSession("gamma", includeUserPackages: false)
             {
                 CheckSolution = false,
                 IgnoreDynamicEnumErrors = true,
