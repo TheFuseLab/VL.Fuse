@@ -27,7 +27,7 @@ namespace Fuse.Tests
            var gpuValue0 = new GpuInput<float>();
            var gpuValue1 = new GpuInput<float>();
            
-           var patchedFunctionNode = new FunctionRegionNode<float>(new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, operatorNode.Output,"addSin", new ConstantValue<float>(0f));
+           var patchedFunctionNode = new FunctionRegion.RegionFunctionNode<float>(new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, operatorNode.Output,"addSin", new ConstantValue<float>(0f));
            
            Console.WriteLine(operatorNode.BuildSourceCode());
            

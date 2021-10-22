@@ -24,7 +24,9 @@ ${sourceFX}
     }
 };";
 
-        public ToShaderFX(GpuValue<T> theCompute, string theShaderSource = ShaderSource) : base(
+        private bool _isCompute;
+        
+        public ToShaderFX(GpuValue<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(
             new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
                 {
                     "FX", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}
@@ -35,6 +37,13 @@ ${sourceFX}
             new Dictionary<string, string>(),
             theShaderSource)
         {
+            _isCompute = theIsCompute;
+        }
+        
+        protected override string CheckCode(string theCode)
+        {
+            if (_isCompute) return theCode;
+            return theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
     }
 }

@@ -1,23 +1,56 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using System.Linq;
 
 namespace Fuse.regions
 {
-    public sealed class FunctionRegionNode<T>: AbstractFunctionNode<T>
+    public class FunctionRegion
+    {
+        public sealed class RegionFunctionParameter<T> : ShaderNode<T> 
+    {
+
+        public RegionFunctionParameter(GpuValue<T> theType, int theId = 0): base("argument", null,"argument")
+        {
+            Output = new FunctionParameterValue<T>("val" + GetHashCode())
+            {
+                ParentNode = this
+            };
+            Ins = new List<AbstractGpuValue>();
+            Output.Name = "arg_"+theId;
+        }
+
+        public string TypeName()
+        {
+            return TypeHelpers.GetGpuTypeForType<T>();
+        }
+
+        public string Name()
+        {
+            return Output.ID;
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";
+        }
+    }
+    
+    public sealed class RegionFunctionNode<T>: AbstractFunctionNode<T>
     {
         
-        public FunctionRegionNode(
-            IEnumerable<AbstractGpuValue> theRegionInputs, 
+        public RegionFunctionNode(
+            IEnumerable<AbstractGpuValue> theArguments, 
             AbstractGpuValue theFunction,
             string theName,
             ConstantValue<T> theDefault, 
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
-            IDictionary<string,string> theFunctionValues = null
-        ) : base(theRegionInputs, "patchedFunction", theDefault)
+            IDictionary<string,string> theFunctionValues = null,
+            bool theIsGroupable = false,
+            IEnumerable<InputModifier> theModifiers = null
+        ) : base(theArguments, "patchedFunction", theDefault, theIsGroupable, theModifiers)
         {
             if (theMixins != null)
             {
@@ -27,7 +60,7 @@ namespace Fuse.regions
             }
             Functions = new Dictionary<string, string>();
             
-            var signature = theName + BuildSignature(theRegionInputs)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
+            var signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
 
             
             
@@ -35,7 +68,7 @@ namespace Fuse.regions
             {
                 {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
                 {"functionName", signature},
-                {"arguments", BuildArguments(theRegionInputs)},
+                {"arguments", BuildArguments(theArguments)},
                 {"functionImplementation", theFunction.ParentNode.BuildSourceCode()},
                 {"result", theFunction.ID}
             };
@@ -45,7 +78,7 @@ ${functionImplementation}
         return ${result};
     }";
 
-            var inputs = theRegionInputs.ToList();
+            var inputs = theArguments.ToList();
             Ins = inputs;
             HandleDelegates(theDelegates,functionValueMap);
 
@@ -93,5 +126,6 @@ ${functionImplementation}
         }
         
         public override IDictionary<string, string> Functions { get; }
+    }
     }
 }

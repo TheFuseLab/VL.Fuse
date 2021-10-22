@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="NvxFK0tAsVyMwtaYRjadP2" Summary="Input to the gpu world" LanguageVersion="2021.4.0.413" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.0-0413-gaf9ffdce60" />
+<Document xmlns:p="property" Id="NvxFK0tAsVyMwtaYRjadP2" Summary="Input to the gpu world" LanguageVersion="2021.4.0.565" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.0-0565-gd28af1038d" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Core.Color" CanvasType="FullCategory">
       <!--
@@ -342,9 +342,9 @@
           </Canvas>
           <Patch Id="JxOqZLk1zABLOt97UNUYX6" Name="Create" />
           <Patch Id="UvcSh2RDIfpPzpUfIcnTGv" Name="Update">
-            <Pin Id="CK4zJd7BtLpN5YO2Dlnrry" Name="Input" Kind="InputPin" />
+            <Pin Id="CK4zJd7BtLpN5YO2Dlnrry" Name="BaseLayer" Kind="InputPin" />
             <Pin Id="DMdedGQi21sL0VeF8pOs2f" Name="Output" Kind="OutputPin" />
-            <Pin Id="CWy5d15mGwMPnEK8wFn4tc" Name="Input 2" Kind="InputPin" />
+            <Pin Id="CWy5d15mGwMPnEK8wFn4tc" Name="BlendLayer" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="RPT7zB0eQKzMmkXbbDBIkS">
             <Fragment Id="QZYYpwOCNQlLw5g8AoE0T3" Patch="JxOqZLk1zABLOt97UNUYX6" Enabled="true" />
@@ -2101,8 +2101,8 @@
           <Patch Id="LUctOBuZFRdPJyFNPxd6OL" Name="Create" />
           <Patch Id="M9q5ehjvPKBOqlj0wAaJSi" Name="Update">
             <Pin Id="Jzo4PNflDFWPUF8egmrfNX" Name="Output" Kind="OutputPin" />
-            <Pin Id="SmVurnxoSuvNX4UnUAuqbJ" Name="Base" Kind="InputPin" />
-            <Pin Id="BAcNalh1vLZNL59R95lqqL" Name="Blend" Kind="InputPin" />
+            <Pin Id="SmVurnxoSuvNX4UnUAuqbJ" Name="BaseLayer" Kind="InputPin" />
+            <Pin Id="BAcNalh1vLZNL59R95lqqL" Name="BlendLayer" Kind="InputPin" />
             <Pin Id="GgHxCs3Jm12Li6Voh7aA59" Name="Opacity" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="BtApJgMBDwrPpGP8VOqS7k">
@@ -2111,8 +2111,6 @@
           </ProcessDefinition>
           <Link Id="Tik80D3puX1PVoOUQqBfsL" Ids="HsfB7btYMdbMC3E6E5cp6B,Jzo4PNflDFWPUF8egmrfNX" IsHidden="true" />
           <Link Id="BWTaQf61U5PLGoU1LM4AtD" Ids="OVTrrxEJHhQLdptFF7LAAO,HsfB7btYMdbMC3E6E5cp6B" />
-          <Link Id="SCdaBc9uYTuQUxKFOkYqvC" Ids="UpwQJdKOO2uMMmJX24rDzb,KoCD3sf3eDeNHYsO5kdN1I" />
-          <Link Id="RI4wOIdVQN1NuG10ZGIPIg" Ids="IFxYBwUw1vSPBt3k4zquoh,Mvn8ULYw5kIN8EMi8RSFO8" />
           <Link Id="LpTPcrqXWgsL0XmplHDr4x" Ids="Unawppq3nbgQIlThDuQbra,NvUc37UclUYPbIOvmWdWpv" />
           <Link Id="NWcbqZ2RQaBNqOZCqmDCmA" Ids="VeqgKrQy39TN0d7hmU9z2w,OVTrrxEJHhQLdptFF7LAAO" />
           <Link Id="QNVJjjTJkH3OkPNV6AIUW5" Ids="SmVurnxoSuvNX4UnUAuqbJ,G381DJLlu9mLJdBtt9cy5k" IsHidden="true" />
@@ -2124,6 +2122,8 @@
           <Link Id="Q5eu8CAywuyNoMpvsP0Ixp" Ids="UpwQJdKOO2uMMmJX24rDzb,P925lLeoioPMng85ovzHVf" />
           <Link Id="T8v9lr8B9JNNjcdFhtw8mm" Ids="EZ6Kulo48HALGeLCrESSOf,HY1iY5hDPhzMgDlLIU4cPJ" />
           <Link Id="RfqSwmOEdHnPZDYUKK2gyf" Ids="AZEVRpw4QyGN2aAY3RAWrX,RoxUvoQJsp3LCyEkv8hvKc" />
+          <Link Id="LjjfH0zCtTVO4xmrT55Hfr" Ids="IFxYBwUw1vSPBt3k4zquoh,KoCD3sf3eDeNHYsO5kdN1I" />
+          <Link Id="LpEkhL3dET1PdRRdNZZiCp" Ids="UpwQJdKOO2uMMmJX24rDzb,Mvn8ULYw5kIN8EMi8RSFO8" />
         </Patch>
       </Node>
       <!--
@@ -2423,8 +2423,8 @@
           <Patch Id="EUb2tQtIlLyNAeBlZHJJtC" Name="Create" />
           <Patch Id="LuVhk35UTF2Nms7fFmvhj6" Name="Update">
             <Pin Id="HIGbTJqfIqsLsG9mlm7fcy" Name="Output" Kind="OutputPin" />
-            <Pin Id="J5HUr9ODqoOLJmh6zBr6Hs" Name="Base" Kind="InputPin" />
-            <Pin Id="CihnJKcLkgPNeQRRYOrMma" Name="Blend" Kind="InputPin" />
+            <Pin Id="J5HUr9ODqoOLJmh6zBr6Hs" Name="BaseLayer" Kind="InputPin" />
+            <Pin Id="CihnJKcLkgPNeQRRYOrMma" Name="BlendLayer" Kind="InputPin" />
             <Pin Id="E0J6UZKRsCfPQFuRBCqYZr" Name="Opacity" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="BrEVd2TJp8sPxBJxxLhYK2">
@@ -2517,8 +2517,8 @@
           <Patch Id="C1noeRf9zllOy1fETS2Iyi" Name="Create" />
           <Patch Id="My6HcFF5lupMQKraEysmNH" Name="Update">
             <Pin Id="SJ77fovr0GqMYfqnXQsgg2" Name="Output" Kind="OutputPin" />
-            <Pin Id="ByUpz63uI6dN3dEP0CYdM6" Name="Base" Kind="InputPin" />
-            <Pin Id="L44xt01GJHMN4wVdrkdlGm" Name="Blend" Kind="InputPin" />
+            <Pin Id="ByUpz63uI6dN3dEP0CYdM6" Name="BaseLayer" Kind="InputPin" />
+            <Pin Id="L44xt01GJHMN4wVdrkdlGm" Name="BlendLayer" Kind="InputPin" />
             <Pin Id="Jp44O4IUAQKL9hFWVNYPj2" Name="Opacity" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="RWwwmVkl2e4LkAKbUfTgWf">
@@ -2878,8 +2878,8 @@
           <Patch Id="QC7kZOqETUeQO0QPgJyAAv" Name="Create" />
           <Patch Id="IQQHM8s3J6VNpeZSJG82y4" Name="Update">
             <Pin Id="Kqp8qkgSfBeP976i0g0fcQ" Name="Output" Kind="OutputPin" />
-            <Pin Id="Dp44epiboUsMAi0q7DThU9" Name="Base" Kind="InputPin" />
-            <Pin Id="TIyDS7pA6qINTouUaG1Njg" Name="Blend" Kind="InputPin" />
+            <Pin Id="Dp44epiboUsMAi0q7DThU9" Name="BaseLayer" Kind="InputPin" />
+            <Pin Id="TIyDS7pA6qINTouUaG1Njg" Name="BlendLayer" Kind="InputPin" />
             <Pin Id="LawWcQ3kUTGOxAgglzgCMz" Name="Opacity" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="CmxzXdGIMFdMGhKcSskGcY">
@@ -3045,8 +3045,8 @@
           <Patch Id="Cs1x7ZKohygQMzxYpXwo6F" Name="Create" />
           <Patch Id="UX88Su0ouPyLY3UZbb4s9F" Name="Update">
             <Pin Id="FJlvSlZyuI5N784KNQ6vcm" Name="Output" Kind="OutputPin" />
-            <Pin Id="FNVrjLlfhrmNxVgLLYPUTA" Name="Base" Kind="InputPin" />
-            <Pin Id="QVbfI0arMPtPf9gVNVwlxo" Name="Blend" Kind="InputPin" />
+            <Pin Id="FNVrjLlfhrmNxVgLLYPUTA" Name="BaseLayer" Kind="InputPin" />
+            <Pin Id="QVbfI0arMPtPf9gVNVwlxo" Name="BlendLayer" Kind="InputPin" />
             <Pin Id="JNI1LqphTB7Navcl2NHqcA" Name="Opacity" Kind="InputPin" />
           </Patch>
           <ProcessDefinition Id="BQMLLoPI9WNLXIEH3NokcV">
@@ -3654,7 +3654,7 @@
           </p:NodeReference>
           <Patch Id="A5siLwn0WebNRSEeC2Uc1g" IsGeneric="true" ExplicitTypeParameters="T">
             <Canvas Id="HikUIXVqYgFLS9q5Ts0y6K" CanvasType="Group">
-              <Node Bounds="589,344,223,342" Id="PmmDKOfaIoWLWwVotsaaON">
+              <Node Bounds="601,344,211,342" Id="PmmDKOfaIoWLWwVotsaaON">
                 <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
                   <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
                   <Choice Kind="ProcessStatefulRegion" Name="Cache" />
@@ -3703,6 +3703,22 @@
                     <Pin Id="FyLfO4qHB9ONiYmgZzPf5D" Name="Is Groupable" Kind="InputPin" />
                     <Pin Id="ILLR80HytPVMTxuRGjYevX" Name="Output" Kind="OutputPin" />
                     <Pin Id="QJyqofSjfO8PvmUXjbrVW9" Name="AdditionalOutputs" Kind="OutputPin" />
+                  </Node>
+                  <Node Bounds="656,546,77,19" Id="KOLAMKFKedGQGRb8MXsXxc">
+                    <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
+                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                      <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                    </p:NodeReference>
+                    <Pin Id="HA35wkg8jvyQGLQiZtKFWX" Name="GpuValue" Kind="InputPin" />
+                    <Pin Id="MeXlxkMsYV3LDBLmQMUzgJ" Name="Default" Kind="InputPin" />
+                    <Pin Id="SoQE8RiclbMNgHKw50rB0I" Name="Output" Kind="OutputPin" />
+                  </Node>
+                  <Node Bounds="728,506,40,19" Id="Bg4oMy4pd9RMPfq2tw3sIi">
+                    <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastSymbolSource="Fuse.Core.Math.vl">
+                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                      <Choice Kind="ProcessAppFlag" Name="HALF" />
+                    </p:NodeReference>
+                    <Pin Id="Flhr941TS8DN3TcMmaQGqH" Name="Output" Kind="OutputPin" />
                   </Node>
                 </Patch>
               </Node>
@@ -3778,10 +3794,12 @@
             <Link Id="GgLM8g3oj38PZUfYGoKZbK" Ids="AMAunjhbYRtQNALcGQbgMU,UvJHZ8Ni8R3MkIB3uXE25F" />
             <Link Id="R1ZcoCPIEoQLgcE0YGWuqz" Ids="NvyQVpSno8QLywk2TxEtSa,RYdRduNhWVLLuwYqeYwmVu" />
             <Link Id="Mp7m0GjbmhcPt2uNFCubiG" Ids="HoHBs4Avi4iLycdGApnPEt,SImBVZD6qfYNm80H4NJLIz" />
-            <Link Id="F4zzOjjZpnlQCQO1IeWnwB" Ids="TRCRF2slpUuP80f7EvZq8q,J1mmYdW2xvNNEr89ANsW1p" />
             <Link Id="T8FCP6WLHPAMPOX2PxQfoX" Ids="ILLR80HytPVMTxuRGjYevX,AMAunjhbYRtQNALcGQbgMU" />
             <Link Id="Ptet1klE7tNPoasrBTvZZK" Ids="NZ17kHFrIGcP50R008HkEv,LLgecjzBwHVOyDAEQ5oSbm" />
             <Link Id="QjLJtPJKCltPKEl1AAGdpz" Ids="QEGSvzFpLwXPSG0u7JWkIC,QnynKB6uhf3PKb1MjaZqyo" />
+            <Link Id="Qdg3ALKObnZMO3u4nnHLvp" Ids="TRCRF2slpUuP80f7EvZq8q,HA35wkg8jvyQGLQiZtKFWX" />
+            <Link Id="QMgSciCTyNKLDjOi2GbaGj" Ids="SoQE8RiclbMNgHKw50rB0I,J1mmYdW2xvNNEr89ANsW1p" />
+            <Link Id="MEnVIDGqOUHMahhXnWsecx" Ids="Flhr941TS8DN3TcMmaQGqH,MeXlxkMsYV3LDBLmQMUzgJ" />
           </Patch>
         </Node>
         <!--
@@ -4317,6 +4335,9 @@
               <Pin Id="Gd4M0BARud3LRKF5qw1iH4" Name="Has Changed" Kind="OutputPin" />
               <ControlPoint Id="P9eOFPSqyNnLcB7oq6dNnd" Bounds="454,296" Alignment="Top" />
               <ControlPoint Id="DV6395beIkRLYCKe8T8tr0" Bounds="463,1263" Alignment="Bottom" />
+              <ControlPoint Id="UL9v1Oo0QI0MHnKTaeAwK2" Bounds="931,296" Alignment="Top" />
+              <ControlPoint Id="PgIZcpy1J7FPU2ZOvH6q9e" Bounds="950,296" Alignment="Top" />
+              <ControlPoint Id="Gy6ltkIpWnLNMDD9PW4dkv" Bounds="970,296" Alignment="Top" />
               <Patch Id="NcXGCYtOb5rLOrVqpOu2tc" ManuallySortedPins="true">
                 <Patch Id="MkxUHJtoChTMG7Rq4cmvir" Name="Create" ManuallySortedPins="true" />
                 <Patch Id="LwxVTvEdM7TOUbS97Vugny" Name="Then" ManuallySortedPins="true" />
@@ -4449,8 +4470,8 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="Overlay" />
                   </p:NodeReference>
-                  <Pin Id="NYTSQ44hzpYNu1RcCo8ozA" Name="Base" Kind="InputPin" />
-                  <Pin Id="K4S7vJ338ShLWDmoSVplX8" Name="Blend" Kind="InputPin" />
+                  <Pin Id="NYTSQ44hzpYNu1RcCo8ozA" Name="BaseLayer" Kind="InputPin" />
+                  <Pin Id="K4S7vJ338ShLWDmoSVplX8" Name="BlendLayer" Kind="InputPin" />
                   <Pin Id="PKY6FQyr7aJPl1BvfQ9C5Q" Name="Opacity" Kind="InputPin" />
                   <Pin Id="JjAKEVk4EFlQQgXOsFSpLL" Name="Output" Kind="OutputPin" />
                 </Node>
@@ -4489,8 +4510,8 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="LinearLight" />
                   </p:NodeReference>
-                  <Pin Id="M5SRyjtSXY0PgoOf6Ejh9o" Name="Base" Kind="InputPin" />
-                  <Pin Id="KCcY0kbWbmrNeRJ2MI9lHs" Name="Blend" Kind="InputPin" />
+                  <Pin Id="M5SRyjtSXY0PgoOf6Ejh9o" Name="BaseLayer" Kind="InputPin" />
+                  <Pin Id="KCcY0kbWbmrNeRJ2MI9lHs" Name="BlendLayer" Kind="InputPin" />
                   <Pin Id="VM808vinsfJMifQRDVswjP" Name="Opacity" Kind="InputPin" />
                   <Pin Id="Dlml7OuSX2LOgXZR39Q3xq" Name="Output" Kind="OutputPin" />
                 </Node>
@@ -4509,8 +4530,8 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="HardMix" />
                   </p:NodeReference>
-                  <Pin Id="IH1LVOAYOskPblXeY2joLE" Name="Base" Kind="InputPin" />
-                  <Pin Id="PalikIp2kDiPfD4q8RoiHp" Name="Blend" Kind="InputPin" />
+                  <Pin Id="IH1LVOAYOskPblXeY2joLE" Name="BaseLayer" Kind="InputPin" />
+                  <Pin Id="PalikIp2kDiPfD4q8RoiHp" Name="BlendLayer" Kind="InputPin" />
                   <Pin Id="MEPK3NRpOdjPxkq6XV4CCR" Name="Opacity" Kind="InputPin" />
                   <Pin Id="OaUm9EFjlwWOqsRdVNrWZu" Name="Output" Kind="OutputPin" />
                 </Node>
@@ -4519,8 +4540,8 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="Difference" />
                   </p:NodeReference>
-                  <Pin Id="T6BXGoKAJbBLwFuJ8Z1f9T" Name="Base" Kind="InputPin" />
-                  <Pin Id="G6NNMlWeneWMVXoyN8lECC" Name="Blend" Kind="InputPin" />
+                  <Pin Id="T6BXGoKAJbBLwFuJ8Z1f9T" Name="BaseLayer" Kind="InputPin" />
+                  <Pin Id="G6NNMlWeneWMVXoyN8lECC" Name="BlendLayer" Kind="InputPin" />
                   <Pin Id="KeAvtaHkBSYPXYWyessaUf" Name="Opacity" Kind="InputPin" />
                   <Pin Id="EyjxQN06hezOfuq6eNKD5m" Name="Output" Kind="OutputPin" />
                 </Node>
@@ -4529,8 +4550,8 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="Exclusion" />
                   </p:NodeReference>
-                  <Pin Id="Ux2e2SQsWQvMz8d5rtJZRl" Name="Base" Kind="InputPin" />
-                  <Pin Id="KiTasVQ0iUtN27cUnJQUbx" Name="Blend" Kind="InputPin" />
+                  <Pin Id="Ux2e2SQsWQvMz8d5rtJZRl" Name="BaseLayer" Kind="InputPin" />
+                  <Pin Id="KiTasVQ0iUtN27cUnJQUbx" Name="BlendLayer" Kind="InputPin" />
                   <Pin Id="TuXnoVA3W01Lfv1PhOXq5I" Name="Opacity" Kind="InputPin" />
                   <Pin Id="JFAFHc2IJRhOSJh9oni9tc" Name="Output" Kind="OutputPin" />
                 </Node>
@@ -4621,9 +4642,6 @@
                 <ControlPoint Id="I6gLcuqAUbJPW8QMqdw5I4" Bounds="931,364" />
                 <ControlPoint Id="G2lvIVyqXZtLUBJqk1PwBy" Bounds="931,322" />
               </Patch>
-              <ControlPoint Id="UL9v1Oo0QI0MHnKTaeAwK2" Bounds="931,296" Alignment="Top" />
-              <ControlPoint Id="PgIZcpy1J7FPU2ZOvH6q9e" Bounds="950,296" Alignment="Top" />
-              <ControlPoint Id="Gy6ltkIpWnLNMDD9PW4dkv" Bounds="970,296" Alignment="Top" />
             </Node>
             <ControlPoint Id="Id7v7HbybzBOStGBDyPv3x" Bounds="453,254" />
             <ControlPoint Id="SEN2YUmlRVuQQKpRrKmpVi" Bounds="462,1319" />
@@ -4782,7 +4800,7 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.0-0413-gaf9ffdce60" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.0-0565-gd28af1038d" />
   <DocumentDependency Id="SzhWlwxi1uSLX4y11gKy2H" Location="./Fuse.Core.Math.vl" IsFriend="true" />
   <DocumentDependency Id="ChPdlY9FzhPPrf0n3xKFOs" Location="./Fuse.Core.vl" IsFriend="true" />
 </Document>

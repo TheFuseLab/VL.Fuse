@@ -193,7 +193,10 @@ namespace Fuse{
          
          public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
          {
-             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend));
+             SetFieldDeclaration(
+                 TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
+              //   TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
+                 );
          }
      }
      
@@ -202,7 +205,10 @@ namespace Fuse{
 
          public BufferInput(string theName, Buffer<T> theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
          {
-             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend));
+             SetFieldDeclaration(
+                 TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
+               //  TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
+                 );
          }
      }
      
