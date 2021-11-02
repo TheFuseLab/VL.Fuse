@@ -1,0 +1,136 @@
+shader BoxGeomExt_ShaderFX : MaterialExtension
+{
+    rgroup PerMaterial
+    {
+        stage StructuredBuffer<Particle> Particles;
+    }
+
+    cbuffer PerMaterial
+    {
+        
+
+        stage float3 Size;
+
+    }
+
+    struct Particle
+    {
+        int Cycle;
+        float Age;
+        float3 Velocity;
+        float3 Position;
+        float4 Color;
+        float Drag;
+        float LifeTime;
+        int Id;
+        float3 AxisY;
+        float3 AxisX;
+        float3 AxisZ;
+    };
+
+    stream uint VertexID : SV_VertexID;
+    stream uint VID;
+    stream bool Skip;
+
+    static const float3 QuadPositions[24] = 
+    {
+        float3(-1, 1, 1),
+        float3( 1, 1, 1),
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+        float3( 1,-1,-1),
+        float3(-1,-1,-1),
+
+        float3( 1, 1, 1),
+        float3(-1, 1, 1),
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+        float3(-1,-1,-1),
+        float3( 1,-1,-1),
+
+        float3( 1,-1, 1),
+        float3( 1, 1, 1),
+        float3( 1,-1,-1),
+        float3( 1, 1,-1),
+
+        float3(-1, 1, 1),
+        float3(-1,-1, 1),
+        float3(-1, 1,-1),
+        float3(-1,-1,-1),
+    };
+
+    static const float2 QuadUV[4] = 
+    {
+        float2(0,1), 
+        float2(1,1),
+        float2(0,0),
+        float2(1,0)
+    };
+
+    stage override void PreTransformPosition()
+    {
+    }
+
+    stage override void TransformPosition()
+    {
+    }
+
+    stage override void PostTransformPosition()
+    {
+        streams.ShadingPosition = streams.Position;
+        streams.VID = streams.VertexID;
+        streams.Skip = false;
+    }
+
+    void SpawnQuad(uint start, inout TriangleStream<Output> triangleStream, float3 normal, Particle p)
+    {
+       for(uint i = start; i < start + 4; i++)
+       {
+            streams.TexCoord  = QuadUV[i % 4].xy;
+            float4 posWorld = float4(p.Position, 1);
+            posWorld.xyz += QuadPositions[i].x * p.AxisX * Size.x;
+            posWorld.xyz += QuadPositions[i].y * p.AxisY * Size.y;
+            posWorld.xyz += QuadPositions[i].z * p.AxisZ * Size.z;
+            
+            posWorld = mul(posWorld, World);
+            
+            streams.PositionWS = posWorld;
+            streams.normalWS = normal;
+
+            float4 posView = mul(posWorld, View);
+            streams.ShadingPosition = mul(posView, Projection);
+            streams.DepthVS = streams.ShadingPosition.w;
+            
+            triangleStream.Append(streams);
+        }
+
+        triangleStream.RestartStrip();
+    }
+
+    [maxvertexcount(24)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+        Particle p = Particles[streams.VID];
+        if (streams.Skip) return;
+        
+        SpawnQuad(0, triangleStream, p.AxisZ, p);
+        SpawnQuad(4, triangleStream, -p.AxisZ, p);
+        SpawnQuad(8, triangleStream, p.AxisY, p);
+        SpawnQuad(12, triangleStream, -p.AxisY, p);
+        SpawnQuad(16, triangleStream, p.AxisX, p);
+        SpawnQuad(20, triangleStream, -p.AxisX, p);
+    }
+
+    //override shading, create sphere impostor in this case
+    stage override float4 Shading() 
+    {
+		return base.Shading();
+    }
+};
