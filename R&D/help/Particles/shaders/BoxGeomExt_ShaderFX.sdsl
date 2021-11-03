@@ -4,11 +4,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
     {
         
 
-        stage float3 Size;
-
     }
-
-    stream bool Skip;
 
     static const float3 QuadPositions[24] = 
     {
@@ -63,7 +59,6 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
     {
         streams.ShadingPosition = streams.Position;
         AssignVertexID();
-        streams.Skip = false;
     }
 
     void SpawnQuad(uint start, inout TriangleStream<Output> triangleStream, float3 normal, Particle p)
@@ -96,7 +91,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
     {
         streams = input[0];
         Particle p = Particles[streams.VertexID];
-        if (streams.Skip) return;
+        if (p.Age < 0 || p.Cycle == 0) return;
         
         SpawnQuad(0, triangleStream, p.AxisZ, p);
         SpawnQuad(4, triangleStream, -p.AxisZ, p);
@@ -105,10 +100,10 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         SpawnQuad(16, triangleStream, p.AxisX, p);
         SpawnQuad(20, triangleStream, -p.AxisX, p);
     }
-
+/*
     override void PrepareMaterialForLightingAndShading()
     {
         SetDiffuse(float4(0, 0, 0, 1));
         base.PrepareMaterialForLightingAndShading();
-    }
+    }*/
 };
