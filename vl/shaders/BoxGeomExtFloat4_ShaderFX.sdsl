@@ -1,0 +1,35 @@
+shader BoxGeomExtFloat4_ShaderFX : ComputeFloat4
+{
+    cbuffer PerMaterial
+    {
+        stage StructuredBuffer<Particle> Particles;
+    }
+
+    rgroup PerMaterial
+    {
+    }
+
+    stream uint VertexID : SV_VertexID;
+
+    struct Particle
+    {
+        int Cycle;
+        float Age;
+        float3 Velocity;
+        float3 Position;
+        float4 Color;
+        float Drag;
+        float LifeTime;
+        int Id;
+        float3 AxisY;
+        float3 AxisX;
+        float3 AxisZ;
+        float3 Size3;
+    };
+
+    override float4 Compute()
+    {
+        uint id = streams.VertexID;
+        return Particles[id].Color;
+    }
+};
