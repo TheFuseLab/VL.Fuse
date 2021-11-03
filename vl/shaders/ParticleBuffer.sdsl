@@ -1,15 +1,9 @@
-shader BoxGeomExtFloat4_ShaderFX : ComputeFloat4
+shader ParticleBuffer
 {
-    cbuffer PerMaterial
+    rgroup PerMaterial
     {
         stage StructuredBuffer<Particle> Particles;
     }
-
-    rgroup PerMaterial
-    {
-    }
-
-    stream uint VertexID : SV_VertexID;
 
     struct Particle
     {
@@ -26,10 +20,4 @@ shader BoxGeomExtFloat4_ShaderFX : ComputeFloat4
         float3 AxisZ;
         float3 Size3;
     };
-
-    override float4 Compute()
-    {
-        uint id = streams.VertexID;
-        return Particles[id].Color;
-    }
 };

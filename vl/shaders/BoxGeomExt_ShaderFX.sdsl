@@ -1,10 +1,5 @@
-shader BoxGeomExt_ShaderFX : MaterialExtension , MaterialPixelStream 
+shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 {
-    rgroup PerMaterial
-    {
-        stage StructuredBuffer<Particle> Particles;
-    }
-
     cbuffer PerMaterial
     {
         
@@ -13,24 +8,6 @@ shader BoxGeomExt_ShaderFX : MaterialExtension , MaterialPixelStream
 
     }
 
-    struct Particle
-    {
-        int Cycle;
-        float Age;
-        float3 Velocity;
-        float3 Position;
-        float4 Color;
-        float Drag;
-        float LifeTime;
-        int Id;
-        float3 AxisY;
-        float3 AxisX;
-        float3 AxisZ;
-        float3 Size3;
-    };
-
-    stream uint VertexID : SV_VertexID;
-    stream uint VID;
     stream bool Skip;
 
     static const float3 QuadPositions[24] = 
@@ -85,14 +62,9 @@ shader BoxGeomExt_ShaderFX : MaterialExtension , MaterialPixelStream
     stage override void PostTransformPosition()
     {
         streams.ShadingPosition = streams.Position;
-        streams.VID = streams.VertexID;
+        AssignVertexID();
         streams.Skip = false;
     }
-/*
-    stage override void ResetStream(){
-        base.ResetStream();
-        streams.matDiffuse = float4(1,0,0,1);
-    }*/
 
     void SpawnQuad(uint start, inout TriangleStream<Output> triangleStream, float3 normal, Particle p)
     {
@@ -123,7 +95,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension , MaterialPixelStream
     stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
     {
         streams = input[0];
-        Particle p = Particles[streams.VID];
+        Particle p = Particles[streams.VertexID];
         if (streams.Skip) return;
         
         SpawnQuad(0, triangleStream, p.AxisZ, p);
@@ -134,13 +106,9 @@ shader BoxGeomExt_ShaderFX : MaterialExtension , MaterialPixelStream
         SpawnQuad(20, triangleStream, -p.AxisX, p);
     }
 
-    //override shading, create sphere impostor in this case
-    stage override float4 Shading() 
+    override void PrepareMaterialForLightingAndShading()
     {
-        
-        //streams.matDiffuse = float4(1,0,1,1);
-        //streams.matDiffuse = float4(1,0,0,1);//float3(1,0,1);
-        return base.Shading();
-        //return float4(1,0,0,1);
+        SetDiffuse(float4(0, 0, 0, 1));
+        base.PrepareMaterialForLightingAndShading();
     }
 };
