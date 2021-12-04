@@ -172,12 +172,16 @@ namespace Fuse
             sourceManager.AddShaderSource(type, sourceCode, sourcePath);
         }
 
+        // ReSharper disable once UnusedMember.Global
+        // accessed from vl
         public static DynamicEffectInstance RegisterDrawShader(Game game, DrawShader theDrawShader)
         {
             AddShaderSource(game, theDrawShader.ShaderName, theDrawShader.ShaderCode, "shaders\\" + theDrawShader.ShaderName + ".sdsl");
             return new DynamicEffectInstance(theDrawShader.ShaderName);
         }
-
+        
+        // ReSharper disable once UnusedMember.Global
+        // accessed from vl
         public static VLComputeEffectShader RegisterComputeShader(Game game, ToComputeFx theComputeFx)
         {
             AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
