@@ -103,8 +103,11 @@ namespace Fuse{
      
      public abstract class AbstractInput<T, TParameterKeyType> : UnhandledResourcesAbstractInput<T,TParameterKeyType> where TParameterKeyType : ParameterKey<T>
      {
-         protected AbstractInput(string theName, T theValue = default(T)): base(theName, theValue)
+         private bool _isResource;
+         
+         protected AbstractInput(string theName, bool theIsResource, T theValue = default): base(theName, theValue)
          {
+             _isResource = theIsResource;
              Setup( new List<AbstractGpuValue>());
              AddResource(Inputs, this);
          }
@@ -124,6 +127,7 @@ namespace Fuse{
          {
              AddResource(Declarations,
                  new FieldDeclaration(
+                     _isResource,
                      BuildDeclaration(theComputeTypeName),
                      BuildDeclaration(theTypeName)
                  )
@@ -138,7 +142,7 @@ namespace Fuse{
 
      public class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>>
      {
-         protected ObjectInput(string theName, T theValue = default) : base(theName, theValue)
+         protected ObjectInput(string theName, T theValue = default) : base(theName, true, theValue)
          {
              ParameterKey = new ObjectParameterKey<T>(Output.ID);
          }
@@ -215,7 +219,7 @@ namespace Fuse{
     public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
     {
 
-        public GpuInput(): base("GPUInput")
+        public GpuInput(): base("GPUInput", false)
         {
             ParameterKey = new ValueParameterKey<T>(Output.ID);
             SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());

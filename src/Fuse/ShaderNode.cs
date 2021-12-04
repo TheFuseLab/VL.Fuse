@@ -19,8 +19,9 @@ namespace Fuse
         private readonly string _computeShaderDeclaration;
         private readonly string _declaration;
 
-        public FieldDeclaration(string computeShaderDeclaration, string declaration)
+        public FieldDeclaration(bool isResource, string computeShaderDeclaration, string declaration)
         {
+            IsResource = isResource;
             _computeShaderDeclaration = computeShaderDeclaration;
             _declaration = declaration;
         }
@@ -35,7 +36,8 @@ namespace Fuse
         {
             return theIsComputeShader && _computeShaderDeclaration != null ? _computeShaderDeclaration : _declaration;
         }
-            
+
+        public bool IsResource { get; }
     }
     
     public abstract class AbstractShaderNode : IShaderNode

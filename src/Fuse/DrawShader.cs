@@ -37,45 +37,29 @@ namespace Fuse
         private readonly List<string> _definedStreams;
 
         protected readonly IDictionary<string, IDictionary<string, AbstractGpuValue>> Inputs;
+        
+        protected readonly HashSet<string>Declarations = new HashSet<string>();
+        protected readonly HashSet<string>Structs = new HashSet<string>();
+        protected readonly HashSet<string>Mixins = new HashSet<string>();
+        protected readonly Dictionary<string, string> FunctionMap = new Dictionary<string, string>();
 
         protected AbstractShader(bool theIsComputeShader, IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, Dictionary<string,string> theCustomTemplate, string theSource)
         {
             Inputs = theInputs;
             _definedStreams = theDefinedStreams;
-            var declarations = new HashSet<string>();
-            var structs = new HashSet<string>();
-            var mixins = new HashSet<string>();
-            var functionMap = new Dictionary<string, string>();
+            
 
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();
             theInputs.ForEach(input =>
             {
-                HandleShader(theIsComputeShader, input.Value, declarations, structs, mixins, functionMap, out var source, out var stream, out var streamDefines);
+                HandleShader(theIsComputeShader, input.Value, out var source, out var stream, out var streamDefines);
                 sourceStream.Add(input.Key,(source,stream));
                 streamDefinesBuilder.AppendLine(streamDefines);
             });
-            
-            var declarationBuilder = new StringBuilder();
-            declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
-            
-            var structBuilder = new StringBuilder();
-            structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
-            
-            var mixinBuilder = new StringBuilder();
-            mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
-            
-            var functionBuilder = new StringBuilder();
-            functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
 
-            var templateMap = new Dictionary<string, string>
-            {
-                {"mixins", mixinBuilder.ToString()},
-                {"declarations", declarationBuilder.ToString()},
-                {"structs", structBuilder.ToString()},
-                {"functions", functionBuilder.ToString()},
-                {"streamDeclaration",streamDefinesBuilder.ToString()}
-            };
+            var templateMap = BuildTemplateMap();
+            templateMap["streamDeclaration"] = streamDefinesBuilder.ToString();
             theCustomTemplate.ForEach(kv =>
             {
                 templateMap.Add(kv.Key,kv.Value);
@@ -95,21 +79,64 @@ namespace Fuse
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
         }
 
+        protected virtual Dictionary<string, string> BuildTemplateMap()
+        {
+            var declarationBuilder = new StringBuilder();
+            Declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
+            
+            var structBuilder = new StringBuilder();
+            Structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
+            
+            var mixinBuilder = new StringBuilder();
+            Mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+            
+            var functionBuilder = new StringBuilder();
+            FunctionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
+
+            return new Dictionary<string, string>
+            {
+                {"mixins", mixinBuilder.ToString()},
+                {"declarations", declarationBuilder.ToString()},
+                {"structs", structBuilder.ToString()},
+                {"functions", functionBuilder.ToString()}
+            };
+        }
+
         protected virtual string CheckCode(string theCode)
         {
             return theCode;
         }
 
-        private void HandleShader(bool theIsComputeShader, IDictionary<string,AbstractGpuValue> theShaderInputs, ISet<string> theDeclarations,ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource, out string theStreams, out string theDefinedStreams)
+        protected virtual void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
+        {
+            Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
+        }
+        
+        protected virtual void HandleStruct(string theStruct)
+        {
+            Structs.Add(theStruct);
+        }
+        
+        protected virtual void HandleMixin(string theMixin)
+        {
+            Mixins.Add(theMixin);
+        }
+        
+        protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
+        {
+            if(!FunctionMap.ContainsKey(theKeyFunction.Key))FunctionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
+        }
+
+        private void HandleShader(bool theIsComputeShader, IDictionary<string,AbstractGpuValue> theShaderInputs, out string theSource, out string theStreams, out string theDefinedStreams)
         {
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
             theShaderInputs.ForEach(kv =>
             {
-                kv.Value?.ParentNode?.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration.GetDeclaration(theIsComputeShader)));
-                kv.Value?.ParentNode?.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
-                kv.Value?.ParentNode?.MixinList().ForEach(mixin => theMixins.Add(mixin));
-                kv.Value?.ParentNode?.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
+                kv.Value?.ParentNode?.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+                kv.Value?.ParentNode?.StructList().ForEach(HandleStruct);
+                kv.Value?.ParentNode?.MixinList().ForEach(HandleMixin);
+                kv.Value?.ParentNode?.FunctionMap().ForEach(HandleFunction);
 
                 streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
                 if (_definedStreams.Contains(kv.Key)) return;
