@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using VL.Core;
+using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
@@ -32,7 +33,7 @@ namespace Fuse
     }
 
     // For each data source a builder will be kept
-    sealed class GpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
+    internal sealed class GpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
         where T : struct
     {
         private readonly GpuInput<T> _gpuInput = new GpuInput<T>();
@@ -44,7 +45,7 @@ namespace Fuse
         }
     }
 
-    sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
+    internal sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
         where T : struct
     {
         private static readonly EqualityComparer<T> equalityComparer = EqualityComparer<T>.Default;
@@ -66,22 +67,21 @@ namespace Fuse
                 // First time
                 return _constantValue = new ConstantValue<T>(value);
             }
-            else if (equalityComparer.Equals(value, _constantValue.Value))
+
+            if (equalityComparer.Equals(value, _constantValue.Value))
             {
                 // Value stayed the same
                 return _constantValue;
             }
-            else
-            {
-                // Value is changing - switch to different strategy where we upload via constant buffer
-                (_gpuInput ??= new GpuInput<T>()).Value = value;
-                return _gpuInput.Output;
-            }
+
+            // Value is changing - switch to different strategy where we upload via constant buffer
+            (_gpuInput ??= new GpuInput<T>()).Value = value;
+            return _gpuInput.Output;
         }
     }
 
     // Not sure about this one, never tested it ..
-    sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, GpuValue<Texture>>
+    internal sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, GpuValue<Texture>>
     {
         private readonly TextureInput _textureInput = new TextureInput(null);
 
@@ -91,8 +91,8 @@ namespace Fuse
             return _textureInput.Output;
         }
     }
-    
-    sealed class SamplerStateGpuValueBuilder : IMonadBuilder<SamplerState, GpuValue<SamplerState>>
+
+    internal sealed class SamplerStateGpuValueBuilder : IMonadBuilder<SamplerState, GpuValue<SamplerState>>
     {
         private readonly SamplerInput _samplerInput = new SamplerInput(null);
 
