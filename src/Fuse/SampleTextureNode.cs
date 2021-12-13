@@ -23,7 +23,7 @@ namespace Fuse
             _sampler = theSampler;
             _texCoord = theTexCoords;
             _level = theLevel ?? new ConstantValue<float>(0);
-            Setup(new List<AbstractGpuValue>() {theTexture, theSampler, theTexCoords});
+            Setup(new List<AbstractGpuValue> {theTexture, theSampler, theTexCoords});
         }
         
         protected override string SourceTemplate()
