@@ -1,62 +1,29 @@
 
-shader UseMeForDebug : VS_PS_Base, ComputeFloat, FuseRayMarch, FuseCommonDrawFunctionAsMeshExtension, FuseCommonSDF
+shader UseMeForDebug : VS_PS_Base, Texturing, ComputeFloat4, TextureUtils
 {
+    rgroup PerMaterial{
+
+    }
+
     cbuffer PerMaterial{
 
-        [Link("input_7720849")]
-        stage float3 input_7720849;
-
-        [Link("input_2378778")]
-        stage float input_2378778;
-
-        [Link("input_31610183")]
-        stage float input_31610183;
+        [Link("input_29")]
+        stage float input_29;
 
     }
 
 
 
-    float FuseSDF11092193(float3 arg_val10288049){
-        float result_46166248 = fRBox(arg_val10288049, input_7720849, input_2378778);
 
-        return result_46166248;
-    }
 
-    float SDF(float3 p)
+    override float4 Compute()
     {
-        return FuseSDF11092193(p);
-    }
-    
-    
-    float RayMarchPBR32720876 (float myValue)
-    {
-        return myValue;
-    }
-    
-    
-    override stage void posNormByFunction (out float3 p, out float3 n)
-    {
-        // Raymarcher 
-        ////////////////////////////////////////////////////////////////
-    
-        // Takes uv as input
-        float2 uv = streams.TexCoord.xy; 
-        float3 rd;   	
-        float z; 
-        rayMarcher(uv, p, n, rd, z); 
-        // Outputs surface posistion(p) & normals(n), ray direction(rd) & length(z) 
-    
-        ////////////////////////////////////////////////////////////////
-    }
+        float result_1491 = streams.normalWS.x;
+        float result_1494 = streams.normalWS.y;
+        float result_1497 = streams.normalWS.z;
+        float4 result_1500 = float4(result_1491,result_1494,result_1497,input_29);
+        float4 outputParam_1855 = result_1500;
 
-
-
-
-    override float Compute()
-    {
-        float result_33145314 = RayMarchPBR32720876(input_31610183);
-        float outputParam_26052434 = result_33145314;
-
-        return outputParam_26052434;
+        return outputParam_1855;
     }
 };
