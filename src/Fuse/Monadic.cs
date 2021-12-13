@@ -21,11 +21,11 @@ namespace Fuse
                 var builderType = /*isConstant ? typeof(ConstantGpuValueBuilder<>) :*/ typeof(GpuValueBuilder<>);
                 return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
             }
-            // Didn' test these ...
+            
             if (typeof(T) == typeof(Texture))
                 return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
             
-            if (typeof(T) == typeof(SamplerInput))
+            if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
             
             throw new NotImplementedException();
