@@ -71,7 +71,7 @@ namespace Fuse{
 
          protected TParameterKeyType ParameterKey { get; set;}
 
-         protected UnhandledResourcesAbstractInput(string theName, T theValue = default(T)): base(theName, null,"input")
+         protected UnhandledResourcesAbstractInput(string theName, T theValue = default): base(theName, null,"input")
          {
              Value = theValue;
              Parameters = new HashSet<ParameterCollection>();
@@ -103,7 +103,7 @@ namespace Fuse{
      
      public abstract class AbstractInput<T, TParameterKeyType> : UnhandledResourcesAbstractInput<T,TParameterKeyType> where TParameterKeyType : ParameterKey<T>
      {
-         private bool _isResource;
+         private readonly bool _isResource;
          
          protected AbstractInput(string theName, bool theIsResource, T theValue = default): base(theName, theValue)
          {
@@ -216,7 +216,7 @@ namespace Fuse{
          }
      }
      
-    public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>>, IGpuInput where T : struct 
+    public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>> where T : struct 
     {
 
         public GpuInput(): base("GPUInput", false)

@@ -50,7 +50,7 @@ namespace Fuse.regions
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false,
             IEnumerable<InputModifier> theModifiers = null
-        ) : base(theArguments, "patchedFunction", theDefault, theIsGroupable, theModifiers)
+        ) : base("patchedFunction", theDefault, theIsGroupable)
         {
             if (theMixins != null)
             {

@@ -10,16 +10,10 @@ namespace Fuse
     {
         private bool _isGroupable;
 
-        private string _functionName;
-        protected AbstractFunctionNode(IEnumerable<AbstractGpuValue> theArguments, string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false, IEnumerable<InputModifier> theModifiers = null) : base(theFunction, theDefault)
+        protected AbstractFunctionNode(string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
             _isGroupable = theIsGroupable;
-            _functionName = theFunction;
             OptionalOutputs = new List<AbstractGpuValue>();
-            
-            
-
-            
         }
 
         protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
@@ -27,7 +21,7 @@ namespace Fuse
             var abstractGpuValues = theArguments.ToList();
             if (theModifiers == null || theModifiers.Count() != abstractGpuValues.Count())
             {
-                Setup(theArguments, new Dictionary<string, string> {{"function", theFunction}});
+                Setup(abstractGpuValues, new Dictionary<string, string> {{"function", theFunction}});
                 return;
             }
             
@@ -85,7 +79,7 @@ namespace Fuse
             ConstantValue<T> theDefault, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
-            ) : base(theArguments, theFunction, theDefault, theIsGroupable, theModifiers)
+            ) : base(theFunction, theDefault, theIsGroupable)
         {
             Setup(theArguments, theModifiers, theFunction);
         }
@@ -101,7 +95,7 @@ namespace Fuse
             string theMixin, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
-            ) : base(theArguments,theFunction, theDefault, theIsGroupable, theModifiers)
+            ) : base(theFunction, theDefault, theIsGroupable)
         {
             AddResource(Mixins, theMixin);
             Setup(theArguments, theModifiers, theFunction);
@@ -121,7 +115,7 @@ namespace Fuse
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false,
             IEnumerable<InputModifier> theModifiers = null
-        ) : base(theArguments, theFunction, theDefault, theIsGroupable, theModifiers)
+        ) : base(theFunction, theDefault, theIsGroupable)
         {
 
             if (theMixins != null)
