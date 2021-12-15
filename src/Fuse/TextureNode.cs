@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Fuse.compute;
 using Stride.Graphics;
 
 namespace Fuse
 {
     
-    public class TextureGetDimensions<GpuVoid> : ShaderNode<GpuVoid>
+    public class TextureGetDimensions : ShaderNode<GpuVoid>
     {
         private readonly GpuValue<Texture> _texture;
         private readonly GpuValue<int> _mipLevel;
@@ -14,6 +15,8 @@ namespace Fuse
         {
             _texture = theTexture;
             _mipLevel = mipLevel;
+            
+            OptionalOutputs = new List<AbstractGpuValue>();
             
             var myInputs = new List<AbstractGpuValue> {mipLevel};
 
@@ -32,12 +35,10 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${texture}.GetDimensions(${mipLevel},${arguments});", 
-                new Dictionary<string, string>
-                {
-                    {"texture", _texture.ID}, 
-                    {"mipLevel", _mipLevel.ID}
-                });
+            var result = new Dictionary<string, string>();
+            if (_texture != null) result["texture"] = _texture.ID;
+            
+            return ShaderNodesUtil.Evaluate("${texture}.GetDimensions(${arguments});", result);
         }
         
         protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
@@ -70,7 +71,7 @@ namespace Fuse
             {
                 return GenerateDefaultSource();
             }
-            
+
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${texture}.${function}(${arguments});", 
                 new Dictionary<string, string>
                 {
