@@ -8,7 +8,7 @@ namespace Fuse
 
         private readonly GpuValue<T> _value;
 
-        public DeclareValue(GpuValue<T> theValue): base("output", null,"outputParam")
+        public DeclareValue(GpuValue<T> theValue = null): base("output", null,"outputParam")
         {
             
             var inputList = new List<AbstractGpuValue>();
