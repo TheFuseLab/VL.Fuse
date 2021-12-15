@@ -8,25 +8,26 @@ namespace Fuse
     public class TextureGetDimensions<GpuVoid> : ShaderNode<GpuVoid>
     {
         private readonly GpuValue<Texture> _texture;
-        
-        public TextureGetDimensions(GpuValue<Texture> theTexture, GpuValue<int> mipLevel):base("textureGetDimension")
+        private readonly GpuValue<int> _mipLevel;
+
+        public TextureGetDimensions(GpuValue<Texture> theTexture, GpuValue<int> mipLevel, int dimension):base("textureGetDimension")
         {
             _texture = theTexture;
+            _mipLevel = mipLevel;
             
-            var myInputs = new List<AbstractGpuValue>() {mipLevel};
-            var myModifiers = new List<InputModifier> {InputModifier.In, InputModifier.Out, InputModifier.Out, InputModifier.Out, InputModifier.Out, InputModifier.Out, InputModifier.Out};
+            var myInputs = new List<AbstractGpuValue> {mipLevel};
 
-            for (var i = 0; i < abstractGpuValues.Count(); i++)
+            for (var i = 0; i < dimension + 1; i++)
             {
-                
-
-                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(abstractGpuValues[i]);
+                var myDeclareValue = new DeclareValue<float>().Output;
                 myInputs.Add(myDeclareValue);
-                var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
-                myPass.ParentNode = this;
+                var myPass = new GpuValuePassThrough<float>(myDeclareValue)
+                {
+                    ParentNode = this
+                };
                 OptionalOutputs.Add(myPass);
             }
-            Setup(myInputs, new Dictionary<string, string> {{"function", theFunction}});
+            Setup(myInputs, new Dictionary<string, string>());
         }
 
         protected override string SourceTemplate()
@@ -35,8 +36,7 @@ namespace Fuse
                 new Dictionary<string, string>
                 {
                     {"texture", _texture.ID}, 
-                    {"texCoords", _texCoord.ID}, 
-                    {"level", _level.ID}
+                    {"mipLevel", _mipLevel.ID}
                 });
         }
         
