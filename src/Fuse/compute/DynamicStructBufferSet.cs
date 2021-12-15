@@ -15,7 +15,7 @@ namespace Fuse.compute
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractGpuValue>(){theBuffer,theIndex, theValue});
+            Setup(new List<AbstractGpuValue> {theBuffer,theIndex, theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
