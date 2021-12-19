@@ -6,13 +6,14 @@ All notable changes to the Fuse project will be documented in this file.
 
 ### Added
 
+- Fresnel node and help patches
+
 ### Changed
+
+- Improves documentation on Noise and SDF
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
-
-### Security
-
