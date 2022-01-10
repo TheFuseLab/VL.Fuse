@@ -1,0 +1,60 @@
+﻿shader FuseCommonDrawVector_DrawFX : VS_PS_Base, FuseCommonBuffer
+{
+    StructuredBuffer<float3> posBuffer;
+    StructuredBuffer<float3> vectorBuffer;
+    float Alpha;
+
+
+
+
+    cbuffer PerFrame
+    {
+
+
+        float3 vecDefualt;
+    };
+
+
+    stage stream uint VertexID : SV_VertexID;
+    stage stream float3 Vector;
+
+    // VS ==============================================================================
+    stage override void VSMain() 
+    {
+       //streams.vid = VertexID;
+       
+       uint id = streams.VertexID;
+       streams.PositionWS = float4(posBuffer[id], 1);
+       streams.Vector = sbLoad(id, vectorBuffer, vecDefualt);
+    }
+
+    // GS ==============================================================================
+
+    [maxvertexcount(2)]
+    stage void GSMain(point Input input[1], inout LineStream<Output> lineStream)
+    {
+        streams = input[0];
+
+        float4 posView = mul(streams.PositionWS, WorldView);
+        streams.ShadingPosition = mul(posView, Projection);
+        lineStream.Append(streams);
+
+        float4 targetView = mul(float4(streams.Vector + streams.PositionWS.xyz, 1.), WorldView);
+        streams.ShadingPosition = mul(targetView, Projection);
+        lineStream.Append(streams);
+
+        //lineStream.Restart();
+       
+    }
+
+
+    // PS ==============================================================================
+    stage override void PSMain()
+    {
+        //uint id = streams.VertexID;   
+        float3 rgb = normalize(streams.Vector) *.5 + .5;
+        rgb = saturate(rgb);
+        streams.ColorTarget = float4(rgb, Alpha);
+    }
+
+};
