@@ -11,7 +11,7 @@ namespace Fuse.compute
     {
         
 
-        protected AbstractTypedFunction(string theName, ConstantValue<TOut> theDefault = null) : base( theName, theDefault)
+        protected AbstractTypedFunction(string theName, GpuValue<TOut> theDefault = null) : base( theName, theDefault)
         {
             AddResource(Structs, BuildStructs());
         }
@@ -58,7 +58,7 @@ ${structMembers}
         private readonly GpuValue<Buffer<T>> _buffer;
         private readonly GpuValue<int> _index;
         
-        public TypedBufferGet(GpuValue<Buffer<T>> theBuffer, GpuValue<int> theIndex, ConstantValue<T> theDefault) : base( "getBuffer", theDefault)
+        public TypedBufferGet(GpuValue<Buffer<T>> theBuffer, GpuValue<int> theIndex, GpuValue<T> theDefault) : base( "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -151,7 +151,7 @@ ${structMembers}
     {
         private readonly GpuValue<Buffer<T>> _buffer;
         
-        public TypedBufferConsume(GpuValue<Buffer<T>> theBuffer, ConstantValue<T> theDefault) : base( "consumeBuffer", theDefault)
+        public TypedBufferConsume(GpuValue<Buffer<T>> theBuffer, GpuValue<T> theDefault) : base( "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
             Setup(new List<AbstractGpuValue>(){theBuffer});

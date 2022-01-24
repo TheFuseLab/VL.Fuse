@@ -8,7 +8,7 @@ namespace Fuse.compute
         private readonly GpuValue<GpuStruct> _struct;
         private readonly GpuValue<TOut> _member;
         
-        public DynamicStructGetAttribute(GpuValue<GpuStruct> theStruct, GpuValue<TOut> theMember, ConstantValue<TOut> theDefault = null) : base("StructAttribute", theDefault)
+        public DynamicStructGetAttribute(GpuValue<GpuStruct> theStruct, GpuValue<TOut> theMember, GpuValue<TOut> theDefault = null) : base("StructAttribute", theDefault)
         {
             _struct = theStruct;
             _member = theMember;

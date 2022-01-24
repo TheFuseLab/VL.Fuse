@@ -16,7 +16,7 @@ namespace Fuse
             GpuValue<SamplerState> theSampler, 
             GpuValue<TTexCoord> theTexCoords, 
             GpuValue<float> theLevel, 
-            ConstantValue<Vector4> theDefault
+            GpuValue<Vector4> theDefault
             ) : base( "sampleTexture", theDefault)
         {
             _texture = theTexture;

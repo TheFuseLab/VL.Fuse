@@ -55,7 +55,7 @@ namespace Fuse
             GpuValue<Texture> theTexture, 
             IEnumerable<AbstractGpuValue> theArguments, 
             string theFunction, 
-            ConstantValue<T> theDefault
+            GpuValue<T> theDefault
         ) : base( "textureNode", theDefault)
         {
             _texture = theTexture;
