@@ -92,7 +92,7 @@ namespace Fuse
 
     public class FunctionInvokeNode<T> : ShaderNode<T>, IFunctionInvokeNode
     {
-        public FunctionInvokeNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, ConstantValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
+        public FunctionInvokeNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, GpuValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
         {
             Functions = new Dictionary<string, string>();
 

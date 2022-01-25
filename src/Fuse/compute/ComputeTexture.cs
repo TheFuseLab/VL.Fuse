@@ -9,7 +9,7 @@ namespace Fuse.compute
         private readonly GpuValue<Texture> _texture;
         private readonly AbstractGpuValue _index;
         
-        public ComputeTextureGet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, ConstantValue<T> theDefault) : base( "getTextureValue", theDefault)
+        public ComputeTextureGet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, GpuValue<T> theDefault) : base( "getTextureValue", theDefault)
         {
             _texture = theTexture;
             _index = theIndex;

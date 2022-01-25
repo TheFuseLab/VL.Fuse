@@ -7,7 +7,7 @@ namespace Fuse.compute
 
         private readonly GpuValue<GpuStruct> _input;
         private readonly string _member;
-        public GetStructMember(GpuValue<GpuStruct> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
+        public GetStructMember(GpuValue<GpuStruct> theInput, string theMember, GpuValue<TOut> theDefault = null) : base("Member", theDefault)
         {
             _input = theInput;
             _member = theMember;

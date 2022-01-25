@@ -8,7 +8,7 @@ namespace Fuse.compute
         private readonly GpuValue<Buffer> _buffer;
         private readonly GpuValue<GpuStruct> _struct;
         
-        public DynamicStructBufferConsume(GpuValue<Buffer> theBuffer, GpuValue<GpuStruct> theStruct, ConstantValue<GpuStruct> theDefault) : base( "consumeBuffer", theDefault)
+        public DynamicStructBufferConsume(GpuValue<Buffer> theBuffer, GpuValue<GpuStruct> theStruct, GpuValue<GpuStruct> theDefault) : base( "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
             _struct = theStruct;

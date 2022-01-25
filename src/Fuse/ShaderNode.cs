@@ -301,9 +301,9 @@ namespace Fuse
         public  GpuValue<T> Output { get; protected set; }
 
         public List<AbstractGpuValue> OptionalOutputs { get; protected set; }
-        public  ConstantValue<T> Default { get; protected set; }
+        public  GpuValue<T> Default { get; protected set; }
 
-        protected ShaderNode(string theId, ConstantValue<T> theDefault = null,string outputName = "result") : base(theId)
+        protected ShaderNode(string theId, GpuValue<T> theDefault = null,string outputName = "result") : base(theId)
         {
             Default = theDefault ?? ConstantHelper.FromFloat<T>(0);
             Output = new GpuValue<T>(outputName);

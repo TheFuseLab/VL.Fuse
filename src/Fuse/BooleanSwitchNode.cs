@@ -11,7 +11,7 @@ namespace Fuse
         private readonly GpuValue<bool> _inCheck;
         private readonly GpuValue<T> _inFalse;
         private readonly GpuValue<T> _inTrue;
-        public BooleanSwitchNode(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, ConstantValue<T> theDefault = null) : base( "expression", theDefault)
+        public BooleanSwitchNode(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
         {
 
             var ins = new List<AbstractGpuValue>(){inCheck};

@@ -6,7 +6,7 @@ namespace Fuse.compute
     {
         private readonly GpuValue<GpuStruct> _struct;
         
-        public DynamicStructDeclare(GpuValue<GpuStruct> theStruct, ConstantValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
+        public DynamicStructDeclare(GpuValue<GpuStruct> theStruct, GpuValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
         {
             _struct = theStruct;
             

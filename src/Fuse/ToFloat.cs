@@ -23,19 +23,14 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
-            switch (TypeHelpers.GetDimension(_x.GetType().GetGenericArguments()[0]))
+            return TypeHelpers.GetDimension(_x.GetType().GetGenericArguments()[0]) switch
             {
-                case 1:
-                    return "float4 ${resultName} = float4(${x},${x},${x},1.0);";
-                case 2:
-                    return "float4 ${resultName} = float4(${x}.xy,0.0,1.0);";
-                case 3:
-                    return "float4 ${resultName} = float4(${x}.xyz,1.0);";
-                case 4:
-                    return "float4 ${resultName} = ${x};";
-            }
-
-            return "";
+                1 => "float4 ${resultName} = float4(${x},${x},${x},1.0);",
+                2 => "float4 ${resultName} = float4(${x}.xy,0.0,1.0);",
+                3 => "float4 ${resultName} = float4(${x}.xyz,1.0);",
+                4 => "float4 ${resultName} = ${x};",
+                _ => ""
+            };
         }
     }
 }

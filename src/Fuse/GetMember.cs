@@ -7,7 +7,7 @@ namespace Fuse
 
         private readonly GpuValue<TIn> _input;
         private readonly string _member;
-        public GetMember(GpuValue<TIn> theInput, string theMember, ConstantValue<TOut> theDefault = null) : base("Member", theDefault)
+        public GetMember(GpuValue<TIn> theInput, string theMember, GpuValue<TOut> theDefault = null) : base("Member", theDefault)
         {
             _input = theInput;
             _member = theMember;

@@ -9,7 +9,7 @@ namespace Fuse.compute
         private readonly GpuValue<int> _index;
         private readonly GpuValue<GpuStruct> _struct;
         
-        public DynamicStructBufferGet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theStruct, ConstantValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
+        public DynamicStructBufferGet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theStruct, GpuValue<GpuStruct> theDefault) : base( "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
