@@ -10,7 +10,7 @@ namespace Fuse
     {
         private bool _isGroupable;
 
-        protected AbstractFunctionNode(string theFunction, ConstantValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
+        protected AbstractFunctionNode(string theFunction, GpuValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
             _isGroupable = theIsGroupable;
             OptionalOutputs = new List<AbstractGpuValue>();
@@ -76,7 +76,7 @@ namespace Fuse
         public IntrinsicFunctionNode(
             IEnumerable<AbstractGpuValue> theArguments, 
             string theFunction, 
-            ConstantValue<T> theDefault, 
+            GpuValue<T> theDefault, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
             ) : base(theFunction, theDefault, theIsGroupable)
@@ -91,7 +91,7 @@ namespace Fuse
         public MixinFunctionNode(
             IEnumerable<AbstractGpuValue> theArguments, 
             string theFunction, 
-            ConstantValue<T> theDefault, 
+            GpuValue<T> theDefault, 
             string theMixin, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
@@ -109,7 +109,7 @@ namespace Fuse
             IEnumerable<AbstractGpuValue> theArguments, 
             string theFunction, 
             string theCodeTemplate, 
-            ConstantValue<T> theDefault, 
+            GpuValue<T> theDefault, 
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,

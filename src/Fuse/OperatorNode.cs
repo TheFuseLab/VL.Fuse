@@ -8,13 +8,13 @@ namespace Fuse
     {
 
         private readonly string _operator;
-        public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, ConstantValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
+        public OperatorNode(IEnumerable<GpuValue<TIn>> theInputs, GpuValue<TOut> theDefault, string theOperator) : base("Operator", theDefault)
         {
             _operator = theOperator;
             Setup(theInputs);
         }
 
-        public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, ConstantValue<TOut> theDefault, string theOperator) :
+        public OperatorNode(GpuValue<TIn> input0, GpuValue<TIn> input1, GpuValue<TOut> theDefault, string theOperator) :
             this(new List<GpuValue<TIn>> {input0, input1}, theDefault, theOperator){
         }
 

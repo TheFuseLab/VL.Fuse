@@ -2,11 +2,12 @@
 using System;
 using System.Collections.Generic;
 using VL.Core;
+using VL.Stride.Rendering.ComputeEffect;
 using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
-    public sealed class GpuValueMonadicFactory<T> : IMonadicFactory<T, GpuValue<T>>
+    public sealed class GpuValueMonadicFactory<T> : IMonadicFactory<T, GpuValue<T>> 
     {
         // This field is accessed by the target code
         public static readonly GpuValueMonadicFactory<T> Default = new GpuValueMonadicFactory<T>();
@@ -22,13 +23,24 @@ namespace Fuse
                 return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
             }
             
+            // Read: if (T is Buffer)
+            if (typeof(Buffer).IsAssignableFrom(typeof(T)))
+            {
+                // Can't call the constructor directly due to value type constraint
+                var builderType = typeof(BufferGpuValueBuilder<>);
+                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
+            }
+            
             if (typeof(T) == typeof(Texture))
                 return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
             
             if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
-            
-            throw new NotImplementedException();
+            /*
+            if (typeof(T) == typeof(Buffer))
+                return new BufferGpuValueBuilder<T>() as IMonadBuilder<T, GpuValue<T>>;
+            */
+            throw new NotImplementedException(typeof(T).FullName + "Not Implemented");
         }
     }
 
@@ -65,7 +77,8 @@ namespace Fuse
             if (_constantValue is null)
             {
                 // First time
-                return _constantValue = new ConstantValue<T>(value);
+                _constantValue = new ConstantValue<T>(value);
+                return _constantValue;
             }
 
             if (equalityComparer.Equals(value, _constantValue.Value))
@@ -100,6 +113,17 @@ namespace Fuse
         {
             _samplerInput.Value = value;
             return _samplerInput.Output;
+        }
+    }
+    
+    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, GpuValue<Buffer<T>>> where T : struct
+    {
+        private readonly BufferInput<T> _bufferInput = new BufferInput<T>(null);
+
+        public GpuValue<Buffer<T>> Return(Buffer<T> value)
+        {
+            _bufferInput.Value = value;
+            return _bufferInput.Output;
         }
     }
 }

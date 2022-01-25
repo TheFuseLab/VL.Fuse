@@ -104,15 +104,34 @@ namespace Fuse.regions
                 var myInputs = new List<AbstractGpuValue>();
                 var myOutputs = new List<AbstractGpuValue>();
 
-                for (var i = 0; i < inputs.Count(); i++)
+                //var maxCount = Math.Max(inputs.Count, outputs.Count);
+                for (var i = 0; i < outputs.Count; i++)
                 {
-                    var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(inputs[i]);
-                    myInputs.Add(myDeclareValue);
-                    var myAssign = AbstractCreation.AbstractAssignNode(myDeclareValue, outputs[i]);
-                    myOutputs.Add(myAssign);
-                    var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
-                    myPass.ParentNode = this;
-                    OptionalOutputs.Add(myPass);
+                    
+
+                    switch (outputs[i])
+                    {
+                        case GpuValue<GpuVoid> gpuValue:
+                            var myInputVoid = inputs[i];
+                            myInputs.Add(myInputVoid);
+                            myOutputs.Add(gpuValue);
+                            var myPassVoid = AbstractCreation.AbstractGpuValuePassThrough(gpuValue);
+                            myPassVoid.ParentNode = this;
+                            OptionalOutputs.Add(myPassVoid);
+                            break;
+                        default:
+                            var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(outputs[i], 0f) : inputs[i];
+                            var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(myInput);
+                            myInputs.Add(myDeclareValue);
+                    
+                            var myOutput = i >= outputs.Count ? AbstractCreation.AbstractConstant(inputs[i], 0f) : outputs[i];
+                            var myAssign = AbstractCreation.AbstractAssignNode(myDeclareValue, myOutput);
+                            myOutputs.Add(myAssign);
+                            var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
+                            myPass.ParentNode = this;
+                            OptionalOutputs.Add(myPass);
+                            break;
+                    }
                 }
 
                 _inCall = new GroupValues(myInputs).Output;

@@ -44,7 +44,7 @@ namespace Fuse.regions
             IEnumerable<AbstractGpuValue> theArguments, 
             AbstractGpuValue theFunction,
             string theName,
-            ConstantValue<T> theDefault, 
+            GpuValue<T> theDefault, 
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
