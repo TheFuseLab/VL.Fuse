@@ -23,7 +23,7 @@ shader FuseCoreDomain: FuseCoreMath
 	float2 polarToCart(float2 coords)
 	{
 		float mag = coords[1];
-		float angle = -1.0 * coords[0] * 6.28319 + 1.57079633;
+		float angle = -1.0 * coords[0] * TWOPI + HALFPI;
 
 		coords[0] = mag * cos(angle);
 		coords[1] = mag * sin(angle);
@@ -42,7 +42,7 @@ shader FuseCoreDomain: FuseCoreMath
 		{
 			r = sqrt(r);
 			float angle = atan2(v.y, v.x);
-			angle = -(angle+1.57079633)/6.28319;
+			angle = -(angle + HALFPI) / TWOPI;
 			result = float2(angle,r);		
 		}
 		else
@@ -97,10 +97,6 @@ shader FuseCoreDomain: FuseCoreMath
 	////////////////////////////////////////////////////////////////
 	
 	// Tile coords inspired by Amit Patel http://www-cs-students.stanford.edu/~amitp/game-programming/grids/
-
-	#ifndef SQRT3
-	#define SQRT3 1.7320508
-	#endif
 
 	// hex coords
 	float2 worldToHex (float2 p)
