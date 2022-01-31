@@ -8,26 +8,7 @@ namespace Fuse.regions
 {
     public class IfRegion
     {
-        public class GroupValues: ShaderNode<GpuVoid> 
-        {
-            public GroupValues(IEnumerable<AbstractGpuValue> theInputs) : base("CallStack")
-            { 
-            
-                var abstractGpuValues = new List<AbstractGpuValue>();
-                theInputs.ForEach(input =>
-                {
-                    if (input == null) return;
-                    abstractGpuValues.Add(input);
-                });
-            
-                Setup(abstractGpuValues);
-            }
-
-            protected override string SourceTemplate()
-            {
-                return "";
-            }
-        }
+        
         
         public class IfGroup: ShaderNode<GpuVoid> 
         {
@@ -57,7 +38,12 @@ namespace Fuse.regions
 
                 const string shaderCode = @"
         if(${check}){";
-                theSourceBuilder.Append(ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>(){{"check", _inCheck.ID}}));
+                theSourceBuilder.Append(
+                    ShaderNodesUtil.Evaluate(
+                        shaderCode, 
+                        new Dictionary<string, string>(){{"check", _inCheck.ID}}
+                        )
+                    );
                 theSourceBuilder.AppendLine();
                 var myChildSourceBuilder = new StringBuilder();
                 BuildChildrenSource(myChildSourceBuilder, theHashes);
@@ -83,7 +69,12 @@ namespace Fuse.regions
             private GpuValue<GpuVoid> _ifGroup;
             private readonly List<AbstractGpuValue> _outputs;
             
-            public IfRegionNode(GpuValue<bool> inCheck, IEnumerable<AbstractGpuValue> theInputs, IEnumerable<AbstractGpuValue> theOutputs, string outputName = "result") : base("if region", null, outputName)
+            public IfRegionNode(
+                GpuValue<bool> inCheck, 
+                IEnumerable<AbstractGpuValue> theInputs, 
+                IEnumerable<AbstractGpuValue> theOutputs, 
+                string outputName = "result"
+                ) : base("if region", null, outputName)
             {
                 _inCheck = inCheck;
                 _outputs = theOutputs.ToList();
@@ -104,11 +95,8 @@ namespace Fuse.regions
                 var myInputs = new List<AbstractGpuValue>();
                 var myOutputs = new List<AbstractGpuValue>();
 
-                //var maxCount = Math.Max(inputs.Count, outputs.Count);
                 for (var i = 0; i < outputs.Count; i++)
                 {
-                    
-
                     switch (outputs[i])
                     {
                         case GpuValue<GpuVoid> gpuValue:
