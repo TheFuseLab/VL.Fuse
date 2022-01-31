@@ -1,16 +1,16 @@
-shader FuseRayMarch: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturing, PositionStream4, NormalStream, FuseCommonTypes
+shader FuseRayMarchAttributes: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturing, PositionStream4, NormalStream, FuseCommonTypes
 {
 
 	// the signed distance field to raymarch
-	abstract float SDF(float3 p);	
+	abstract float4 SDF(float3 p);	
 
 
 	// just generate normals with central difference
 	float3 SDFNormal(float3 p, float e = 0.01)
 	{
-		float3 gradient = float3 (	(SDF(p + float3(e,0,0)) - SDF(p - float3(e,0,0))) / (2*e), 
-									(SDF(p + float3(0,e,0)) - SDF(p - float3(0,e,0))) / (2*e), 
-									(SDF(p + float3(0,0,e)) - SDF(p - float3(0,0,e))) / (2*e)	);
+		float3 gradient = float3 (	(SDF(p + float3(e,0,0)).x - SDF(p - float3(e,0,0)).x) / (2*e), 
+									(SDF(p + float3(0,e,0)).x - SDF(p - float3(0,e,0)).x) / (2*e), 
+									(SDF(p + float3(0,0,e)).x - SDF(p - float3(0,0,e)).x) / (2*e)	);
 		return normalize(gradient+0.0000001);
 
 	}
@@ -24,7 +24,7 @@ shader FuseRayMarch: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturi
 		//minMaxDist.y -= minMaxDist.x;
 		for(int i=0; i<maxIter; i++)
 		{
-			float dist = SDF(p);
+			float dist = SDF(p).x;
 			p += ray.rd * dist;	
 			z += dist;
 			if(abs(dist) < 0.0001 * z || z > minMaxDist.y) break;
@@ -45,7 +45,7 @@ shader FuseRayMarch: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturi
 		maxDist -= minDist;
 		for(int i=0; i<maxIter; i++)
 		{
-			float dist = SDF(p);
+			float dist = SDF(p).x;
 			float rayStep = stepLength * dist;
 			p += rayDir * rayStep;	
 			z += rayStep;
@@ -61,7 +61,7 @@ shader FuseRayMarch: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturi
 	
 
 	// Raymarch a scene.  Takes uv and returns pos(p), normals(n) & distance(z)
-	void rayMarcher(float2 uv, out float3 p, out float3 n, out float3 rd, out float z)
+	void rayMarcher(float2 uv, out float3 p, out float3 n, out float3 rd, out float z, out float3 attributes)
 	{
 		// Paramerters
 		int marchMaxIterations = 120;
@@ -74,10 +74,11 @@ shader FuseRayMarch: FuseRayMarchBase, ShaderBaseStream, Transformation, Texturi
 		setupRay(uv, ro, rd);
 
 		p = rayMarch(ro, rd, marchStepLength, marchMinDistance, marchMaxDistance, marchMaxIterations);
-		float ff=SDF(p);
-		if(abs(ff)>.5)discard;
+		float4 ff=SDF(p);
+		if(abs(ff).x >.5)discard;
 		z = length(p - ro);
 		n = SDFNormal(p);
+		attributes = ff.yzw;
 		//if (n != n) discard;
 	}
 
