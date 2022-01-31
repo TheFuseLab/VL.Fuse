@@ -1235,6 +1235,20 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return min(a, b) - e*e*0.25/r;
 	}
 
+	float2 fOpUnionSoftQuadratic( float a, float b, float k ){
+    	float h = max(k - abs(a - b), 0.0 ) / k;
+    	float m = h * h * 0.5;
+    	float s = m * k * (1.0 / 2.0);
+    	return (a < b) ? float2(a - s, m) : float2(b - s, m - 1.0);
+	}
+
+	float2 fOpUnionSoftCubic( float a, float b, float k ){
+    	float h = max(k - abs(a - b), 0.0) / k;
+    	float m = h * h * h * 0.5;
+    	float s = m * k * (1.0 / 3.0); 
+    	return (a < b) ? float2(a - s, m) : float2(b - s, 1.0 - m);
+	}
+
 
 	// produces a cylindical pipe that runs along the intersection.
 	// No objects remain, only the pipe. This is not a boolean operator.
@@ -1283,6 +1297,8 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float3 q = abs(p)-h;
 		return float4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
 	}
+
+	
 
 
 
