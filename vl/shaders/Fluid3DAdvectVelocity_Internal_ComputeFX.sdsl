@@ -33,15 +33,16 @@ shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlob
     // Textures
     //--------------------------------------------------------------------------------------
     
-    Texture3D<float3> Texture_VelocityIn; 
-    RWTexture3D<float3> Texture_Velocity; //Output Texture
+    Texture3D<float3> Texture_Velocity; 
+    RWTexture3D<float3> Texture_Velocity_RW; //Output Texture
 
     //--------------------------------------------------------------------------------------
     // Variables
     //--------------------------------------------------------------------------------------
 
-    float VelMult = 1.0f;
-    float TimeSpeed = 1.0f;
+    float Modulate = 1.0f;
+    float Forward = 1.0f;
+
     float3 CoordsOffset;
     int BorderMargin = 5;
     float BorderGamma = 1.0f;
@@ -66,7 +67,7 @@ shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlob
     {
         float3 pos = i;
     
-        pos -= Timestep * TimeSpeed *	Texture_Velocity[i];
+        pos -= Timestep * Forward *	Texture_Velocity[i];
     
         return pos;
     }
@@ -82,14 +83,14 @@ shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlob
 
         float3 npos = ((GetAdvectedPosTexCoords((int3)i) + (int3)CoordsOffset) + 0.5f) / dim;
 
-        float3 BorderFader;
-        uint3 halfDim = FluidDimensions/2;
-        int3 borderGradient = abs((int3)halfDim - (int3)i);
-        BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
-        float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
-        finalGrad = pow(finalGrad, BorderGamma);
+        //float3 BorderFader;
+        //uint3 halfDim = FluidDimensions/2;
+        //int3 borderGradient = abs((int3)halfDim - (int3)i);
+        //BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
+        //float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
+        //finalGrad = pow(finalGrad, BorderGamma);
      
-        Texture_Velocity[i] = Texture_VelocityIn.SampleLevel(samLinear, npos,0) * VelMult * finalGrad;
+        Texture_Velocity_RW[i] = Texture_Velocity.SampleLevel(samLinear, npos,0) * Modulate;// * finalGrad;
     }
 
 };

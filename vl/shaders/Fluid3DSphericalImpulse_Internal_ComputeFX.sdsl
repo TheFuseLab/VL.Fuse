@@ -33,7 +33,8 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
     // Textures
     //--------------------------------------------------------------------------------------
 
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+    Texture3D<float3> Texture_Velocity; //Input & Output Texture
+    RWTexture3D<float3> Texture_Velocity_RW; //Input & Output Texture
     Texture3D<float> Texture_ObstaclesGradient;
 
     //--------------------------------------------------------------------------------------
@@ -69,7 +70,7 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
 
         if( IsNonEmptyCell(i) )
         {
-            Texture_Velocity[i] = 0;
+            Texture_Velocity_RW[i] = 0;
             return; // !!!
         }
 
@@ -90,7 +91,7 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
         }
 
 
-    Texture_Velocity[i] = AccumVel;
+    Texture_Velocity_RW[i] = AccumVel;
 
     }
 };

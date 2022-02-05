@@ -33,10 +33,12 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
     // Textures
     //--------------------------------------------------------------------------------------
 
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
     Texture3D<float> Texture_ObstGradient;
     Texture3D<float3> Texture_ObstVelocity;
     Texture3D<float> Texture_Pressure;
+
+    Texture3D<float3> Texture_Velocity;
+    RWTexture3D<float3> Texture_Velocity_RW; //Input & Output Texture
     
     //--------------------------------------------------------------------------------------
     // Variables
@@ -76,7 +78,7 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
 
         if( IsBoundaryCell(i) )
         {
-            Texture_Velocity[i] = GetObstVelocity(i);
+            Texture_Velocity_RW[i] = GetObstVelocity(i);
             return;
         }
 
@@ -113,7 +115,7 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
 
         velocity = (vMask * v) + obstV;
 
-        Texture_Velocity[i] = velocity;
+        Texture_Velocity_RW[i] = velocity;
     }
 
 };
