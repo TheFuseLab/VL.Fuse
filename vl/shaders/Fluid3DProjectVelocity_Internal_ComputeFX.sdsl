@@ -69,6 +69,12 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
         uint3 i = streams.DispatchThreadId;
         uint3 dim = FluidDimensions;
 
+        if( IsBoundaryCell(i) )
+        {
+            Texture_Velocity_RW[i] = GetObstVelocity(i);
+            return;
+        }
+
         uint3 LEFTCELL = uint3(max(i.x - 1, 0), i.y, i.z);
         uint3 RIGHTCELL = uint3(min(i.x + 1, dim.x - 1), i.y, i.z);
         uint3 BOTTOMCELL = uint3(i.x, max(i.y - 1, 0), i.z);
@@ -76,11 +82,6 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
         uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
         uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
-        if( IsBoundaryCell(i) )
-        {
-            Texture_Velocity_RW[i] = GetObstVelocity(i);
-            return;
-        }
 
         float pCenter = Texture_Pressure[i]; 
         float pL = Texture_Pressure[LEFTCELL];
