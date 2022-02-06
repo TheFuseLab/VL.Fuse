@@ -27,14 +27,15 @@
 // The diffusion step is skipped
 //--------------------------------------------------------------------------------------
 
-shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
+shader Fluid3DAdvectTexture_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 {
     //--------------------------------------------------------------------------------------
     // Textures
     //--------------------------------------------------------------------------------------
     
-    Texture3D<float3> Texture_Velocity; 
-    RWTexture3D<float3> Texture_Velocity_RW; //Output Texture
+    Texture3D<float3> Texture_VectorField; 
+    Texture3D<float3> Texture_Value; 
+    RWTexture3D<float3> Texture_Value_RW; //Output Texture
 
     //--------------------------------------------------------------------------------------
     // Variables
@@ -67,7 +68,7 @@ shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlob
     {
         float3 pos = i;
     
-        pos -= Timestep * Forward *	Texture_Velocity[i];
+        pos -= Timestep * Forward *	Texture_VectorField[i];
     
         return pos;
     }
@@ -90,7 +91,7 @@ shader Fluid3DAdvectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlob
         //float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
         //finalGrad = pow(finalGrad, BorderGamma);
      
-        Texture_Velocity_RW[i] = Texture_Velocity.SampleLevel(samLinear, npos,0) * Modulate;// * finalGrad;
+        Texture_Value_RW[i] = Texture_Value.SampleLevel(samLinear, npos,0) * Modulate;// * finalGrad;
     }
 
 };
