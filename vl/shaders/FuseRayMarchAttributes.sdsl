@@ -35,6 +35,37 @@ shader FuseRayMarchAttributes: FuseRayMarchBase, ShaderBaseStream, Transformatio
 		ray.sn = SDFNormal(ray.sp);
 	}
 
+	//first raymarching pass (very coarse)
+	float marchCoarse(float3 rayPos, float3 rayDir, float startf, float maxd, int maxIter = 35){
+		float precis = 0.01;
+    	float h=precis*2.0;
+    	float d = startf;
+    	for( int i = 0; i < maxIter; i++ )
+    	{
+        	if( abs(h) < precis || d > maxd ) break;
+        	d += h;
+	    	float res = SDF(rayPos + rayDir * d).x;
+        	h = res;
+    	}
+		return d;
+	}
+
+	//volumetric marching
+float3 marchVolume(float3 rayPos, float3 rayDir)
+{   
+    float3 p = rayPos;
+    float2 r = float2(0.0,0.0);
+    float3 sum = float3(0.0,0.0,0.0);
+    float tot = 0.;
+    for( int i=0; i < 200; i++ )
+    {
+        r = SDF(p);
+        if (r.x > .5)break;
+        
+        p += rayDir * max(.015, max(r.x,0.)*3.);
+    }
+    return p;
+}
 
 
 	float3 rayMarch(float3 rayPos, float3 rayDir, float stepLength = .9, float minDist = 0.1, float maxDist = 200.0, int maxIter = 120)
@@ -72,6 +103,14 @@ shader FuseRayMarchAttributes: FuseRayMarchBase, ShaderBaseStream, Transformatio
 
 		float3 ro;
 		setupRay(uv, ro, rd);
+		/*
+		float far = 200.0;
+		float rz = marchCoarse(ro,rd,0.1,far);
+		float3 pos = ro+rz*rd;
+    	if (rz < far)
+    	{
+    		p = marchVolume(pos,rd);
+    	}	*/
 
 		p = rayMarch(ro, rd, marchStepLength, marchMinDistance, marchMaxDistance, marchMaxIterations);
 		float4 ff=SDF(p);
