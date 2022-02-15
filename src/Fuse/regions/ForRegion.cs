@@ -10,15 +10,17 @@ namespace Fuse.regions
         
         public class ForGroup: ShaderNode<GpuVoid> 
         {
+            private readonly GpuValue<int> _index;
             private readonly GpuValue<int> _inStart;
             private readonly GpuValue<int> _inEnd;
             public ForGroup(
+                GpuValue<int> index, 
                 GpuValue<int> inStart, 
                 GpuValue<int> inEnd, 
                 IEnumerable<AbstractGpuValue> theInputs
                 ) : base("ForGroup")
-            { 
-            
+            {
+                _index = index;
                 _inStart = inStart;
                 _inEnd = inEnd;
                 var abstractGpuValues = new List<AbstractGpuValue>();
@@ -41,11 +43,17 @@ namespace Fuse.regions
                 if (!theHashes.Add(HashCode)) return;
 
                 const string shaderCode = @"
-        for(int index = ${start}; index < ${end};index++){";
+        for(int ${indexStart} = 0; ${index} < ${end};${index}++){";
                 theSourceBuilder.Append(
                     ShaderNodesUtil.Evaluate(
                         shaderCode, 
-                        new Dictionary<string, string>(){{"start", _inStart.ID}, {"end", _inEnd.ID}}
+                        new Dictionary<string, string>
+                        {
+                            {"start", _inStart.ID}, 
+                            {"end", _inEnd.ID}, 
+                            {"index", _index.ID}, 
+                            {"indexStart", "indexStart_" + new Random().Next()}
+                        }
                         )
                     );
                 theSourceBuilder.AppendLine();
@@ -67,20 +75,24 @@ namespace Fuse.regions
             private readonly GpuValue<int> _inStart;
             private readonly GpuValue<int> _inEnd;
             private GpuValue<GpuVoid> _inCall;
+            private GpuValue<GpuVoid> _crossLinkCall;
             private GpuValue<GpuVoid> _forGroup;
             private readonly List<AbstractGpuValue> _outputs;
+            private readonly List<AbstractGpuValue> _crossLinks;
             
             public ForRegionNode(
                 GpuValue<int> inStart, 
                 GpuValue<int> inEnd, 
                 IEnumerable<AbstractGpuValue> theInputs, 
                 IEnumerable<AbstractGpuValue> theOutputs, 
+                IEnumerable<AbstractGpuValue> theCrossLinks, 
                 string outputName = "result"
                 ) : base("if region", null, outputName)
             {
                 _inStart = inStart;
                 _inEnd = inEnd;
                 _outputs = theOutputs.ToList();
+                _crossLinks = theCrossLinks.ToList();
                 OptionalOutputs = new List<AbstractGpuValue>();
                 Setup(theInputs, _outputs);
             }
@@ -94,7 +106,9 @@ namespace Fuse.regions
                     Setup(inputs);
                     return;
                 }
-            
+                
+                var myCrosslinks = _crossLinks.Select(AbstractCreation.AbstractGpuValuePassThrough).ToList();
+
                 var myInputs = new List<AbstractGpuValue>();
                 var myOutputs = new List<AbstractGpuValue>();
 
@@ -126,8 +140,10 @@ namespace Fuse.regions
                 }
 
                 _inCall = new GroupValues(myInputs).Output;
-                _forGroup = new ForGroup(_inStart, _inEnd, myOutputs).Output;
-                Setup(new List<AbstractGpuValue>(){_inStart,_inEnd,_inCall,_forGroup});
+                _crossLinkCall = new GroupValues(myCrosslinks).Output;
+                var index = inputs.Count > 0 ? inputs[0] as GpuValue<int> : new ConstantValue<int>(0);
+                _forGroup = new ForGroup(index, _inStart, _inEnd, myOutputs).Output;
+                Setup(new List<AbstractGpuValue>(){_inStart,_inEnd,_inCall,_crossLinkCall,_forGroup});
             }
 
             protected override string SourceTemplate()

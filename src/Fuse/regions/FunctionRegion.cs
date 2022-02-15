@@ -7,35 +7,34 @@ using System.Linq;
 namespace Fuse.regions
 {
     public class FunctionRegion
-    {
-        public sealed class RegionFunctionParameter<T> : ShaderNode<T> 
-    {
+    { 
+        public sealed class RegionFunctionParameter<T> : ShaderNode<T> {
 
-        public RegionFunctionParameter(GpuValue<T> theType, int theId = 0): base("argument", null,"argument")
-        {
-            Output = new FunctionParameterValue<T>("val" + GetHashCode())
+            public RegionFunctionParameter(GpuValue<T> theType, int theId = 0): base("argument", null,"argument")
             {
-                ParentNode = this
-            };
-            Ins = new List<AbstractGpuValue>();
-            Output.Name = "arg_"+theId;
-        }
+                Output = new FunctionParameterValue<T>("val" + GetHashCode())
+                {
+                    ParentNode = this
+                };
+                Ins = new List<AbstractGpuValue>();
+                Output.Name = "arg_"+theId;
+            }
 
-        public string TypeName()
-        {
-            return TypeHelpers.GetGpuTypeForType<T>();
-        }
+            public string TypeName()
+            {
+                return TypeHelpers.GetGpuTypeForType<T>();
+            }
 
-        public string Name()
-        {
-            return Output.ID;
-        }
+            public string Name()
+            {
+                return Output.ID;
+            }
 
-        protected override string SourceTemplate()
-        {
-            return "";
+            protected override string SourceTemplate()
+            {
+                return "";
+            }
         }
-    }
     
     public sealed class RegionFunctionNode<T>: AbstractFunctionNode<T>
     {

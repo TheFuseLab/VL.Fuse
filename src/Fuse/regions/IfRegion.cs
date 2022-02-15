@@ -66,18 +66,22 @@ namespace Fuse.regions
             
             private readonly GpuValue<bool> _inCheck;
             private GpuValue<GpuVoid> _inCall;
+            private GpuValue<GpuVoid> _crossLinkCall;
             private GpuValue<GpuVoid> _ifGroup;
             private readonly List<AbstractGpuValue> _outputs;
+            private readonly List<AbstractGpuValue> _crossLinks;
             
             public IfRegionNode(
                 GpuValue<bool> inCheck, 
                 IEnumerable<AbstractGpuValue> theInputs, 
                 IEnumerable<AbstractGpuValue> theOutputs, 
+                IEnumerable<AbstractGpuValue> theCrossLinks, 
                 string outputName = "result"
                 ) : base("if region", null, outputName)
             {
                 _inCheck = inCheck;
                 _outputs = theOutputs.ToList();
+                _crossLinks = theCrossLinks.ToList();
                 OptionalOutputs = new List<AbstractGpuValue>();
                 Setup(theInputs, _outputs);
             }
@@ -91,7 +95,9 @@ namespace Fuse.regions
                     Setup(inputs);
                     return;
                 }
-            
+                
+                var myCrosslinks = _crossLinks.Select(AbstractCreation.AbstractGpuValuePassThrough).ToList();
+
                 var myInputs = new List<AbstractGpuValue>();
                 var myOutputs = new List<AbstractGpuValue>();
 
@@ -123,8 +129,9 @@ namespace Fuse.regions
                 }
 
                 _inCall = new GroupValues(myInputs).Output;
+                _crossLinkCall = new GroupValues(myCrosslinks).Output;
                 _ifGroup = new IfGroup(_inCheck, myOutputs).Output;
-                Setup(new List<AbstractGpuValue>(){_inCheck, _inCall,_ifGroup});
+                Setup(new List<AbstractGpuValue>(){_inCheck, _inCall,_crossLinkCall,_ifGroup});
             }
 
             protected override string SourceTemplate()
