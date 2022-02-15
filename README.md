@@ -33,20 +33,23 @@ nuget install VL.Fuse -pre
 With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browser. You'll see some explanations and howtos to get you started
 
 ## Supporters
-### Gold Sponsors
-* Refik Anadol Studio   https://refikanadolstudio.com/
-* Takuma Nakata     	  https://www.takumanakata.com/
+### Development Partner
+* Refik Anadol Studio     https://refikanadolstudio.com/
+### Platinum Sponsor    
+* Marshmallow Laser Feast https://www.marshmallowlaserfeast.com/
+### Gold Sponsor
+* Takuma Nakata     	    https://www.takumanakata.com/
 ### Sponsors
-* M-Box             	https://www.m-box.de/
-* Quayola         		https://quayola.com/
-* Schnellebuntebilder http://schnellebuntebilder.de/
-* Wirmachenbunt     	https://wirmachenbunt.de/
+* M-Box             	    https://www.m-box.de/
+* Quayola         		    https://quayola.com/
+* Schnellebuntebilder     http://schnellebuntebilder.de/
+* Wirmachenbunt     	    https://wirmachenbunt.de/
 ### Super Backers
-* MESO             		https://meso.design/en
-* Analog Native       https://analognative.net/
-* Naut             		https://naut.ch/
-* Noir                https://www.instagram.com/random_noir/
-* Arístides García    https://www.aristidesgarcia.de/
+* MESO             		    https://meso.design/en
+* Analog Native           https://analognative.net/
+* Naut             		    https://naut.ch/
+* Noir                    https://www.instagram.com/random_noir/
+* Arístides García        https://www.aristidesgarcia.de/
 
 ### Backers
 Tally Yalesford, Aleksei Lizunov, Shaul Tzemach, Amairu, Studio de Maan, Studio Brüll, Sebescudie, Urbandrone, C Nisidis, David Bührer, Bryan Mischling, Lorenz Potthast, Minoru Ito, Toby Knyvett, Noir, M4d, Circuitb, Karafiat, Konstantin Semilakovs, Martin Bvoerhof, Didi Bruckmayr, Randall Vásquez, Christine Mayerhofer, Tin Tran, Chris Plant, Metarchetype, Motzi, Achim Stromberger, Robe Santoro, Andreu Lucio, chk, Amir Bastan, ExperiensS, Andres Alvarez
