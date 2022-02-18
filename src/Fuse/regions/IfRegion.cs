@@ -96,7 +96,8 @@ namespace Fuse.regions
                     return;
                 }
                 
-                var myCrosslinks = _crossLinks.Select(AbstractCreation.AbstractGpuValuePassThrough).ToList();
+                var myCrosslinks = new List<AbstractGpuValue>();
+                _crossLinks.ForEach(c => {if(c != null)myCrosslinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));});
 
                 var myInputs = new List<AbstractGpuValue>();
                 var myOutputs = new List<AbstractGpuValue>();
