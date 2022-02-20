@@ -44,6 +44,7 @@ With vvvv gamma open, press <kbd>F1</kbd> and look for `Fuse` in the help browse
 * Quayola         		    https://quayola.com/
 * Schnellebuntebilder     http://schnellebuntebilder.de/
 * Wirmachenbunt     	    https://wirmachenbunt.de/
+* CloneProduction			    https://cloneproduction.net
 ### Super Backers
 * MESO             		    https://meso.design/en
 * Analog Native           https://analognative.net/
