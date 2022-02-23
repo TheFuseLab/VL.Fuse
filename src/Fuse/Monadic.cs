@@ -36,6 +36,7 @@ namespace Fuse
             
             if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
+            
             /*
             if (typeof(T) == typeof(Buffer))
                 return new BufferGpuValueBuilder<T>() as IMonadBuilder<T, GpuValue<T>>;

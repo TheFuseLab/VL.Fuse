@@ -4,25 +4,15 @@ using Stride.Graphics;
 
 namespace Fuse
 {
-    /*
-    public class EmptyVoid : GpuValue<GpuVoid>
+    public class SimpleKeyword : ShaderNode<GpuVoid>
     {
-        
-        public EmptyVoid() : base("constant")
-        {
-        }
 
-        
-        public override string ID => "";
-    }*/
+        private string _keyword;
     
-    public class EmptyVoid : ShaderNode<GpuVoid>
-    {
-    
-        public EmptyVoid() : base( "void")
+        public SimpleKeyword(string theKeyword) : base( "void")
         {
-            
-            Setup(new List<AbstractGpuValue>(){null});
+            _keyword = theKeyword;
+            Setup(new List<AbstractGpuValue>{null});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -32,37 +22,36 @@ namespace Fuse
         
         protected override string GenerateDefaultSource()
         {
-            return "";
+            return _keyword;
         }
 
         protected override string SourceTemplate()
         {
-            return "";
+            return _keyword;
         }
     }
     
-    public class ReturnVoid : ShaderNode<GpuVoid>
+    public class EmptyVoid : SimpleKeyword
     {
     
-        public ReturnVoid() : base( "returnVoid")
+        public EmptyVoid() : base( "")
         {
-            
-            Setup(new List<AbstractGpuValue> {null});
         }
-        
-        protected override Dictionary<string, string> CreateTemplateMap()
+    }
+    
+    public class ReturnVoid : SimpleKeyword
+    {
+    
+        public ReturnVoid() : base( "return;")
         {
-            return new Dictionary<string, string>();
         }
-        
-        protected override string GenerateDefaultSource()
+    }
+    
+    public class BreakVoid : SimpleKeyword
+    {
+    
+        public BreakVoid() : base( "break;")
         {
-            return "return;";
-        }
-
-        protected override string SourceTemplate()
-        {
-            return "return;";
         }
     }
 }

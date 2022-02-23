@@ -291,6 +291,19 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return length((ab*t + a) - p);
 	}
 
+	//l.x = amplitude | l.y = frequency | l.z = speed | l.w = offset
+	//(Tried using a proper helix sdf, but it wasnt as deformable)
+	float fHelix( float3 p, float3 a, float3 b, float amp, float freq, float offset){
+  		p.x += sin(p.z * freq + offset) * amp;
+    	p.y += cos(p.z * freq + offset) * amp;
+    	
+		float3 pa = p - a;
+		float3 ba = b - a;
+		float h = saturate( dot(pa,ba)/dot(ba,ba) );
+	
+		return length( pa - ba*h )*.6;
+	}
+
 	// Capsule version 2: between two end points <a> and <b> with radius r 
 	float fCapsule(float3 p, float3 a, float3 b, float r) 
 	{
@@ -381,6 +394,8 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		}
 		return d;
 	}
+
+	
 
 	/////////////////////////////////////////////////////////////////////
 	// 3 point Bezier
@@ -1298,7 +1313,9 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return float4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
 	}
 
-	
+	float fOpOnion(float d, float h ){
+    	return abs(d)-h;
+	}
 
 
 
