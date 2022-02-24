@@ -6,12 +6,12 @@ using Stride.Core.Extensions;
 
 namespace Fuse
 {
-    public class BooleanSwitchNode<T> : ShaderNode<T>
+    public class BooleanSwitchNodeNew<T> : ShaderNode<T>
     {
         private readonly GpuValue<bool> _inCheck;
         private readonly GpuValue<T> _inFalse;
         private readonly GpuValue<T> _inTrue;
-        public BooleanSwitchNode(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
+        public BooleanSwitchNodeNew(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
         {
 
             var ins = new List<AbstractGpuValue>(){inCheck};
