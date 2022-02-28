@@ -33,7 +33,8 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
     // Textures
     //--------------------------------------------------------------------------------------
 
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+    Texture3D<float3> Texture_Target; //Input & Output Texture
+    RWTexture3D<float3> Texture_Target_RW; //Input & Output Texture
     Texture3D<float> Texture_ObstaclesGradient;
 
     //--------------------------------------------------------------------------------------
@@ -43,7 +44,7 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
     float3 ScaleFactorInverse;
 
     Buffer<float4> PosSizeBuffer;
-    Buffer<float4> VelBuffer;
+    Buffer<float4> ValueBuffer;
 
     int SphericalImpulseCount;
 
@@ -65,32 +66,31 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
     override void Compute()
     {
         uint3 i = streams.DispatchThreadId;
-        uint3 dim = FluidDimensions;
 
         if( IsNonEmptyCell(i) )
         {
-            Texture_Velocity[i] = 0;
+            Texture_Target_RW[i] = 0;
             return; // !!!
         }
 
-        float3 AccumVel = Texture_Velocity[i];
+        float3 AccumValue = Texture_Target[i];
 
         for(uint s=0 ; s<(uint)SphericalImpulseCount; s++)
         {
             float4 Source_PosSize = PosSizeBuffer[s];
-            float4 Source_Vel = VelBuffer[s];
+            float4 Source_Value = ValueBuffer[s];
 
             float dist = length( i - Source_PosSize.xyz ) * Source_PosSize.w;
             float4 result;
-            result.rgb = Source_Vel.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
-            result.a = exp( -dist*dist );
+            result.rgb = Source_Value.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
+            result.a = exp( -dist * dist );
                 
-            AccumVel +=  result.xyz * result.a;
+            AccumValue +=  result.xyz * result.a;
 
         }
 
 
-    Texture_Velocity[i] = AccumVel;
+    Texture_Target_RW[i] = AccumValue;
 
     }
 };

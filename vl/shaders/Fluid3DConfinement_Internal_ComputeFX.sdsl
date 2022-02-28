@@ -34,7 +34,8 @@ shader Fluid3DConfinement_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
     //--------------------------------------------------------------------------------------
     
     Texture3D<float3> Texture_Vorticity;
-    RWTexture3D<float3> Texture_Velocity; //Input & Output Texture
+    Texture3D<float3> Texture_Velocity; //Input Texture
+    RWTexture3D<float3> Texture_Velocity_RW; // Output Texture
 
     //--------------------------------------------------------------------------------------
     // Variables
@@ -75,14 +76,13 @@ shader Fluid3DConfinement_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlobals
 
         eta = normalize( eta + float3(0.001,0.001,0.001) );
 
-        float3 force;
-        force.xyz = Timestep * Epsilon * float3( eta.y * omega.z - eta.z * omega.y,
+        float3 force = Timestep * Epsilon * float3( eta.y * omega.z - eta.z * omega.y,
                                                 eta.z * omega.x - eta.x * omega.z,
                                                 eta.x * omega.y - eta.y * omega.x );
     
         // Note: the result is added to the current velocity at each cell using "additive blending"
         float3 vel = Texture_Velocity[i];
-        Texture_Velocity[i] = vel + force;
+        Texture_Velocity_RW[i] = vel + force;
         
     }
    

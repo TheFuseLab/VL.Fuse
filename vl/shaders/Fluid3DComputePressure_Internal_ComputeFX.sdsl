@@ -35,8 +35,8 @@ shader Fluid3DComputePressure_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
 
     Texture3D<float> Texture_ObstaclesGradient;
     Texture3D<float> Texture_Divergence;
-    Texture3D<float> Texture_PressureIn; //Input Texture
-    RWTexture3D<float> Texture_Pressure; //Output Texture
+    Texture3D<float> Texture_Pressure; //Input Texture
+    RWTexture3D<float> Texture_Pressure_RW; //Output Texture
     float3 CoordsOffset;
 
     //--------------------------------------------------------------------------------------
@@ -64,14 +64,14 @@ shader Fluid3DComputePressure_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
         uint3 DOWNCELL = uint3(i.x, i.y, max(i.z - 1, 0));
         uint3 UPCELL = uint3(i.x, i.y, min(i.z + 1, dim.z - 1));
 
-        float pCenter = Texture_PressureIn[i];
+        float pCenter = Texture_Pressure[i];
     
-        float pL = Texture_PressureIn[LEFTCELL];
-        float pR = Texture_PressureIn[RIGHTCELL];
-        float pB = Texture_PressureIn[BOTTOMCELL];
-        float pT = Texture_PressureIn[TOPCELL];
-        float pD = Texture_PressureIn[DOWNCELL];
-        float pU = Texture_PressureIn[UPCELL];
+        float pL = Texture_Pressure[LEFTCELL];
+        float pR = Texture_Pressure[RIGHTCELL];
+        float pB = Texture_Pressure[BOTTOMCELL];
+        float pT = Texture_Pressure[TOPCELL];
+        float pD = Texture_Pressure[DOWNCELL];
+        float pU = Texture_Pressure[UPCELL];
 
         i = streams.DispatchThreadId;
 
@@ -92,7 +92,7 @@ shader Fluid3DComputePressure_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
         if( IsBoundaryCell(DOWNCELL) )  pD = pCenter;  
         if( IsBoundaryCell(UPCELL) )    pU = pCenter;
 
-        Texture_Pressure[streams.DispatchThreadId] = ( pL + pR + pB + pT + pU + pD - bC ) / 6.0;
+        Texture_Pressure_RW[streams.DispatchThreadId] = ( pL + pR + pB + pT + pU + pD - bC ) / 6.0;
 
     }
 
