@@ -22,7 +22,7 @@ namespace MyTests
     public class PatchTests
     {
 
-        static string VLVersion = "2021.4.0-0568-gba571a190a";
+        static string VLVersion = "2021.4.7";
         static string[] Packs = new string[]{ 
         
         //  FIX ME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
