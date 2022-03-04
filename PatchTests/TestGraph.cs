@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse;
 using Fuse.ShaderFX;
+using NUnit.Framework;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 
-namespace Fuse.Tests
+namespace PatchTests
 {
-    public class TestGraph
+    public static class TestGraph
     {
+        [Test]
         public static void TestInputs()
         {
             
@@ -29,7 +32,8 @@ namespace Fuse.Tests
             Console.WriteLine(sin.InputList().Count);
             sin.InputList().ForEach(Console.WriteLine);
         }
-
+        
+        [Test]
         public static void TestDrawShaderGraph()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -43,7 +47,7 @@ namespace Fuse.Tests
             var sin = new IntrinsicFunctionNode<float>(
                 new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
-            var DrawShader = new DrawShader(
+            var drawShader = new DrawShader(
                 new Dictionary<string, AbstractGpuValue>
                 {
                     {"ShadingPosition", sin.Output}
@@ -52,9 +56,10 @@ namespace Fuse.Tests
                 {
                     {"ColorTarget", sin.Output}
                 });
-            Console.WriteLine(DrawShader.ShaderCode);
+            Console.WriteLine(drawShader.ShaderCode);
         }
 
+        [Test]
         public static void TestDeclarations()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -67,6 +72,7 @@ namespace Fuse.Tests
             Console.WriteLine(add2.DeclarationList());
         }
 
+        [Test]
         public static void TestMixins()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -86,6 +92,7 @@ namespace Fuse.Tests
             Console.WriteLine(customFunction.BuildSourceCode());
         }
 
+        [Test]
         public static void TestOperatorNode()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -97,6 +104,7 @@ namespace Fuse.Tests
             Console.WriteLine(operatorNodeWithNull.BuildSourceCode());
         }
         
+        [Test]
         public static void TestHallo()
         {
             
@@ -104,6 +112,7 @@ namespace Fuse.Tests
             Console.WriteLine("HALLO");
         }
 
+        [Test]
         public static void TestCustomFunctions()
         {
             
@@ -137,6 +146,7 @@ namespace Fuse.Tests
             Console.WriteLine(customFunction.FunctionMap());
         }
 
+        [Test]
         public static void TestFloatJoins()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -160,6 +170,7 @@ namespace Fuse.Tests
             Console.WriteLine(join4Null.BuildSourceCode());
         }
 
+        [Test]
         public static void TestMember()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
@@ -170,6 +181,7 @@ namespace Fuse.Tests
             Console.WriteLine(memberNull.BuildSourceCode());
         }
         
+        [Test]
         public static void TestTraversal()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
@@ -190,6 +202,7 @@ namespace Fuse.Tests
             Console.WriteLine(add1.BuildSourceCode());
         }
 
+        [Test]
         public static void TestAssign()
         {
             var gpuValue0 = new GpuInput<Vector2>();
@@ -202,11 +215,13 @@ namespace Fuse.Tests
             Console.WriteLine(assign.BuildSourceCode());
         }
 
+        [Test]
         public static void Bits()
         {
             Console.WriteLine(((BufferFlags.UnorderedAccess & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)+"");
         }
 
+        [Test]
         public static void Main()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -250,6 +265,7 @@ namespace Fuse.Tests
             
         }
 
+        [Test]
         public static void TestToShaderFX()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -271,6 +287,7 @@ namespace Fuse.Tests
            Console.WriteLine(toMaterial.ShaderCode);
         }
 
+        [Test]
         public static void TestCreation()
         {
             var _value = new GpuValue<Vector3>("bla");

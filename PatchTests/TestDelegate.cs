@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using Stride.Core.Extensions;
+using Fuse;
+using NUnit.Framework;
 using Stride.Core.Mathematics;
 
-namespace Fuse.Tests
+namespace PatchTests
 {
-    public class TestDelegate
+    public static class TestDelegate
     {
+        [Test]
         public static void TestDelegateFunction()
         {
             var delegate0 = new FunctionParameter<float>(new ConstantValue<float>(0),0);
@@ -28,7 +30,7 @@ namespace Fuse.Tests
             
             Console.WriteLine(delegateNode.BuildSourceCode());
         }
-
+        [Test]
         public static void TestTemplateDelegateFunction()
         {
             var offset = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
@@ -46,14 +48,14 @@ namespace Fuse.Tests
             );
             
             
-            var f1f2 = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
+            var f1F2 = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
             const string cellFunctionCode = @"float get(float2 offset)
 {
     return  sqrt(dot( offset, offset ));
 }";
             
             var cellFunction = new CustomFunctionNode<float>(
-                new List<AbstractGpuValue> {f1f2.Output}, 
+                new List<AbstractGpuValue> {f1F2.Output}, 
                 "cellFunction",
                 cellFunctionCode, 
                 new ConstantValue<float>(0)
@@ -104,13 +106,13 @@ float ${signature}(float2 p)
                 new List<IFunctionInvokeNode>
                 {
                     new FunctionInvokeNode<float>(cellDistance.Output, new List<AbstractGpuValue> {x.Output},"cellDistance"),
-                    new FunctionInvokeNode<float>(cellFunction.Output, new List<AbstractGpuValue> {f1f2.Output},"cellFunction")
+                    new FunctionInvokeNode<float>(cellFunction.Output, new List<AbstractGpuValue> {f1F2.Output},"cellFunction")
                 }
             );
             Console.WriteLine(customFunction.FunctionMap());
             Console.WriteLine(customFunction.BuildSourceCode());
         }
-
+        [Test]
         public static void TestFBM()
         {
             var noiseDelegateParameter = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));

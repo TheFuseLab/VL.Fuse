@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse;
 using Fuse.compute;
+using NUnit.Framework;
 
-namespace Fuse.Tests
+namespace PatchTests
 {
-    public class TestControl
+    public static class TestControl
     {
+        [Test]
         public static void TestBooleanOperator()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -18,6 +21,7 @@ namespace Fuse.Tests
             Console.WriteLine(compareNull.BuildSourceCode());
         }
         
+        [Test]
         public static void TestBooleanSwitch()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -38,6 +42,7 @@ namespace Fuse.Tests
             Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
+        [Test]
         public static void TestBooleanSwitchVoid()
         {
             var gpuValue0 = new GpuInput<float>();
@@ -64,6 +69,7 @@ namespace Fuse.Tests
             Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
+        [Test]
         public static void TestNumericSwitch()
         {    
             var gpuValueCheck = new GpuInput<int>();

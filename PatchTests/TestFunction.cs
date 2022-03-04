@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse;
 using Fuse.regions;
-using Stride.Core.Extensions;
+using NUnit.Framework;
 
-namespace Fuse.Tests
+namespace PatchTests
 {
     public class TestFunction
     {
+        [Test]
         public static void TestPatchedFunction()
         {
               

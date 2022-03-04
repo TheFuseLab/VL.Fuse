@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using Fuse;
 using Fuse.compute;
-using Stride.Core.Extensions;
+using NUnit.Framework;
 using Stride.Core.Mathematics;
 
-namespace Fuse.Tests
+namespace PatchTests
 {
-    public class TestDynamicStruct
+    public static class TestDynamicStruct
     {
         
         private const string ComputeShaderSource = @"
@@ -83,6 +83,7 @@ ${sourceCompute}
             return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>{{"shaderID",shaderName}});
         }
         
+        [Test]
         public static void TestBooleanOperator()
         {
             var gpuIndex = new GpuInput<int>();
