@@ -5,7 +5,7 @@ namespace Fuse.compute
 {
     public class GroupVoid: ShaderNode<GpuVoid> 
     {
-        public GroupVoid(IEnumerable<GpuValue<GpuVoid>> theInputs, string theOperator) : base("CallStack")
+        public GroupVoid(IEnumerable<GpuValue<GpuVoid>> theInputs) : base("GroupVoid")
         { 
             
             var abstractGpuValues = new List<GpuValue<GpuVoid>>();

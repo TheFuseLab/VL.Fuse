@@ -29,7 +29,7 @@ namespace Fuse
         private string BuildCaseSource(AbstractGpuValue theCase,StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
             if (theCase == null) return "";
-            if (!_inTrue.ParentNode.SourceCode.IsNullOrEmpty())
+            if (_inTrue != null && !_inTrue.ParentNode.SourceCode.IsNullOrEmpty())
             {
                 theCase.ParentNode.BuildChildrenSource(theSourceBuilder, theHashes);
                 return theCase.ParentNode.SourceCode;
@@ -38,9 +38,9 @@ namespace Fuse
             theCase.ParentNode.Children.ForEach(
             child =>
             {
-                if (!(child is AbstractShaderNode)) return;
+                if (!(child is AbstractShaderNode node)) return;
                
-                ((AbstractShaderNode)child).BuildChildrenSource(theSourceBuilder, theHashes);
+                node.BuildChildrenSource(theSourceBuilder, theHashes);
             });
 
             var childrenString = new StringBuilder();
