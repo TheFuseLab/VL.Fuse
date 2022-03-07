@@ -13,9 +13,11 @@ namespace Fuse.regions
         public class IfGroup: ShaderNode<GpuVoid> 
         {
             private readonly GpuValue<bool> _inCheck;
-            public IfGroup(GpuValue<bool> inCheck, IEnumerable<AbstractGpuValue> theInputs) : base("IfGroup")
-            { 
-            
+            public IfGroup(
+                GpuValue<bool> inCheck, 
+                IEnumerable<AbstractGpuValue> theInputs
+                ) : base("IfGroup")
+            {
                 _inCheck = inCheck;
                 var abstractGpuValues = new List<AbstractGpuValue>();
                 theInputs.ForEach(input =>
@@ -68,7 +70,6 @@ namespace Fuse.regions
             private GpuValue<GpuVoid> _inCall;
             private GpuValue<GpuVoid> _crossLinkCall;
             private GpuValue<GpuVoid> _ifGroup;
-            private readonly List<AbstractGpuValue> _outputs;
             private readonly List<AbstractGpuValue> _crossLinks;
             
             public IfRegionNode(
@@ -80,10 +81,10 @@ namespace Fuse.regions
                 ) : base("if region", null, outputName)
             {
                 _inCheck = inCheck;
-                _outputs = theOutputs.ToList();
+                var outputs = theOutputs.ToList();
                 _crossLinks = theCrossLinks.ToList();
                 OptionalOutputs = new List<AbstractGpuValue>();
-                Setup(theInputs, _outputs);
+                Setup(theInputs, outputs);
             }
 
             private List<AbstractGpuValue> ResolveVoidCrossLink(AbstractGpuValue theCrossLink)
