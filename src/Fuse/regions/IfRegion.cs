@@ -128,7 +128,7 @@ namespace Fuse.regions
                             //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
                             break;
                         default:
-                            myCrossLinks.Add(AbstractCreation.AbstractDeclareValueAssigned(c));
+                            //myCrossLinks.Add(AbstractCreation.AbstractDeclareValueAssigned(c));
                             //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
                             myCrossLinks.Add(c);
                             break;
@@ -181,7 +181,7 @@ namespace Fuse.regions
 
             protected override string SourceTemplate()
             {
-                return "";//ShaderNodesUtil.Evaluate(shaderCode,templateMap);
+                return "";
             }
             
             

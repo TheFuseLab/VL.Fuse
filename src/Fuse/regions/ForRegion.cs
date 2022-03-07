@@ -11,17 +11,14 @@ namespace Fuse.regions
         public class ForGroup: ShaderNode<GpuVoid> 
         {
             private readonly GpuValue<int> _index;
-            private readonly GpuValue<int> _inStart;
             private readonly GpuValue<int> _inEnd;
             public ForGroup(
                 GpuValue<int> index, 
-                GpuValue<int> inStart, 
                 GpuValue<int> inEnd, 
                 IEnumerable<AbstractGpuValue> theInputs
                 ) : base("ForGroup")
             {
                 _index = index;
-                _inStart = inStart;
                 _inEnd = inEnd;
                 var abstractGpuValues = new List<AbstractGpuValue>();
                 theInputs.ForEach(input =>
@@ -49,7 +46,6 @@ namespace Fuse.regions
                         shaderCode, 
                         new Dictionary<string, string>
                         {
-                            {"start", _inStart.ID}, 
                             {"end", _inEnd.ID}, 
                             {"index", _index.ID}, 
                             {"indexStart", "indexStart_" + new Random().Next()}
@@ -77,7 +73,6 @@ namespace Fuse.regions
         public class ForRegionNode : ShaderNode<GpuVoid>
         {
             
-            private readonly GpuValue<int> _inStart;
             private readonly GpuValue<int> _inEnd;
             private GpuValue<GpuVoid> _inCall;
             private GpuValue<GpuVoid> _crossLinkCall;
@@ -85,7 +80,6 @@ namespace Fuse.regions
             private readonly List<AbstractGpuValue> _crossLinks;
             
             public ForRegionNode(
-                GpuValue<int> inStart, 
                 GpuValue<int> inEnd, 
                 IEnumerable<AbstractGpuValue> theInputs, 
                 IEnumerable<AbstractGpuValue> theOutputs, 
@@ -93,7 +87,6 @@ namespace Fuse.regions
                 string outputName = "result"
                 ) : base("for region", null, outputName)
             {
-                _inStart = inStart;
                 _inEnd = inEnd;
                 var outputs = theOutputs.ToList();
                 _crossLinks = theCrossLinks.ToList();
@@ -142,7 +135,7 @@ namespace Fuse.regions
                             //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
                             break;
                         default:
-                            myCrossLinks.Add(AbstractCreation.AbstractDeclareValueAssigned(c));
+                            //myCrossLinks.Add(AbstractCreation.AbstractDeclareValueAssigned(c));
                             //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
                             myCrossLinks.Add(c);
                             break;
@@ -181,14 +174,24 @@ namespace Fuse.regions
 
                 _inCall = new GroupValues(myInputs).Output;
                 _crossLinkCall = new GroupValues(myCrossLinks).Output;
+                
                 var index = inputs.Count > 0 ? inputs[0] as GpuValue<int> : new ConstantValue<int>(0);
-                _forGroup = new ForGroup(index, _inStart, _inEnd, myOutputs).Output;
-                Setup(new List<AbstractGpuValue>(){_crossLinkCall, _inStart,_inEnd,_inCall,_forGroup});
+                _forGroup = new ForGroup(index, _inEnd, myOutputs).Output;
+                
+                var inputList = new List<AbstractGpuValue>
+                {
+                    _crossLinkCall,
+                    _inEnd,
+                    _inCall,
+                    _forGroup
+                };
+                
+                Setup(inputList);
             }
 
             protected override string SourceTemplate()
             {
-                return "";//ShaderNodesUtil.Evaluate(shaderCode,templateMap);
+                return "";
             }
             
             
