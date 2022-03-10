@@ -10037,7 +10037,7 @@
               <Overlay Id="TA1U4nYH5IENvp61ZgUl6G" Name="DefaultColorTarget (Internal)" Bounds="140,191,294,493">
                 <p:ColorIndex p:Type="Int32">10</p:ColorIndex>
               </Overlay>
-              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;    }&#xD;&#xA;};">
+              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
@@ -10065,6 +10065,7 @@
                 <Pin Id="PKd6Oh0nMsEPuwYwoRMIWC" Name="Size" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="QnOwued6QVtNJbs7BfacFG" Name="Color" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="VpiIpydoxpEPivlrunPz1I" Name="Skip" Kind="InputPin" PinGroupName="Input" />
+                <Pin Id="JQQmaoFdJ2vPc8QjiVeQkp" Name="Clip" Kind="InputPin" PinGroupName="Input" />
               </Node>
               <Node Bounds="1243,246,36,19" Id="CZAl98JwBg1MpTlkfyMDzg">
                 <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
@@ -10131,8 +10132,8 @@
               <ControlPoint Id="MsjHzAQgG1TLbx8Xk1ChDq" Bounds="1364,392" />
               <ControlPoint Id="ASQ6cw9cBJePt25Q7UOAQH" Bounds="731,562" />
               <ControlPoint Id="PywUvSWiocVN2TQLWI3Yuz" Bounds="769,222" />
-              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="890,222" />
-              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="1008,225" />
+              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="861,222" />
+              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="947,222" />
               <ControlPoint Id="O753LryFLNkOCvM9uFTvqO" Bounds="1207,221" />
               <Node Bounds="811,375,36,19" Id="DjiVkhy4rs1O8oHZpFI6LT">
                 <p:NodeReference>
@@ -10193,7 +10194,7 @@
               </Node>
               <ControlPoint Id="RYMfFLEhqlKOVzIkMgibVd" Bounds="646,478" />
               <ControlPoint Id="TA3uN0r8XinPqhFqEJBH93" Bounds="646,399" />
-              <ControlPoint Id="BljVnUilAW8P9NszpcFvts" Bounds="1127,226" />
+              <ControlPoint Id="BljVnUilAW8P9NszpcFvts" Bounds="1037,224" />
               <Pad Id="NsS3ORLbDKeO57RW8GgetQ" Comment="The Defined Streams" Bounds="832,508,63,67" ShowValueBox="true" isIOBox="true">
                 <p:TypeAnnotation LastCategoryFullName="Collections" LastSymbolSource="VL.Collections.vl">
                   <Choice Kind="TypeFlag" Name="Spread" />
@@ -10207,9 +10208,11 @@
                   <Item>Size</Item>
                   <Item>PositionWS</Item>
                   <Item>Skip</Item>
+                  <Item>Clip</Item>
                 </p:Value>
               </Pad>
               <ControlPoint Id="UEaMiD3GerNOPNKdxoolPA" Bounds="586,374" />
+              <ControlPoint Id="SAKsWpzq62MQdpOaGp7Qgp" Bounds="1125,225" />
             </Canvas>
             <Link Id="Oqar0O6RYQsPguC3CjfGoC" Ids="OjvJd5zLSSxMbZRE0pPXQV,Mpo7lUyg8MPORGMpZG1eQI" />
             <Link Id="R22ulp6CwwxOh1TZvjFGJ4" Ids="QBX1fMqTXp7OYr9oURB0zM,QIN6Z8j5lnXPfmt1WSbv4z" />
@@ -10315,6 +10318,16 @@
               <Pin Id="RaH7E7K1fC0MT4re6EWaPP" Name="Shader Code" Kind="OutputPin" />
               <Pin Id="E8VvrcMEwZYNlGyHUUXXtE" Name="Ticket" Kind="OutputPin" />
               <Pin Id="BfewXXVMKNvOwQXZB9lhEZ" Name="DefaultCount" Kind="InputPin" />
+              <Pin Id="CQLrjPnTn7mPoLVNeVPBx0" Name="Clip" Kind="InputPin">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="Float32" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
             </Patch>
             <Patch Id="Mt03geeMOgSPSLqWf1WT5O" Name="DefaultColorTarget">
               <Pin Id="KWjfC1y0ZQcO3dZO1JSoZ1" Name="Shader Graph" Kind="OutputPin" />
@@ -10324,6 +10337,8 @@
             <Link Id="IFvQV9DTJkuOT8z9yoRAWa" Ids="NsS3ORLbDKeO57RW8GgetQ,Cw0RsBT6j94MzPnHRelFeg" />
             <Link Id="ADHZBAUayBWNAAjyfepO7p" Ids="BfewXXVMKNvOwQXZB9lhEZ,UEaMiD3GerNOPNKdxoolPA" IsHidden="true" />
             <Link Id="SnMgsEbAramOUKhJdwOWk3" Ids="UEaMiD3GerNOPNKdxoolPA,VSoNrWxO1NnP3QVXW0GqXf" />
+            <Link Id="QaPEhdTshibQLTgxcJ8krt" Ids="CQLrjPnTn7mPoLVNeVPBx0,SAKsWpzq62MQdpOaGp7Qgp" IsHidden="true" />
+            <Link Id="TCVVrsJrIVeNrsjRgafgov" Ids="SAKsWpzq62MQdpOaGp7Qgp,JQQmaoFdJ2vPc8QjiVeQkp" />
           </Patch>
         </Node>
         <!--
