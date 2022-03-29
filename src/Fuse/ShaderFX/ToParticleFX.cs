@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
 using Stride.Core.Mathematics;
+using Stride.Engine;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
@@ -71,7 +72,7 @@ ${sourceFX}
 };";
 
 
-        public ToParticleFX(GpuValue<Vector3> thePosition, GpuValue<float> theSize, GpuValue<float> theValue) : base(
+        public ToParticleFX(Game theGame, GpuValue<Vector3> thePosition, GpuValue<float> theSize, GpuValue<float> theValue) : base(theGame,
             new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
                 
                 {"FX", new Dictionary<string, AbstractGpuValue>

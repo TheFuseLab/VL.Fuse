@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
+using Stride.Engine;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
@@ -25,7 +26,7 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeFx(GpuValue<GpuVoid> theCompute) : base(
+        public ToComputeFx(Game theGame, GpuValue<GpuVoid> theCompute) : base(theGame,
             new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
                 {
                     "CS", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}

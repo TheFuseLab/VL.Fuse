@@ -103,11 +103,12 @@ namespace Fuse
             
             AddFunctionInvoke(FunctionName,theDelegate, gpuValues);
             
-            var valueMap = new Dictionary<string, string>
-            {
-                {"functionName", FunctionName}
-            };
-            Setup(gpuValues, valueMap);
+            Setup(gpuValues);
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string> {{"functionName", FunctionName}};
         }
 
         private void AddFunctionInvoke(string theFunctionName, AbstractGpuValue theDelegate, List<AbstractGpuValue> theParameters)

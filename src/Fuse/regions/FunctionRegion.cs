@@ -38,6 +38,8 @@ namespace Fuse.regions
     
     public sealed class RegionFunctionNode<T>: AbstractFunctionNode<T>
     {
+
+        private string _signature;
         
         public RegionFunctionNode(
             IEnumerable<AbstractGpuValue> theArguments, 
@@ -59,14 +61,14 @@ namespace Fuse.regions
             }
             Functions = new Dictionary<string, string>();
             
-            var signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
+            _signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
 
             
             
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
-                {"functionName", signature},
+                {"functionName", _signature},
                 {"arguments", BuildArguments(theArguments)},
                 {"functionImplementation", theFunction.ParentNode.BuildSourceCode()},
                 {"result", theFunction.ID}
@@ -81,9 +83,14 @@ ${functionImplementation}
             Ins = inputs;
             HandleDelegates(theDelegates,functionValueMap);
 
-            Functions.Add(signature, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
-            Setup(inputs, new Dictionary<string, string> {{"function", signature}});
+            Functions.Add(_signature, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
+            Setup(inputs);
             
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string> {{"function", _signature}};
         }
         
         private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)

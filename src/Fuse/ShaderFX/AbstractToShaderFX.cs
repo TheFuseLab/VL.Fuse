@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Stride.Engine;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
@@ -23,13 +24,19 @@ namespace Fuse.ShaderFX
     public abstract class AbstractToShaderFX<T> : AbstractShader, IComputeValue<T>
     {
 
+        private readonly Dictionary<string, string> _customTemplate;
+        private readonly IDictionary<string, AbstractGpuValue> _results;
+        
         protected AbstractToShaderFX(
+            Game theGame,
             IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, 
             IDictionary<string,AbstractGpuValue> theResults, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
-            string theSource) : base(false, theInputs, theDefinedStreams, AppendTemplateValues(theCustomTemplate,theResults), theSource)
+            string theSource) : base(theGame, false, theInputs, theDefinedStreams, theSource)
         {
+            _customTemplate = theCustomTemplate;
+            _results = theResults;
         }
 
         private static Dictionary<string, string> AppendTemplateValues(
@@ -40,6 +47,11 @@ namespace Fuse.ShaderFX
             theTemplateMap["resultType"] = TypeHelpers.GetGpuTypeForType<T>();
             theResults.ForEach(kv => theTemplateMap["result" + kv.Key] = kv.Value.ID);
             return theTemplateMap;
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return AppendTemplateValues(_customTemplate,_results);
         }
 
         private ParameterCollection _parameters;
@@ -54,9 +66,10 @@ namespace Fuse.ShaderFX
             return Enumerable.Empty<ComputeNode>();
         }
 
-
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
+            GenerateSourceCode(context);
+            ShaderNodesUtil.AddShaderSource(_game, ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
             _parameters = context.Parameters;
             Inputs.ForEach(shaderInputs =>
             {

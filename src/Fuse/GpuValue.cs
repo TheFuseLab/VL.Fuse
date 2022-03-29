@@ -14,12 +14,12 @@ namespace Fuse
 
         public bool HelperEnabled{ get; set; }
 
-        public readonly int HashCode;
+        public int HashCode;
 
         protected AbstractGpuValue(string theName)
         {
             Name = theName;
-            HashCode = ShaderNodesUtil.GenerateID();
+            HashCode = -1;
         }
 
         public abstract string ID { get; }
@@ -50,7 +50,14 @@ namespace Fuse
             return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        public override string ID => Name + "_" + HashCode;
+        public override string ID
+        {
+            get
+            {
+                
+                return Name + "_" + HashCode;
+            }
+        }
 
         public override Type DataType => typeof(T);
 

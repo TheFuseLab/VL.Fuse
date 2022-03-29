@@ -5,10 +5,10 @@ namespace Fuse
 {
     public class Float4Join : ShaderNode<Vector4>
     {
-        private GpuValue<float> _x;
-        private GpuValue<float> _y;
-        private GpuValue<float> _z;
-        private GpuValue<float> _w;
+        private readonly GpuValue<float> _x;
+        private readonly GpuValue<float> _y;
+        private readonly GpuValue<float> _z;
+        private readonly GpuValue<float> _w;
 
         public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base("Float4Join")
         {

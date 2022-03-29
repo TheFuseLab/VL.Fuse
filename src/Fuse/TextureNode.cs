@@ -30,7 +30,7 @@ namespace Fuse
                 };
                 OptionalOutputs.Add(myPass);
             }
-            Setup(myInputs, new Dictionary<string, string>());
+            Setup(myInputs);
         }
 
         protected override string SourceTemplate()
@@ -51,6 +51,7 @@ namespace Fuse
 
         private readonly GpuValue<Texture> _texture;
         private readonly List<AbstractGpuValue> _arguments;
+        private readonly string _functionName;
         public TextureNode(
             GpuValue<Texture> theTexture, 
             IEnumerable<AbstractGpuValue> theArguments, 
@@ -60,9 +61,15 @@ namespace Fuse
         {
             _texture = theTexture;
             _arguments = theArguments.ToList();
+            _functionName = theFunction;
 
             var ins = new List<AbstractGpuValue>(_arguments) {theTexture};
-            Setup(ins, new Dictionary<string, string> {{"function", theFunction}});
+            Setup(ins);
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string> {{"functionName", _functionName}};
         }
         
         protected override string SourceTemplate()

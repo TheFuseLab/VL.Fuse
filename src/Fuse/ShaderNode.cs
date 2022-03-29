@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Stride.Rendering.Materials;
 using VL.Lib.Collections;
 
 
@@ -42,13 +43,11 @@ namespace Fuse
     
     public abstract class AbstractShaderNode : IShaderNode
     {
-        protected IEnumerable<AbstractGpuValue> Ins;
+        public IEnumerable<AbstractGpuValue> Ins;
 
         protected abstract string SourceTemplate();
 
         public abstract AbstractGpuValue AbstractOutput();
-
-        protected IDictionary<string, string> CustomTemplateValues;
 
         protected readonly int HashCode;
 
@@ -57,6 +56,8 @@ namespace Fuse
             Id = theId;
             HashCode = ShaderNodesUtil.GenerateID();
         }
+        
+        
 
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
         
@@ -78,7 +79,7 @@ namespace Fuse
         
         protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
         
-        public string SourceCode => GenerateSource(Ins, CustomTemplateValues);
+        public string SourceCode => GenerateSource( Ins, CreateTemplateMap());
         
         protected virtual Dictionary<string, string> CreateTemplateMap()
         {
@@ -107,13 +108,30 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate(sourceCode, templateMap);
         }
 
-        public void BuildChildrenSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        public virtual void SetHashCodes(ShaderGeneratorContext theContext)
+        {
+            
+            Ins.ForEach(input =>
+            {
+                var name = input.Name;
+                Console.WriteLine(name);
+                input.HashCode = theContext.GetAndIncIDCount();
+            });
+            Children.ForEach(child =>
+            {
+                if (!(child is AbstractShaderNode input)) return;
+               
+                input.SetHashCodes(theContext);
+            });
+        }
+
+        public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
             Children.ForEach(child =>
             {
                 if (!(child is AbstractShaderNode input)) return;
                
-                input.BuildSource(theSourceBuilder, theHashes);
+                input.BuildSource( theSourceBuilder, theHashes);
             });
         }
 
@@ -133,7 +151,7 @@ namespace Fuse
             var myStringBuilder = new StringBuilder();
             var myHashes = new HashSet<int>();
 
-            BuildSource(myStringBuilder, myHashes);
+            BuildSource( myStringBuilder, myHashes);
             
             return myStringBuilder.ToString();
         }
@@ -294,6 +312,11 @@ namespace Fuse
             });
             return result;
         }
+        
+        protected virtual Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string>();
+        }
     }
     
     public abstract class ShaderNode<T> : AbstractShaderNode
@@ -325,9 +348,8 @@ namespace Fuse
             return Output;
         }
 
-        protected void Setup(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        protected void Setup(IEnumerable<AbstractGpuValue> theIns)
         {
-            CustomTemplateValues = theCustomValues;
             Ins = theIns.ToList();
             Output.ParentNode = this;
         }

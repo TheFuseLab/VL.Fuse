@@ -14,10 +14,12 @@ ${cases}
     }
         ";
 
-        private GpuValue<T> _default;
-        private List<GpuValue<T>> _cases;
+        private readonly GpuValue<T> _default;
+        private readonly List<GpuValue<T>> _cases;
+        private readonly GpuValue<int> _check;
         public NumericSwitchNode(GpuValue<int> theCheck, IEnumerable<GpuValue<T>> inputs, GpuValue<T> theDefault) : base("numericSwitch")
         {
+            _check = theCheck;
             _cases = inputs.ToList();
             _default = theDefault;
             var myIns = new List<AbstractGpuValue>(_cases);
@@ -30,7 +32,7 @@ ${cases}
             {
                 {"check", theCheck.ID}
             };
-            Setup(myIns,myKeyMap);
+            Setup(myIns);
             
         }
         
@@ -53,6 +55,14 @@ ${cases}
                 stringBuilder.Append("        break;" );
             }
             return stringBuilder.ToString();
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string>
+            {
+                {"check", _check.ID}
+            };
         }
 
         protected override string SourceTemplate()

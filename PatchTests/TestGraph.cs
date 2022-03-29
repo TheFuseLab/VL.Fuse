@@ -47,7 +47,7 @@ namespace PatchTests
             var sin = new IntrinsicFunctionNode<float>(
                 new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
-            var drawShader = new DrawShader(
+            var drawShader = new DrawShader(null,
                 new Dictionary<string, AbstractGpuValue>
                 {
                     {"ShadingPosition", sin.Output}
@@ -283,7 +283,7 @@ namespace PatchTests
                 new List<AbstractGpuValue> {add.Output, gpuValue2.Output},
                 "sin", new ConstantValue<float>(0));
 
-            var toMaterial = new ToShaderFX<float>(gpuValue0.Output);
+            var toMaterial = new ToShaderFX<float>(null,gpuValue0.Output);
            Console.WriteLine(toMaterial.ShaderCode);
         }
 

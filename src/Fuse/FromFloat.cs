@@ -6,33 +6,31 @@ namespace Fuse
     public class FromFloat<T> : ShaderNode<T> where T : struct
     {
 
+        private GpuValue<float> _x;
+        
         public FromFloat(GpuValue<float> x) : base("fromFloat")
         {
-            x ??= new ConstantValue<float>(0);
+            _x = x ?? new ConstantValue<float>(0);
             
-            Setup(
-                new List<AbstractGpuValue>{x},
-                new Dictionary<string, string>
-                {
-                    {"x", x.ID},
-                });
+            Setup(new List<AbstractGpuValue>{x});
         }
 
         protected override string SourceTemplate()
         {
-            switch (TypeHelpers.GetDimension(typeof(T)))
+            var shader = TypeHelpers.GetDimension(typeof(T)) switch
             {
-                case 1:
-                    return "float ${resultName} = ${x};";
-                case 2:
-                    return "float2 ${resultName} = float2(${x},${x});";
-                case 3:
-                    return "float3 ${resultName} = float3(${x},${x},${x});";
-                case 4:
-                    return "float4 ${resultName} = float4(${x},${x},${x},${x});";
-            }
+                1 => "float ${resultName} = ${x};",
+                2 => "float2 ${resultName} = float2(${x},${x});",
+                3 => "float3 ${resultName} = float3(${x},${x},${x});",
+                4 => "float4 ${resultName} = float4(${x},${x},${x},${x});",
+                _ => ""
+            };
 
-            return "";
+            return ShaderNodesUtil.Evaluate(shader, 
+                new Dictionary<string, string>
+                {
+                    {"x", _x.ID}
+                });
         }
     }
 }

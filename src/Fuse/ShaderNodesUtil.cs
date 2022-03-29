@@ -6,10 +6,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Fuse.compute;
 using Fuse.ShaderFX;
+using Stride.Core;
 using Stride.Core.Mathematics;
 using Stride.Engine;
 using Stride.Graphics;
 using Stride.Rendering;
+using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Lib.Collections;
@@ -160,7 +162,7 @@ namespace Fuse
                 });
         }
 
-        private static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
+        public static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
         {
             var effectSystem = game.EffectSystem;
             var compiler = effectSystem.Compiler as EffectCompiler;
@@ -199,14 +201,14 @@ namespace Fuse
         // accessed from vl
         public static ToShaderFX<T> RegisterShaderFX<T>(Game game, GpuValue<T> theGpuValue, bool isCompute = true) where T : struct
         {
-            var toShaderFx = new ToShaderFX<T>(theGpuValue);
+            var toShaderFx = new ToShaderFX<T>(game,theGpuValue);
             AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
             return toShaderFx;
         }
         
         public static ToComputeMatrix RegisterComputeMatrix(Game game, GpuValue<Matrix> theGpuValue) 
         {
-            var toComputeMatrix = new ToComputeMatrix(theGpuValue);
+            var toComputeMatrix = new ToComputeMatrix(game,theGpuValue);
             AddShaderSource(game, toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
             return toComputeMatrix;
         }
@@ -295,6 +297,16 @@ namespace Fuse
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);
+            return result;
+        }
+        
+        static readonly PropertyKey<int> VarIDCounterKey = new PropertyKey<int>("Fuse.FuseIDCounter", typeof(int), DefaultValueMetadata.Static(0, keepDefaultValue: true));
+
+        
+        internal static int GetAndIncIDCount(this ShaderGeneratorContext context)
+        {
+            var result = context.Tags.Get(VarIDCounterKey);
+            context.Tags.Set(VarIDCounterKey, result + 1);
             return result;
         }
     }

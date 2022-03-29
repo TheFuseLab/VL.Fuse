@@ -9,6 +9,7 @@ namespace Fuse
     public abstract class AbstractFunctionNode<T> : ShaderNode<T>
     {
         private bool _isGroupable;
+        private string _functionName;
 
         protected AbstractFunctionNode(string theFunction, GpuValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
@@ -19,9 +20,12 @@ namespace Fuse
         protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
         {
             var abstractGpuValues = theArguments.ToList();
+
+            _functionName = theFunction;
+            
             if (theModifiers == null || theModifiers.Count() != abstractGpuValues.Count())
             {
-                Setup(abstractGpuValues, new Dictionary<string, string> {{"function", theFunction}});
+                Setup(abstractGpuValues);
                 return;
             }
             
@@ -44,7 +48,12 @@ namespace Fuse
                 OptionalOutputs.Add(myPass);
                 _isGroupable = false;
             }
-            Setup(myInputs, new Dictionary<string, string> {{"function", theFunction}});
+            Setup(myInputs);
+        }
+        
+        protected override Dictionary<string,string> CustomTemplates ()
+        {
+            return new Dictionary<string, string> {{"functionName", _functionName}};
         }
 
 

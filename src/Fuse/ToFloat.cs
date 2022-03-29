@@ -13,17 +13,12 @@ namespace Fuse
         {
             _x = x ?? new ConstantValue<float>(0);
             
-            Setup(
-                new List<AbstractGpuValue>{x},
-                new Dictionary<string, string>
-                {
-                    {"x", x.ID},
-                });
+            Setup(new List<AbstractGpuValue>{x});
         }
 
         protected override string SourceTemplate()
         {
-            return TypeHelpers.GetDimension(_x.GetType().GetGenericArguments()[0]) switch
+            var shader = TypeHelpers.GetDimension(_x.GetType().GetGenericArguments()[0]) switch
             {
                 1 => "float4 ${resultName} = float4(${x},${x},${x},1.0);",
                 2 => "float4 ${resultName} = float4(${x}.xy,0.0,1.0);",
@@ -31,6 +26,12 @@ namespace Fuse
                 4 => "float4 ${resultName} = ${x};",
                 _ => ""
             };
+
+            return ShaderNodesUtil.Evaluate(shader, 
+                new Dictionary<string, string>
+                {
+                    {"x", _x.ID}
+                });
         }
     }
 }

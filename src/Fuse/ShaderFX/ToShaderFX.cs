@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using Stride.Engine;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
@@ -33,7 +34,7 @@ ${sourceFX}
         
         protected readonly HashSet<string>GroupDeclarations = new HashSet<string>();
         
-        public ToShaderFX(GpuValue<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(
+        public ToShaderFX(Game theGame, GpuValue<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
             new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
                 {
                     "FX", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}

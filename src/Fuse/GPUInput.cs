@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
 using Stride.Rendering;
+using Stride.Rendering.Materials;
 
 namespace Fuse{
 
@@ -140,36 +141,51 @@ namespace Fuse{
          }
      }
 
-     public class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>>
+     public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>>
      {
          protected ObjectInput(string theName, T theValue = default) : base(theName, true, theValue)
          {
-             ParameterKey = new ObjectParameterKey<T>(Output.ID);
+             
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)
          {
              theCollection.Set(ParameterKey, Value);
          }
+
+         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         {
+             base.SetHashCodes(theContext);
+             Output.HashCode = theContext.GetAndIncIDCount();
+             ParameterKey = new ObjectParameterKey<T>(Output.ID);
+         }
      }
 
-     public class TextureInput: ObjectInput<Texture> 
+     public class TextureInput: ObjectInput<Texture>
      {
+         private bool _useRW;
          public TextureInput(Texture theTexture, bool theUseRW = false) : base("TextureInput", theTexture)
          {
-             if (theTexture == null)
+             _useRW = theUseRW;
+         }
+         
+         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         {
+             base.SetHashCodes(theContext);
+             
+             if (Value == null)
              {
                  SetFieldDeclaration("Texture2D");
                  return;
              }
-             SetFieldDeclaration(TypeHelpers.TextureTypeName(theTexture, theUseRW),
-                 theTexture.Dimension switch {
+             SetFieldDeclaration(TypeHelpers.TextureTypeName(Value, _useRW),
+                 Value.Dimension switch {
                      TextureDimension.Texture1D => "Texture1D",
                      TextureDimension.Texture2D => "Texture2D",
                      TextureDimension.Texture3D => "Texture3D",
                      TextureDimension.TextureCube => "TextureCube",
                      _ => "Texture2D"
-                }
+                 }
              );
          }
      }
@@ -178,6 +194,11 @@ namespace Fuse{
      {
          public SamplerInput(SamplerState theSampler) : base("SamplerInput", theSampler)
          {
+         }
+
+         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         {
+             base.SetHashCodes(theContext);
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
      }
@@ -194,25 +215,36 @@ namespace Fuse{
 
      public class DynamicStructBufferInput: ObjectInput<Buffer>
      {
+
+         private readonly GpuValue<GpuStruct> _struct;
+         private readonly bool _append;
          
          public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
          {
-             SetFieldDeclaration(
-                 TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
-              //   TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
-                 );
+             _struct = theStruct;
+             _append = theAppend;
+         }
+         
+         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         {
+             base.SetHashCodes(theContext);
+             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,_struct.TypeOverride, _append));
          }
      }
      
      public class BufferInput<T>: ObjectInput<Buffer<T>> where T : struct
      {
+         private readonly bool _append;
 
          public BufferInput(string theName, Buffer<T> theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
          {
-             SetFieldDeclaration(
-                 TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
-               //  TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
-                 );
+             _append = theAppend;
+         }
+         
+         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         {
+             base.SetHashCodes(theContext);
+             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), _append));
          }
      }
      
@@ -221,10 +253,16 @@ namespace Fuse{
 
         public GpuInput(): base("GPUInput", false)
         {
+        }
+
+        public override void SetHashCodes(ShaderGeneratorContext theContext)
+        {
+            base.SetHashCodes(theContext);
+            Output.HashCode = theContext.GetAndIncIDCount();
             ParameterKey = new ValueParameterKey<T>(Output.ID);
             SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
         }
-
+        
         public override void SetParameterValue(ParameterCollection theCollection)
         {
             theCollection.Set(ParameterKey, Value);
