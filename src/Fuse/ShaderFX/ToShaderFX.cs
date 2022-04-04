@@ -6,9 +6,9 @@ namespace Fuse.ShaderFX
 {
     public class ToShaderFX<T> : AbstractToShaderFX<T> where T : struct
     {
-
+//VS_PS_Base, 
         private const string ShaderSource = @"
-shader ${shaderID} : VS_PS_Base, Texturing, Compute${shaderType}${mixins}
+shader ${shaderID} : Texturing, Compute${shaderType}${mixins}
 {
     rgroup PerMaterial{
 ${groupDeclarations}

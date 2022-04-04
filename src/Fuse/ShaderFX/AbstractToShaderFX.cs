@@ -57,6 +57,7 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
+            
             _parameters = context.Parameters;
             Inputs.ForEach(shaderInputs =>
             {

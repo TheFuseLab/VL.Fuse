@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
 using Stride.Rendering;
+using Stride.Rendering.Materials;
 
 namespace Fuse{
 
@@ -145,6 +146,10 @@ namespace Fuse{
          protected ObjectInput(string theName, T theValue = default) : base(theName, true, theValue)
          {
              ParameterKey = new ObjectParameterKey<T>(Output.ID);
+             /*
+             ShaderGeneratorContext context = null;
+             ParameterKey = context.GetParameterKey(new ObjectParameterKey<T>(Output.ID)) as ObjectParameterKey<T>;
+            */
          }
 
          public override void SetParameterValue(ParameterCollection theCollection)
@@ -201,6 +206,18 @@ namespace Fuse{
                  TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
               //   TypeHelpers.BufferTypeName(Value,theStruct.TypeOverride, theAppend)
                  );
+         }
+     }
+     
+     public class UntypedBufferInput<T>: ObjectInput<Buffer> 
+     {
+
+         public UntypedBufferInput(T theType, Buffer theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
+         {
+             SetFieldDeclaration(
+                 TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
+                 //  TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
+             );
          }
      }
      
