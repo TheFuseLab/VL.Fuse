@@ -13,6 +13,7 @@ namespace Fuse
 
         protected AbstractFunctionNode(string theFunction, GpuValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
+            _functionName = theFunction;
             _isGroupable = theIsGroupable;
             OptionalOutputs = new List<AbstractGpuValue>();
         }
@@ -21,8 +22,6 @@ namespace Fuse
         {
             var abstractGpuValues = theArguments.ToList();
 
-            _functionName = theFunction;
-            
             if (theModifiers == null || theModifiers.Count() != abstractGpuValues.Count())
             {
                 Setup(abstractGpuValues);
@@ -51,9 +50,11 @@ namespace Fuse
             Setup(myInputs);
         }
         
-        protected override Dictionary<string,string> CustomTemplates ()
+        protected override Dictionary<string,string> CreateTemplateMap ()
         {
-            return new Dictionary<string, string> {{"functionName", _functionName}};
+            var result = base.CreateTemplateMap();
+            result["function"] = _functionName;
+            return result;
         }
 
 

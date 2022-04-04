@@ -157,7 +157,7 @@ namespace Fuse{
          {
              base.SetHashCodes(theContext);
              Output.HashCode = theContext.GetAndIncIDCount();
-             ParameterKey = new ObjectParameterKey<T>(Output.ID);
+             ParameterKey = theContext.GetParameterKey(new ObjectParameterKey<T>(Output.ID)) as ObjectParameterKey<T>;
          }
      }
 

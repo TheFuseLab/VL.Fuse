@@ -57,8 +57,6 @@ namespace Fuse
             HashCode = ShaderNodesUtil.GenerateID();
         }
         
-        
-
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
         
         public string Id { get; }
@@ -79,7 +77,7 @@ namespace Fuse
         
         protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
         
-        public string SourceCode => GenerateSource( Ins, CreateTemplateMap());
+        public string SourceCode => GenerateSource( Ins);
         
         protected virtual Dictionary<string, string> CreateTemplateMap()
         {
@@ -91,7 +89,7 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        private string GenerateSource(IEnumerable<AbstractGpuValue> theIns, IDictionary<string, string> theCustomValues = null)
+        private string GenerateSource(IEnumerable<AbstractGpuValue> theIns)
         {
             
             if (ShaderNodesUtil.HasNullValue(theIns))
@@ -100,12 +98,7 @@ namespace Fuse
             }
 
             var sourceCode = SourceTemplate();
-            if (sourceCode.Trim() == "") return "";
-
-            var templateMap = CreateTemplateMap();
-            theCustomValues?.ForEach(kv => templateMap.Add(kv.Key, kv.Value));
-
-            return ShaderNodesUtil.Evaluate(sourceCode, templateMap);
+            return sourceCode.Trim() == "" ? "" : ShaderNodesUtil.Evaluate(sourceCode, CreateTemplateMap());
         }
 
         public virtual void SetHashCodes(ShaderGeneratorContext theContext)
@@ -311,11 +304,6 @@ namespace Fuse
                 
             });
             return result;
-        }
-        
-        protected virtual Dictionary<string,string> CustomTemplates ()
-        {
-            return new Dictionary<string, string>();
         }
     }
     

@@ -88,9 +88,11 @@ ${functionImplementation}
             
         }
         
-        protected override Dictionary<string,string> CustomTemplates ()
+        protected override Dictionary<string,string> CreateTemplateMap ()
         {
-            return new Dictionary<string, string> {{"function", _signature}};
+            var result = base.CreateTemplateMap();
+            result["function"] = _signature;
+            return result;
         }
         
         private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)

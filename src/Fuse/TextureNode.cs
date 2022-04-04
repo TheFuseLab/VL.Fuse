@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Fuse.compute;
+using NuGet;
 using Stride.Graphics;
 
 namespace Fuse
@@ -67,11 +68,6 @@ namespace Fuse
             Setup(ins);
         }
         
-        protected override Dictionary<string,string> CustomTemplates ()
-        {
-            return new Dictionary<string, string> {{"functionName", _functionName}};
-        }
-        
         protected override string SourceTemplate()
         {
             if (ShaderNodesUtil.HasNullValue(_arguments))
@@ -90,12 +86,15 @@ namespace Fuse
         {
             var result =  new Dictionary<string, string>
             {
+                {"function", _functionName},
                 {"resultName", Output.ID},
                 {"resultType", Output != null ? Output.TypeName() : TypeHelpers.GetGpuTypeForType<T>()},
                 {"default", Default == null ? "": Default.ID},
                 {"arguments", ShaderNodesUtil.BuildArguments(_arguments)}
             };
             if (_texture != null) result["texture"] = _texture.ID;
+            
+            result.AddRange(base.CreateTemplateMap());
 
             return result;
         }

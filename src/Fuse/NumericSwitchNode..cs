@@ -56,13 +56,12 @@ ${cases}
             }
             return stringBuilder.ToString();
         }
-        
-        protected override Dictionary<string,string> CustomTemplates ()
+
+        protected override Dictionary<string, string> CreateTemplateMap()
         {
-            return new Dictionary<string, string>
-            {
-                {"check", _check.ID}
-            };
+            var result =  base.CreateTemplateMap();
+            result["check"] = _check.ID;
+            return result;
         }
 
         protected override string SourceTemplate()
