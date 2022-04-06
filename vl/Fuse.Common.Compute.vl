@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.927" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0927-g0472b252e1" />
+<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.929" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0929-g0fcc832a90" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Compute" CanvasType="FullCategory">
       <!--
@@ -10037,7 +10037,7 @@
               <Overlay Id="TA1U4nYH5IENvp61ZgUl6G" Name="DefaultColorTarget (Internal)" Bounds="140,191,294,493">
                 <p:ColorIndex p:Type="Int32">10</p:ColorIndex>
               </Overlay>
-              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
+              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,195,439" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
@@ -17912,7 +17912,7 @@
                   <Choice Kind="ProcessStatefulRegion" Name="Cache" />
                   <FullNameCategoryReference ID="Primitive" />
                 </p:NodeReference>
-                <Pin Id="Q7sOZRVfhmaMKcgADn0faM" Name="Force" Kind="InputPin" DefaultValue="False">
+                <Pin Id="Q7sOZRVfhmaMKcgADn0faM" Name="Force" Kind="InputPin" DefaultValue="True">
                   <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                     <Choice Kind="TypeFlag" Name="Boolean" />
                   </p:TypeAnnotation>
@@ -17982,6 +17982,75 @@
               <ControlPoint Id="VxSkpgSLjftNZE0CkJdMHS" Bounds="711,316" />
               <ControlPoint Id="DI9QexbuzHlLlgjM3QzhqA" Bounds="686,286" />
               <ControlPoint Id="RnUsVivIucfPkduX1Br2qn" Bounds="1073,701" />
+              <ControlPoint Id="VzGZTlB5Hd5PV0LKGA61F7" Bounds="1098,1147" />
+              <Node Bounds="1051,1333,84,86" Id="OKAjln8MmadLFrDBThYU4u">
+                <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
+                  <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
+                  <Choice Kind="ProcessStatefulRegion" Name="Cache" />
+                  <FullNameCategoryReference ID="Primitive" />
+                </p:NodeReference>
+                <Pin Id="FpwfNQJ1GvpOjXRlJ840LA" Name="Force" Kind="InputPin" DefaultValue="False">
+                  <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                    <Choice Kind="TypeFlag" Name="Boolean" />
+                  </p:TypeAnnotation>
+                </Pin>
+                <Pin Id="IDR23iQlvFDL64kALElDSk" Name="Dispose Cached Outputs" Kind="InputPin" />
+                <Pin Id="B8TnPxir9SLMdJK0g6vq6C" Name="Has Changed" Kind="OutputPin" />
+                <ControlPoint Id="SxNx77sDSatQQkjEe70OmM" Bounds="1066,1339" Alignment="Top" />
+                <Patch Id="V8VPpVUVhlaM5VvXb4SEV0" ManuallySortedPins="true">
+                  <Patch Id="Sq8vjZ6sm7GMPjfPDKzPND" Name="Create" ManuallySortedPins="true" />
+                  <Patch Id="HVMUkjjvGYMLqt0FnFo0MF" Name="Then" ManuallySortedPins="true" />
+                  <Node Bounds="1063,1358,60,19" Id="SR4T1jodhsnO16wYMYUhem">
+                    <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
+                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                      <Choice Kind="ProcessAppFlag" Name="SetHelper" />
+                    </p:NodeReference>
+                    <Pin Id="RNzMdZUyukGMvslynIJCY8" Name="Input" Kind="InputPin" />
+                    <Pin Id="QNZ44eiFY8gMaWpHlupdzo" Name="Entity" Kind="InputPin" />
+                    <Pin Id="MPqgkeAB9dUNGml8TmMvae" Name="Enabled" Kind="InputPin" />
+                  </Node>
+                </Patch>
+                <ControlPoint Id="GfcFl4QROogOdORkcAzTqb" Bounds="1094,1339" Alignment="Top" />
+                <ControlPoint Id="HHnHxjdczEuMfh4sPGZIFp" Bounds="1121,1338" Alignment="Top" />
+              </Node>
+              <ControlPoint Id="OvNgp0b6uQUMWPxsabB8NX" Bounds="1123,1304" />
+              <ControlPoint Id="IkJBIUHGtaKNjMybD6oEoy" Bounds="1182,1162" />
+              <Node Bounds="1068,1178,247,98" Id="UHNp4KA9sBEQMyICXsmtGE">
+                <p:NodeReference>
+                  <Choice Kind="ApplicationStatefulRegion" Name="If" />
+                  <FullNameCategoryReference ID="Primitive" />
+                </p:NodeReference>
+                <Pin Id="Uff3XASXtcpNf0VgTQ40B7" Name="Condition" Kind="InputPin" />
+                <Patch Id="EtaFbe7ZpuXOJGwqxJHq89" ManuallySortedPins="true">
+                  <Patch Id="BukzjMFPi6gN5sVAqoAFr0" Name="Create" ManuallySortedPins="true" />
+                  <Patch Id="ADUeg6eCEsEOLtE8iyfBll" Name="Then" ManuallySortedPins="true" />
+                  <Node Bounds="1080,1237,185,19" Id="CEcM9W02KhYOhaWdwkXSwL">
+                    <p:NodeReference LastCategoryFullName="Fuse.Fluid3D" LastSymbolSource="Fuse.Fluid3D.vl">
+                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                      <Choice Kind="ProcessAppFlag" Name="VolumeRaymarching" />
+                    </p:NodeReference>
+                    <Pin Id="HRWr7o04fplPAXs22H91x4" Name="Volume Texture" Kind="InputPin" />
+                    <Pin Id="TNj8aiND4KJOFtAtWNfQ8Y" Name="Volume Transformation" Kind="InputPin" />
+                    <Pin Id="UlCijwsUroPMyNpzjfYZoB" Name="Color" Kind="InputPin" DefaultValue="1, 1, 1, 1" />
+                    <Pin Id="KLJXhOfZ1NtN7W4KwocqHi" Name="Max Steps" Kind="InputPin" />
+                    <Pin Id="PjXb3sM5tP5LzTb7nTiryy" Name="Step Size" Kind="InputPin" />
+                    <Pin Id="H74ODTBshj5PVvhyscbyDd" Name="Opacity" Kind="InputPin" />
+                    <Pin Id="UG2lzRI4JVwNW2vsveWdSG" Name="Offset Z" Kind="InputPin" />
+                    <Pin Id="EI0XcK6hdg3NxsFmsbiKEr" Name="Gamma" Kind="InputPin" />
+                    <Pin Id="BvM20D1N8P1L4vAC72cwd0" Name="View Projection" Kind="InputPin" />
+                    <Pin Id="GzFFVcl7rcUPZ2x9eEubew" Name="Enabled" Kind="InputPin" />
+                    <Pin Id="AwMwmC3tnN4PWaeaZWnttu" Name="Entity" Kind="OutputPin" />
+                  </Node>
+                  <Pad Id="IzW6COZF6mJNR45kVKLkhj" Comment="Color" Bounds="1120,1210,136,15" ShowValueBox="true" isIOBox="true" Value="1, 1, 1, 0.5000004">
+                    <p:TypeAnnotation LastCategoryFullName="Color" LastSymbolSource="CoreLibBasics.vl">
+                      <Choice Kind="TypeFlag" Name="RGBA" />
+                    </p:TypeAnnotation>
+                  </Pad>
+                </Patch>
+                <ControlPoint Id="MpTYz9NH3TVL4rZE2mn18Y" Bounds="1082,1270" Alignment="Bottom" />
+                <ControlPoint Id="Jb4AFe25z3NLWw9zoR2EUi" Bounds="1082,1184" Alignment="Top" />
+              </Node>
+              <ControlPoint Id="JZyU0BhVM49M3Uafy8R3jl" Bounds="1071,1127" />
             </Canvas>
             <Link Id="RfTDTzcamL2LOY7kzyPK7W" Ids="Sk9FWmAzWBJLq1ktl9Nyzs,EVk10CFZp9RLufbIk2mLkG" IsHidden="true" />
             <Link Id="Au33VGy9ZnzN3Af7h0NYYM" Ids="Pyhz6mX4VMjN3qUF3VYePz,FEixYbmBxplMt8jiF6PHxl" IsHidden="true" />
@@ -18031,6 +18100,9 @@
               </Pin>
               <Pin Id="CXXIVFyBZAuOlftWuJake2" Name="Output" Kind="OutputPin" />
               <Pin Id="L8eYW3uRyOkPjmnNO8Bpj0" Name="UVW Coordinates" Kind="OutputPin" />
+              <Pin Id="Llh4NfJ3AplL7c8T3jxTHC" Name="Volume Texture Transformation" Kind="InputPin" Bounds="568,553" />
+              <Pin Id="N6opROyZW0DPke48sLTzci" Name="Helper Raymarching Opacity" Kind="InputPin" Bounds="741,830" DefaultValue="0.09999999" />
+              <Pin Id="QGTy1EhYI6SQLnhldlFjvv" Name="Helper Raymarching Enabled" Kind="InputPin" />
             </Patch>
             <Link Id="RUcUBvS5ygKMWKMzhJUcNB" Ids="KChQSqXW9ieNAEqjeqQTSC,BSjOEunC0DbOPzdP9DLwsS" />
             <Link Id="Q89naJYkcjaNzgunMVvqrj" Ids="CTdSpPckKheOJ7RyvtdQE0,KChQSqXW9ieNAEqjeqQTSC" />
@@ -18056,6 +18128,21 @@
             <Link Id="GjOZgL6O1AmPpcDZ896oVT" Ids="CAatUpZtAsXQCsZdWhHydt,RnUsVivIucfPkduX1Br2qn" IsHidden="true" />
             <Link Id="AKWhkDEx9OUQO4vFgWMcCL" Ids="RnUsVivIucfPkduX1Br2qn,RtfBgumk1ezLTBFDPs79Wu" />
             <Link Id="DiU0YNqo3XSQbU34lvotsR" Ids="RtfBgumk1ezLTBFDPs79Wu,NTMNJphiyUINYYUdmGGaNa" />
+            <Link Id="VRROlHzOlO0PfnbNaaReu4" Ids="Llh4NfJ3AplL7c8T3jxTHC,VzGZTlB5Hd5PV0LKGA61F7" IsHidden="true" />
+            <Link Id="Vk9gJfGAAGMPVpol1oE3Vf" Ids="SxNx77sDSatQQkjEe70OmM,RNzMdZUyukGMvslynIJCY8" />
+            <Link Id="MwLBLfPfaOgOZ2A55Kll9m" Ids="N6opROyZW0DPke48sLTzci,IkJBIUHGtaKNjMybD6oEoy" IsHidden="true" />
+            <Link Id="UxS4thlPfYLM37sCxqdtAG" Ids="QGTy1EhYI6SQLnhldlFjvv,OvNgp0b6uQUMWPxsabB8NX" IsHidden="true" />
+            <Link Id="HhO6vugiyrnMv4ntGFfd70" Ids="VzGZTlB5Hd5PV0LKGA61F7,TNj8aiND4KJOFtAtWNfQ8Y" />
+            <Link Id="VNHd1uShPo8NwkMoAQtWHr" Ids="IkJBIUHGtaKNjMybD6oEoy,H74ODTBshj5PVvhyscbyDd" />
+            <Link Id="PyxvFbnvUr0M8FTx1dUl1u" Ids="GfcFl4QROogOdORkcAzTqb,QNZ44eiFY8gMaWpHlupdzo" />
+            <Link Id="HEXX5P7uM9uNZbqNHsRdTs" Ids="IzW6COZF6mJNR45kVKLkhj,UlCijwsUroPMyNpzjfYZoB" />
+            <Link Id="RbOxdvfMLC3LJx37evIyhH" Ids="OvNgp0b6uQUMWPxsabB8NX,HHnHxjdczEuMfh4sPGZIFp" />
+            <Link Id="Ttyc2YZF1vsNfl0E2C60l6" Ids="HHnHxjdczEuMfh4sPGZIFp,MPqgkeAB9dUNGml8TmMvae" />
+            <Link Id="RFrrAXdTTloLcr77Gqj4uI" Ids="Jb4AFe25z3NLWw9zoR2EUi,MpTYz9NH3TVL4rZE2mn18Y" IsFeedback="true" />
+            <Link Id="RmbjmLP3MVqMNe39j0cwik" Ids="AwMwmC3tnN4PWaeaZWnttu,MpTYz9NH3TVL4rZE2mn18Y" />
+            <Link Id="KCmEDg2fjW9LjpsE5rTpjI" Ids="MpTYz9NH3TVL4rZE2mn18Y,GfcFl4QROogOdORkcAzTqb" />
+            <Link Id="HTjXIhX4t33LDc4jYzNkRA" Ids="QGTy1EhYI6SQLnhldlFjvv,JZyU0BhVM49M3Uafy8R3jl" IsHidden="true" />
+            <Link Id="TNENfVENQzxMPyeXEdG79r" Ids="JZyU0BhVM49M3Uafy8R3jl,Uff3XASXtcpNf0VgTQ40B7" />
           </Patch>
         </Node>
       </Canvas>
@@ -20912,8 +20999,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0927-g0472b252e1" />
-  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0927-g0472b252e1" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0929-g0fcc832a90" />
+  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0929-g0fcc832a90" />
   <DocumentDependency Id="TrD0OOB86nDLU7T7NT4N26" Location="./Fuse.Core.Math.vl" IsFriend="true" />
   <DocumentDependency Id="I5yNWilZPoXMl35gd4y1DO" Location="./Fuse.Core.vl" IsFriend="true" />
   <DocumentDependency Id="TwlrykDdxf0OHBCI0TciFj" Location="./Fuse.Core.Domain.vl" />
