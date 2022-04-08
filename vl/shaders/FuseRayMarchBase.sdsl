@@ -75,6 +75,13 @@ shader FuseRayMarchBase : ShaderBaseStream, Transformation, Texturing, PositionS
 		// normal projection
 			rd = normalize(mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,-1,0),ViewInverse).xyz);
 			ro = ViewInverse[3].xyz;
+
+		// ortho Projection
+			if (Projection[2].w == 0.0) 
+			{
+				rd = -normalize(ViewInverse[2].xyz);
+				ro = mul(float4(mul(float4((uv.xy*2-1)*float2(1,-1),0,1),ProjectionInverse).xy,0,1),ViewInverse).xyz;
+			}
 	}
 
 	float4 shadeRayNormals(Ray ray, bool viewFriendly = true)

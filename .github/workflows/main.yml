@@ -7,6 +7,12 @@ on:
         description: 'The version to push'
         required: false
         default: 'X.X.X'
+      is_pre:
+        description: 'Is pre release'
+        type: boolean
+      notes:
+        description: 'A description for this release, will be displayed in the Releases section'
+        required: true
 
 jobs:
   build:
@@ -28,3 +34,12 @@ jobs:
         nuspec: deployment/VL.Fuse.nuspec
         version: ${{ github.event.inputs.version }}
         nuget-key: ${{ secrets.NUGET_KEY }}
+        
+    - name: Create tag and release
+      uses: avakar/tag-and-release@v1.0.0
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        prerelease: ${{ github.event.inputs.is_pre }}
+        body: ${{ github.event.inputs.notes }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

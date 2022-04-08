@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.940" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0940-g49c97a1c2c" />
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0929-g0fcc832a90" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Compute" CanvasType="FullCategory">
       <!--
@@ -10037,7 +10037,7 @@
               <Overlay Id="TA1U4nYH5IENvp61ZgUl6G" Name="DefaultColorTarget (Internal)" Bounds="140,191,294,493">
                 <p:ColorIndex p:Type="Int32">10</p:ColorIndex>
               </Overlay>
-              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,213,445" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
+              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1363,219,195,439" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
@@ -18023,7 +18023,7 @@
               <Pin Id="Pyhz6mX4VMjN3qUF3VYePz" Name="Level" Kind="InputPin" />
               <Pin Id="Fxx4m5UjHO4MSLr8baNstl" Name="Sampler" Kind="InputPin" />
               <Pin Id="EdnNxfQRB5iMJbLI40r2Jc" Name="Helper Frame Color" Kind="InputPin" Bounds="1296,963" Visibility="Optional" />
-              <Pin Id="JZF1QjKtGP8OhmqfpsmKq1" Name="Helper Texture Enabled" Kind="InputPin" Bounds="1268,959" DefaultValue="True" />
+              <Pin Id="JZF1QjKtGP8OhmqfpsmKq1" Name="Helper Texture Enabled" Kind="InputPin" Bounds="1268,959" DefaultValue="False" />
               <Pin Id="Cm1lWMkawXFMo6igjKdmbf" Name="Helper Enabled" Kind="InputPin" Bounds="754,177" DefaultValue="True">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="Boolean" />
@@ -20912,8 +20912,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0940-g49c97a1c2c" />
-  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0940-g49c97a1c2c" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0929-g0fcc832a90" />
+  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0929-g0fcc832a90" />
   <DocumentDependency Id="TrD0OOB86nDLU7T7NT4N26" Location="./Fuse.Core.Math.vl" IsFriend="true" />
   <DocumentDependency Id="I5yNWilZPoXMl35gd4y1DO" Location="./Fuse.Core.vl" IsFriend="true" />
   <DocumentDependency Id="TwlrykDdxf0OHBCI0TciFj" Location="./Fuse.Core.Domain.vl" />
