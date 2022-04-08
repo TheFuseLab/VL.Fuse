@@ -14,13 +14,16 @@ ${cases}
     }
         ";
 
+        private readonly GpuValue<int> _inCheck;
         private GpuValue<T> _default;
         private List<GpuValue<T>> _cases;
         public NumericSwitchNode(GpuValue<int> theCheck, IEnumerable<GpuValue<T>> inputs, GpuValue<T> theDefault) : base("numericSwitch")
         {
+            _inCheck = theCheck;
             _cases = inputs.ToList();
             _default = theDefault;
-            var myIns = new List<AbstractGpuValue>(_cases);
+            
+            var myIns = new List<AbstractGpuValue>(_cases) {_inCheck};
             if (theDefault != null)
             {
                 myIns.Add(theDefault);
