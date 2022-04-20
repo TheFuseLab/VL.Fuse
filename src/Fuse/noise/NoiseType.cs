@@ -7,6 +7,7 @@
             GradientNoise,
             Simplex,
             WorleySimple,
-            Random
+            Random,
+            LutNoise
         }
 }

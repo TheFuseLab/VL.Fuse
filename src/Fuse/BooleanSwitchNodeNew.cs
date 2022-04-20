@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Fuse.compute;
-using Stride.Core.Extensions;
+﻿using System.Collections.Generic;
 
 namespace Fuse
 {
@@ -11,6 +7,7 @@ namespace Fuse
         private readonly GpuValue<bool> _inCheck;
         private readonly GpuValue<T> _inFalse;
         private readonly GpuValue<T> _inTrue;
+        
         public BooleanSwitchNodeNew(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
         {
 

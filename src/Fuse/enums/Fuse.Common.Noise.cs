@@ -3,7 +3,7 @@
 namespace Fuse.Common.Noise
 {
     public enum NoiseBasisType
-    { Sine, ValueNoise, GradientNoise, Simplex, WorleySimple, Random };
+    { Sine, ValueNoise, GradientNoise, Simplex, WorleySimple, Random, LutNoise };
     public enum NoiseBasisInflection
     { None, Ridge, Turbulence };
 

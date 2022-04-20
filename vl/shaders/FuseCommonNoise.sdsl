@@ -12,7 +12,14 @@
 
 */
 
-shader FuseCommonNoise :  FuseCommonNoiseSine, FuseCommonNoiseValueNoise, FuseCommonNoiseGradientNoise, FuseCommonNoiseSimplex, FuseCommonNoiseRandom, FuseCommonNoiseWorley // would be better to support sub folders for organization and naming
+shader FuseCommonNoise :  
+	FuseCommonNoiseSine, 
+	FuseCommonNoiseLUT, 
+	FuseCommonNoiseValueNoise, 
+	FuseCommonNoiseGradientNoise, 
+	FuseCommonNoiseSimplex, 
+	FuseCommonNoiseRandom, 
+	FuseCommonNoiseWorley // would be better to support sub folders for organization and naming
 {
 
 	////////////////////////////////////////////////////////////////
@@ -344,6 +351,114 @@ shader FuseCommonNoise :  FuseCommonNoiseSine, FuseCommonNoiseValueNoise, FuseCo
 		float4 p2, p3, p4;
 		noiseDomainOffset(p, p2, p3, p4);
 		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+	////////////////////////////////////////////////////////////////
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Look Up Table Basis
+	// 
+	////////////////////////////////////////////////////////////////
+
+
+	// 1D
+	float lutNoise11 (float p, Texture2D tex, SamplerState samp)
+	{ return lutNoise(p, tex, samp); }
+
+	float lutNoise12 (float2 p, Texture2D tex, SamplerState samp)
+	{ return lutNoise(p, tex, samp); }
+
+	float lutNoise13 (float3 p, Texture2D tex, SamplerState samp)
+	{ return lutNoise(p, tex, samp); }
+
+	float lutNoise14 (float4 p, Texture2D tex, SamplerState samp)
+	{ return lutNoise(p, tex, samp); }
+
+	// 2D
+	float2 lutNoise21 (float p, Texture2D tex, SamplerState samp)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(lutNoise(p, tex, samp), lutNoise(p2, tex, samp));
+	}
+
+	float2 lutNoise22 (float2 p, Texture2D tex, SamplerState samp)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(lutNoise(p, tex, samp), lutNoise(p2, tex, samp));
+	}
+
+	float2 lutNoise23 (float3 p, Texture2D tex, SamplerState samp)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(lutNoise(p, tex, samp), lutNoise(p2, tex, samp));
+	}
+
+	float2 lutNoise24 (float4 p, Texture2D tex, SamplerState samp)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(lutNoise(p, tex, samp), lutNoise(p2, tex, samp));
+	}
+
+	// 3D
+	float3 lutNoise31 (float p, Texture2D tex, SamplerState samp)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp));
+	}
+
+	float3 lutNoise32 (float2 p, Texture2D tex, SamplerState samp)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp));
+	}
+
+	float3 lutNoise33 (float3 p, Texture2D tex, SamplerState samp)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp));
+	}
+
+	float3 lutNoise34 (float4 p, Texture2D tex, SamplerState samp)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp));
+	}
+
+	// 4D
+	float4 lutNoise41(float p, Texture2D tex, SamplerState samp)
+	{
+		float p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp), lutNoise(p4, tex, samp));
+	}
+
+	float4 lutNoise42(float2 p, Texture2D tex, SamplerState samp)
+	{
+		float2 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp), lutNoise(p4, tex, samp));
+	}
+
+	float4 lutNoise43(float3 p, Texture2D tex, SamplerState samp)
+	{
+		float3 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp), lutNoise(p4, tex, samp));
+	}
+
+	float4 lutNoise44(float4 p, Texture2D tex, SamplerState samp)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(lutNoise(p, tex, samp), lutNoise(p2, tex, samp), lutNoise(p3, tex, samp), lutNoise(p4, tex, samp));
 	}
 	////////////////////////////////////////////////////////////////
 

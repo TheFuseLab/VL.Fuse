@@ -160,7 +160,7 @@ shader FuseCoreMathMap: FuseCoreMath
 	{
 		float range = InMax - InMin;
 		float normalized = (input - InMin) / range;	
-		   return OutMin + normalized * (OutMax - OutMin);
+		return OutMin + normalized * (OutMax - OutMin);
 	}
 	
 
@@ -169,6 +169,7 @@ shader FuseCoreMathMap: FuseCoreMath
 		float range = InMax - InMin;
 		float normalized = (input - InMin) / range;	
 		float output = OutMin + normalized * (OutMax - OutMin);
+
 		float minV = min(OutMin,OutMax);
 		float maxV = max(OutMin, OutMax);
 		output = min(max(output, minV), maxV);
@@ -181,6 +182,7 @@ shader FuseCoreMathMap: FuseCoreMath
 		float range = InMax - InMin;
 		float normalized = (input - InMin) / range;	
 		float output = OutMin + normalized * (OutMax - OutMin);
+		
 		if (normalized < 0) normalized = 1 + normalized;
 		return  OutMin + (normalized % 1) * (OutMax - OutMin);
 	}
@@ -190,7 +192,7 @@ shader FuseCoreMathMap: FuseCoreMath
 	{
 		float range = InMax - InMin;
 		float normalized = (input - InMin) / range;	
-		normalized = 1-2*abs(frac(normalized*.5)-.5);
+		normalized = 1 - 2 * abs(frac(normalized * .5) - .5);
 		float output = OutMin + (normalized % 1) * (OutMax - OutMin);
 		return output;
 	}
