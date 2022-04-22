@@ -22,20 +22,55 @@
 
 shader FuseCommonNoiseLUT : FuseCoreMathHash
 {
+	const float2 zOffset = float2(37.0,17.0);
+	const float2 wOffset = float2(59.0,83.0);
+	/*
+	float lutNoise(float4 p, Texture2D tex, SamplerState samp){
+		
+		float4 i = floor(p);
+    	float4 f = frac(p);
+		
+		float4 f2 = f * f; 
+		f = f * f2 * (10.0 - 15.0 * f + 6.0 * f2);
+    
+		float2 uv = (i.xy + i.z * zOffset + i.w * wOffset) + f.xy;
+		float r = tex.SampleLevel(samp, (uv+0.5) / 256.0, 0.0 ).r;
+    	float g = tex.SampleLevel(samp, (uv+0.5 + zOffset) / 256.0, 0.0 ).r;
+    	float b = tex.SampleLevel(samp, (uv+0.5 + wOffset) / 256.0, 0.0 ).r;
+    	float a = tex.SampleLevel(samp, (uv+0.5 + zOffset + wOffset) / 256.0, 0.0 ).r;
+    
+		return lerp(lerp( r, g, f.z ), lerp(b, a, f.z), f.w);
+	}*/
+
 	float lutNoise(float3 p, Texture2D tex, SamplerState samp){
+		/*
   		float3 i = floor(p.xzy);
   		float3 f = frac(p.xzy);
-  		
-		//f = f * f * (3.0  -2.0 * f);
     
-		float3 f2 = f * f; 
-		f = f * f2 * (10.0 - 15.0 * f + 6.0 * f2);
+	f = f*f*(3.0-2.0*f);
+		//float3 f2 = f * f; 
+		//f = f * f2 * (10.0 - 15.0 * f + 6.0 * f2);
 
   		float2 uv = (i.xy + float2(37.0, 17.0)*i.z) + f.xy;
   		uv = (uv + 0.5) / 256.0;
   		uv = float2(uv.x, uv.y);
   		float2 rg = tex.SampleLevel(samp, uv, 0.0).yx;
-  		return (lerp(rg.x, rg.y, f.z )* 2 - 0.5 ) ;
+  		return (lerp(rg.x, rg.y, f.z )* 2 - 0.5 ) ;*/
+
+		float3 i = floor(p);
+    	float3 f = frac(p);
+		f = f * f * (3.0 - 2.0 * f);
+		
+		float2 uv = (i.xy + float2(37.0, 17.0) * i.z) + f.xy;
+		uv = (uv + 0.5) / 256.0;
+  		uv = float2(uv.x, uv.y);
+		float2 rg = tex.SampleLevel( samp, uv, 0.0).zw;
+		float result = lerp( rg.x, rg.y, f.z );
+		return result * 2 -1.0;
+	}
+
+	float lutNoise(float4 p, Texture2D tex, SamplerState samp){
+		return lutNoise(p.xyz, tex, samp);
 	}
 
 	float lutNoise(float2 p, Texture2D tex, SamplerState samp){
@@ -44,9 +79,5 @@ shader FuseCommonNoiseLUT : FuseCoreMathHash
 
 	float lutNoise(float p, Texture2D tex, SamplerState samp){
 		return lutNoise(float3(p.x, 0, 0), tex, samp);
-	}
-
-	float lutNoise(float4 p, Texture2D tex, SamplerState samp){
-		return lutNoise(p.xyz, tex, samp);
 	}
 };
