@@ -17,11 +17,11 @@ namespace PatchTests
            
         
            var sin2 = new IntrinsicFunctionNode<float>(
-               new List< AbstractGpuValue> {functionParameter0.Output},
+               new List< AbstractShaderNode> {functionParameter0},
                "sin", new ConstantValue<float>(0)
                );
            var operatorNode = new OperatorNode<float, float>(
-               new List<GpuValue<float>> {sin2.Output, functionParameter1.Output},
+               new List<ShaderNode<float>> {sin2, functionParameter1},
                new ConstantValue<float>(0),"+"
                );
            
@@ -29,7 +29,7 @@ namespace PatchTests
            var gpuValue0 = new GpuInput<float>();
            var gpuValue1 = new GpuInput<float>();
            
-           var patchedFunctionNode = new FunctionRegion.RegionFunctionNode<float>(new List< AbstractGpuValue> {gpuValue0.Output,gpuValue1.Output}, operatorNode.Output,"addSin", new ConstantValue<float>(0f));
+           var patchedFunctionNode = new FunctionRegion.RegionFunctionNode<float>(new List< AbstractShaderNode> {gpuValue0,gpuValue1}, operatorNode,"addSin", new ConstantValue<float>(0f));
            
            Console.WriteLine(operatorNode.BuildSourceCode());
            

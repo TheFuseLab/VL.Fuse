@@ -24,10 +24,10 @@ namespace MyTests
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<bool>(true),">");
+            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
             Console.WriteLine(compare.BuildSourceCode());
             
-            var compareNull = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
+            var compareNull = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             Console.WriteLine(compareNull.BuildSourceCode());
         }
     }

@@ -5,17 +5,17 @@ namespace Fuse.compute
 {
     public class DynamicStructBufferConsume : ShaderNode<GpuStruct> 
     {
-        private readonly GpuValue<Buffer> _buffer;
-        private readonly GpuValue<GpuStruct> _struct;
+        private readonly ShaderNode<Buffer> _buffer;
+        private readonly ShaderNode<GpuStruct> _struct;
         
-        public DynamicStructBufferConsume(GpuValue<Buffer> theBuffer, GpuValue<GpuStruct> theStruct, GpuValue<GpuStruct> theDefault) : base( "consumeBuffer", theDefault)
+        public DynamicStructBufferConsume(ShaderNode<Buffer> theBuffer, ShaderNode<GpuStruct> theStruct, ShaderNode<GpuStruct> theDefault) : base( "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
             _struct = theStruct;
             
-            Setup(new List<AbstractGpuValue>(){theBuffer, theStruct});
+            Setup(new List<AbstractShaderNode>(){theBuffer, theStruct});
 
-            Output.TypeOverride = theStruct.TypeOverride;
+            TypeOverride = theStruct.TypeOverride;
         }
 
         protected override string SourceTemplate()

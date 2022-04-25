@@ -6,18 +6,18 @@ namespace Fuse
     public class Float3Join : ShaderNode<Vector3>
     {
         
-        private readonly GpuValue<float> _x;
-        private readonly GpuValue<float> _y;
-        private readonly GpuValue<float> _z;
+        private readonly ShaderNode<float> _x;
+        private readonly ShaderNode<float> _y;
+        private readonly ShaderNode<float> _z;
 
-        public Float3Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z) : base("Float3Join")
+        public Float3Join(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z) : base("Float3Join")
         {
             
             _x = x ?? new ConstantValue<float>(0);
             _y = y ?? new ConstantValue<float>(0);
             _z = z ?? new ConstantValue<float>(0);
             
-            Setup( new List<AbstractGpuValue>{_x,_y,_z});
+            Setup( new List<AbstractShaderNode>{_x,_y,_z});
         }
         
         protected override string SourceTemplate()

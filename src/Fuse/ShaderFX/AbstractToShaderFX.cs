@@ -25,12 +25,12 @@ namespace Fuse.ShaderFX
     {
 
         private readonly Dictionary<string, string> _customTemplate;
-        private readonly IDictionary<string, AbstractGpuValue> _results;
+        private readonly IDictionary<string, AbstractShaderNode> _results;
         
         protected AbstractToShaderFX(
             Game theGame,
-            IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, 
-            IDictionary<string,AbstractGpuValue> theResults, 
+            IDictionary<string,IDictionary<string,AbstractShaderNode>> theInputs, 
+            IDictionary<string,AbstractShaderNode> theResults, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
             string theSource) : base(theGame, false, theInputs, theDefinedStreams, theSource)
@@ -41,7 +41,7 @@ namespace Fuse.ShaderFX
 
         private static Dictionary<string, string> AppendTemplateValues(
             Dictionary<string, string> theTemplateMap,
-            IDictionary<string,AbstractGpuValue> theResults)
+            IDictionary<string,AbstractShaderNode> theResults)
         {
             theTemplateMap["shaderType"] = TypeHelpers.GetSignatureTypeForType<T>();
             theTemplateMap["resultType"] = TypeHelpers.GetGpuTypeForType<T>();
@@ -75,7 +75,7 @@ namespace Fuse.ShaderFX
             {
                 shaderInputs.Value.ForEach(gpuValue =>
                 {
-                    gpuValue.Value.ParentNode.InputList().ForEach(input => input.AddParameters(_parameters));
+                    gpuValue.Value.InputList().ForEach(input => input.AddParameters(_parameters));
                 });
             });//input.ParentNode.SetParameters(_parameters)
             return new ShaderClassSource(ShaderName);

@@ -5,13 +5,13 @@ namespace Fuse
     public class FromInt<T> : ShaderNode<T> where T : struct
     {
         
-        private GpuValue<int> _x;
+        private ShaderNode<int> _x;
 
-        public FromInt(GpuValue<int> x) : base("fromInt")
+        public FromInt(ShaderNode<int> x) : base("fromInt")
         {
             _x = x ?? new ConstantValue<int>(0);
             
-            Setup(new List<AbstractGpuValue>{x});
+            Setup(new List<AbstractShaderNode>{x});
         }
 
         protected override string SourceTemplate()

@@ -5,17 +5,17 @@ namespace Fuse.compute
 {
     public class DynamicStructBufferSet<GpuStruct> : ShaderNode<GpuVoid> 
     {
-        private readonly GpuValue<Buffer> _buffer;
-        private readonly GpuValue<int> _index;
-        private readonly GpuValue<GpuStruct> _value;
+        private readonly ShaderNode<Buffer> _buffer;
+        private readonly ShaderNode<int> _index;
+        private readonly ShaderNode<GpuStruct> _value;
     
-        public DynamicStructBufferSet(GpuValue<Buffer> theBuffer, GpuValue<int> theIndex, GpuValue<GpuStruct> theValue) : base( "setBuffer")
+        public DynamicStructBufferSet(ShaderNode<Buffer> theBuffer, ShaderNode<int> theIndex, ShaderNode<GpuStruct> theValue) : base( "setBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractGpuValue> {theBuffer,theIndex, theValue});
+            Setup(new List<AbstractShaderNode> {theBuffer,theIndex, theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

@@ -10,24 +10,25 @@ namespace Fuse.regions
     { 
         public sealed class RegionFunctionParameter<T> : ShaderNode<T> {
 
-            public RegionFunctionParameter(GpuValue<T> theType, int theId = 0): base("argument", null,"argument")
+            public RegionFunctionParameter(ShaderNode<T> theType, int theId = 0): base("argument", null)
             {
+                /*
                 Output = new FunctionParameterValue<T>("val" + GetHashCode())
                 {
                     ParentNode = this
-                };
-                Ins = new List<AbstractGpuValue>();
-                Output.Name = "arg_"+theId;
+                };*/
+                Ins = new List<AbstractShaderNode>();
+                Name = "arg_"+theId;
             }
 
-            public string TypeName()
+            public override string TypeName()
             {
                 return TypeHelpers.GetGpuTypeForType<T>();
             }
 
-            public string Name()
+            public string Namer()
             {
-                return Output.ID;
+                return ID;
             }
 
             protected override string SourceTemplate()
@@ -42,10 +43,10 @@ namespace Fuse.regions
         private string _signature;
         
         public RegionFunctionNode(
-            IEnumerable<AbstractGpuValue> theArguments, 
-            AbstractGpuValue theFunction,
+            IEnumerable<AbstractShaderNode> theArguments, 
+            AbstractShaderNode theFunction,
             string theName,
-            GpuValue<T> theDefault, 
+            ShaderNode<T> theDefault, 
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
@@ -70,7 +71,7 @@ namespace Fuse.regions
                 {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
                 {"functionName", _signature},
                 {"arguments", BuildArguments(theArguments)},
-                {"functionImplementation", theFunction.ParentNode.BuildSourceCode()},
+                {"functionImplementation", theFunction.BuildSourceCode()},
                 {"result", theFunction.ID}
             };
             
@@ -110,14 +111,14 @@ ${functionImplementation}
             });
         }
         
-        private static string BuildSignature(IEnumerable<AbstractGpuValue> inputs)
+        private static string BuildSignature(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input => stringBuilder.Append(TypeHelpers.GetSignatureTypeForType(input.GetType().GetGenericArguments()[0])));
             return stringBuilder.ToString();
         }
         
-        private static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
+        private static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
             var c = 0;

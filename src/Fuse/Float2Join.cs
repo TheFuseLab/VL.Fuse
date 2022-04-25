@@ -5,15 +5,15 @@ namespace Fuse
 {
     public class Float2Join : ShaderNode<Vector2>
     {
-        private GpuValue<float> _x;
-        private GpuValue<float> _y;
+        private ShaderNode<float> _x;
+        private ShaderNode<float> _y;
 
-        public Float2Join(GpuValue<float> x, GpuValue<float> y) : base("float2Join")
+        public Float2Join(ShaderNode<float> x, ShaderNode<float> y) : base("float2Join")
         {
             _x = x ?? new ConstantValue<float>(0);
             _y = y ?? new ConstantValue<float>(0);
             
-            Setup( new List<AbstractGpuValue>{_x,_y});
+            Setup( new List<AbstractShaderNode>{_x,_y});
         }
         
         protected override string SourceTemplate()

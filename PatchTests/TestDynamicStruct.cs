@@ -28,20 +28,20 @@ ${sourceCompute}
     }
 };";
         
-        public static void HandleShader(AbstractGpuValue theInput, ISet<string> theDeclarations, ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
+        public static void HandleShader(AbstractShaderNode theInput, ISet<string> theDeclarations, ISet<string> theStructs, ISet<string> theMixins, Dictionary<string, string> theFunctions, out string theSource)
         {
             var streamBuilder = new StringBuilder();
            
-            theInput.ParentNode.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration.GetDeclaration(false)));
-            theInput.ParentNode.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
-            theInput.ParentNode.MixinList().ForEach(mixin => theMixins.Add(mixin));
-            theInput.ParentNode.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
-            theSource = new DrawShaderNode(new Dictionary<string, AbstractGpuValue>{{"in", theInput}}).BuildSourceCode();
+            theInput.DeclarationList().ForEach(declaration => theDeclarations.Add(declaration.GetDeclaration(false)));
+            theInput.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
+            theInput.MixinList().ForEach(mixin => theMixins.Add(mixin));
+            theInput.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
+            theSource = new DrawShaderNode(new Dictionary<string, AbstractShaderNode>{{"in", theInput}}).BuildSourceCode();
             
             theSource = "";
         }
 
-        private static string GetShader<T>(GpuValue<T> theCompute)
+        private static string GetShader<T>(ShaderNode<T> theCompute)
         {
             
             var declarations = new HashSet<string>();
@@ -89,14 +89,14 @@ ${sourceCompute}
             var gpuIndex = new GpuInput<int>();
             var gpuValue1 = new GpuInput<float>();
             
-            var valVec4 = new GpuValue<Vector4>("valFloat4");
-            var gpuStruct = new DynamicStruct(new List<AbstractGpuValue>(){valVec4},"TestStruct");
-            var bufferInput = new DynamicStructBufferInput(gpuStruct.Output);
+            var valVec4 = new ShaderNode<Vector4>("valFloat4");
+            var gpuStruct = new DynamicStruct(new List<AbstractShaderNode>(){valVec4},"TestStruct");
+            var bufferInput = new DynamicStructBufferInput(gpuStruct);
 
-            var gpuStructInstance = new DynamicStructBufferGet(bufferInput.Output, gpuIndex.Output, gpuStruct.Output, null);
-            var structValue = new DynamicStructGetAttribute<Vector4>(gpuStructInstance.Output, valVec4);
+            var gpuStructInstance = new DynamicStructBufferGet(bufferInput, gpuIndex, gpuStruct, null);
+            var structValue = new DynamicStructGetAttribute<Vector4>(gpuStructInstance, valVec4);
             Console.WriteLine(structValue.BuildSourceCode());
-            Console.WriteLine(GetShader(structValue.Output));
+            Console.WriteLine(GetShader(structValue));
             
         }
     }

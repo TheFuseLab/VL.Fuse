@@ -11,14 +11,14 @@ namespace Fuse
         private bool _isGroupable;
         private string _functionName;
 
-        protected AbstractFunctionNode(string theFunction, GpuValue<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
+        protected AbstractFunctionNode(string theFunction, ShaderNode<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
             _functionName = theFunction;
             _isGroupable = theIsGroupable;
-            OptionalOutputs = new List<AbstractGpuValue>();
+            OptionalOutputs = new List<AbstractShaderNode>();
         }
 
-        protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
+        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
         {
             var abstractGpuValues = theArguments.ToList();
 
@@ -28,7 +28,7 @@ namespace Fuse
                 return;
             }
             
-            var myInputs = new List<AbstractGpuValue>();
+            var myInputs = new List<AbstractShaderNode>();
             var myModifiers = theModifiers.ToList();
 
             for (var i = 0; i < abstractGpuValues.Count(); i++)
@@ -42,9 +42,7 @@ namespace Fuse
 
                 var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(abstractGpuValues[i]);
                 myInputs.Add(myDeclareValue);
-                var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
-                myPass.ParentNode = this;
-                OptionalOutputs.Add(myPass);
+                OptionalOutputs.Add(myDeclareValue);
                 _isGroupable = false;
             }
             Setup(myInputs);
@@ -62,7 +60,7 @@ namespace Fuse
         {
             if(!_isGroupable || Ins.Count() <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
 
-            var inputList = new List<AbstractGpuValue>(Ins);
+            var inputList = new List<AbstractShaderNode>(Ins);
             var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID + ")");
 
             for (var i = 2; i < inputList.Count();i++)
@@ -84,9 +82,9 @@ namespace Fuse
     {
         
         public IntrinsicFunctionNode(
-            IEnumerable<AbstractGpuValue> theArguments, 
+            IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
-            GpuValue<T> theDefault, 
+            ShaderNode<T> theDefault, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
             ) : base(theFunction, theDefault, theIsGroupable)
@@ -99,9 +97,9 @@ namespace Fuse
     {
 
         public MixinFunctionNode(
-            IEnumerable<AbstractGpuValue> theArguments, 
+            IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
-            GpuValue<T> theDefault, 
+            ShaderNode<T> theDefault, 
             string theMixin, 
             bool theIsGroupable = false, 
             IEnumerable<InputModifier> theModifiers = null
@@ -116,10 +114,10 @@ namespace Fuse
     {
         
         public CustomFunctionNode(
-            IEnumerable<AbstractGpuValue> theArguments, 
+            IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
             string theCodeTemplate, 
-            GpuValue<T> theDefault, 
+            ShaderNode<T> theDefault, 
             IEnumerable<IFunctionInvokeNode> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,

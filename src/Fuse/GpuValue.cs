@@ -4,7 +4,7 @@ using VL.Core;
 using VL.UI.Core;
 namespace Fuse
 {
-    public abstract class AbstractGpuValue
+    public abstract class AbstractGpuValue2
     {
         public  string Name{ get; set; }
         
@@ -16,7 +16,7 @@ namespace Fuse
 
         public int HashCode;
 
-        protected AbstractGpuValue(string theName)
+        protected AbstractGpuValue2(string theName)
         {
             Name = theName;
             HashCode = -1;
@@ -31,13 +31,13 @@ namespace Fuse
         public abstract Type DataType { get; }
     }
 
-    [Monadic(typeof(GpuValueMonadicFactory<>))]
-    public class GpuValue<T> : AbstractGpuValue
+    
+    public class GpuValue2<T> : AbstractGpuValue2
     {
 
         public string TypeOverride { get; set; }
 
-        public GpuValue(string theName) : base(theName)
+        public GpuValue2(string theName) : base(theName)
         {
         }
 
@@ -63,24 +63,24 @@ namespace Fuse
 
     }
 
-    public class GpuValuePassThrough<T> : GpuValue<T>
+    public class GpuValuePassThrough2<T> : GpuValue2<T>
     {
        
-        private GpuValue<T> _value;
-        public GpuValuePassThrough(GpuValue<T> theValue) : base(theValue == null ? "": theValue.Name)
+        private GpuValue2<T> _value;
+        public GpuValuePassThrough2(GpuValue2<T> theValue) : base(theValue == null ? "": theValue.Name)
         {
-            _value = theValue ?? new GpuValue<T>("");
+            _value = theValue ?? new GpuValue2<T>("");
         }
 
-        public void SetInput(GpuValue<T> theValue)
+        public void SetInput(GpuValue2<T> theValue)
         {
             
-            _value = theValue ?? new GpuValue<T>("");
+            _value = theValue ?? new GpuValue2<T>("");
         }
         public override string ID => _value.ID;
     }
 
-    public class GpuNumericValue<T> : GpuValue<T> where T : struct
+    public class GpuNumericValue<T> : GpuValue2<T> where T : struct
     {
         public GpuNumericValue(string theName) : base(theName)
         {

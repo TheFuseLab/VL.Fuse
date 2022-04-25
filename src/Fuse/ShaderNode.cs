@@ -3,16 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Fuse.ShaderFX;
 using Stride.Rendering.Materials;
+using Stride.Shaders;
+using VL.Core;
 using VL.Lib.Collections;
+using VL.Stride.Shaders.ShaderFX;
 
 
 namespace Fuse
 {
-    public interface IShaderNode: Trees.IReadOnlyTreeNode
+    public interface IAtomicComputeNode: Trees.IReadOnlyTreeNode, IComputeNode
     {
 
-        string Id { get;  }
     }
 
     public class FieldDeclaration
@@ -41,26 +44,28 @@ namespace Fuse
         public bool IsResource { get; }
     }
     
-    public abstract class AbstractShaderNode : IShaderNode
+    public abstract class AbstractShaderNode : Trees.IReadOnlyTreeNode, IComputeNode
     {
-        public IEnumerable<AbstractGpuValue> Ins;
+        public List<AbstractShaderNode> Ins = new List<AbstractShaderNode>();
+        
+        public  string Name{ get;  set; }
+
+        public int HashCode;
+        
+        public abstract string ID { get; }
+
+        public abstract string TypeName(); 
 
         protected abstract string SourceTemplate();
 
-        public abstract AbstractGpuValue AbstractOutput();
-
-        protected readonly int HashCode;
-
         protected AbstractShaderNode(string theId)
         {
-            Id = theId;
+            Name = theId;
             HashCode = ShaderNodesUtil.GenerateID();
         }
         
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
-        
-        public string Id { get; }
-        
+
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
         {
             get
@@ -69,7 +74,7 @@ namespace Fuse
                 
                 Ins.ForEach(input =>
                 {
-                    if(input?.ParentNode != null)result.Add(input.ParentNode);
+                    if(input != null)result.Add(input);
                 });
                 return result;
             }
@@ -89,7 +94,7 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
         }
 
-        private string GenerateSource(IEnumerable<AbstractGpuValue> theIns)
+        private string GenerateSource(IEnumerable<AbstractShaderNode> theIns)
         {
             
             if (ShaderNodesUtil.HasNullValue(theIns))
@@ -106,13 +111,12 @@ namespace Fuse
             
             Ins.ForEach(input =>
             {
+                if (input == null) return;
+                
                 var name = input.Name;
                 Console.WriteLine(name);
                 input.HashCode = theContext.GetAndIncIDCount();
-            });
-            Children.ForEach(child =>
-            {
-                if (!(child is AbstractShaderNode input)) return;
+                if (!(input is AbstractShaderNode abstractinput)) return;
                
                 input.SetHashCodes(theContext);
             });
@@ -137,6 +141,18 @@ namespace Fuse
             {
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }
+        }
+        
+        
+
+        public IEnumerable<IComputeNode> GetChildren(object context = null)
+        {
+            return null;//Children;
+        }
+
+        public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
+        {
+            return null; //throw new NotImplementedException();
         }
        
         public string BuildSourceCode()
@@ -265,6 +281,7 @@ namespace Fuse
 
         protected const string Mixins = "Mixins";
         protected const string Inputs = "Inputs";
+        protected const string Compositions = "Compositions";
         protected const string Declarations = "Declarations";
         protected const string Structs = "Structs";
 
@@ -276,6 +293,11 @@ namespace Fuse
         public List<IGpuInput> InputList()
         {
             return ResourceForTree<IGpuInput>(Inputs);
+        }
+        
+        public List<string> CompositionList()
+        {
+            return ResourceForTree<string>(Compositions);
         }
         
         public List<FieldDeclaration> DeclarationList()
@@ -307,39 +329,57 @@ namespace Fuse
         }
     }
     
-    public abstract class ShaderNode<T> : AbstractShaderNode
+    [Monadic(typeof(ShaderNodeMonadicFactory<>))]
+    public class ShaderNode<T> : AbstractShaderNode , IComputeValue<T>
     {
-        public  GpuValue<T> Output { get; protected set; }
 
-        public List<AbstractGpuValue> OptionalOutputs { get; protected set; }
-        public  GpuValue<T> Default { get; protected set; }
+        public List<AbstractShaderNode> OptionalOutputs { get; protected set; }
 
-        protected ShaderNode(string theId, GpuValue<T> theDefault = null,string outputName = "result") : base(theId)
+        private ShaderNode<T> _default;
+        public  ShaderNode<T> Default => _default ?? ConstantHelper.FromFloat<T>(0);
+
+        public ShaderNode(string theId, ShaderNode<T> theDefault = null) : base(theId)
         {
-            Default = theDefault ?? ConstantHelper.FromFloat<T>(0);
-            Output = new GpuValue<T>(outputName);
+            _default = theDefault;
         }
 
         protected override Dictionary<string, string> CreateTemplateMap()
         {
             return new Dictionary<string, string>
             {
-                {"resultName", Output.ID},
-                {"resultType", Output != null ? Output.TypeName() : TypeHelpers.GetGpuTypeForType<T>()},
+                {"resultName", ID},
+                {"resultType", TypeName()},
                 {"default", Default == null ? "": Default.ID},
                 {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
         }
 
-        public override AbstractGpuValue AbstractOutput()
+        protected void Setup(IEnumerable<AbstractShaderNode> theIns)
         {
-            return Output;
+            Ins = new List<AbstractShaderNode>();
+                
+            theIns.ForEach(input =>
+            {
+                if(input != null)Ins.Add(input);
+            });
+        }
+        
+        public string TypeOverride { get; set; }
+        
+        public override string TypeName()
+        {
+            if (typeof(T) == typeof(GpuStruct))
+            {
+                return TypeOverride;
+            }
+            return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        protected void Setup(IEnumerable<AbstractGpuValue> theIns)
+        protected override string SourceTemplate()
         {
-            Ins = theIns.ToList();
-            Output.ParentNode = this;
+            return "";
         }
+
+        public override string ID => Name + "_" + HashCode;
     }
 }

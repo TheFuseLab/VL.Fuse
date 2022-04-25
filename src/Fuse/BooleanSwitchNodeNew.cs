@@ -8,13 +8,13 @@ namespace Fuse
 {
     public class BooleanSwitchNodeNew<T> : ShaderNode<T>
     {
-        private readonly GpuValue<bool> _inCheck;
-        private readonly GpuValue<T> _inFalse;
-        private readonly GpuValue<T> _inTrue;
-        public BooleanSwitchNodeNew(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
+        private readonly ShaderNode<bool> _inCheck;
+        private readonly ShaderNode<T> _inFalse;
+        private readonly ShaderNode<T> _inTrue;
+        public BooleanSwitchNodeNew(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "expression", theDefault)
         {
 
-            var ins = new List<AbstractGpuValue>(){inCheck};
+            var ins = new List<AbstractShaderNode>(){inCheck};
             _inCheck = inCheck;
             _inFalse = inFalse;
             _inTrue = inTrue;

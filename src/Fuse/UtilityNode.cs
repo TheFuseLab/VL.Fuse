@@ -4,39 +4,32 @@ namespace Fuse
 {
     public interface IReferenceNode
     {
-        void SetAbstractInput(AbstractGpuValue theIn);
+        void SetAbstractInput(AbstractShaderNode theIn);
     }
     
     public class ReferenceNode<T> : UtilityNode<T> , IReferenceNode
     {
 
-        private readonly GpuValuePassThrough<T> _myValue;
-        
-        public ReferenceNode(AbstractGpuValue theIn) : base(theIn, "Reference")
+        public ReferenceNode(AbstractShaderNode theIn) : base(theIn, "Reference")
         {
-            Output = _myValue = new GpuValuePassThrough<T>(theIn as GpuValue<T>);
-            Output.ParentNode = this;
+            
         }
 
-        public void SetInput(GpuValue<T> theIn)
+        public void SetInput(ShaderNode<T> theIn)
         {
-            Setup(new List<AbstractGpuValue>{theIn});
-
-            _myValue.SetInput(theIn);
+            Setup(new List<AbstractShaderNode>{theIn});
         }
         
-        public void SetAbstractInput(AbstractGpuValue theIn)
+        public void SetAbstractInput(AbstractShaderNode theIn)
         {
-            Setup(new List<AbstractGpuValue>{theIn});
-
-            _myValue.SetInput(theIn as GpuValue<T>);
+            Setup(new List<AbstractShaderNode>{theIn});
         }
     }
     
     public class CrossLink<T> : UtilityNode<T>
     {
 
-        public CrossLink(GpuValue<T> theIn) : base(theIn, "CrossLink")
+        public CrossLink(ShaderNode<T> theIn) : base(theIn, "CrossLink")
         {
         }
     }
@@ -46,7 +39,7 @@ namespace Fuse
 
         private readonly string _comment;
         
-        public Comment(GpuValue<T> theIn, string theComment) : base(theIn, "Comment")
+        public Comment(ShaderNode<T> theIn, string theComment) : base(theIn, "Comment")
         {
             _comment = theComment;
         }
@@ -67,13 +60,9 @@ namespace Fuse
     
     public class UtilityNode<T> : ShaderNode<T>
     {
-        public UtilityNode(AbstractGpuValue theIn, string theID) : base(theID)
+        public UtilityNode(AbstractShaderNode theIn, string theID) : base(theID)
         {
-            Setup(new List<AbstractGpuValue>{theIn});
-
-            
-            Output = theIn == null ? new GpuValue<T>(""):new GpuValuePassThrough<T>(theIn as GpuValue<T>);
-            Output.ParentNode = this;
+            Setup(new List<AbstractShaderNode>{theIn});
         }
 
         protected override string SourceTemplate()

@@ -5,12 +5,10 @@ namespace Fuse
     public class GpuStructNode<T> : ShaderNode<T>
     {
         
-        public GpuStructNode(GpuValue<T> theStruct, string theStructName) : base("GpuStruct")
+        public GpuStructNode(ShaderNode<T> theStruct, string theStructName) : base("GpuStruct")
         {
             theStruct.TypeOverride = theStructName;
-            Setup(new List<AbstractGpuValue>{});
-
-            Output = theStruct;
+            Setup(new List<AbstractShaderNode>());
         }
 
         protected override string SourceTemplate()

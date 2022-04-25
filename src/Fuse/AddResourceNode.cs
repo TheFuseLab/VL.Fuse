@@ -6,7 +6,7 @@ namespace Fuse
     public class AddResourceNode<T> : UtilityNode<T>
     {
         
-        public AddResourceNode(GpuValue<T> theIn, string theResourceId, IList theResources) : base(theIn, "AddResource")
+        public AddResourceNode(ShaderNode<T> theIn, string theResourceId, IList theResources) : base(theIn, "AddResource")
         {
             AddResources(theResourceId, theResources);
         }

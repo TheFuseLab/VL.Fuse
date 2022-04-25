@@ -7,23 +7,23 @@ namespace Fuse
     public class SampleTextureNode<TTexCoord> : ShaderNode<Vector4>
     {
 
-        private readonly GpuValue<Texture> _texture;
-        private readonly GpuValue<SamplerState> _sampler;
-        private readonly GpuValue<TTexCoord> _texCoord;
-        private readonly GpuValue<float> _level;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly ShaderNode<SamplerState> _sampler;
+        private readonly ShaderNode<TTexCoord> _texCoord;
+        private readonly ShaderNode<float> _level;
         public SampleTextureNode(
-            GpuValue<Texture> theTexture, 
-            GpuValue<SamplerState> theSampler, 
-            GpuValue<TTexCoord> theTexCoords, 
-            GpuValue<float> theLevel, 
-            GpuValue<Vector4> theDefault
+            ShaderNode<Texture> theTexture, 
+            ShaderNode<SamplerState> theSampler, 
+            ShaderNode<TTexCoord> theTexCoords, 
+            ShaderNode<float> theLevel, 
+            ShaderNode<Vector4> theDefault
             ) : base( "sampleTexture", theDefault)
         {
             _texture = theTexture;
             _sampler = theSampler;
             _texCoord = theTexCoords;
             _level = theLevel ?? new ConstantValue<float>(0);
-            Setup(new List<AbstractGpuValue> {theTexture, theSampler, theTexCoords, theLevel});
+            Setup(new List<AbstractShaderNode> {theTexture, theSampler, theTexCoords, theLevel});
         }
         
         protected override string SourceTemplate()

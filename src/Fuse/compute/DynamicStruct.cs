@@ -10,7 +10,7 @@ namespace Fuse.compute
     {
         private readonly int _stride;
         
-        public DynamicStruct(IEnumerable<AbstractGpuValue> theInputs, string theName) : base("GPUAttributeStruct")
+        public DynamicStruct(IEnumerable<AbstractShaderNode> theInputs, string theName) : base("GPUAttributeStruct")
         {
             Setup(theInputs);
             
@@ -37,7 +37,7 @@ ${structMembers}
             AddResource(Structs, _struct);
             _stride = myStride;
 
-            Output.TypeOverride = theName;
+            TypeOverride = theName;
         }
         
 

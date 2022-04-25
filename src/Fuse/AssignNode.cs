@@ -5,14 +5,14 @@ namespace Fuse
 {
     public class AssignNode<T> : ShaderNode<GpuVoid>
     {
-        private readonly GpuValue<T> _target;
-        private readonly GpuValue<T> _source;
+        private readonly ShaderNode<T> _target;
+        private readonly ShaderNode<T> _source;
         
-        public AssignNode(GpuValue<T> theTarget, GpuValue<T> theSource) : base("Assign")
+        public AssignNode(ShaderNode<T> theTarget, ShaderNode<T> theSource) : base("Assign")
         {
             _target = theTarget;
             _source = theSource;
-            Setup(new List<AbstractGpuValue>{theTarget,theSource});
+            Setup(new List<AbstractShaderNode>{theTarget,theSource});
         }
         
         protected override string GenerateDefaultSource()
@@ -29,11 +29,9 @@ namespace Fuse
             });
         }
         
-        public GpuValue<T> Value()
+        public ShaderNode<T> Value()
         {
-            var result = _target == null ? new GpuValue<T>(""):new GpuValuePassThrough<T>(_target);
-            result.ParentNode = this;
-            return result;
+            return _target;
         }
     }
 }

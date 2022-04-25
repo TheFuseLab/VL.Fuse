@@ -12,21 +12,21 @@ namespace Fuse.regions
         
         public class IfGroup: ShaderNode<GpuVoid> 
         {
-            private readonly GpuValue<bool> _inCheck;
+            private readonly ShaderNode<bool> _inCheck;
             public IfGroup(
-                GpuValue<bool> inCheck, 
-                IEnumerable<AbstractGpuValue> theInputs
+                ShaderNode<bool> inCheck, 
+                IEnumerable<AbstractShaderNode> theInputs
                 ) : base("IfGroup")
             {
                 _inCheck = inCheck;
-                var abstractGpuValues = new List<AbstractGpuValue>();
+                var abstractShaderNodes = new List<AbstractShaderNode>();
                 theInputs.ForEach(input =>
                 {
                     if (input == null) return;
-                    abstractGpuValues.Add(input);
+                    abstractShaderNodes.Add(input);
                 });
             
-                Setup(abstractGpuValues);
+                Setup(abstractShaderNodes);
             }
 
             protected override string SourceTemplate()
@@ -66,48 +66,48 @@ namespace Fuse.regions
         public class IfRegionNode : ShaderNode<GpuVoid>
         {
             
-            private readonly GpuValue<bool> _inCheck;
-            private GpuValue<GpuVoid> _inCall;
-            private GpuValue<GpuVoid> _crossLinkCall;
-            private GpuValue<GpuVoid> _ifGroup;
-            private readonly List<AbstractGpuValue> _crossLinks;
+            private readonly ShaderNode<bool> _inCheck;
+            private ShaderNode<GpuVoid> _inCall;
+            private ShaderNode<GpuVoid> _crossLinkCall;
+            private ShaderNode<GpuVoid> _ifGroup;
+            private readonly List<AbstractShaderNode> _crossLinks;
             
             public IfRegionNode(
-                GpuValue<bool> inCheck, 
-                IEnumerable<AbstractGpuValue> theInputs, 
-                IEnumerable<AbstractGpuValue> theOutputs, 
-                IEnumerable<AbstractGpuValue> theCrossLinks, 
+                ShaderNode<bool> inCheck, 
+                IEnumerable<AbstractShaderNode> theInputs, 
+                IEnumerable<AbstractShaderNode> theOutputs, 
+                IEnumerable<AbstractShaderNode> theCrossLinks, 
                 string outputName = "result"
-                ) : base("if region", null, outputName)
+                ) : base("if region", null)
             {
                 _inCheck = inCheck;
                 var outputs = theOutputs.ToList();
                 _crossLinks = theCrossLinks.ToList();
-                OptionalOutputs = new List<AbstractGpuValue>();
+                OptionalOutputs = new List<AbstractShaderNode>();
                 Setup(theInputs, outputs);
             }
 
-            private List<AbstractGpuValue> ResolveVoidCrossLink(AbstractGpuValue theCrossLink)
+            private List<AbstractShaderNode> ResolveVoidCrossLink(AbstractShaderNode theCrossLink)
             {
-                var myResult = new List<AbstractGpuValue>();
+                var myResult = new List<AbstractShaderNode>();
 
-                theCrossLink.ParentNode.Children.ForEach(child =>
+                theCrossLink.Children.ForEach(child =>
                 {
                     if (!(child is AbstractShaderNode input)) return;
-                    switch (input.AbstractOutput())
+                    switch (input)
                     {
-                        case GpuValue<GpuVoid> gpuValue:
-                            myResult.AddRange(ResolveVoidCrossLink(gpuValue));
+                        case ShaderNode<GpuVoid> ShaderNode:
+                            myResult.AddRange(ResolveVoidCrossLink(ShaderNode));
                             break;
                         default:
-                            myResult.Add(input.AbstractOutput());
+                            myResult.Add(input);
                             break;
                     }
                 });
                 return myResult;
             }
 
-            private void Setup(IEnumerable<AbstractGpuValue> theInputs, IEnumerable<AbstractGpuValue> theOutputs)
+            private void Setup(IEnumerable<AbstractShaderNode> theInputs, IEnumerable<AbstractShaderNode> theOutputs)
             {
                 var inputs = theInputs.ToList();
                 var outputs = theOutputs.ToList();
@@ -117,37 +117,37 @@ namespace Fuse.regions
                     return;
                 }
                 
-                var myCrossLinks = new List<AbstractGpuValue>();
+                var myCrossLinks = new List<AbstractShaderNode>();
                 _crossLinks.ForEach(c =>
                 {
                     if (c == null) return;
                     switch (c)
                     {
-                        case GpuValue<GpuVoid> gpuValue:
-                            myCrossLinks.AddRange(ResolveVoidCrossLink(gpuValue));
-                            //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
+                        case ShaderNode<GpuVoid> ShaderNode:
+                            myCrossLinks.AddRange(ResolveVoidCrossLink(ShaderNode));
+                            //myCrossLinks.Add(AbstractCreation.AbstractShaderNodePassThrough(c));
                             break;
                         default:
                             //myCrossLinks.Add(AbstractCreation.AbstractDeclareValueAssigned(c));
-                            //myCrossLinks.Add(AbstractCreation.AbstractGpuValuePassThrough(c));
+                            //myCrossLinks.Add(AbstractCreation.AbstractShaderNodePassThrough(c));
                             myCrossLinks.Add(c);
                             break;
                     }
                 });
 
-                var myInputs = new List<AbstractGpuValue>();
-                var myOutputs = new List<AbstractGpuValue>();
+                var myInputs = new List<AbstractShaderNode>();
+                var myOutputs = new List<AbstractShaderNode>();
 
                 for (var i = 0; i < outputs.Count; i++)
                 {
                     switch (outputs[i])
                     {
-                        case GpuValue<GpuVoid> gpuValue:
+                        case ShaderNode<GpuVoid> ShaderNode:
                             var myInputVoid = inputs[i];
                             myInputs.Add(myInputVoid);
-                            myOutputs.Add(gpuValue);
-                            var myPassVoid = AbstractCreation.AbstractGpuValuePassThrough(gpuValue);
-                            myPassVoid.ParentNode = this;
+                            myOutputs.Add(ShaderNode);
+                            var myPassVoid = AbstractCreation.AbstractShaderNodePassThrough(ShaderNode);
+                            myPassVoid = this;
                             OptionalOutputs.Add(myPassVoid);
                             break;
                         default:
@@ -158,18 +158,18 @@ namespace Fuse.regions
                             var myOutput = i >= outputs.Count ? AbstractCreation.AbstractConstant(inputs[i], 0f) : outputs[i];
                             var myAssign = AbstractCreation.AbstractAssignNode(myDeclareValue, myOutput);
                             myOutputs.Add(myAssign);
-                            var myPass = AbstractCreation.AbstractGpuValuePassThrough(myDeclareValue);
-                            myPass.ParentNode = this;
+                            var myPass = AbstractCreation.AbstractShaderNodePassThrough(myDeclareValue);
+                            myPass = this;
                             OptionalOutputs.Add(myPass);
                             break;
                     }
                 }
 
-                _inCall = new GroupValues(myInputs).Output;
-                _crossLinkCall = new GroupValues(myCrossLinks).Output;
-                _ifGroup = new IfGroup(_inCheck, myOutputs).Output;
+                _inCall = new GroupValues(myInputs);
+                _crossLinkCall = new GroupValues(myCrossLinks);
+                _ifGroup = new IfGroup(_inCheck, myOutputs);
                 
-                var inputList = new List<AbstractGpuValue>
+                var inputList = new List<AbstractShaderNode>
                 {
                     _crossLinkCall,
                     _inCheck,

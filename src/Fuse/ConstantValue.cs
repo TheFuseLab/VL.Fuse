@@ -24,7 +24,7 @@ namespace Fuse
             return null;
         }
 
-        public static AbstractGpuValue AbstractFromFloat(Type theType, float theValue)
+        public static AbstractShaderNode AbstractFromFloat(Type theType, float theValue)
         {
             if (theType == typeof(float)) return new ConstantValue<float>(theValue);
             if (theType == typeof(Vector2)) return new ConstantValue<Vector2>(new Vector2(theValue,theValue));
@@ -41,7 +41,7 @@ namespace Fuse
         }
     }
     
-    public class ConstantValue<T>: GpuValue<T>
+    public class ConstantValue<T>: ShaderNode<T>
     {
         public ConstantValue(T theValue) : base("constant")
         {
@@ -51,5 +51,14 @@ namespace Fuse
         public T Value { get; }
 
         public override string ID => TypeHelpers.GetDefaultForType<T>(Value);
+        public override string TypeName()
+        {
+            return TypeHelpers.GetGpuTypeForType<T>();
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";//TypeHelpers.GetDefaultForType(Value);
+        }
     }
 }

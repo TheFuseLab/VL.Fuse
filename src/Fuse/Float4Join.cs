@@ -5,12 +5,12 @@ namespace Fuse
 {
     public class Float4Join : ShaderNode<Vector4>
     {
-        private readonly GpuValue<float> _x;
-        private readonly GpuValue<float> _y;
-        private readonly GpuValue<float> _z;
-        private readonly GpuValue<float> _w;
+        private readonly ShaderNode<float> _x;
+        private readonly ShaderNode<float> _y;
+        private readonly ShaderNode<float> _z;
+        private readonly ShaderNode<float> _w;
 
-        public Float4Join(GpuValue<float> x, GpuValue<float> y, GpuValue<float> z, GpuValue<float> w) : base("Float4Join")
+        public Float4Join(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z, ShaderNode<float> w) : base("Float4Join")
         {
 
             _x = x ?? new ConstantValue<float>(0);
@@ -18,7 +18,7 @@ namespace Fuse
             _z = z ?? new ConstantValue<float>(0);
             _w = w ?? new ConstantValue<float>(1);
             
-            Setup( new List<AbstractGpuValue>{_x,_y,_z,_w});
+            Setup( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
 
 

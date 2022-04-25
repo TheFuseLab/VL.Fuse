@@ -11,7 +11,7 @@ namespace Fuse.compute
     {
         
 
-        protected AbstractTypedFunction(string theName, GpuValue<TOut> theDefault = null) : base( theName, theDefault)
+        protected AbstractTypedFunction(string theName, ShaderNode<TOut> theDefault = null) : base( theName, theDefault)
         {
             AddResource(Structs, BuildStructs());
         }
@@ -43,7 +43,7 @@ ${structMembers}
         
         public DeclareStructVariable(ConstantValue<T> theDefault) : base( "getBuffer")
         {
-            Setup(new List<AbstractGpuValue>(){});
+            Setup(new List<AbstractShaderNode>(){});
         }
 
         protected override string SourceTemplate()
@@ -55,14 +55,14 @@ ${structMembers}
     
     public class TypedBufferGet<T> : AbstractTypedFunction<T,T> where T : struct
     {
-        private readonly GpuValue<Buffer<T>> _buffer;
-        private readonly GpuValue<int> _index;
+        private readonly ShaderNode<Buffer<T>> _buffer;
+        private readonly ShaderNode<int> _index;
         
-        public TypedBufferGet(GpuValue<Buffer<T>> theBuffer, GpuValue<int> theIndex, GpuValue<T> theDefault) : base( "getBuffer", theDefault)
+        public TypedBufferGet(ShaderNode<Buffer<T>> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault) : base( "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
-            Setup(new List<AbstractGpuValue>(){theBuffer,theIndex});
+            Setup(new List<AbstractShaderNode>(){theBuffer,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -78,17 +78,17 @@ ${structMembers}
     
     public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid> where TIn : struct
     {
-        private readonly GpuValue<Buffer<TIn>> _buffer;
-        private readonly GpuValue<int> _index;
-        private readonly GpuValue<TIn> _value;
+        private readonly ShaderNode<Buffer<TIn>> _buffer;
+        private readonly ShaderNode<int> _index;
+        private readonly ShaderNode<TIn> _value;
     
-        public TypedBufferSet(GpuValue<Buffer<TIn>> theBuffer, GpuValue<int> theIndex, GpuValue<TIn> theValue) : base( "setBuffer")
+        public TypedBufferSet(ShaderNode<Buffer<TIn>> theBuffer, ShaderNode<int> theIndex, ShaderNode<TIn> theValue) : base( "setBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractGpuValue>(){theBuffer,theIndex,theValue});
+            Setup(new List<AbstractShaderNode>(){theBuffer,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -115,15 +115,15 @@ ${structMembers}
     
     public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : struct
     {
-        private readonly GpuValue<Buffer<T>> _buffer;
-        private readonly GpuValue<T> _value;
+        private readonly ShaderNode<Buffer<T>> _buffer;
+        private readonly ShaderNode<T> _value;
     
-        public TypedBufferAppend(GpuValue<Buffer<T>> theBuffer, GpuValue<T> theValue) : base( "appendBuffer")
+        public TypedBufferAppend(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theValue) : base( "appendBuffer")
         {
             _buffer = theBuffer;
             _value = theValue;
             
-            Setup(new List<AbstractGpuValue>(){theBuffer,theValue});
+            Setup(new List<AbstractShaderNode>(){theBuffer,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -149,12 +149,12 @@ ${structMembers}
     
     public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : struct
     {
-        private readonly GpuValue<Buffer<T>> _buffer;
+        private readonly ShaderNode<Buffer<T>> _buffer;
         
-        public TypedBufferConsume(GpuValue<Buffer<T>> theBuffer, GpuValue<T> theDefault) : base( "consumeBuffer", theDefault)
+        public TypedBufferConsume(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theDefault) : base( "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
-            Setup(new List<AbstractGpuValue>(){theBuffer});
+            Setup(new List<AbstractShaderNode>(){theBuffer});
         }
 
         protected override string SourceTemplate()

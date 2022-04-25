@@ -7,24 +7,13 @@ using System.Text;
 namespace Fuse
 {
 
-    public class FunctionParameterValue<T> : GpuValue<T>
-    {
-
-        public FunctionParameterValue(string theName) : base(theName)
-        {
-        }
-
-        public override string ID => Name;
-
-    }
-    
-    public interface IFunctionParameter : IShaderNode
+    public interface IFunctionParameter : IAtomicComputeNode
     {
         string TypeName();
 
-        string Name();
+        string Namer();
 
-        void Remap(List<AbstractGpuValue> theParameters);
+        void Remap(List<AbstractShaderNode> theParameters);
 
         void DeleteRemap();
     }
@@ -41,36 +30,33 @@ namespace Fuse
         private readonly string _name;
         private readonly int _id;
 
-        public FunctionParameter(GpuValue<T> theType, int theId = 0): base("delegate", null,"delegate")
+        public FunctionParameter(ShaderNode<T> theType, int theId = 0): base("delegate", null)
         {
-            Output = new FunctionParameterValue<T>("arg_" + theId)
-            {
-                ParentNode = this
-            };
+            
             _name = "arg_" + theId;
-            Ins = new List<AbstractGpuValue>();
+            Ins = new List<AbstractShaderNode>();
             _id = theId;
         }
 
-        public void Remap(List<AbstractGpuValue> theParameters)
+        public void Remap(List<AbstractShaderNode> theParameters)
         {
             if (_id >= theParameters.Count()) return;
-            Output.Name = "arg_"+theParameters[_id].ID;
+            Name = "arg_"+theParameters[_id].ID;
         }
 
         public void DeleteRemap()
         {
-            Output.Name = _name;
+            Name = _name;
         }
 
-        public virtual string TypeName()
+        public override string TypeName()
         {
             return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        public string Name()
+        public string Namer()
         {
-            return Output.ID;
+            return ID;
         }
 
         protected override string SourceTemplate()
@@ -92,7 +78,7 @@ namespace Fuse
 
     public class FunctionInvokeNode<T> : ShaderNode<T>, IFunctionInvokeNode
     {
-        public FunctionInvokeNode(AbstractGpuValue theDelegate, IEnumerable<AbstractGpuValue> theParameters, string theId, GpuValue<T> theDefault = null, string outputName = "result") : base(theId, theDefault, outputName)
+        public FunctionInvokeNode(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null, string outputName = "result") : base(theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
 
@@ -113,10 +99,10 @@ namespace Fuse
             return result;
         }
 
-        private void AddFunctionInvoke(string theFunctionName, AbstractGpuValue theDelegate, List<AbstractGpuValue> theParameters)
+        private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate, List<AbstractShaderNode> theParameters)
         {
             if (theDelegate == null) return;
-            var delegates = theDelegate.ParentNode.Delegates();
+            var delegates = theDelegate.Delegates();
             delegates.ForEach(input => input.Remap(theParameters));
             
             var functionValueMap = new Dictionary<string, string>
@@ -124,7 +110,7 @@ namespace Fuse
                 {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
                 {"functionName", theFunctionName},
                 {"arguments", BuildArguments(theParameters)},
-                {"functionImplementation", theDelegate.ParentNode.BuildSourceCode()},
+                {"functionImplementation", theDelegate.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
 
@@ -133,8 +119,8 @@ ${functionImplementation}
         return ${result};
     }";
             Functions.Add(theFunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
-            theDelegate.ParentNode.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
-            theDelegate.ParentNode.ResourcesForTree().ForEach(kv =>
+            theDelegate.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
+            theDelegate.ResourcesForTree().ForEach(kv =>
             {
                 AddResources(kv.Key, kv.Value );
             });
@@ -142,7 +128,7 @@ ${functionImplementation}
             delegates.ForEach(input => input.DeleteRemap());
         }
         
-        private static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
+        private static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>
@@ -164,6 +150,5 @@ ${functionImplementation}
         public sealed override IDictionary<string, string> Functions { get; }
         public string FunctionName { get;  }
 
-        public string Name { get; }
     }
 }

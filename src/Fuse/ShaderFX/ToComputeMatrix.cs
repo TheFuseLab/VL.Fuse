@@ -27,13 +27,13 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeMatrix(Game theGame, GpuValue<Matrix> theCompute) : base(theGame, 
-            new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
+        public ToComputeMatrix(Game theGame, ShaderNode<Matrix> theCompute) : base(theGame, 
+            new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
                 {
-                    "CS", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}
+                    "CS", new Dictionary<string, AbstractShaderNode>{{"val1", theCompute}}
                 }
             }, 
-            new Dictionary<string, AbstractGpuValue>(),
+            new Dictionary<string, AbstractShaderNode>(),
             new List<string>(),
             new Dictionary<string, string>(),
             ComputeShaderSource)

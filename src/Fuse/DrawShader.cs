@@ -11,23 +11,23 @@ namespace Fuse
 
     public class DrawShaderNode : AbstractShaderNode
     {
-        internal GpuValue<float> Output { get; set; }
         
-        public DrawShaderNode(IDictionary<string,AbstractGpuValue> theVertexInputs) : base("drawShader")
+        public DrawShaderNode(IDictionary<string,AbstractShaderNode> theVertexInputs) : base("drawShader")
         {
-            Output = new GpuValue<float>("output") {ParentNode = this};
-            Ins = theVertexInputs.Values;
+            Ins = new List<AbstractShaderNode>(theVertexInputs.Values);
             
+        }
+
+        public override string ID { get; }
+
+        public override string TypeName()
+        {
+            return TypeHelpers.GetGpuTypeForType<float>();;
         }
 
         protected override string SourceTemplate()
         {
             return "";
-        }
-
-        public override AbstractGpuValue AbstractOutput()
-        {
-            return Output;
         }
     }
 
@@ -39,18 +39,19 @@ namespace Fuse
 
         private readonly List<string> _definedStreams;
 
-        protected readonly IDictionary<string, IDictionary<string, AbstractGpuValue>> Inputs;
+        protected readonly IDictionary<string, IDictionary<string, AbstractShaderNode>> Inputs;
         
         protected readonly HashSet<string>Declarations = new HashSet<string>();
         protected readonly HashSet<string>Structs = new HashSet<string>();
         protected readonly HashSet<string>Mixins = new HashSet<string>();
+        protected readonly HashSet<string>Compositions = new HashSet<string>();
         protected readonly Dictionary<string, string> FunctionMap = new Dictionary<string, string>();
-        
-        protected readonly bool _isComputeShader;
-        protected readonly string _sourceTemplate;
+
+        private readonly bool _isComputeShader;
+        private readonly string _sourceTemplate;
         protected readonly Game _game;
             
-        protected AbstractShader(Game theGame, bool theIsComputeShader, IDictionary<string,IDictionary<string,AbstractGpuValue>> theInputs, List<string> theDefinedStreams, string theSource)
+        protected AbstractShader(Game theGame, bool theIsComputeShader, IDictionary<string,IDictionary<string,AbstractShaderNode>> theInputs, List<string> theDefinedStreams, string theSource)
         {
             Inputs = theInputs;
             _definedStreams = theDefinedStreams;
@@ -114,6 +115,9 @@ namespace Fuse
             
             var mixinBuilder = new StringBuilder();
             Mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+
+            var compositionBuilder = new StringBuilder();
+            Compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
             
             var functionBuilder = new StringBuilder();
             FunctionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
@@ -122,6 +126,7 @@ namespace Fuse
             {
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
+                {"compositions", compositionBuilder.ToString()},
                 {"structs", structBuilder.ToString()},
                 {"functions", functionBuilder.ToString()}
             };
@@ -137,27 +142,17 @@ namespace Fuse
             Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
         }
         
-        protected virtual void HandleStruct(string theStruct)
-        {
-            Structs.Add(theStruct);
-        }
-        
-        protected virtual void HandleMixin(string theMixin)
-        {
-            Mixins.Add(theMixin);
-        }
-        
         protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
         {
             if(!FunctionMap.ContainsKey(theKeyFunction.Key))FunctionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
         }
 
-        private void HandleShader(ShaderGeneratorContext theContext,bool theIsComputeShader, IDictionary<string,AbstractGpuValue> theShaderInputs, out string theSource, out string theStreams, out string theDefinedStreams)
+        private void HandleShader(ShaderGeneratorContext theContext,bool theIsComputeShader, IDictionary<string,AbstractShaderNode> theShaderInputs, out string theSource, out string theStreams, out string theDefinedStreams)
         {
             theShaderInputs.ForEach(kv =>
             {
                 if (kv.Value != null) kv.Value.HashCode = theContext.GetAndIncIDCount();
-                kv.Value?.ParentNode?.SetHashCodes(theContext);
+                kv.Value?.SetHashCodes(theContext);
             });
             
             var streamBuilder = new StringBuilder();
@@ -165,10 +160,11 @@ namespace Fuse
             
             theShaderInputs.ForEach(kv =>
             {
-                kv.Value?.ParentNode?.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
-                kv.Value?.ParentNode?.StructList().ForEach(HandleStruct);
-                kv.Value?.ParentNode?.MixinList().ForEach(HandleMixin);
-                kv.Value?.ParentNode?.FunctionMap().ForEach(HandleFunction);
+                kv.Value?.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+                kv.Value?.StructList().ForEach(value => Structs.Add(value));
+                kv.Value?.MixinList().ForEach(value => Mixins.Add(value));
+                kv.Value?.CompositionList().ForEach(value => Compositions.Add(value));
+                kv.Value?.FunctionMap().ForEach(HandleFunction);
 
                 streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
                 if (_definedStreams.Contains(kv.Key)) return;
@@ -176,33 +172,13 @@ namespace Fuse
                 streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuTypeByValue(kv.Value) + " " + kv.Key + ";");
             });
 
-            var drawShaderNode = new DrawShaderNode(theShaderInputs)
-            {
-                Output = {HashCode = theContext.GetAndIncIDCount()}
-            };
+            var drawShaderNode = new DrawShaderNode(theShaderInputs) {HashCode = theContext.GetAndIncIDCount()};
+
             theSource = drawShaderNode.BuildSourceCode();
             theStreams = streamBuilder.ToString();
             theDefinedStreams = streamDeclareBuilder.ToString();
         }
     }
-
-    public enum GeometryShaderPrimitiveType
-    {
-        Point,
-        Line,
-        Triangle,
-        Lineadj,
-        Triangleadj
-    }
-
-    public enum StreamOutputType
-    {
-        Point,
-        Line,
-        Triangle
-    }
-    
-    
     
     public class DrawShader : AbstractShader
     {
@@ -260,13 +236,13 @@ ${streamsPS}
         
         public DrawShader(
             Game theGame,
-            IDictionary<string,AbstractGpuValue> theVertexInputs, 
-            IDictionary<string,AbstractGpuValue> thePixelInputs, 
+            IDictionary<string,AbstractShaderNode> theVertexInputs, 
+            IDictionary<string,AbstractShaderNode> thePixelInputs, 
             List<string> theDefinedStreams = null, 
             string theTemplate = DrawShaderSource
             ) : base(theGame,
             false,
-            new Dictionary<string, IDictionary<string, AbstractGpuValue>>
+            new Dictionary<string, IDictionary<string, AbstractShaderNode>>
             {
                 
                 {"VS", theVertexInputs},
@@ -306,9 +282,9 @@ ${functions}
         ${sourceCS}
     }
 };";
-        public ComputeShader(Game theGame, IDictionary<string,AbstractGpuValue> theComputeInputs) : base(theGame,
+        public ComputeShader(Game theGame, IDictionary<string,AbstractShaderNode> theComputeInputs) : base(theGame,
             true,
-            new Dictionary<string, IDictionary<string, AbstractGpuValue>>
+            new Dictionary<string, IDictionary<string, AbstractShaderNode>>
             {
                 {"CS", theComputeInputs}
             },

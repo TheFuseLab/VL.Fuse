@@ -12,19 +12,19 @@ namespace PatchTests
         [Test]
         public void TestValueExchangeIf()
         {
-            var check = new GpuInput<bool>().Output;
-            var in0 = new GpuInput<float>().Output;
-            var in1 = new GpuInput<float>().Output;
-            var in2 = new GpuInput<float>().Output;
-            var inputs = new List<AbstractGpuValue> {in0, in1, in2};
+            var check = new GpuInput<bool>();
+            var in0 = new GpuInput<float>();
+            var in1 = new GpuInput<float>();
+            var in2 = new GpuInput<float>();
+            var inputs = new List<AbstractShaderNode> {in0, in1, in2};
 
-            var in3 = new GpuInput<float>().Output;
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractGpuValue>{in3}, "sin", null).Output;
-            var add = new OperatorNode<float, float>(sin, null, null,"+").Output;
+            var in3 = new GpuInput<float>();
+            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new OperatorNode<float, float>(sin, null, null,"+");
        
-            var outputs = new List<AbstractGpuValue> {in1, in0, add};
+            var outputs = new List<AbstractShaderNode> {in1, in0, add};
 
-            var crossLinks = new List<AbstractGpuValue>{add};
+            var crossLinks = new List<AbstractShaderNode>{add};
             var ifRegion = new IfRegion.IfRegionNode(
                 check,
                 inputs,
@@ -37,23 +37,23 @@ namespace PatchTests
         [Test]
         public void TestSimpleCrossLink()
         {
-            var check = new GpuInput<bool>().Output;
+            var check = new GpuInput<bool>();
             
-            var bufferIn = new BufferInput<float>("buffer").Output;
-            var indexIn = new GpuInput<int>().Output;
-            var in3 = new GpuInput<float>().Output;
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractGpuValue>{in3}, "sin", null).Output;
-            var add = new OperatorNode<float, float>(sin, null, null,"+").Output;
+            var bufferIn = new BufferInput<float>("buffer");
+            var indexIn = new GpuInput<int>();
+            var in3 = new GpuInput<float>();
+            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new OperatorNode<float, float>(sin, null, null,"+");
 
-            var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add).Output;
+            var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add);
 
-            var inEmpty = new EmptyVoid().Output;
-            var inputs = new List<AbstractGpuValue> {inEmpty};
+            var inEmpty = new EmptyVoid();
+            var inputs = new List<AbstractShaderNode> {inEmpty};
             
             
-            var outputs = new List<AbstractGpuValue> {bufferSet};
+            var outputs = new List<AbstractShaderNode> {bufferSet};
             
-            var crossLinks = new List<AbstractGpuValue> {add};
+            var crossLinks = new List<AbstractShaderNode> {add};
             
             var ifRegion = new IfRegion.IfRegionNode(
                 check,
@@ -67,23 +67,23 @@ namespace PatchTests
         [Test]
         public void TestSimpleVoidCrossLink()
         {
-            var check = new GpuInput<bool>().Output;
+            var check = new GpuInput<bool>();
             
-            var bufferIn = new BufferInput<float>("buffer").Output;
-            var indexIn = new GpuInput<int>().Output;
+            var bufferIn = new BufferInput<float>("buffer");
+            var indexIn = new GpuInput<int>();
             
-            var in3 = new GpuInput<float>().Output;
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractGpuValue>{in3}, "sin", null).Output;
-            var add = new OperatorNode<float, float>(sin, in3, null,"+").Output;
+            var in3 = new GpuInput<float>();
+            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new OperatorNode<float, float>(sin, in3, null,"+");
 
-            var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add).Output;
+            var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add);
 
-            var inEmpty = new EmptyVoid().Output;
-            var inputs = new List<AbstractGpuValue> {inEmpty};
+            var inEmpty = new EmptyVoid();
+            var inputs = new List<AbstractShaderNode> {inEmpty};
             
-            var outputs = new List<AbstractGpuValue> {bufferSet};
+            var outputs = new List<AbstractShaderNode> {bufferSet};
             
-            var crossLinks = new List<AbstractGpuValue> {bufferSet};
+            var crossLinks = new List<AbstractShaderNode> {bufferSet};
             
             var ifRegion = new IfRegion.IfRegionNode(
                 check,

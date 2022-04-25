@@ -5,12 +5,12 @@ namespace Fuse
 {
     public class Int4Join : ShaderNode<Int4>
     {
-        private GpuValue<int> _x;
-        private GpuValue<int> _y;
-        private GpuValue<int> _z;
-        private GpuValue<int> _w;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
+        private ShaderNode<int> _z;
+        private ShaderNode<int> _w;
 
-        public Int4Join(GpuValue<int> x, GpuValue<int> y, GpuValue<int> z, GpuValue<int> w) : base("Int4Join")
+        public Int4Join(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z, ShaderNode<int> w) : base("Int4Join")
         {
 
             _x = x ?? new ConstantValue<int>(0);
@@ -18,7 +18,7 @@ namespace Fuse
             _z = z ?? new ConstantValue<int>(0);
             _w = w ?? new ConstantValue<int>(1);
             
-            Setup( new List<AbstractGpuValue>{_x,_y,_z,_w});
+            Setup( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
 
 

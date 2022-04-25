@@ -6,22 +6,18 @@ namespace Fuse
     public class DeclareValue<T> : ShaderNode<T>
     {
 
-        private readonly GpuValue<T> _value;
+        private readonly ShaderNode<T> _value;
 
-        public DeclareValue(GpuValue<T> theValue = null): base("output", null,"outputParam")
+        public DeclareValue(ShaderNode<T> theValue = null): base("output", null)
         {
             
-            var inputList = new List<AbstractGpuValue>();
+            var inputList = new List<AbstractShaderNode>();
             theValue ??= ConstantHelper.FromFloat<T>(0);
           
             inputList.Add(theValue);
             
             Ins = inputList;
             Setup(Ins);
-            Output = new GpuValue<T>("outputParam")
-            {
-                ParentNode = this
-            };
             _value = theValue;
         }
 

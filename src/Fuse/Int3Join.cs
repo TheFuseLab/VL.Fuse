@@ -6,18 +6,18 @@ namespace Fuse
     public class Int3Join : ShaderNode<Int3>
     {
         
-        private GpuValue<int> _x;
-        private GpuValue<int> _y;
-        private GpuValue<int> _z;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
+        private ShaderNode<int> _z;
 
-        public Int3Join(GpuValue<int> x, GpuValue<int> y, GpuValue<int> z) : base("Int3Join")
+        public Int3Join(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z) : base("Int3Join")
         {
             
             _x = x ?? new ConstantValue<int>(0);
             _y = y ?? new ConstantValue<int>(0);
             _z = z ?? new ConstantValue<int>(0);
             
-            Setup( new List<AbstractGpuValue>{_x,_y,_z});
+            Setup( new List<AbstractShaderNode>{_x,_y,_z});
         }
         
         protected override string SourceTemplate()

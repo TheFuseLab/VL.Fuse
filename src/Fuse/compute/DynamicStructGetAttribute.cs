@@ -5,14 +5,14 @@ namespace Fuse.compute
     public class DynamicStructGetAttribute<TOut> : ShaderNode<TOut>
     {
 
-        private readonly GpuValue<GpuStruct> _struct;
-        private readonly GpuValue<TOut> _member;
+        private readonly ShaderNode<GpuStruct> _struct;
+        private readonly ShaderNode<TOut> _member;
         
-        public DynamicStructGetAttribute(GpuValue<GpuStruct> theStruct, GpuValue<TOut> theMember, GpuValue<TOut> theDefault = null) : base("StructAttribute", theDefault)
+        public DynamicStructGetAttribute(ShaderNode<GpuStruct> theStruct, ShaderNode<TOut> theMember, ShaderNode<TOut> theDefault = null) : base("StructAttribute", theDefault)
         {
             _struct = theStruct;
             _member = theMember;
-            Setup(new List<AbstractGpuValue>{theStruct});
+            Setup(new List<AbstractShaderNode>{theStruct});
         }
 
         protected override string SourceTemplate()

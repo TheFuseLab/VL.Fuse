@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.927" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0927-g0472b252e1" />
+<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.945" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8-0945-g589cc33c6e" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Compute" CanvasType="FullCategory">
       <!--
@@ -40,7 +40,7 @@
               </p:NodeReference>
               <Pin Id="Im5682oAWAvNJZ0qcmxJUX" Name="Dispatcher" Kind="InputPin" />
               <Pin Id="S3t5n9JRBPANT0WPNkR0an" Name="Thread Group Size" Kind="InputPin" />
-              <Pin Id="SIAJLzRdYDiN8STIX4g8fF" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="SIAJLzRdYDiN8STIX4g8fF" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="K4IqRiTNlkvMXlKz6UcNxf" Name="Enabled" Kind="InputPin" />
               <Pin Id="MdL306BIvGBNw767JVTnj8" Name="Dispatcher" Kind="OutputPin" />
               <Pin Id="Vr3LcafO7rvOKALseCn27g" Name="Last Error" Kind="OutputPin" />
@@ -431,7 +431,7 @@
           <Link Id="FjxFwlmbDslNe2WcTYh6SD" Ids="APYsGfRJFTxQBztQqt1O38,C5Q1PXfqzi4Pc8780VY8bx" />
           <Slot Id="UgFrcaRQDWZLoS7FfuLhdY" Name="Pre Graph">
             <p:TypeAnnotation p:Type="TypeReference">
-              <Choice Kind="TypeFlag" Name="GpuValue" />
+              <Choice Kind="TypeFlag" Name="ShaderNode" />
               <p:TypeArguments>
                 <TypeReference>
                   <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -2048,7 +2048,7 @@
                 <Choice Kind="OperationCallFlag" Name="Create" />
               </p:NodeReference>
               <Pin Id="PkPOufLbuMzOXuR4VlAUtt" Name="member" Kind="InputPin" />
-              <Pin Id="TTKVD34gsbyO8r3iqvA5a4" Name="GpuValueReference" Kind="InputPin" />
+              <Pin Id="TTKVD34gsbyO8r3iqvA5a4" Name="ShaderNodeReference" Kind="InputPin" />
               <Pin Id="OWcTx8troD5M5BF14y365l" Name="Output" Kind="StateOutputPin" />
             </Node>
             <ControlPoint Id="IG6mEIvYRPuLP7Aq53eg1r" Bounds="661,286" />
@@ -2072,16 +2072,6 @@
               <Pin Id="IbD2pxmk8csPADh2K4NRJr" Name="The In" Kind="InputPin" />
               <Pin Id="J27xPToStcCL00krgnshSv" Name="Output" Kind="StateOutputPin" />
             </Node>
-            <Node Bounds="459,369,59,26" Id="AiBelCH1xDDMAkAqddam9Y">
-              <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ShaderNode" LastSymbolSource="Fuse.Core.Base.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <CategoryReference Kind="ClassType" Name="ShaderNode" />
-                <Choice Kind="OperationCallFlag" Name="Output" />
-              </p:NodeReference>
-              <Pin Id="IVvyU7gYWlZOd0pAtETInu" Name="Input" Kind="StateInputPin" />
-              <Pin Id="C26doPIa8MlPtTOasgVMnL" Name="Output (this)" Kind="StateOutputPin" />
-              <Pin Id="Id46GJ13fwtM7KbPzYUuPM" Name="Output" Kind="OutputPin" />
-            </Node>
             <Pad Id="QcSjG7ob1ZcNTavgx37mff" SlotId="NZnZRjbNHa8Lk64yz8CCh9" Bounds="516,517" />
             <Pad Id="KxOmJt95ZmLQVw5jpMuinD" SlotId="NZnZRjbNHa8Lk64yz8CCh9" Bounds="1284,396" />
             <ControlPoint Id="VR1oDjroU2RLetWr55X9pt" Bounds="1284,450" />
@@ -2093,6 +2083,7 @@
               <p:Value />
             </Pad>
             <ControlPoint Id="TTaOtAxnlGrOrQsuh5ZY4a" Bounds="1425,447" />
+            <ControlPoint Id="RGMc6gYbiv3NCkf520iriu" Bounds="460,424" />
           </Canvas>
           <ProcessDefinition Id="Tn24rg81HyxM4LbcVfshJB" HasStateOut="true">
             <Fragment Id="JOBXNN1VBi6NYlCmOEXid3" Patch="HXTLowuQ73uPlKSUyjEXkc" Enabled="true" />
@@ -2122,11 +2113,9 @@
           </Patch>
           <Link Id="SLG3D4AVb68MJwxyAeRXZe" Ids="RDYPPJRr1GrPc8JaphqI7J,HcTjNcrIBTBLFLgiSDBgM6" />
           <Link Id="MKhfRQt5FvIMpwTxbwdyJu" Ids="OWcTx8troD5M5BF14y365l,DRRcwAxT9YOOTrk4wLCzjd" />
-          <Link Id="A8qSDZc6slPLhaQmcdwdZl" Ids="J27xPToStcCL00krgnshSv,IVvyU7gYWlZOd0pAtETInu" />
-          <Link Id="PuhbYQvCju6Ok7TP8Mg6Uz" Ids="Id46GJ13fwtM7KbPzYUuPM,KKwKTcItvFFNCHNrKa9eHe" />
           <Slot Id="NZnZRjbNHa8Lk64yz8CCh9" Name="Output">
             <p:TypeAnnotation p:Type="TypeReference">
-              <Choice Kind="TypeFlag" Name="GpuValue" />
+              <Choice Kind="TypeFlag" Name="ShaderNode" />
               <p:TypeArguments>
                 <TypeReference>
                   <Choice Kind="TypeFlag" Name="T" />
@@ -2149,6 +2138,7 @@
           <Link Id="VKwvUzXRJAaLeHdXoEVqeu" Ids="TTaOtAxnlGrOrQsuh5ZY4a,Dqpe3vFbdGCNWDKn8M3iNf" IsHidden="true" />
           <Link Id="G3rQ2eceADENwHWIAiWRFY" Ids="LRQU9RFjbSoOLL8Xg3C3pu,TTaOtAxnlGrOrQsuh5ZY4a" />
           <Patch Id="SUU6FmZHpb6Llu0pGwImVp" Name="GetAttributeReference" />
+          <Link Id="DJtwtFVZme8QNO5PLvuxdg" Ids="J27xPToStcCL00krgnshSv,RGMc6gYbiv3NCkf520iriu,KKwKTcItvFFNCHNrKa9eHe" />
         </Patch>
       </Node>
       <Canvas Id="ELWzy71RwdSLg6EYVb85ia" Name="Internal" Position="210,218">
@@ -2294,7 +2284,7 @@
                 <Node Bounds="530,1320,75,26" Id="SSLLwEbg8jqOR2Gba9jxxk">
                   <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.IMember" LastSymbolSource="Fuse.Core.Base.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                    <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
                     <CategoryReference Kind="InterfaceTypeFlag" Name="IMember" NeedsToBeDirectParent="true" />
                   </p:NodeReference>
                   <Pin Id="HqGvbmuy44HMyiAnhFiJkX" Name="Input" Kind="StateInputPin" />
@@ -3100,7 +3090,7 @@
             <Pad Id="Ey64m1ONBUQLjfp7e4PQeH" SlotId="Jm0vUjh1Vq9MyLtJzYjRnn" Bounds="741,533" />
             <Overlay Id="FZFYDLSKVoRO3LYRf3CqW9" Name="Create" Bounds="487,324,346,148" />
             <Overlay Id="Hd88Z4RMZQQPgzrZn1MY0Y" Name="GetMember" Bounds="487,495,128,124" />
-            <Overlay Id="HN2rcMmBvJCQOa84ws3n4c" Name="GetGpuValueReference" Bounds="623,495,238,128" />
+            <Overlay Id="HN2rcMmBvJCQOa84ws3n4c" Name="GetShaderNodeReference" Bounds="623,495,238,128" />
             <Pad Id="Ac75jo4byrwLVzREjmR7QO" SlotId="AAjapsI5GwUPRuKFgXDiiY" Bounds="971,533" />
             <Overlay Id="NHerDARCyZzLT8Jc6VNfQm" Name="GetAttributeGraph" Bounds="871,493,188,129" />
             <Overlay Id="JY6kP293jfdPL7keWauNSu" Name="SetShaderGraph" Bounds="873,328,159,146" />
@@ -3129,13 +3119,13 @@
           <Link Id="JOAm3R9TBWdPnLGCuPnkU5" Ids="FPwPhAikRZvOHRv6dm4T32,Ig3GhEoApzHNmv6zw1OEfm" IsHidden="true" />
           <Link Id="EiAXbiHDI9DOpxNS6CpoHd" Ids="Ig3GhEoApzHNmv6zw1OEfm,AmAO22cSZDyL9x9a4Sd7eX" />
           <Link Id="KUu8Sw8oLpmNwSqeyh8GU2" Ids="U1FzLpB0ptmLnTwdDumlWc,UR5D9HmRucQLBwgnRo4yAF" IsHidden="true" />
-          <Slot Id="Jm0vUjh1Vq9MyLtJzYjRnn" Name="GpuValueReference" />
+          <Slot Id="Jm0vUjh1Vq9MyLtJzYjRnn" Name="ShaderNodeReference" />
           <Link Id="CXaXTHEJzEvPxlh1dKC0Zt" Ids="UR5D9HmRucQLBwgnRo4yAF,UXS86qeWKPQNVof89bzybk" />
           <Link Id="A2OGU9k0dUBQKbHB1zqPkS" Ids="NMLE089PiH7O2UaBflli4g,UNuyLzrtJi9MfOZxi2HpiB" IsHidden="true" />
           <Link Id="VsfrD4w5EkLQIzrn4paWLo" Ids="RjLXiBUnrsFMt3DZHrrIeo,B4r1MgJiAVwPaueJaGm4Sp" IsHidden="true" />
           <Slot Id="AAjapsI5GwUPRuKFgXDiiY" Name="shaderGraph">
             <p:TypeAnnotation p:Type="TypeReference">
-              <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+              <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
             </p:TypeAnnotation>
           </Slot>
           <Link Id="HcXSHXwYFMmNJcwbzKLmVN" Ids="RGbpapgYrORMBW8Zqahbjf,GkCrkpJmsT5MAZ39epI6Fu" IsHidden="true" />
@@ -3146,7 +3136,7 @@
           <Link Id="MoHCj4k7kCVNBGEz2xlzJ6" Ids="Ac75jo4byrwLVzREjmR7QO,RGbpapgYrORMBW8Zqahbjf" />
           <Slot Id="HqajMBWMWKiP0mdMhFcM4Z" Name="doubleBufferedGraph">
             <p:TypeAnnotation p:Type="TypeReference">
-              <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+              <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
             </p:TypeAnnotation>
           </Slot>
           <Link Id="Ut8upi3YVJZNxHSqM1BNnU" Ids="Tc9rRGOrx96OtlRAMHmTUH,UpP0SCObMkfL15BK7zJgyF" IsHidden="true" />
@@ -3159,7 +3149,7 @@
                 <Choice Kind="TypeFlag" Name="IMember" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="U1FzLpB0ptmLnTwdDumlWc" Name="GpuValueReference" Kind="InputPin">
+            <Pin Id="U1FzLpB0ptmLnTwdDumlWc" Name="ShaderNodeReference" Kind="InputPin">
               <p:TypeAnnotation LastCategoryFullName="Fuse" LastSymbolSource="Fuse.dll">
                 <Choice Kind="TypeFlag" Name="IReferenceNode" />
               </p:TypeAnnotation>
@@ -3168,8 +3158,8 @@
           <Patch Id="GfPT9mHNZssNbDOXvu4whu" Name="GetMember">
             <Pin Id="UNuyLzrtJi9MfOZxi2HpiB" Name="member" Kind="OutputPin" />
           </Patch>
-          <Patch Id="KFchxqG78qcNLpal4dLVEj" Name="GetGpuValueReference">
-            <Pin Id="B4r1MgJiAVwPaueJaGm4Sp" Name="GpuValueReference" Kind="OutputPin" />
+          <Patch Id="KFchxqG78qcNLpal4dLVEj" Name="GetShaderNodeReference">
+            <Pin Id="B4r1MgJiAVwPaueJaGm4Sp" Name="ShaderNodeReference" Kind="OutputPin" />
           </Patch>
           <Patch Id="EOrQaY3xVjPP7W3iV7DYZx" Name="GetAttributeGraph">
             <Pin Id="GkCrkpJmsT5MAZ39epI6Fu" Name="shaderGraph" Kind="OutputPin" />
@@ -3177,7 +3167,7 @@
           <Patch Id="UV1jt0fZL4oMQDn8HJm9y5" Name="SetShaderGraph">
             <Pin Id="FmjJQEt14JZMFUXG6uQEfr" Name="shaderGraph" Kind="InputPin" />
           </Patch>
-          <Patch Id="BH1PZvjxSWjQCMN4WOaJrM" Name="GetGpuValueDoubleReference" />
+          <Patch Id="BH1PZvjxSWjQCMN4WOaJrM" Name="GetShaderNodeDoubleReference" />
           <Patch Id="QziyeRb8FtfQTixxbIcanW" Name="SetDoubleBufferedGraph">
             <Pin Id="JxEkG85xc49POgvLCeJ0zA" Name="doubleBufferedGraph" Kind="InputPin" />
           </Patch>
@@ -3508,11 +3498,11 @@
                           <p:NodeReference>
                             <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                             <CategoryReference Kind="ClassType" Name="AttributeReference" />
-                            <Choice Kind="OperationCallFlag" Name="GetGpuValueReference" />
+                            <Choice Kind="OperationCallFlag" Name="GetShaderNodeReference" />
                           </p:NodeReference>
                           <Pin Id="SiiasrwztriN8WcbTrAc9H" Name="Input" Kind="StateInputPin" />
                           <Pin Id="F19hIOCBPqGPckcWQTvri3" Name="Output" Kind="StateOutputPin" />
-                          <Pin Id="U6YbJrkLr7EMxTVOnCz2HC" Name="GpuValueReference" Kind="OutputPin" />
+                          <Pin Id="U6YbJrkLr7EMxTVOnCz2HC" Name="ShaderNodeReference" Kind="OutputPin" />
                         </Node>
                         <Node Bounds="356,1014,134,124" Id="HQPn3uctw8uOlLxVezrl9j">
                           <p:NodeReference LastCategoryFullName="Control" LastSymbolSource="VL.CoreLib.Experimental.vl">
@@ -4007,7 +3997,7 @@
                 <Node Bounds="346,701,75,26" Id="KHiFxwWhwapLDp40peOEJ2">
                   <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.IMember" LastSymbolSource="Fuse.Core.Base.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                    <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
                     <CategoryReference Kind="InterfaceTypeFlag" Name="IMember" NeedsToBeDirectParent="true" />
                   </p:NodeReference>
                   <Pin Id="HTVugX8L8T5MQTuQqXTgu9" Name="Input" Kind="StateInputPin" />
@@ -4101,7 +4091,7 @@
               <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.Struct (Spectral)" LastSymbolSource="Fuse.Core.Base.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <CategoryReference Kind="ClassType" Name="Struct (Spectral)" />
-                <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
               </p:NodeReference>
               <Pin Id="Bj0zoP2kyGnOPsuVQqKGDz" Name="Input" Kind="StateInputPin" />
               <Pin Id="ArOfwIWoQixNTlz0iN9sIl" Name="Output" Kind="StateOutputPin" />
@@ -4148,20 +4138,10 @@
               </p:NodeReference>
               <Pin Id="RUdw2FogIkPLGUUwF7k5wk" Name="Output" Kind="StateOutputPin" />
             </Node>
-            <Node Bounds="334,392,59,26" Id="UsIk2W7NIVLOK7TeorgnIT">
-              <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ShaderNode" LastSymbolSource="Fuse.Core.Base.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <CategoryReference Kind="ClassType" Name="ShaderNode" />
-                <Choice Kind="OperationCallFlag" Name="Output" />
-              </p:NodeReference>
-              <Pin Id="QUlVOX5uaO3M3pX7yrjxiL" Name="Input" Kind="StateInputPin" />
-              <Pin Id="KynNOtn6vncNll2stSO9Eb" Name="Output (this)" Kind="StateOutputPin" />
-              <Pin Id="Hyh1fNoKqgJLRrFjIQYgPB" Name="Output" Kind="OutputPin" />
-            </Node>
             <Node Bounds="388,468,122,19" Id="D4HNEZB8oleMk9YRLnjnqq">
               <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType" LastSymbolSource="Fuse.Core.Base.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="GetElementByGpuValue (StructureBuffer)" />
+                <Choice Kind="ProcessAppFlag" Name="GetElementByShaderNode (StructureBuffer)" />
               </p:NodeReference>
               <Pin Id="DgdjDY3MoV6O8mbgtTqSUC" Name="Structured Buffer" Kind="InputPin" />
               <Pin Id="NSKGGY2Ax8YLJTSttbHxtZ" Name="Index" Kind="InputPin" />
@@ -4201,7 +4181,7 @@
             <Node Bounds="493,1305,122,19" Id="OBFmy4IQKwBLDFM40TrIpP">
               <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType" LastSymbolSource="Fuse.Core.Base.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="GetElementByGpuValue (StructureBuffer)" />
+                <Choice Kind="ProcessAppFlag" Name="GetElementByShaderNode (StructureBuffer)" />
               </p:NodeReference>
               <Pin Id="D58EkryM9MTNK2Ej5m3Zqo" Name="Structured Buffer" Kind="InputPin" />
               <Pin Id="Jh9tzTTNVurOn0RFoJRVMO" Name="Index" Kind="InputPin" />
@@ -4350,7 +4330,7 @@
             <Node Bounds="991,1609,120,19" Id="L1W9eGlRBqLLi8i8KYPEmI">
               <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType" LastSymbolSource="Fuse.Core.Base.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="SetElementByGpuValue (StructuredBuffer)" />
+                <Choice Kind="ProcessAppFlag" Name="SetElementByShaderNode (StructuredBuffer)" />
               </p:NodeReference>
               <Pin Id="NYLYsKBXOUmM9uLM9ZvJKW" Name="Structured Buffer" Kind="InputPin" />
               <Pin Id="TyRpivzLgTvQV2Z0fAZLZS" Name="Value" Kind="InputPin" />
@@ -4382,6 +4362,7 @@
             <Pad Id="VqhEx4Q56UPM4S3voP1NBX" SlotId="N8DiOlJg5MKMDLDpcVZQhT" Bounds="448,430" />
             <Pad Id="NjZXxQKZiyIO40hQckoy9r" SlotId="N8DiOlJg5MKMDLDpcVZQhT" Bounds="151,1264" />
             <Overlay Id="NSHzjDb3cAAOa5fcjkCdMl" Name="WriteToIndex(IGpuResourceBinder)" Bounds="896,1161,362,541" />
+            <ControlPoint Id="J3bkUzLHl4JLAgHRzLEI2M" Bounds="388,363" />
           </Canvas>
           <ProcessDefinition Id="AO4EubEhrZ2O5DaDRnUnkG" IsHidden="true">
             <Fragment Id="UEJcemDG2wVPqZvd14pOz3" Patch="HFacxMM7rILPwWLw5SunyE" Enabled="true" />
@@ -4405,7 +4386,7 @@
                   <Choice Kind="TypeFlag" Name="String" />
                 </TypeReference>
                 <TypeReference>
-                  <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                  <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                 </TypeReference>
               </p:TypeArguments>
             </p:TypeAnnotation>
@@ -4420,7 +4401,7 @@
                   <Choice Kind="TypeFlag" Name="String" />
                 </TypeReference>
                 <TypeReference>
-                  <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                  <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                 </TypeReference>
               </p:TypeArguments>
             </p:TypeAnnotation>
@@ -4443,7 +4424,6 @@
           <Link Id="O0dcHShy13hNP6rNxL3RU4" Ids="EVjeKO7H0NgNKH9I2MKfQk,BH4drWUtxVbNHaF098UVUN" />
           <Link Id="CqPY1FiIdqvPrEhjfGex4r" Ids="BH4drWUtxVbNHaF098UVUN,RQzbDrGI1OJO0ch7A5gKJ2" />
           <Link Id="TArAeiMJBKgOPeH2bhw4nq" Ids="RUdw2FogIkPLGUUwF7k5wk,N2QnTMozA0OLrxG0BRHqP3" />
-          <Link Id="C4fhQuq7rMwLb1mGe2PKbg" Ids="Hyh1fNoKqgJLRrFjIQYgPB,LnBPLMGcie3OoAzSbQzP30" />
           <Link Id="NbDqgyGj03hMRwbeamkgMu" Ids="LnBPLMGcie3OoAzSbQzP30,DgdjDY3MoV6O8mbgtTqSUC" />
           <Link Id="UE6fPegMewOP5JrJLkqzfH" Ids="F68dav7AU6YMuUevgncflH,Fh4SdvtMWAhLUQf2xLuWvW" IsFeedback="true" />
           <Link Id="MaQ3M5Jry5XOyqQAle7V90" Ids="BJpHzqUMegwMYBAeof89LX,F68dav7AU6YMuUevgncflH" />
@@ -4490,7 +4470,6 @@
           <Link Id="Idre3pn3DciLCHokHtAW44" Ids="KKoAZsBCZt9NCms6u7razS,G2zyI3zZ6cXOdoGT2ssl5y" />
           <Link Id="JtughT5eimLNOZZraQwG5Q" Ids="CQnuQGywrb3NUqedU5F3XI,OG1OJs7cCG0OqK1JEsNKX8" />
           <Link Id="K2n5Fgu4ncFMtmvsGl7iQn" Ids="Ezie3gcO5WFNkM0KoWxhnN,VIXbBGIteXoMY3D7ldQDK8" />
-          <Link Id="EgPyXJjqL4PMZNCCrynO0c" Ids="Ezie3gcO5WFNkM0KoWxhnN,QUlVOX5uaO3M3pX7yrjxiL" />
           <Link Id="FRlW4DIUCgAOvyEvFSinTF" Ids="HJEikC2bZCaMmszkyKvsaN,FA6bbMuLWPGOiGoo3aRi1e" />
           <Link Id="Hk3LoGiUrqoOb9dJkL6euN" Ids="MocSOBvxXZdPjebQ9sMXb1,VR8MYycmYXBOouj0ag8zFL" />
           <Link Id="PRU3DnX36ZzQCN294i03s6" Ids="KvN08BHIpCVLXajuysfk6r,EZoPiuxtvfoLnOWIWjCk32,DnRxeZiTuZbLTn8fknsoCH" />
@@ -4514,7 +4493,7 @@
           <Slot Id="N8DiOlJg5MKMDLDpcVZQhT" Name="index" />
           <Link Id="C18HZBgHh3DPi9J2olmRuy" Ids="NjZXxQKZiyIO40hQckoy9r,T5I850wbzW8MPlXFDwPBCK" />
           <Link Id="MuPixlDPAD9NfGnsZrUhe7" Ids="ISAR14wpoJCPVpN2IMofqT,LpGqsm9vBjyPw96lGTaipt" />
-          <Patch Id="HFacxMM7rILPwWLw5SunyE" Name="Create" ParticipatingElements="UsIk2W7NIVLOK7TeorgnIT,HgAEH5yEkpiMjIZVzDhU2s">
+          <Patch Id="HFacxMM7rILPwWLw5SunyE" Name="Create" ParticipatingElements="HgAEH5yEkpiMjIZVzDhU2s">
             <Pin Id="MQYRDkyLUrCQPaYrWwrQKj" Name="Resource" Kind="InputPin" />
             <Pin Id="UstkldfNnnOO3z5wnDNW8b" Name="Index" Kind="InputPin" />
           </Patch>
@@ -4537,6 +4516,7 @@
             <Pin Id="SfAUkjZ2Ab6PssITB6sv08" Name="ShaderGraph" Kind="OutputPin" />
             <Pin Id="CRZIcCHwyDcQWMb39Etvyy" Name="Index" Kind="InputPin" />
           </Patch>
+          <Link Id="AKmifz9RstJMzzSzb1iE3v" Ids="Ezie3gcO5WFNkM0KoWxhnN,J3bkUzLHl4JLAgHRzLEI2M,LnBPLMGcie3OoAzSbQzP30" />
         </Patch>
       </Node>
       <!--
@@ -4583,7 +4563,7 @@
           <Patch Id="AVAbq6WfvmtQFhprU2hfGa" Name="WriteAttributes">
             <Pin Id="KzzhBr9fU40OnVBLYu1IuB" MergeId="367311" Name="ShaderGraph" Kind="OutputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -4600,7 +4580,7 @@
             </Pin>
             <Pin Id="BPjD9Auf44sPamk2RJhd54" MergeId="367376" Name="Output" Kind="OutputPin">
               <p:TypeAnnotation LastCategoryFullName="Fuse" LastSymbolSource="Fuse.dll">
-                <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
               </p:TypeAnnotation>
             </Pin>
           </Patch>
@@ -4608,7 +4588,7 @@
           <Patch Id="KwPgqZX7sO8Pg9DjkuMEi9" Name="WriteToIndex">
             <Pin Id="JshoD7uKoHFQLLDEfMJXWw" Name="ShaderGraph" Kind="OutputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -4618,7 +4598,7 @@
             </Pin>
             <Pin Id="QluubF1pGxuO7146fWVfUI" Name="Index" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="Integer32" />
@@ -4841,7 +4821,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="NJq6pXcfWgOLWiNo2Wm1QV" Name="Value" Kind="InputPin" />
-                    <Pin Id="UnEzjAkjELoLKC5dmRjaAe" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="UnEzjAkjELoLKC5dmRjaAe" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="MViY6xh49bWP3rmQgLgy6W" Comment="" Bounds="381,213,35,15" ShowValueBox="true" isIOBox="true" Value="1">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -5067,7 +5047,7 @@
                           <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                         </p:NodeReference>
                         <Pin Id="S7J3bC4y6WWLaKkN7Pqiu2" Name="Value" Kind="InputPin" />
-                        <Pin Id="FN0iPPZfnNJPu2vguiNDTV" Name="GpuValue" Kind="OutputPin" />
+                        <Pin Id="FN0iPPZfnNJPu2vguiNDTV" Name="ShaderNode" Kind="OutputPin" />
                       </Node>
                       <Pad Id="GMxproe2DHdL63saYbbnYW" Comment="" Bounds="732,285,35,15" ShowValueBox="true" isIOBox="true" Value="0.3333333">
                         <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -5164,7 +5144,7 @@
               <Pin Id="EXKaKxUq0l3OikVuteRZA6" Name="Center" Kind="InputPin" />
               <Pin Id="SUbzi6utLceM3LtyudTyLY" Name="Radius" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Float32" />
@@ -5366,7 +5346,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="KawUyeOWxKpP3ZaDSx74jp" Name="Value" Kind="InputPin" />
-                    <Pin Id="EyEJQVlTAfzLV1AC8xUTi2" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="EyEJQVlTAfzLV1AC8xUTi2" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Patch Id="MrVGtczjtsTQMlyDTpYDuj" Name="Create" ManuallySortedPins="true" />
                   <Patch Id="RZFYWEG9YWcPJa7iacxwyw" Name="Then" ManuallySortedPins="true" />
@@ -6613,7 +6593,7 @@
             </Pin>
             <Pin Id="F7TF0nCysWPPd0A6ItbhJ2" Name="Index" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="Int3" />
@@ -7018,7 +6998,7 @@
                 <Node Bounds="1538,799,75,26" Id="OX6sLpgljRlMuui9ixOh9X">
                   <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.IMember" LastSymbolSource="Fuse.Core.Base.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                    <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
                     <CategoryReference Kind="InterfaceTypeFlag" Name="IMember" NeedsToBeDirectParent="true" />
                   </p:NodeReference>
                   <Pin Id="PPhoxlQPARBMRSGWxkmuJ3" Name="Input" Kind="StateInputPin" />
@@ -7401,7 +7381,7 @@
                   <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.IMember" LastSymbolSource="Fuse.Core.Base.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <CategoryReference Kind="InterfaceTypeFlag" Name="IMember" />
-                    <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                    <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
                   </p:NodeReference>
                   <Pin Id="TrduKmidvrjLu6ebGMMCws" Name="Input" Kind="StateInputPin" />
                   <Pin Id="BP2X5y0qh7PNtteASK3MH6" Name="State Output" Kind="StateOutputPin" />
@@ -8209,6 +8189,16 @@
               <Pin Id="ItfM8xCTm60NflgUVtlxUW" Name="Z" Kind="InputPin" />
               <Pin Id="ITDDhRwGtEoNwH878d96VL" Name="Output" Kind="StateOutputPin" />
             </Node>
+            <Node Bounds="475,520" Id="RPftH5x3bBtPEtZUYEVlcm">
+              <p:NodeReference LastCategoryFullName="Primitive.Object" LastSymbolSource="CoreLibBasics.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="OperationCallFlag" Name="CastAs" />
+              </p:NodeReference>
+              <Pin Id="A7cZ1mOscNtL8dAwD22bWv" Name="Input" Kind="StateInputPin" />
+              <Pin Id="J6Gdim7bOIPQaL9YwegC56" Name="Default" Kind="InputPin" />
+              <Pin Id="MiwW80RzGqNNGY83hyOQfa" Name="Result" Kind="OutputPin" />
+              <Pin Id="JmZtSwNWIpSLU222ZkWP36" Name="Success" Kind="OutputPin" />
+            </Node>
           </Canvas>
           <Link Id="LsoJcgFsaORLGHj8ss4YyA" Ids="Th4izwYnjn6LftZEnetVgE,ACtuYpHZ4L3Mfq0AvOVfAq" IsHidden="true" />
           <Link Id="ExvpBylFstKNmFOqPlExTo" Ids="Ai1bng4c3OkQVQiiwhGjQP,PbhypdbkCMpNRWDXsll1gT" IsHidden="true" />
@@ -8266,7 +8256,6 @@
           <Link Id="BGM3wO5aVBxPoJQOSvUebM" Ids="S0ZACVhk3bTQIuUEyA4DsN,R33ug0OU5jsNypU7sdjnvh" />
           <Link Id="JGdtFsqGIi7L4UkXS0kN3m" Ids="JFGu5pwk63JLNQXjJeVDn9,EGivWs91A0APvlF1jOmD5k" />
           <Link Id="OConBHeerHTNGbjwtDJcVi" Ids="JkXqxif8PlKPbB6NBLi3Ii,ND8lxMwdZz1Pose2nFS6kP,AhkAW1Oxa0RPcHUV2QVy1I" />
-          <Link Id="Aow4o9sr2K0LIeglqYaLKm" Ids="DIndyHflBR2Omeom4BG6vL,JesCt6ZpQTnO7bkJugviXG" />
           <Link Id="BZaXtNq7Y1kMOPNtvKYWlz" Ids="JkXqxif8PlKPbB6NBLi3Ii,IuI2I4cMnNpM8Quo0NJndM,L9LEOpupX5hMnrJ45TBwaM" />
           <Link Id="PVfsE57lVvsNBkypJhIg9c" Ids="EAcIxZDM3rMNo8G8nv4hYM,JHrpGzKs6a5OziGFhVPnjv" />
           <Link Id="A64gAlr4dnROOYL4woLphn" Ids="Vlf1HUZsEFRP0wnGokZiqR,Ow2FnUEcbHINyCTJ6Wj11M" />
@@ -8341,6 +8330,8 @@
           <Link Id="TmGO4Bc9b2MLGdHbXWb2Gu" Ids="GO7aMAfYRDaM2ftRDvcbyJ,P1cxNG1JXH1OgILx5YmFBp" />
           <Link Id="Cjg3q3Wwi0rPskGmoHtLT0" Ids="E0vlNKHGkgwMGTvGFvcd1F,KMvr3kpzLN2Opk1h6EUjAA" />
           <Link Id="GoOG1JZs7U2Peg2uNd6gDY" Ids="VYxJeVsEXH2PMne0HhzWPg,ItfM8xCTm60NflgUVtlxUW" />
+          <Link Id="JNxedCZRfLVPrw66bvC7BD" Ids="DIndyHflBR2Omeom4BG6vL,A7cZ1mOscNtL8dAwD22bWv" />
+          <Link Id="QONWXoQonhuNxpAfQfQV2e" Ids="MiwW80RzGqNNGY83hyOQfa,JesCt6ZpQTnO7bkJugviXG" />
         </Patch>
       </Node>
       <!--
@@ -8522,16 +8513,6 @@
                   <Pin Id="SJbrSnxFHyNPcLjFysZiel" Name="Key" Kind="InputPin" />
                   <Pin Id="R0v1idA3ReUQckJGLEV4vE" Name="Output" Kind="StateOutputPin" />
                   <Pin Id="EJGbn1vaQiTNTUVtAdNwCi" Name="Item" Kind="OutputPin" />
-                </Node>
-                <Node Bounds="501,1175,59,26" Id="ATe16QsU564NM3uit6BX44">
-                  <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ShaderNode" LastSymbolSource="Fuse.Core.Base.vl">
-                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <CategoryReference Kind="ClassType" Name="ShaderNode" />
-                    <Choice Kind="OperationCallFlag" Name="Output" />
-                  </p:NodeReference>
-                  <Pin Id="GK9YXhQjRrRML9BvcidNZc" Name="Input" Kind="StateInputPin" />
-                  <Pin Id="GNfUXQ7QfkfLVOJrIB77lk" Name="Output (this)" Kind="StateOutputPin" />
-                  <Pin Id="MD3nD7wofNEO4us0MzueAQ" Name="Output" Kind="OutputPin" />
                 </Node>
                 <Node Bounds="462,1039,57,26" Id="M5nWmIZvR3ZNmGIS1acN9V">
                   <p:NodeReference LastCategoryFullName="Collections.Mutable.MutableList" LastSymbolSource="VL.Collections.vl">
@@ -8903,7 +8884,7 @@
                 <Node Bounds="1224,171,75,26" Id="H2kVDSHCZCCNS741M7iYMJ">
                   <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ComputeShader.DynamicType.IMember" LastSymbolSource="Fuse.Core.Base.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <Choice Kind="OperationCallFlag" Name="GetGpuValue" />
+                    <Choice Kind="OperationCallFlag" Name="GetShaderNode" />
                     <CategoryReference Kind="InterfaceTypeFlag" Name="IMember" NeedsToBeDirectParent="true" />
                   </p:NodeReference>
                   <Pin Id="PYDAnup1AqvOZ0cXmegMPZ" Name="Input" Kind="StateInputPin" />
@@ -8952,16 +8933,6 @@
                   <Pin Id="Qzsi61Fz7LbLjB8thb2hhp" Name="Output" Kind="StateOutputPin" />
                   <Pin Id="TzUz3FUvB9WLKUDV1JrKEL" Name="Item" Kind="OutputPin" />
                 </Node>
-                <Node Bounds="1488,365,59,26" Id="FGiwC3vqIYVLyqAXzFRDtX">
-                  <p:NodeReference LastCategoryFullName="Fuse.Core.Base.ShaderNode" LastSymbolSource="Fuse.Core.Base.vl">
-                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                    <CategoryReference Kind="ClassType" Name="ShaderNode" />
-                    <Choice Kind="OperationCallFlag" Name="Output" />
-                  </p:NodeReference>
-                  <Pin Id="QuQZouTJ244N0LM0a0y4SW" Name="Input" Kind="StateInputPin" />
-                  <Pin Id="PH3uz8ADymfN6BT64wpmyd" Name="Output (this)" Kind="StateOutputPin" />
-                  <Pin Id="KWKTS82q9sUMjYYZ8fxWHo" Name="Output" Kind="OutputPin" />
-                </Node>
                 <Node Bounds="1542,407,146,19" Id="RMPW0qbuujONzIp1tIRfvg">
                   <p:NodeReference LastCategoryFullName="Fuse.AbstractCreation" LastSymbolSource="Fuse.dll">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -8975,7 +8946,6 @@
                 <Link Id="OcnXXzxSwM9MtHQDtY8HVH" Ids="AAWCGwzkOzeLYbOuZ8kO12,PTqZK2DTRdjNWL3dWcqxba" />
                 <Link Id="MsX77B5DwxZNyRodJe07gU" Ids="OKtuGPaVjhkP8m3FF0mGYT,KHXUIpESZ7KLfjVtLP8HyV" />
                 <Link Id="CMTIRnc00MQMjGtZJpHGvM" Ids="I5USFjAc4WaNsvmfqwPN2r,AnoVgLaZxvnLCT8VDCyM9P" />
-                <Link Id="EGjya3v6hQdO56TMHN3edt" Ids="KWKTS82q9sUMjYYZ8fxWHo,IYNvThiVd6oOQ8eQABwRTE" />
                 <Link Id="D0HuhQ2aDvHNSmbaTs5ldZ" Ids="PUYUaIkDwowMtDMRMOgduO,IgmhErYPpCGN8I2r6oR4ZB" />
                 <ControlPoint Id="AQlEsBLWrsSNda6WXZRuAv" Bounds="1326,100" />
                 <Link Id="C27sXrqxvtsLQ8FrqHR3Mb" Ids="N0FdPwZaaYRNhWmgbVMWV5,AQlEsBLWrsSNda6WXZRuAv" IsHidden="true" />
@@ -9029,7 +8999,6 @@
                   <Pin Id="EqYn6KOhIXDN2Qc34Yx6DM" Name="Item" Kind="OutputPin" />
                 </Node>
                 <Link Id="AofD8Kc7Po7O6RPs0h4EGJ" Ids="TzUz3FUvB9WLKUDV1JrKEL,L7btzi5InFlMS1DyZ5eFjs" />
-                <Link Id="LokjUmTxtZiPkMpTfhucTF" Ids="EqYn6KOhIXDN2Qc34Yx6DM,QuQZouTJ244N0LM0a0y4SW" />
                 <Pad Id="GoJNDWPMT9fMOtgOjrQXKC" Comment="Index" Bounds="1546,253,35,15" ShowValueBox="true" isIOBox="true" Value="0">
                   <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                     <Choice Kind="TypeFlag" Name="Integer32" />
@@ -9039,6 +9008,7 @@
                 <Link Id="TCQASjEBXCTMQThVLvZszI" Ids="GMS7Q5amKaIMoeubZLxEEJ,N9QggkfvzSuP1QX7Zs4cDV" />
                 <Link Id="ODi2FEi6PMXNymo9Mhajsm" Ids="GMS7Q5amKaIMoeubZLxEEJ,J6rAIP2ymXvLttdcGRprti,IzCdj3gv6OOL3tethx5w7X" />
                 <ControlPoint Id="J6rAIP2ymXvLttdcGRprti" Bounds="1685,327" />
+                <Link Id="DQwCuVqxQx0MpsS7Vh4mA4" Ids="EqYn6KOhIXDN2Qc34Yx6DM,IYNvThiVd6oOQ8eQABwRTE" />
               </Patch>
             </Node>
             <Pad Id="Oe4Pqu3eFerNagOXb7qW1X" SlotId="ScmFuCAvEtNK96WuOm5yM1" Bounds="374,872">
@@ -9079,7 +9049,7 @@
                   <Choice Kind="TypeFlag" Name="String" />
                 </TypeReference>
                 <TypeReference>
-                  <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                  <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                 </TypeReference>
               </p:TypeArguments>
             </p:TypeAnnotation>
@@ -9092,7 +9062,7 @@
                   <Choice Kind="TypeFlag" Name="String" />
                 </TypeReference>
                 <TypeReference>
-                  <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                  <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                 </TypeReference>
               </p:TypeArguments>
             </p:TypeAnnotation>
@@ -9142,7 +9112,6 @@
           <Link Id="GNlY3VSCsvILKZO1xQhakA" Ids="SlX0NqV3DPHMjt8dlZDOQ5,JoaFP2RLmGGNtOE4tB7u9V" />
           <Link Id="PHeXH0hyODXMa7TSgdPI8I" Ids="Tk3ihGraydZNJb5jHs4oyG,SJbrSnxFHyNPcLjFysZiel" />
           <Link Id="IkELCAyrTdyOLUbpll2r59" Ids="Oe4Pqu3eFerNagOXb7qW1X,RFK1AoaXpE8NwzcWgVensD" />
-          <Link Id="Lo9bO0Nu1OzOxPmraXAe6j" Ids="MD3nD7wofNEO4us0MzueAQ,TSsAlLJL8JOO8At4P4GiSd" />
           <Link Id="S5ucOUXDEYOOz8t8uRx42Q" Ids="Eaac1g4KlZ5Obwf0yiAhm7,JGovt8eFsbPPGXuH0Ws5SG" />
           <Link Id="UAgVnx7SuJbLrX5819GWLh" Ids="JGovt8eFsbPPGXuH0Ws5SG,Hn0edjlQxHcQZ4hXdGJEKu" />
           <Link Id="HKphKdtQoUhOpvDnZi16gn" Ids="TFK3AWEAxW0Mz89y6ctPWq,OYKOP3RP2QePf1B6XeyWRM" />
@@ -9155,7 +9124,6 @@
           <Link Id="NTM29unqPSKNxtFDR4pfn1" Ids="FCaBiNYKbBQO50GqtFw94o,OjaltOAfcLjMXa6rhoui4P" />
           <Link Id="TH6tibtpZwVMoNNtQE62eC" Ids="EJGbn1vaQiTNTUVtAdNwCi,VpClKCBhW6iNe2GvyXv82G" />
           <Link Id="HrTA25RBsRPPrBUOkDlKj4" Ids="EJGbn1vaQiTNTUVtAdNwCi,AxU5exv6R1rOL7oVSXyvhg" />
-          <Link Id="HsedBQfeVdtQKuaevbEkDi" Ids="BsIAULcReQfNY4quQmo5He,GK9YXhQjRrRML9BvcidNZc" />
           <Link Id="SE0YtrygR1vNeLVnjuF56C" Ids="KcQaiA3bzm1MmeSOIyEXzw,AKS5IOyQezUNy6eaZkZswv" />
           <Link Id="JzJqE3Ody3cQTcybdQRJsv" Ids="NQJ9JcnOCtdM00xpaF0yhV,JwY4PZe8IbFLRx0xzs1bt1" />
           <Link Id="OY90oU2k9GbPjPxGy7KwNh" Ids="CsyfUrDvGu5PS4J9etzHtQ,EBYYYP8DrogLwvVx9SBy8a" />
@@ -9180,6 +9148,7 @@
           <Patch Id="K31EyLqnQSoNZUku8FTLsw" Name="UpdateResource">
             <Pin Id="ARq9A44SJkDPdMTuDLdwV7" Name="Resource" Kind="InputPin" />
           </Patch>
+          <Link Id="RBzqZDaNi0PLOQgKnH3HiC" Ids="BsIAULcReQfNY4quQmo5He,TSsAlLJL8JOO8At4P4GiSd" />
         </Patch>
       </Node>
       <!--
@@ -9872,7 +9841,7 @@
                         <Choice Kind="TypeFlag" Name="String" />
                       </TypeReference>
                       <TypeReference>
-                        <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                        <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                       </TypeReference>
                     </p:TypeArguments>
                   </p:TypeAnnotation>
@@ -9946,7 +9915,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="NjDIMDK2wlIPsLoMa0tmQd" Name="Value" Kind="InputPin" />
-                <Pin Id="QBX1fMqTXp7OYr9oURB0zM" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="QBX1fMqTXp7OYr9oURB0zM" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Pad Id="TfYq5eP8EK4PYV7ai66xB6" Comment="" Bounds="339,382,35,15" ShowValueBox="true" isIOBox="true" Value="0.5">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -9970,7 +9939,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="U1kLJrYmQaHNmkNv2ggq6t" Name="Value" Kind="InputPin" />
-                <Pin Id="ACb0E7b7N8bNkwfLzjVJEg" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="ACb0E7b7N8bNkwfLzjVJEg" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Node Bounds="263,361,25,19" Id="Dou9YEY8XmVLqZmeyiUdmk">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastSymbolSource="Fuse.Core.Math.vl">
@@ -9989,7 +9958,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="L0hP0TKBFe7LqcEojvxVaw" Name="Value" Kind="InputPin" />
-                <Pin Id="GkRlwWuGBsoMpB7MEo6B8f" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="GkRlwWuGBsoMpB7MEo6B8f" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Pad Id="SwqpcE6RF2ONu0Szlb7Vxd" Comment="" Bounds="341,278,35,28" ShowValueBox="true" isIOBox="true" Value="0.5, 0.5">
                 <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
@@ -10078,9 +10047,9 @@
               <Node Bounds="1205,344,77,19" Id="SuM4ZYlUvS4OnD2n7aOIwU">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                 </p:NodeReference>
-                <Pin Id="UsUoYJNsDUNPA7PsgOjchz" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="UsUoYJNsDUNPA7PsgOjchz" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="DrL7VFyz0cPOB310kw1AX1" Name="Default" Kind="InputPin" />
                 <Pin Id="IXQHdxalP1bNLhVTxEY3NR" Name="Output" Kind="OutputPin" />
               </Node>
@@ -10218,7 +10187,7 @@
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                   <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
                 </p:NodeReference>
-                <Pin Id="G8E4W4jAbZcPTah8er45Kt" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="G8E4W4jAbZcPTah8er45Kt" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="FiBFVxQuqOOOQ6S1M4kt57" Name="The Value" Kind="InputPin" />
                 <Pin Id="CK5Q15fKSh6OO91bnetQLL" Name="Output" Kind="OutputPin" />
               </Node>
@@ -10295,7 +10264,7 @@
               <Pin Id="PpNLj5C6N0RPJwnyPb7ny7" Name="Position" Kind="InputPin" />
               <Pin Id="Te2do41fBizOxaquMMLMJv" Name="Size" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Float32" />
@@ -10305,7 +10274,7 @@
               </Pin>
               <Pin Id="DzKisuNluK6OwmK09P4nwB" Name="Color" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -10315,7 +10284,7 @@
               </Pin>
               <Pin Id="KfbNyrnqZM3K9pawqIuZ3e" Name="Skip" Kind="InputPin" DefaultValue="False">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Boolean" />
@@ -10326,7 +10295,7 @@
               <Pin Id="Oyeh7T0yEbaPNgBpNTU8l0" Name="ColorTarget" Kind="InputPin" />
               <Pin Id="CQLrjPnTn7mPoLVNeVPBx0" Name="Clip" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Float32" />
@@ -10402,9 +10371,9 @@
               <Node Bounds="1000,192,77,19" Id="T9gnsZ3wZXHN8cq6KbSSRK">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                 </p:NodeReference>
-                <Pin Id="Dqa4jcQ4Ff4QZTtKEguzwc" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="Dqa4jcQ4Ff4QZTtKEguzwc" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="GM9IbLcff4MP8scHhfTRcw" Name="Default" Kind="InputPin" />
                 <Pin Id="ENPuwOyt0raN5d80IuA4fg" Name="Output" Kind="OutputPin" />
               </Node>
@@ -10596,7 +10565,7 @@
               <Pin Id="IFI0M8XItksNNduQ9wWnkF" Name="Position" Kind="InputPin" />
               <Pin Id="PGVInSVyar1N0VuIKxs6yY" Name="Target" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -10606,7 +10575,7 @@
               </Pin>
               <Pin Id="UlK2ncDRSpuP3lyZhmlyvJ" Name="Color" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -10616,7 +10585,7 @@
               </Pin>
               <Pin Id="EDrNaysdytJMxKV5Z8dMF1" Name="Skip" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Boolean" />
@@ -10681,9 +10650,9 @@
               <Node Bounds="822,205,77,19" Id="HlnFaTeXI3RP4N7VahAZmV">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                 </p:NodeReference>
-                <Pin Id="K1jFZDYph6bNrkEf81qEkv" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="K1jFZDYph6bNrkEf81qEkv" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="AQOn0ioPlBrPmYs5vkhsLw" Name="Default" Kind="InputPin" />
                 <Pin Id="BXmF7p2XNytLUDwHiJ5cYs" Name="Output" Kind="OutputPin" />
               </Node>
@@ -10807,7 +10776,7 @@
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                   <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
                 </p:NodeReference>
-                <Pin Id="VgQ1N853bHLMbg63tWnDyI" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="VgQ1N853bHLMbg63tWnDyI" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="DDZBoVjxFPHPxOU7gHtv6c" Name="The Value" Kind="InputPin" />
                 <Pin Id="DqF7fI7YcCrNy10tmrUZqh" Name="Output" Kind="OutputPin" />
               </Node>
@@ -10871,7 +10840,7 @@
               <Pin Id="UULk0pGgyuYLhOa28rukPo" Name="Position" Kind="InputPin" />
               <Pin Id="K9j7iLX8W89MF1yFS3MOrC" Name="Color" Kind="InputPin" DefaultValue="1, 1, 1, 1">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -10881,7 +10850,7 @@
               </Pin>
               <Pin Id="KR5Zq0CWBFdLyXtvxgOqiv" Name="Skip" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Boolean" />
@@ -11904,7 +11873,7 @@
             <Patch Id="Plb8v670GGoMYLlTcFi4je" Name="Update" ManuallySortedPins="true">
               <Pin Id="Tps4XCd1bA6PZ30uoBZBRc" Name="Position" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -11914,7 +11883,7 @@
               </Pin>
               <Pin Id="MLNlyyLcVN6Psd7ttbwsWq" Name="Size" Kind="InputPin" DefaultValue="0.01">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Float32" />
@@ -11924,7 +11893,7 @@
               </Pin>
               <Pin Id="LGAKyfsfNCpOLWFjscHuUi" Name="DiffuseGpu" Kind="InputPin" Visibility="Optional">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -12524,9 +12493,9 @@
               <Node Bounds="651,890,77,19" Id="DjmeVNRNE9pLaNtfCuXpaN">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                 </p:NodeReference>
-                <Pin Id="D4tbChRUcrcNwHSwHTaGlb" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="D4tbChRUcrcNwHSwHTaGlb" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="U5WuQiiBs0uMiOXgBAZsgQ" Name="Default" Kind="InputPin" />
                 <Pin Id="Q30OvyqriQcLhrawERMOpR" Name="Output" Kind="OutputPin" />
               </Node>
@@ -13447,7 +13416,7 @@
               <Pin Id="VA7Dul109VoNHB0ULRxu4G" Name="Mesh" Kind="InputPin" />
               <Pin Id="PuAsEIFFxN4N2hW0ifLImY" Name="Position" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -13460,7 +13429,7 @@
               <Pin Id="IiMLRqfI9yDOg32SgHkI8e" Name="AxisZ" Kind="InputPin" />
               <Pin Id="RUPApFsnWcGNtQqUDL1Jbr" Name="Size3" Kind="InputPin" DefaultValue="0.01">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -13470,7 +13439,7 @@
               </Pin>
               <Pin Id="JhawX0SFc8XPrZGxIEW1tc" Name="DiffuseGpu" Kind="InputPin" Visibility="Optional">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -13579,7 +13548,7 @@
                       <Choice Kind="TypeFlag" Name="String" />
                     </TypeReference>
                     <TypeReference>
-                      <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                      <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                     </TypeReference>
                   </p:TypeArguments>
                 </p:TypeAnnotation>
@@ -13604,7 +13573,7 @@
                 <Choice Kind="TypeFlag" Name="Spread" />
                 <p:TypeArguments>
                   <TypeReference>
-                    <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                    <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                   </TypeReference>
                 </p:TypeArguments>
               </p:TypeAnnotation>
@@ -14201,9 +14170,9 @@
               <Node Bounds="651,890,77,19" Id="T96D3i7XYcsNvJSecFm7bY">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                 </p:NodeReference>
-                <Pin Id="PrFSwtGkvQEN4zKFZGeSUh" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="PrFSwtGkvQEN4zKFZGeSUh" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="HBpyUVmSEIfLQZ8j0Ns5qc" Name="Default" Kind="InputPin" />
                 <Pin Id="AfZEW3CTzJsNjsOM8X0ERU" Name="Output" Kind="OutputPin" />
               </Node>
@@ -14806,7 +14775,7 @@
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                   <Choice Kind="ProcessAppFlag" Name="ToShaderFX" />
                 </p:NodeReference>
-                <Pin Id="QtHLa0pU8L7O50gM9YZuR0" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="QtHLa0pU8L7O50gM9YZuR0" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="DJuFOTs42LiM1O7mm3Vssj" Name="Output" Kind="OutputPin" />
                 <Pin Id="DSxuAuCOLdhQSVChInIjMq" Name="Original Shader Source" Kind="OutputPin" />
                 <Pin Id="UtAhNze59L2QBhbRxLTkMI" Name="Shader Code" Kind="OutputPin" />
@@ -15135,7 +15104,7 @@
               <Pin Id="UvrShQqkDSYLO0nnycyi5x" Name="Mesh" Kind="InputPin" />
               <Pin Id="MTchJnGh3d0OikyvmkHyTW" Name="Position" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -15148,7 +15117,7 @@
               <Pin Id="JEMTF28K0IUPMKEKadWMBj" Name="AxisZ" Kind="InputPin" />
               <Pin Id="KSQnVDYQfixOCSrov1IQVk" Name="Size3" Kind="InputPin" DefaultValue="0.01">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -15158,7 +15127,7 @@
               </Pin>
               <Pin Id="PG9BW7rXihiLj1TawpGiBJ" Name="DiffuseGpu" Kind="InputPin" Visibility="Optional">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -15202,7 +15171,7 @@
               <Pin Id="CB60RX1577pOKpOovmByRe" Name="Mesh" Kind="InputPin" />
               <Pin Id="Dxm2REEfHpuQE1YnJyzztk" Name="Diffuse" Kind="InputPin" DefaultValue="1, 1, 1, 1">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -15276,7 +15245,7 @@
                       <Choice Kind="TypeFlag" Name="String" />
                     </TypeReference>
                     <TypeReference>
-                      <Choice Kind="TypeFlag" Name="AbstractGpuValue" />
+                      <Choice Kind="TypeFlag" Name="AbstractShaderNode" />
                     </TypeReference>
                   </p:TypeArguments>
                 </p:TypeAnnotation>
@@ -15377,7 +15346,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="EIwjr7blE9HMqt6cIBjqqx" Name="Value" Kind="InputPin" />
-                <Pin Id="MlceKJiIydzQE35RK86SIM" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="MlceKJiIydzQE35RK86SIM" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Pad Id="SMtuAoMCYJIL1VMomZdMlO" Comment="" Bounds="339,382,35,15" ShowValueBox="true" isIOBox="true" Value="0.5">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -15401,7 +15370,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="P9wxDkLChq9Ppl9grbLAcc" Name="Value" Kind="InputPin" />
-                <Pin Id="PYz9WgZMibHNON08NLMSGb" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="PYz9WgZMibHNON08NLMSGb" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Node Bounds="263,361,25,19" Id="ENcdhEnTt75LAMhlspiPDw">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastSymbolSource="Fuse.Core.Math.vl">
@@ -15420,7 +15389,7 @@
                   <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                 </p:NodeReference>
                 <Pin Id="BUaWkd7ib5GNcISzhhXv1j" Name="Value" Kind="InputPin" />
-                <Pin Id="PyCaLfWjHEGNU6DbCkO2xT" Name="GpuValue" Kind="OutputPin" />
+                <Pin Id="PyCaLfWjHEGNU6DbCkO2xT" Name="ShaderNode" Kind="OutputPin" />
               </Node>
               <Pad Id="OskmyUNDWuVP2OyGmRC45y" Comment="" Bounds="341,278,35,28" ShowValueBox="true" isIOBox="true" Value="0.5, 0.5">
                 <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
@@ -15626,7 +15595,7 @@
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                   <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
                 </p:NodeReference>
-                <Pin Id="LccD7eNFhjoQWewHgQ5WyJ" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="LccD7eNFhjoQWewHgQ5WyJ" Name="ShaderNode" Kind="InputPin" />
                 <Pin Id="SPpbfdr0htpNhUnwbGih6G" Name="The Value" Kind="InputPin" />
                 <Pin Id="T2OArLsSKjSMBJXQLkrkWx" Name="Output" Kind="OutputPin" />
               </Node>
@@ -15703,7 +15672,7 @@
               <Pin Id="OkSJXSnaghqOjMqQpg5e54" Name="Position" Kind="InputPin" />
               <Pin Id="A8QSObDyMN4Ogf5959ruBU" Name="Size" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -15713,7 +15682,7 @@
               </Pin>
               <Pin Id="AMpn7SGa4YMLsu83zLaH8u" Name="Color" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector4" />
@@ -15723,7 +15692,7 @@
               </Pin>
               <Pin Id="SzXMQOrAK6mPhGDZd2A7sh" Name="Skip" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Boolean" />
@@ -15741,7 +15710,7 @@
               <Pin Id="NxXJmV6UpeFPct2RhnZkah" Name="Ticket" Kind="OutputPin" />
               <Pin Id="HeoWfI6a4T3LC804qg9CCZ" Name="AxisX" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -15751,7 +15720,7 @@
               </Pin>
               <Pin Id="N64zQLNOstsPvQ8PZcUxlo" Name="AxisY" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -15761,7 +15730,7 @@
               </Pin>
               <Pin Id="C9VAaqekfT4LVLcfMsPl3B" Name="AxisZ" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -16731,7 +16700,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="ILboqSghvFXNUdkvVYjdkY" Name="Value" Kind="InputPin" DefaultValue="0.5" />
-                    <Pin Id="DYxxWMMIunfNRcCmls60QO" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="DYxxWMMIunfNRcCmls60QO" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="KtTp96M6kqiPMKE3VKglFX" Comment="" Bounds="458,630,35,15" ShowValueBox="true" isIOBox="true" Value="-1">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -16745,7 +16714,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="ELE4Cg69LkyP5z3QIWKtDa" Name="Value" Kind="InputPin" DefaultValue="0.5" />
-                    <Pin Id="N0Cd64dNanHL47RTHnPNwt" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="N0Cd64dNanHL47RTHnPNwt" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="D9XTb2djRkbQDWRt7JW8Yc" Comment="" Bounds="533,630,35,15" ShowValueBox="true" isIOBox="true" Value="1">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -16759,7 +16728,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="AO6hWXeywZLL806ogFdCbB" Name="Value" Kind="InputPin" DefaultValue="0.5" />
-                    <Pin Id="HYys0M44mvGLCAOS2c0KSB" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="HYys0M44mvGLCAOS2c0KSB" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="DqAFtBlQzhHPHA468yaluo" Comment="" Bounds="515,449,35,15" ShowValueBox="true" isIOBox="true" Value="0.5">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -16997,9 +16966,9 @@
                   <Node Bounds="274,1036,77,19" Id="ED50VjsaTl2QP85U2IC7CC">
                     <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
                       <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                      <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                      <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                     </p:NodeReference>
-                    <Pin Id="FbNmnULmNeJN0oX2uya5zF" Name="GpuValue" Kind="InputPin" />
+                    <Pin Id="FbNmnULmNeJN0oX2uya5zF" Name="ShaderNode" Kind="InputPin" />
                     <Pin Id="LG71yZg8MMsQbURU4aFc8I" Name="Default" Kind="InputPin" />
                     <Pin Id="UL8nSoGt5zWP9MemUBhXoN" Name="Output" Kind="OutputPin" />
                   </Node>
@@ -17060,7 +17029,7 @@
                           <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                         </p:NodeReference>
                         <Pin Id="PupvlbdT984PaviIx1LWWM" Name="Value" Kind="InputPin" DefaultValue="1, 1, 1" />
-                        <Pin Id="Rmwvts8Ra7lOwBPGnZQHT8" Name="GpuValue" Kind="OutputPin" />
+                        <Pin Id="Rmwvts8Ra7lOwBPGnZQHT8" Name="ShaderNode" Kind="OutputPin" />
                       </Node>
                       <Node Bounds="314,1302,57,19" Id="PKSU5Qz6EO2PIJH9ZJyO3g">
                         <p:NodeReference LastCategoryFullName="Fuse.Core.Value" LastSymbolSource="Fuse.Core.vl">
@@ -17069,7 +17038,7 @@
                           <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                         </p:NodeReference>
                         <Pin Id="F8orCsIpCrhQSDY1Wg0EPk" Name="Value" Kind="InputPin" />
-                        <Pin Id="R1TN4LyWkZVLZcBDUy5DLo" Name="GpuValue" Kind="OutputPin" />
+                        <Pin Id="R1TN4LyWkZVLZcBDUy5DLo" Name="ShaderNode" Kind="OutputPin" />
                       </Node>
                       <Node Bounds="274,1393,25,19" Id="V3o4om0beI7Px80k0KPMF3">
                         <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastSymbolSource="Fuse.Core.Math.vl">
@@ -17088,7 +17057,7 @@
                           <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                         </p:NodeReference>
                         <Pin Id="Lce8WxWGaqiM0ecmOPwX2W" Name="Value" Kind="InputPin" DefaultValue="1, 1, 1" />
-                        <Pin Id="DfcDl6iUQQvOIg57c9j7M0" Name="GpuValue" Kind="OutputPin" />
+                        <Pin Id="DfcDl6iUQQvOIg57c9j7M0" Name="ShaderNode" Kind="OutputPin" />
                       </Node>
                       <Node Bounds="344,1169,57,19" Id="LVe8q8nsGIqNZqA30AYN4c">
                         <p:NodeReference LastCategoryFullName="Fuse.Core.Value" LastSymbolSource="Fuse.Core.vl">
@@ -17097,7 +17066,7 @@
                           <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                         </p:NodeReference>
                         <Pin Id="T7W66Ky0cdKPeuHfZplODh" Name="Value" Kind="InputPin" />
-                        <Pin Id="DPHc120qceePvjMNo3kvjv" Name="GpuValue" Kind="OutputPin" />
+                        <Pin Id="DPHc120qceePvjMNo3kvjv" Name="ShaderNode" Kind="OutputPin" />
                       </Node>
                       <Node Bounds="294,1232,73,19" Id="A71RbbcqoNtMd12EivFxsk">
                         <p:NodeReference LastCategoryFullName="Fuse.Core.Control" LastSymbolSource="Fuse.Core.vl">
@@ -17221,9 +17190,9 @@
                   <Node Bounds="493,689,77,19" Id="IG7bXShH6StOOZo2Txs1uP">
                     <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                       <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                      <Choice Kind="ProcessAppFlag" Name="CheckDefault (GpuValue)" />
+                      <Choice Kind="ProcessAppFlag" Name="CheckDefault (ShaderNode)" />
                     </p:NodeReference>
-                    <Pin Id="NzzTRPIDafPQd198c34jvD" Name="GpuValue" Kind="InputPin" />
+                    <Pin Id="NzzTRPIDafPQd198c34jvD" Name="ShaderNode" Kind="InputPin" />
                     <Pin Id="QtOieBGD2gLLuKwmBUstoq" Name="Default" Kind="InputPin" />
                     <Pin Id="DJ64MvBEVUSQUSQnUbdlgM" Name="Output" Kind="OutputPin" />
                   </Node>
@@ -17462,7 +17431,7 @@
               <Pin Id="EjdUaIF81bBMcqNubgimH0" Name="~Vector Transformation Function" Kind="InputPin" Bounds="514,223" />
               <Pin Id="EfttjIZQtqTLanl6dasOzn" Name="Strength" Kind="InputPin" Bounds="456,171" DefaultValue="1">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Float32" />
@@ -18135,7 +18104,7 @@
                   </Node>
                   <Pad Id="EjdnspjKNPuMAt1L8ujZs5" Bounds="292,369">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18145,7 +18114,7 @@
                   </Pad>
                   <Pad Id="Tk7p9oNXv8sL6tscmS1vzI" Bounds="442,306">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Int3" />
@@ -18164,7 +18133,7 @@
                   </Node>
                   <Pad Id="BGbHuJ4wa1uOq6tzG58aZl" Bounds="442,364">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18199,7 +18168,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="Jwdy6FbEfBZNKrRi97rh9L" Name="Value" Kind="InputPin" />
-                    <Pin Id="RdeK9kmy0MCMbqozJNRczH" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="RdeK9kmy0MCMbqozJNRczH" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="Msr5uXFOf48MNVa3JRKTP1" Comment="" Bounds="512,386,35,43" ShowValueBox="true" isIOBox="true" Value="0.5, 0.5, 0.5">
                     <p:TypeAnnotation LastCategoryFullName="3D" LastSymbolSource="CoreLibBasics.vl">
@@ -18234,7 +18203,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="FizhcnOMdXeOU4pPxfLzpd" Name="Value" Kind="InputPin" />
-                    <Pin Id="SkUDiZ9oI0aNHkLRYMeygi" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="SkUDiZ9oI0aNHkLRYMeygi" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="RaqK0cMa5cuMNos3lQn67s" Comment="" Bounds="405,483,35,15" ShowValueBox="true" isIOBox="true" Value="1">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -18251,7 +18220,7 @@
                   </Node>
                   <Pad Id="FGrsBIj8U3UPVG8cfIkrbz" Bounds="635,533">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Matrix" />
@@ -18314,7 +18283,7 @@
             <Patch Id="UZNcLRzsRCSP6NqXUcljjQ" Name="Update">
               <Pin Id="G0ZilM3EWsxNogTPyIXJvD" Name="Cell Coordinate" Kind="InputPin" Bounds="268,361">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Int3" />
@@ -18361,7 +18330,7 @@
                   <Patch Id="SnxOLYz6rKTOdJTvNtl7fG" Name="Then" ManuallySortedPins="true" />
                   <Pad Id="JYK1QjBRktmNTOnS6kn9FY" Bounds="625,310">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Int3" />
@@ -18380,7 +18349,7 @@
                   </Node>
                   <Pad Id="CNzqAMMtlP0NXkoOI02nnl" Bounds="625,368">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18395,7 +18364,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="VE0qxjllFRIPO8pdQWUGsA" Name="Value" Kind="InputPin" />
-                    <Pin Id="LRDAAb12H5hOL9oW2RljGt" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="LRDAAb12H5hOL9oW2RljGt" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="L1vAHWwQLnoOXkAb6pHKcQ" Comment="" Bounds="358,413,35,43" ShowValueBox="true" isIOBox="true" Value="0.5, 0.5, 0.5">
                     <p:TypeAnnotation LastCategoryFullName="3D" LastSymbolSource="CoreLibBasics.vl">
@@ -18409,7 +18378,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="R3VZhjVv5p7MlUlDK51zMf" Name="Value" Kind="InputPin" />
-                    <Pin Id="AIETLgHgDjKNJrPVZmdaFk" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="AIETLgHgDjKNJrPVZmdaFk" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="Q46nFWjfljALfFcvnAWlXO" Comment="" Bounds="380,279,35,15" ShowValueBox="true" isIOBox="true" Value="1">
                     <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
@@ -18426,7 +18395,7 @@
                   </Node>
                   <Pad Id="TnTeBHfkClTLi1eAAnSKzs" Bounds="485,345">
                     <p:TypeAnnotation>
-                      <Choice Kind="TypeFlag" Name="GpuValue" />
+                      <Choice Kind="TypeFlag" Name="ShaderNode" />
                       <p:TypeArguments>
                         <TypeReference>
                           <Choice Kind="TypeFlag" Name="Matrix" />
@@ -18545,7 +18514,7 @@
             <Patch Id="T3L6UBm53lANEUocC7s8SH" Name="Update">
               <Pin Id="A10UXPdTBh0NtrnnCdYnIG" Name="Position" Kind="InputPin" Bounds="268,361">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18557,7 +18526,7 @@
               <Pin Id="A384NFlPxU2PnbRvuh5vEo" Name="Grid Resolution" Kind="InputPin" Bounds="359,142" />
               <Pin Id="RuNLlEoCcuCLXmZE4in66U" Name="Output" Kind="OutputPin" Bounds="621,785">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Int3" />
@@ -18687,7 +18656,7 @@
                       <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                     </p:NodeReference>
                     <Pin Id="TgbezFgCmTHPyal8V9zHUa" Name="Value" Kind="InputPin" />
-                    <Pin Id="JOMEYWnlmhmNm6GoweT9Rv" Name="GpuValue" Kind="OutputPin" />
+                    <Pin Id="JOMEYWnlmhmNm6GoweT9Rv" Name="ShaderNode" Kind="OutputPin" />
                   </Node>
                   <Pad Id="Iz11cTX3hDrLLZsubn6EPC" Bounds="771,279,130,62" ShowValueBox="true" isIOBox="true" Value="1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1">
                     <p:TypeAnnotation>
@@ -18751,7 +18720,7 @@
             <Patch Id="QjJHlUpfEWSMwLVnVizKI5" Name="Update">
               <Pin Id="JlaNOCAZLyIMo1HzbspXvg" Name="AxisX" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18761,7 +18730,7 @@
               </Pin>
               <Pin Id="Pmu9bQNf27LPVL2mRBPkos" Name="AxisY" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18771,7 +18740,7 @@
               </Pin>
               <Pin Id="Irhz8qQGTcqODyd9kUtd9e" Name="AxisZ" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18781,7 +18750,7 @@
               </Pin>
               <Pin Id="J9jOLtmHY4SMSLgjLXRHV6" Name="Output" Kind="OutputPin" Visibility="Hidden">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -18791,7 +18760,7 @@
               </Pin>
               <Pin Id="MRZOtNnB0FzMH5f1yp4K0y" Name="World Matrix" Kind="OutputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Matrix" />
@@ -18801,7 +18770,7 @@
               </Pin>
               <Pin Id="Sx4do6xwZx1N2WpCH1cLAI" Name="World Matrix Inverse" Kind="OutputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Matrix" />
@@ -18811,7 +18780,7 @@
               </Pin>
               <Pin Id="EOI3hVYkRvgMD5357GKiGl" Name="Angles" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18821,7 +18790,7 @@
               </Pin>
               <Pin Id="BZvYjuvF2PDLcGdydvZqmU" Name="Pivot" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18831,7 +18800,7 @@
               </Pin>
               <Pin Id="BSYWyLgbHQFOxM6FodG4rf" Name="Scaling" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -18841,7 +18810,7 @@
               </Pin>
               <Pin Id="ViNgBypmZCMNmuJwWfSN4I" Name="Translation" Kind="InputPin">
                 <p:TypeAnnotation>
-                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
                   <p:TypeArguments>
                     <TypeReference>
                       <Choice Kind="TypeFlag" Name="Vector3" />
@@ -19037,7 +19006,7 @@
               </p:NodeReference>
               <Pin Id="PYsmnnp6IOlMUy9JgYQzAc" Name="Dispatcher" Kind="InputPin" />
               <Pin Id="SedCqIpIj5aOmPDg7P0Nl4" Name="Thread Group Size" Kind="InputPin" />
-              <Pin Id="VAlRfWUQ4uDMKvn3jYVyia" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="VAlRfWUQ4uDMKvn3jYVyia" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="RfqLi14OH0nLhJax5qPG4v" Name="Enabled" Kind="InputPin" />
               <Pin Id="MMSbuUwLBQ9ObEWacXoByd" Name="Dispatcher" Kind="OutputPin" />
               <Pin Id="GUTpPhMMh6xMt0ZDFCDsc1" Name="Last Error" Kind="OutputPin" />
@@ -19104,7 +19073,7 @@
             </Pin>
             <Pin Id="Ju7GlTMXbxbN7QEJKuYkjF" Name="function~" Kind="InputPin" Bounds="1887,461">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="T" />
@@ -19476,7 +19445,7 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="CheckDefault (Void)" />
                   </p:NodeReference>
-                  <Pin Id="QsGfLjYiKYGQFw3rqcm9Qu" Name="GpuValue" Kind="InputPin" />
+                  <Pin Id="QsGfLjYiKYGQFw3rqcm9Qu" Name="ShaderNode" Kind="InputPin" />
                   <Pin Id="OlQD3tViYISOC0jRZYMJKk" Name="Output" Kind="OutputPin" />
                 </Node>
                 <Node Bounds="356,1002,77,19" Id="Om1Ua5nonx3LRpyqC9izQ9">
@@ -19484,7 +19453,7 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="CheckDefault (Void)" />
                   </p:NodeReference>
-                  <Pin Id="P8UoqQt3lMxNQ2erQQou5x" Name="GpuValue" Kind="InputPin" />
+                  <Pin Id="P8UoqQt3lMxNQ2erQQou5x" Name="ShaderNode" Kind="InputPin" />
                   <Pin Id="NattmWlZzfqNujCAWqqJ6W" Name="Output" Kind="OutputPin" />
                 </Node>
                 <Node Bounds="395,1042,77,19" Id="G1bqh6WAu2bPR6GuiVlTz0">
@@ -19492,7 +19461,7 @@
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="CheckDefault (Void)" />
                   </p:NodeReference>
-                  <Pin Id="NFBe11TXYcBL4q0k7VXCK3" Name="GpuValue" Kind="InputPin" />
+                  <Pin Id="NFBe11TXYcBL4q0k7VXCK3" Name="ShaderNode" Kind="InputPin" />
                   <Pin Id="UFLfd2j6d7vLCZblpA3nPu" Name="Output" Kind="OutputPin" />
                 </Node>
               </Patch>
@@ -19647,7 +19616,7 @@
               </p:NodeReference>
               <Pin Id="LhY6S1LZ9zwP5faSRViCTK" Name="Dispatcher" Kind="InputPin" />
               <Pin Id="LeNnSrGu0DvMjQWSyX5lb6" Name="Thread Group Size" Kind="InputPin" />
-              <Pin Id="IZ9bDHbkqn8LtIkd1o3R5B" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="IZ9bDHbkqn8LtIkd1o3R5B" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="FfVcC3RpvlpLguyM5n4tEJ" Name="Enabled" Kind="InputPin" DefaultValue="True" />
               <Pin Id="TwSYYorJkqePerBZP1PwCE" Name="Dispatcher" Kind="OutputPin" />
               <Pin Id="NmwCjYcRtGiMhk9ktOgpHs" Name="Last Error" Kind="OutputPin" />
@@ -19711,7 +19680,7 @@
                 <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
               </p:NodeReference>
               <Pin Id="FqBadz6lVvyPoJJjWz12cJ" Name="Value" Kind="InputPin" />
-              <Pin Id="UwxGmqGHoFLLECHorUxklt" Name="GpuValue" Kind="OutputPin" />
+              <Pin Id="UwxGmqGHoFLLECHorUxklt" Name="ShaderNode" Kind="OutputPin" />
             </Node>
             <Pad Id="LuiHt9t6CdSMCWTHuI6Qlq" SlotId="PwjJTdE7a1HQLtkU8XlN10" Bounds="1243,1594" />
             <Pad Id="R2HXux482xQPbikERv0Rv3" SlotId="EygDaBx7iTJOA7fbnL7Ad5" Bounds="923,1410" />
@@ -19722,7 +19691,7 @@
               </p:NodeReference>
               <Pin Id="PWKpB6iC0s4OsWdfwqR3cx" Name="Dispatcher" Kind="InputPin" />
               <Pin Id="QyCeIB7L06uOlxhER7MSQV" Name="Thread Group Size" Kind="InputPin" />
-              <Pin Id="Eu2B4PeOMhFMHf9U4c96RN" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="Eu2B4PeOMhFMHf9U4c96RN" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="TVj0UZQyo7OLmO0c80d2WM" Name="Enabled" Kind="InputPin" />
               <Pin Id="L7AMcgxNxcOMnukzQ7f4iZ" Name="Dispatcher" Kind="OutputPin" />
               <Pin Id="SvGMfjves2hLPX7NO9EUR2" Name="Last Error" Kind="OutputPin" />
@@ -19819,7 +19788,7 @@
               </p:NodeReference>
               <Pin Id="QaDPw2vs0yNO1WJJANN536" Name="Dispatcher" Kind="InputPin" />
               <Pin Id="LjrC7HLr6p5OImQlFgoCxz" Name="Thread Group Size" Kind="InputPin" />
-              <Pin Id="UCPrXLltj5jP3lBVb7rt39" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="UCPrXLltj5jP3lBVb7rt39" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="QkcQrolFHV1N5fjW6mQspr" Name="Enabled" Kind="InputPin" />
               <Pin Id="OI3t6SjQb7cLPVkEj3qmL5" Name="Dispatcher" Kind="OutputPin" />
               <Pin Id="NiXtsgwFu2cLGTRAOnlWOK" Name="Last Error" Kind="OutputPin" />
@@ -20120,7 +20089,7 @@
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
               </p:NodeReference>
-              <Pin Id="HtGC2qvk3qxLlfPw7WKdgp" Name="GpuValue" Kind="InputPin" />
+              <Pin Id="HtGC2qvk3qxLlfPw7WKdgp" Name="ShaderNode" Kind="InputPin" />
               <Pin Id="M59vvDHKb1CNdARDkSTbXq" Name="The Value" Kind="InputPin" />
               <Pin Id="DH3q6W4ReEaLxJYRnBTw2b" Name="Output" Kind="OutputPin" />
             </Node>
@@ -20253,7 +20222,7 @@
                 <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
               </p:NodeReference>
               <Pin Id="Ac5XI8e9OZNLexbADlcaTI" Name="Value" Kind="InputPin" />
-              <Pin Id="DyAR0yTNGqCOuAj9NAL7Q3" Name="GpuValue" Kind="OutputPin" />
+              <Pin Id="DyAR0yTNGqCOuAj9NAL7Q3" Name="ShaderNode" Kind="OutputPin" />
             </Node>
           </Canvas>
           <Slot Id="DWuvMLqB5XXL4Pa14Osx3I" Name="Name">
@@ -20473,7 +20442,7 @@
           <Patch Id="NmzoRzaQuSvMOE4ufMqXn3" Name="Update">
             <Pin Id="RTP9wRP2PzLPXSaYmu2ZPh" Name="OnInit" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -20483,7 +20452,7 @@
             </Pin>
             <Pin Id="MyBOAl08tohPwQ2lgI2JPX" Name="SelectCondition" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="Boolean" />
@@ -20493,7 +20462,7 @@
             </Pin>
             <Pin Id="S6uh4wtNO6bMKzjBhgOHkQ" Name="OnSelect" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -20503,7 +20472,7 @@
             </Pin>
             <Pin Id="IVbb4hfWq97LDMCAZeEuIJ" Name="ReleaseCondition" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="Boolean" />
@@ -20513,7 +20482,7 @@
             </Pin>
             <Pin Id="PM9EGmZhxZmNjdQKK8bUV3" Name="OnRelease" Kind="InputPin">
               <p:TypeAnnotation>
-                <Choice Kind="TypeFlag" Name="GpuValue" />
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
                     <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -20836,7 +20805,7 @@
           <Link Id="V4ms6CIdcUrOuQW0S0KCXo" Ids="PNNzYlO69zDNgQuPsUCoL7,UiyC6FhbLpTMbeHpSHVzl3" />
           <Slot Id="LE6kX7dTr1rQWMosSsm5UM" Name="Output">
             <p:TypeAnnotation p:Type="TypeReference">
-              <Choice Kind="TypeFlag" Name="GpuValue" />
+              <Choice Kind="TypeFlag" Name="ShaderNode" />
               <p:TypeArguments>
                 <TypeReference>
                   <Choice Kind="TypeFlag" Name="GpuVoid" />
@@ -20912,8 +20881,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0927-g0472b252e1" />
-  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0927-g0472b252e1" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8-0945-g589cc33c6e" />
+  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8-0945-g589cc33c6e" />
   <DocumentDependency Id="TrD0OOB86nDLU7T7NT4N26" Location="./Fuse.Core.Math.vl" IsFriend="true" />
   <DocumentDependency Id="I5yNWilZPoXMl35gd4y1DO" Location="./Fuse.Core.vl" IsFriend="true" />
   <DocumentDependency Id="TwlrykDdxf0OHBCI0TciFj" Location="./Fuse.Core.Domain.vl" />

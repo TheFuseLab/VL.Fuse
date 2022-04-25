@@ -6,13 +6,13 @@ namespace Fuse
     public class FromFloat<T> : ShaderNode<T> where T : struct
     {
 
-        private GpuValue<float> _x;
+        private ShaderNode<float> _x;
         
-        public FromFloat(GpuValue<float> x) : base("fromFloat")
+        public FromFloat(ShaderNode<float> x) : base("fromFloat")
         {
             _x = x ?? new ConstantValue<float>(0);
             
-            Setup(new List<AbstractGpuValue>{x});
+            Setup(new List<AbstractShaderNode>{x});
         }
 
         protected override string SourceTemplate()

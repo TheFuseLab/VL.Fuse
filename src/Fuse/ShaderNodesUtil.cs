@@ -42,53 +42,53 @@ namespace Fuse
 
     public static class AbstractCreation
     {
-        public static AbstractGpuValue CreateAbstract(AbstractGpuValue theValue, Type theType, object[] theArguments )
+        public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theType, object[] theArguments )
         {
             var dataType = new[] { theValue.GetType().GetGenericArguments()[0]};
             var getType = theType.MakeGenericType(dataType);
             var getInstance = Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
-            return getInstance?.AbstractOutput();
+            return getInstance;
         }
         
-        public static AbstractGpuValue AbstractComputeTextureGet(GpuValue<Texture> theTexture, AbstractGpuValue theIndex, AbstractGpuValue theValue)
+        public static AbstractShaderNode AbstractComputeTextureGet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
             return CreateAbstract(theValue, typeof(GpuValuePassThrough<>), new object[]{theTexture, theIndex, null});
         }
         
-        public static AbstractGpuValue AbstractGpuValuePassThrough(AbstractGpuValue theValue)
+        public static AbstractShaderNode AbstractShaderNodePassThrough(AbstractShaderNode theValue)
         {
             var getBaseType = typeof(GpuValuePassThrough<>);
             var dataType = new[] { theValue.GetType().GetGenericArguments()[0] };
             var getType = getBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractGpuValue;
+            return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractShaderNode;
         }
         
-        public static AbstractGpuValue AbstractDeclareValue(AbstractGpuValue theValue)
+        public static AbstractShaderNode AbstractDeclareValue(AbstractShaderNode theValue)
         {
             return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{null});
         }
         
-        public static AbstractGpuValue AbstractConstant(AbstractGpuValue theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
         {
             var dataType = new[] { theGpuValue.GetType().GetGenericArguments()[0]};
             return ConstantHelper.AbstractFromFloat(dataType[0], theValue);
         }
         
-        public static AbstractGpuValue AbstractGetMember(GpuValue<GpuStruct> theStruct, AbstractGpuValue theMember)
+        public static AbstractShaderNode AbstractGetMember(ShaderNode<GpuStruct> theStruct, AbstractShaderNode theMember)
         {
             var getMemberBaseType = typeof(GetMember<,>);
             var dataType = new Type[] {typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
             var getMemberType = getMemberBaseType.MakeGenericType(dataType);
             var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
-            return getMemberInstance?.AbstractOutput();
+            return getMemberInstance;
         }
         
-        public static AbstractGpuValue AbstractDeclareValueAssigned(AbstractGpuValue theMember)
+        public static AbstractShaderNode AbstractDeclareValueAssigned(AbstractShaderNode theMember)
         {
             return CreateAbstract(theMember, typeof(DeclareValue<>), new object[] {theMember});
         }
         
-        public static AbstractGpuValue AbstractAssignNode(AbstractGpuValue theTarget, AbstractGpuValue theSource)
+        public static AbstractShaderNode AbstractAssignNode(AbstractShaderNode theTarget, AbstractShaderNode theSource)
         {
             return CreateAbstract(theTarget, typeof(AssignNode<>), new object[] {theTarget, theSource});
         }
@@ -103,7 +103,7 @@ namespace Fuse
             return id++;
         }
         
-        public static string BuildArguments(IEnumerable<AbstractGpuValue> inputs)
+        public static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>
@@ -199,14 +199,14 @@ namespace Fuse
 
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, GpuValue<T> theGpuValue, bool isCompute = true) where T : struct
+        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, ShaderNode<T> theGpuValue, bool isCompute = true) where T : struct
         {
             var toShaderFx = new ToShaderFX<T>(game,theGpuValue);
             AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
             return toShaderFx;
         }
         
-        public static ToComputeMatrix RegisterComputeMatrix(Game game, GpuValue<Matrix> theGpuValue) 
+        public static ToComputeMatrix RegisterComputeMatrix(Game game, ShaderNode<Matrix> theGpuValue) 
         {
             var toComputeMatrix = new ToComputeMatrix(game,theGpuValue);
             AddShaderSource(game, toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");

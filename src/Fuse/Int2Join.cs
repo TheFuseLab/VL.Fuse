@@ -5,15 +5,15 @@ namespace Fuse
 {
     public class Int2Join : ShaderNode<Int2>
     {
-        private GpuValue<int> _x;
-        private GpuValue<int> _y;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
 
-        public Int2Join(GpuValue<int> x, GpuValue<int> y) : base("int2Join")
+        public Int2Join(ShaderNode<int> x, ShaderNode<int> y) : base("int2Join")
         {
             _x = x ?? new ConstantValue<int>(0);
             _y = y ?? new ConstantValue<int>(0);
             
-            Setup( new List<AbstractGpuValue>{_x,_y});
+            Setup( new List<AbstractShaderNode>{_x,_y});
         }
         
         protected override string SourceTemplate()

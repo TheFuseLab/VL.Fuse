@@ -72,21 +72,21 @@ ${sourceFX}
 };";
 
 
-        public ToParticleFX(Game theGame, GpuValue<Vector3> thePosition, GpuValue<float> theSize, GpuValue<float> theValue) : base(theGame,
-            new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
+        public ToParticleFX(Game theGame, ShaderNode<Vector3> thePosition, ShaderNode<float> theSize, ShaderNode<float> theValue) : base(theGame,
+            new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
                 
-                {"FX", new Dictionary<string, AbstractGpuValue>
+                {"FX", new Dictionary<string, AbstractShaderNode>
                 {
                     {"val1", theValue}
                 }},
-                {"Particle", new Dictionary<string, AbstractGpuValue>
+                {"Particle", new Dictionary<string, AbstractShaderNode>
                     {
                         {"pPosition", thePosition},
                         {"pSize", theSize}
                     }
                 }
             }, 
-            new Dictionary<string, AbstractGpuValue>{{"resultParticle", thePosition}},
+            new Dictionary<string, AbstractShaderNode>{{"resultParticle", thePosition}},
             new List<string>(),
             new Dictionary<string, string>(),
             ComputeShaderSource)

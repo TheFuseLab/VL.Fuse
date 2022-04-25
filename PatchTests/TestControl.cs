@@ -14,10 +14,10 @@ namespace PatchTests
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<bool>(true),">");
+            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
             Console.WriteLine(compare.BuildSourceCode());
             
-            var compareNull = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
+            var compareNull = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             Console.WriteLine(compareNull.BuildSourceCode());
         }
         
@@ -27,18 +27,18 @@ namespace PatchTests
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
+            var compare = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             
-            var switchVal = new BooleanSwitchNode<float>(compare.Output, gpuValue0.Output, gpuValue1.Output,new ConstantValue<float>(0));
+            var switchVal = new BooleanSwitchNode<float>(compare, gpuValue0, gpuValue1,new ConstantValue<float>(0));
             Console.WriteLine(switchVal.BuildSourceCode());
             
-            var switchValNull = new BooleanSwitchNode<float>(compare.Output, gpuValue0.Output, null,new ConstantValue<float>(0));
+            var switchValNull = new BooleanSwitchNode<float>(compare, gpuValue0, null,new ConstantValue<float>(0));
             Console.WriteLine(switchValNull.BuildSourceCode());
             
-            var switchValNull2 = new BooleanSwitchNode<float>(compare.Output, null, gpuValue1.Output,new ConstantValue<float>(0));
+            var switchValNull2 = new BooleanSwitchNode<float>(compare, null, gpuValue1,new ConstantValue<float>(0));
             Console.WriteLine(switchValNull2.BuildSourceCode());
             
-            var switchValNull3 = new BooleanSwitchNode<float>(compare.Output, null, null,new ConstantValue<float>(0));
+            var switchValNull3 = new BooleanSwitchNode<float>(compare, null, null,new ConstantValue<float>(0));
             Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
@@ -48,24 +48,24 @@ namespace PatchTests
             var gpuValue0 = new GpuInput<float>();
             var gpuValue1 = new GpuInput<float>();
 
-            var val0 = new DeclareValue<float>(gpuValue0.Output);
-            var val1 = new DeclareValue<float>(gpuValue1.Output);
+            var val0 = new DeclareValue<float>(gpuValue0);
+            var val1 = new DeclareValue<float>(gpuValue1);
 
-            var assign0 = new AssignNode<float>(val0.Output, gpuValue0.Output);
-            var assign1 = new AssignNode<float>(val1.Output, gpuValue1.Output);
+            var assign0 = new AssignNode<float>(val0, gpuValue0);
+            var assign1 = new AssignNode<float>(val1, gpuValue1);
             
-            var compare = new OperatorNode<float, bool>(gpuValue0.Output, null,new ConstantValue<bool>(true),">");
+            var compare = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             
-            var switchVal = new BooleanSwitchNode<GpuVoid>(compare.Output, assign0.Output, assign1.Output);
+            var switchVal = new BooleanSwitchNode<GpuVoid>(compare, assign0, assign1);
             Console.WriteLine(switchVal.BuildSourceCode());
             
-            var switchValNull = new BooleanSwitchNode<GpuVoid>(compare.Output, assign0.Output, null);
+            var switchValNull = new BooleanSwitchNode<GpuVoid>(compare, assign0, null);
             Console.WriteLine(switchValNull.BuildSourceCode());
             
-            var switchValNull2 = new BooleanSwitchNode<GpuVoid>(compare.Output, null, assign1.Output);
+            var switchValNull2 = new BooleanSwitchNode<GpuVoid>(compare, null, assign1);
             Console.WriteLine(switchValNull2.BuildSourceCode());
             
-            var switchValNull3 = new BooleanSwitchNode<GpuVoid>(compare.Output, null, null);
+            var switchValNull3 = new BooleanSwitchNode<GpuVoid>(compare, null, null);
             Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
@@ -78,10 +78,10 @@ namespace PatchTests
             var gpuValue2 = new GpuInput<float>();
             var gpuValue3 = new GpuInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0.Output, gpuValue1.Output,new ConstantValue<bool>(false),">");
+            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(false),">");
             Console.WriteLine(compare.BuildSourceCode());
             
-            var switchVal = new NumericSwitchNode<float>(gpuValueCheck.Output, new List<GpuValue<float>>(){gpuValue0.Output, gpuValue1.Output, gpuValue2.Output}, gpuValue3.Output);
+            var switchVal = new NumericSwitchNode<float>(gpuValueCheck, new List<ShaderNode<float>>(){gpuValue0, gpuValue1, gpuValue2}, gpuValue3);
             Console.WriteLine(switchVal.BuildSourceCode());
         }
     }

@@ -7,14 +7,16 @@ namespace Fuse
     public class ToFloat4 : ShaderNode<Vector4>
     {
 
-        private readonly AbstractGpuValue _x;
+        private readonly AbstractShaderNode _x;
 
-        public ToFloat4(AbstractGpuValue x) : base("ToFloat")
+        public ToFloat4(AbstractShaderNode x) : base("ToFloat")
         {
             _x = x ?? new ConstantValue<float>(0);
             
-            Setup(new List<AbstractGpuValue>{x});
+            Setup(new List<AbstractShaderNode>{x});
         }
+
+        public override string ID { get; }
 
         protected override string SourceTemplate()
         {

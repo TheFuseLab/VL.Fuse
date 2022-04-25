@@ -9,27 +9,23 @@ namespace Fuse
     
     public class TextureGetDimensions : ShaderNode<GpuVoid>
     {
-        private readonly GpuValue<Texture> _texture;
-        private readonly GpuValue<int> _mipLevel;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly ShaderNode<int> _mipLevel;
 
-        public TextureGetDimensions(GpuValue<Texture> theTexture, GpuValue<int> mipLevel, int dimension):base("textureGetDimension")
+        public TextureGetDimensions(ShaderNode<Texture> theTexture, ShaderNode<int> mipLevel, int dimension):base("textureGetDimension")
         {
             _texture = theTexture;
             _mipLevel = mipLevel;
             
-            OptionalOutputs = new List<AbstractGpuValue>();
+            OptionalOutputs = new List<AbstractShaderNode>();
             
-            var myInputs = new List<AbstractGpuValue> {mipLevel};
+            var myInputs = new List<AbstractShaderNode> {mipLevel};
 
             for (var i = 0; i < dimension + 1; i++)
             {
-                var myDeclareValue = new DeclareValue<float>().Output;
+                var myDeclareValue = new DeclareValue<float>();
                 myInputs.Add(myDeclareValue);
-                var myPass = new GpuValuePassThrough<float>(myDeclareValue)
-                {
-                    ParentNode = this
-                };
-                OptionalOutputs.Add(myPass);
+                OptionalOutputs.Add(myDeclareValue);
             }
             Setup(myInputs);
         }
@@ -42,7 +38,7 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate("${texture}.GetDimensions(${arguments});", result);
         }
         
-        protected void Setup(IEnumerable<AbstractGpuValue> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
+        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
         {
             
         }
@@ -50,21 +46,21 @@ namespace Fuse
     public class TextureNode<T> : ShaderNode<T>
     {
 
-        private readonly GpuValue<Texture> _texture;
-        private readonly List<AbstractGpuValue> _arguments;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly List<AbstractShaderNode> _arguments;
         private readonly string _functionName;
         public TextureNode(
-            GpuValue<Texture> theTexture, 
-            IEnumerable<AbstractGpuValue> theArguments, 
+            ShaderNode<Texture> theTexture, 
+            IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
-            GpuValue<T> theDefault
+            ShaderNode<T> theDefault
         ) : base( "textureNode", theDefault)
         {
             _texture = theTexture;
             _arguments = theArguments.ToList();
             _functionName = theFunction;
 
-            var ins = new List<AbstractGpuValue>(_arguments) {theTexture};
+            var ins = new List<AbstractShaderNode>(_arguments) {theTexture};
             Setup(ins);
         }
         
@@ -87,9 +83,8 @@ namespace Fuse
             var result =  new Dictionary<string, string>
             {
                 {"function", _functionName},
-                {"resultName", Output.ID},
-                {"resultType", Output != null ? Output.TypeName() : TypeHelpers.GetGpuTypeForType<T>()},
-                {"default", Default == null ? "": Default.ID},
+                {"resultName", ID},
+                {"resultType", TypeName()},
                 {"arguments", ShaderNodesUtil.BuildArguments(_arguments)}
             };
             if (_texture != null) result["texture"] = _texture.ID;

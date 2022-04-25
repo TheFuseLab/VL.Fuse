@@ -23,6 +23,8 @@ ${structs}
 
 ${functions}
 
+${compositions}
+
     override ${resultType} Compute()
     {
 ${sourceFX}
@@ -34,13 +36,13 @@ ${sourceFX}
         
         protected readonly HashSet<string>GroupDeclarations = new HashSet<string>();
         
-        public ToShaderFX(Game theGame, GpuValue<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
-            new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
+        public ToShaderFX(Game theGame, ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
+            new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
                 {
-                    "FX", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}
+                    "FX", new Dictionary<string, AbstractShaderNode>{{"val1", theCompute}}
                 }
             }, 
-            new Dictionary<string, AbstractGpuValue>{{"FX",theCompute}},
+            new Dictionary<string, AbstractShaderNode>{{"FX",theCompute}},
             new List<string>(),
             new Dictionary<string, string>(),
             theShaderSource)

@@ -14,15 +14,15 @@ ${cases}
     }
         ";
 
-        private readonly GpuValue<T> _default;
-        private readonly List<GpuValue<T>> _cases;
-        private readonly GpuValue<int> _check;
-        public NumericSwitchNode(GpuValue<int> theCheck, IEnumerable<GpuValue<T>> inputs, GpuValue<T> theDefault) : base("numericSwitch")
+        private readonly ShaderNode<T> _default;
+        private readonly List<ShaderNode<T>> _cases;
+        private readonly ShaderNode<int> _check;
+        public NumericSwitchNode(ShaderNode<int> theCheck, IEnumerable<ShaderNode<T>> inputs, ShaderNode<T> theDefault) : base("numericSwitch")
         {
             _check = theCheck;
             _cases = inputs.ToList();
             _default = theDefault;
-            var myIns = new List<AbstractGpuValue>(_cases);
+            var myIns = new List<AbstractShaderNode>(_cases);
             if (theDefault != null)
             {
                 myIns.Add(theDefault);
@@ -36,7 +36,7 @@ ${cases}
             
         }
         
-        private static string BuildCases(IEnumerable<AbstractGpuValue> inputs, GpuValue<T> theDefault)
+        private static string BuildCases(IEnumerable<AbstractShaderNode> inputs, ShaderNode<T> theDefault)
         {
             var stringBuilder = new StringBuilder();
             var c = 0;

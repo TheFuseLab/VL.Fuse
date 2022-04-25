@@ -4,13 +4,13 @@ namespace Fuse
 {
     public class Not: ShaderNode<bool>
     {
-        private readonly GpuValue<bool> _in;
+        private readonly ShaderNode<bool> _in;
 
-        public Not(GpuValue<bool> theIn) : base("not")
+        public Not(ShaderNode<bool> theIn) : base("not")
         {
             _in = theIn ??  new ConstantValue<bool>(false);
             
-            Setup( new List<AbstractGpuValue>{_in});
+            Setup( new List<AbstractShaderNode>{_in});
         }
         
         protected override string SourceTemplate()

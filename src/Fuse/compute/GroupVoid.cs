@@ -5,10 +5,10 @@ namespace Fuse.compute
 {
     public class GroupVoid: ShaderNode<GpuVoid> 
     {
-        public GroupVoid(IEnumerable<GpuValue<GpuVoid>> theInputs) : base("GroupVoid")
+        public GroupVoid(IEnumerable<ShaderNode<GpuVoid>> theInputs) : base("GroupVoid")
         { 
             
-            var abstractGpuValues = new List<GpuValue<GpuVoid>>();
+            var abstractGpuValues = new List<ShaderNode<GpuVoid>>();
             theInputs.ForEach(input =>
             {
                 if (input == null) return;

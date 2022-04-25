@@ -4,13 +4,13 @@ namespace Fuse
 {
     public class Negate<T> : ShaderNode<T>
     {
-        private readonly GpuValue<T> _in;
+        private readonly ShaderNode<T> _in;
 
-        public Negate(GpuValue<T> theIn) : base("negate")
+        public Negate(ShaderNode<T> theIn) : base("negate")
         {
             _in = theIn ??  ConstantHelper.FromFloat<T>(0);
             
-            Setup( new List<AbstractGpuValue>{_in});
+            Setup( new List<AbstractShaderNode>{_in});
         }
         
         protected override string SourceTemplate()

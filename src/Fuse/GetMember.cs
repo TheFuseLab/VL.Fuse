@@ -5,13 +5,13 @@ namespace Fuse
     public class GetMember<TIn, TOut> : ShaderNode<TOut>
     {
 
-        private readonly GpuValue<TIn> _input;
+        private readonly ShaderNode<TIn> _input;
         private readonly string _member;
-        public GetMember(GpuValue<TIn> theInput, string theMember, GpuValue<TOut> theDefault = null) : base("Member", theDefault)
+        public GetMember(ShaderNode<TIn> theInput, string theMember, ShaderNode<TOut> theDefault = null) : base("Member", theDefault)
         {
             _input = theInput;
             _member = theMember;
-            Setup(new List<AbstractGpuValue>{theInput});
+            Setup(new List<AbstractShaderNode>{theInput});
         }
 
         protected override string SourceTemplate()

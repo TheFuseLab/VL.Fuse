@@ -7,20 +7,20 @@ using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
-    public sealed class GpuValueMonadicFactory<T> : IMonadicFactory<T, GpuValue<T>> 
+    public sealed class ShaderNodeMonadicFactory<T> : IMonadicFactory<T, ShaderNode<T>> 
     {
         // This field is accessed by the target code
-        public static readonly GpuValueMonadicFactory<T> Default = new GpuValueMonadicFactory<T>();
+        public static readonly ShaderNodeMonadicFactory<T> Default = new ShaderNodeMonadicFactory<T>();
 
         // Will be called once for each data source. The patch editor will also create instances as needed during interaction.
-        public IMonadBuilder<T, GpuValue<T>> GetMonadBuilder(bool isConstant)
+        public IMonadBuilder<T, ShaderNode<T>> GetMonadBuilder(bool isConstant)
         {
             // Can't call the constructor directly due to value type constraint
             if (typeof(T).IsValueType)
             {
                 // Shader constants disabled for now
                 var builderType = /*isConstant ? typeof(ConstantGpuValueBuilder<>) :*/ typeof(GpuValueBuilder<>);
-                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
+                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, ShaderNode<T>>;
             }
             
             // Read: if (T is Buffer)
@@ -28,14 +28,14 @@ namespace Fuse
             {
                 // Can't call the constructor directly due to value type constraint
                 var builderType = typeof(BufferGpuValueBuilder<>);
-                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, GpuValue<T>>;
+                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T))) as IMonadBuilder<T, ShaderNode<T>>;
             }
             
             if (typeof(T) == typeof(Texture))
-                return new TextureGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
+                return new TextureGpuValueBuilder() as IMonadBuilder<T, ShaderNode<T>>;
             
             if (typeof(T) == typeof(SamplerState))
-                return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, GpuValue<T>>;
+                return new SamplerStateGpuValueBuilder() as IMonadBuilder<T, ShaderNode<T>>;
             
             /*
             if (typeof(T) == typeof(Buffer))
@@ -46,19 +46,19 @@ namespace Fuse
     }
 
     // For each data source a builder will be kept
-    internal sealed class GpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
+    internal sealed class GpuValueBuilder<T> : IMonadBuilder<T, ShaderNode<T>>
         where T : struct
     {
         private readonly GpuInput<T> _gpuInput = new GpuInput<T>();
 
-        public GpuValue<T> Return(T value)
+        public ShaderNode<T> Return(T value)
         {
             _gpuInput.Value = value;
-            return _gpuInput.Output;
+            return _gpuInput;
         }
     }
 
-    internal sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, GpuValue<T>>
+    internal sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, ShaderNode<T>>
         where T : struct
     {
         private static readonly EqualityComparer<T> equalityComparer = EqualityComparer<T>.Default;
@@ -66,13 +66,13 @@ namespace Fuse
         private ConstantValue<T> _constantValue;
         private GpuInput<T> _gpuInput;
 
-        public GpuValue<T> Return(T value)
+        public ShaderNode<T> Return(T value)
         {
             if (_gpuInput != null)
             {
                 // The value changed in the past. Stick with the less performant constant buffer upload
                 _gpuInput.Value = value;
-                return _gpuInput.Output;
+                return _gpuInput;
             }
 
             if (_constantValue is null)
@@ -90,41 +90,41 @@ namespace Fuse
 
             // Value is changing - switch to different strategy where we upload via constant buffer
             (_gpuInput ??= new GpuInput<T>()).Value = value;
-            return _gpuInput.Output;
+            return _gpuInput;
         }
     }
 
     // Not sure about this one, never tested it ..
-    internal sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, GpuValue<Texture>>
+    internal sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, ShaderNode<Texture>>
     {
         private readonly TextureInput _textureInput = new TextureInput(null);
 
-        public GpuValue<Texture> Return(Texture value)
+        public ShaderNode<Texture> Return(Texture value)
         {
             _textureInput.Value = value;
-            return _textureInput.Output;
+            return _textureInput;
         }
     }
 
-    internal sealed class SamplerStateGpuValueBuilder : IMonadBuilder<SamplerState, GpuValue<SamplerState>>
+    internal sealed class SamplerStateGpuValueBuilder : IMonadBuilder<SamplerState, ShaderNode<SamplerState>>
     {
         private readonly SamplerInput _samplerInput = new SamplerInput(null);
 
-        public GpuValue<SamplerState> Return(SamplerState value)
+        public ShaderNode<SamplerState> Return(SamplerState value)
         {
             _samplerInput.Value = value;
-            return _samplerInput.Output;
+            return _samplerInput;
         }
     }
     
-    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, GpuValue<Buffer<T>>> where T : struct
+    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, ShaderNode<Buffer<T>>> where T : struct
     {
         private readonly BufferInput<T> _bufferInput = new BufferInput<T>(null);
 
-        public GpuValue<Buffer<T>> Return(Buffer<T> value)
+        public ShaderNode<Buffer<T>> Return(Buffer<T> value)
         {
             _bufferInput.Value = value;
-            return _bufferInput.Output;
+            return _bufferInput;
         }
     }
 }

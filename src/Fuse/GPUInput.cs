@@ -5,7 +5,7 @@ using Stride.Rendering.Materials;
 
 namespace Fuse{
 
-    public interface IGpuInput : IShaderNode
+    public interface IGpuInput : IAtomicComputeNode
     {
         void SetParameterValue(ParameterCollection theCollection);
 
@@ -14,22 +14,13 @@ namespace Fuse{
         void UpdateParameter();
     }
     
-    public class DefaultInputValue <T>: GpuValue<T>
-    {
-        public DefaultInputValue(string theName) : base(theName)
-        {
-            
-        }
-        
-        public override string ID => Name;
-    }
+    
 
     public class DefaultInput<T> : ShaderNode<T>, IGpuInput
     {
-        public DefaultInput(string theName) : base(theName, null, "defaultInput")
+        public DefaultInput(string theName) : base(theName, null)
         {
-            Output = new DefaultInputValue<T>(theName);
-            Setup(new List<AbstractGpuValue>());
+            Setup(new List<AbstractShaderNode>());
         }
 
         public void SetParameterValue(ParameterCollection theCollection)
@@ -72,11 +63,11 @@ namespace Fuse{
 
          protected TParameterKeyType ParameterKey { get; set;}
 
-         protected UnhandledResourcesAbstractInput(string theName, T theValue = default): base(theName, null,"input")
+         protected UnhandledResourcesAbstractInput(string theName, T theValue = default): base(theName, null)
          {
              Value = theValue;
              Parameters = new HashSet<ParameterCollection>();
-             Setup( new List<AbstractGpuValue>());
+             Setup( new List<AbstractShaderNode>());
          }
 
          private T _inputValue;
@@ -109,7 +100,7 @@ namespace Fuse{
          protected AbstractInput(string theName, bool theIsResource, T theValue = default): base(theName, theValue)
          {
              _isResource = theIsResource;
-             Setup( new List<AbstractGpuValue>());
+             Setup( new List<AbstractShaderNode>());
              AddResource(Inputs, this);
          }
 
@@ -119,7 +110,7 @@ namespace Fuse{
                  DeclarationTemplate,
                  new Dictionary<string, string>
                  {
-                     {"inputName", Output.ID},
+                     {"inputName", ID},
                      {"inputType", theTypeName}
                  });
          }
@@ -156,8 +147,8 @@ namespace Fuse{
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
              base.SetHashCodes(theContext);
-             Output.HashCode = theContext.GetAndIncIDCount();
-             ParameterKey = theContext.GetParameterKey(new ObjectParameterKey<T>(Output.ID)) as ObjectParameterKey<T>;
+             HashCode = theContext.GetAndIncIDCount();
+             ParameterKey = theContext.GetParameterKey(new ObjectParameterKey<T>(ID)) as ObjectParameterKey<T>;
          }
      }
 
@@ -216,10 +207,10 @@ namespace Fuse{
      public class DynamicStructBufferInput: ObjectInput<Buffer>
      {
 
-         private readonly GpuValue<GpuStruct> _struct;
+         private readonly ShaderNode<GpuStruct> _struct;
          private readonly bool _append;
          
-         public DynamicStructBufferInput(GpuValue<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
+         public DynamicStructBufferInput(ShaderNode<GpuStruct> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
          {
              _struct = theStruct;
              _append = theAppend;
@@ -251,15 +242,15 @@ namespace Fuse{
     public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>> where T : struct 
     {
 
-        public GpuInput(): base("GPUInput", false)
+        public GpuInput(): base("input", false)
         {
         }
 
         public override void SetHashCodes(ShaderGeneratorContext theContext)
         {
             base.SetHashCodes(theContext);
-            Output.HashCode = theContext.GetAndIncIDCount();
-            ParameterKey = new ValueParameterKey<T>(Output.ID);
+            HashCode = theContext.GetAndIncIDCount();
+            ParameterKey = new ValueParameterKey<T>(ID);
             SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
         }
         

@@ -8,13 +8,13 @@ namespace Fuse
 {
     public class BooleanSwitchNode<T> : ShaderNode<T>
     {
-        private readonly GpuValue<bool> _inCheck;
-        private readonly GpuValue<T> _inFalse;
-        private readonly GpuValue<T> _inTrue;
-        public BooleanSwitchNode(GpuValue<bool> inCheck, GpuValue<T> inFalse, GpuValue<T> inTrue, GpuValue<T> theDefault = null) : base( "expression", theDefault)
+        private readonly ShaderNode<bool> _inCheck;
+        private readonly ShaderNode<T> _inFalse;
+        private readonly ShaderNode<T> _inTrue;
+        public BooleanSwitchNode(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "bool_switch_result", theDefault)
         {
 
-            var ins = new List<AbstractGpuValue>(){inCheck};
+            var ins = new List<AbstractShaderNode>(){inCheck};
             _inCheck = inCheck;
             _inFalse = inFalse;
             _inTrue = inTrue;
@@ -26,16 +26,16 @@ namespace Fuse
             Setup(ins);
         }
 
-        private string BuildCaseSource(AbstractGpuValue theCase,StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        private string BuildCaseSource(AbstractShaderNode theCase,StringBuilder theSourceBuilder, HashSet<int> theHashes)
         {
             if (theCase == null) return "";
-            if (_inTrue != null && !_inTrue.ParentNode.SourceCode.IsNullOrEmpty())
+            if (_inTrue != null && !_inTrue.SourceCode.IsNullOrEmpty())
             {
-                theCase.ParentNode.BuildChildrenSource(theSourceBuilder, theHashes);
-                return theCase.ParentNode.SourceCode;
+                theCase.BuildChildrenSource(theSourceBuilder, theHashes);
+                return theCase.SourceCode;
             }
             
-            theCase.ParentNode.Children.ForEach(
+            theCase.Children.ForEach(
             child =>
             {
                 if (!(child is AbstractShaderNode node)) return;
@@ -44,7 +44,7 @@ namespace Fuse
             });
 
             var childrenString = new StringBuilder();
-            theCase.ParentNode.BuildChildrenSource(childrenString, theHashes);
+            theCase.BuildChildrenSource(childrenString, theHashes);
             return childrenString.ToString();
         }
         
@@ -55,7 +55,7 @@ namespace Fuse
             if (_inCheck == null) return;
             if (_inTrue == null && _inFalse == null) return;
             
-            _inCheck.ParentNode.BuildSource(theSourceBuilder, theHashes);
+            _inCheck.BuildSource(theSourceBuilder, theHashes);
 
             if (!theHashes.Add(HashCode)) return;
 
