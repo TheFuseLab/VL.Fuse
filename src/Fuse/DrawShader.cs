@@ -47,8 +47,7 @@ namespace Fuse
         {
             Inputs = theInputs;
             _definedStreams = theDefinedStreams;
-
-            //ShaderNodesUtil.ResetID();
+            
 
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();

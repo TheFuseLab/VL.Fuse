@@ -96,11 +96,6 @@ namespace Fuse
     {
 
         private static int id = 0;
-
-        public static void ResetID()
-        {
-            id = 0;
-        }
         public static int GenerateID()
         {
             return id++;
