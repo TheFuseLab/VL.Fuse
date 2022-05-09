@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.8.947" Version="0.128">
-  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.8" />
+<Document xmlns:p="property" Id="RVsvNHzlFJjQAtIGdj2dIZ" Summary="Input to the gpu world" LanguageVersion="2021.4.9.949" Version="0.128">
+  <NugetDependency Id="BguWkaXEMADMOCpL1jti9a" Location="VL.CoreLib" Version="2021.4.9-0949-g67598d91aa" />
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Common.Compute" CanvasType="FullCategory">
       <!--
@@ -9915,14 +9915,6 @@
               <Overlay Id="TA1U4nYH5IENvp61ZgUl6G" Name="DefaultColorTarget (Internal)" Bounds="60,79,493,553">
                 <p:ColorIndex p:Type="Int32">10</p:ColorIndex>
               </Overlay>
-              <Pad Id="RGqIjVL2EQ8QPkP2K5f5Sw" Bounds="1530,105,195,439" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            posView.xyz += QuadPositions[i].xyz * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
-                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
-                  <Choice Kind="TypeFlag" Name="String" />
-                </p:TypeAnnotation>
-                <p:ValueBoxSettings>
-                  <p:fontsize p:Type="Int32">3</p:fontsize>
-                </p:ValueBoxSettings>
-              </Pad>
               <Node Bounds="906,291,47,19" Id="PKQnMGvR3BDNyvUuxTthZy">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Base" LastSymbolSource="Fuse.Core.Base.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -9944,6 +9936,8 @@
                 <Pin Id="QnOwued6QVtNJbs7BfacFG" Name="Color" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="VpiIpydoxpEPivlrunPz1I" Name="Skip" Kind="InputPin" PinGroupName="Input" />
                 <Pin Id="JQQmaoFdJ2vPc8QjiVeQkp" Name="Clip" Kind="InputPin" PinGroupName="Input" />
+                <Pin Id="VT1r938jwtSPmfVQnAHaFq" Name="Rotation" Kind="InputPin" PinGroupName="Input" />
+                <Pin Id="VfmxGtlGDC5N7tObE52748" Name="Scale" Kind="InputPin" PinGroupName="Input" />
               </Node>
               <Node Bounds="1396,145,36,19" Id="CZAl98JwBg1MpTlkfyMDzg">
                 <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.dll">
@@ -10007,11 +10001,10 @@
               </Node>
               <ControlPoint Id="PQOGuI51iR5L96w83IKaMl" Bounds="1374,430" />
               <ControlPoint Id="GIqX8h92U3sLLcA0X3jx4N" Bounds="1374,332" />
-              <ControlPoint Id="MsjHzAQgG1TLbx8Xk1ChDq" Bounds="1531,278" />
               <ControlPoint Id="ASQ6cw9cBJePt25Q7UOAQH" Bounds="868,448" />
               <ControlPoint Id="PywUvSWiocVN2TQLWI3Yuz" Bounds="906,108" />
-              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="998,108" />
-              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="1084,108" />
+              <ControlPoint Id="Il8WLIZhI1LPRqtlqbPGPm" Bounds="967,108" />
+              <ControlPoint Id="M15OKuMlJTwPfRogt98A2P" Bounds="1027,108" />
               <ControlPoint Id="O753LryFLNkOCvM9uFTvqO" Bounds="1374,107" />
               <Node Bounds="948,256,36,19" Id="DjiVkhy4rs1O8oHZpFI6LT">
                 <p:NodeReference>
@@ -10064,7 +10057,7 @@
               </Node>
               <ControlPoint Id="RYMfFLEhqlKOVzIkMgibVd" Bounds="783,364" />
               <ControlPoint Id="TA3uN0r8XinPqhFqEJBH93" Bounds="783,285" />
-              <ControlPoint Id="BljVnUilAW8P9NszpcFvts" Bounds="1174,110" />
+              <ControlPoint Id="BljVnUilAW8P9NszpcFvts" Bounds="1087,108" />
               <Pad Id="NsS3ORLbDKeO57RW8GgetQ" Comment="The Defined Streams" Bounds="969,394,63,80" ShowValueBox="true" isIOBox="true">
                 <p:TypeAnnotation LastCategoryFullName="Collections" LastSymbolSource="VL.Collections.vl">
                   <Choice Kind="TypeFlag" Name="Spread" />
@@ -10079,11 +10072,16 @@
                   <Item>PositionWS</Item>
                   <Item>Skip</Item>
                   <Item>Clip</Item>
+                  <Item>Rotation</Item>
+                  <Item>Scale</Item>
                 </p:Value>
+                <p:ValueBoxSettings>
+                  <p:maxvisibleentries p:Type="Int32">6</p:maxvisibleentries>
+                </p:ValueBoxSettings>
               </Pad>
               <ControlPoint Id="UEaMiD3GerNOPNKdxoolPA" Bounds="723,260" />
-              <ControlPoint Id="SAKsWpzq62MQdpOaGp7Qgp" Bounds="1263,111" />
-              <Node Bounds="1262,281,77,19" Id="EJg0ZsmAVHkOfwn29WPXer">
+              <ControlPoint Id="SAKsWpzq62MQdpOaGp7Qgp" Bounds="1144,108" />
+              <Node Bounds="1142,151,77,19" Id="EJg0ZsmAVHkOfwn29WPXer">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
                   <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                   <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
@@ -10092,7 +10090,7 @@
                 <Pin Id="FiBFVxQuqOOOQ6S1M4kt57" Name="The Value" Kind="InputPin" />
                 <Pin Id="CK5Q15fKSh6OO91bnetQLL" Name="Output" Kind="OutputPin" />
               </Node>
-              <Pad Id="AfZvnbAYFlaOdo7w6o0dxz" Comment="" Bounds="1279,257,35,15" ShowValueBox="true" isIOBox="true" Value="0">
+              <Pad Id="AfZvnbAYFlaOdo7w6o0dxz" Comment="" Bounds="1159,127,35,15" ShowValueBox="true" isIOBox="true" Value="0">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
                   <Choice Kind="TypeFlag" Name="Float32" />
                 </p:TypeAnnotation>
@@ -10272,9 +10270,47 @@
                 <ControlPoint Id="STG03kj6aNXPGfZwKiZxYH" Bounds="372,184" Alignment="Top" />
               </Node>
               <ControlPoint Id="UsvbytfK0auMVQkaDi4w1Z" Bounds="372,141" />
+              <Pad Id="LVZ0G7ydwdrLi2o3SqEgRF" Bounds="1544,103,197,506" ShowValueBox="true" isIOBox="true" Value="shader ${shaderID} : VS_PS_Base, Texturing, ColorBase${mixins}&#xD;&#xA;{&#xD;&#xA;    cbuffer Inputs{&#xD;&#xA;${declarations}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;${structs}&#xD;&#xA;&#xD;&#xA;${functions}&#xD;&#xA;${streamDeclaration}&#xD;&#xA;&#xD;&#xA;    stream uint VertexID : SV_VertexID;&#xD;&#xA;    stream float Size;&#xD;&#xA;    stream float Rotation;&#xD;&#xA;    stream float2 Scale;&#xD;&#xA;    stream bool Skip;&#xD;&#xA;    stream float Clip;&#xD;&#xA;    stream float2x2 SpriteTransform;&#xD;&#xA;&#xD;&#xA;    stage override void VSMain()&#xD;&#xA;    {&#xD;&#xA;${sourceVS}&#xD;&#xA;${streamsVS}&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    void CircleSpriteDiscard(float2 uv)&#xD;&#xA;    {&#xD;&#xA;        if(length(uv - 0.5f) &gt; 0.5f)&#xD;&#xA;        {&#xD;&#xA;            discard;&#xD;&#xA;        }&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    static const float3 QuadPositions[4] = &#xD;&#xA;    {&#xD;&#xA;        float3(-1, 1,0),&#xD;&#xA;        float3( 1, 1,0),&#xD;&#xA;        float3(-1, -1,0),&#xD;&#xA;        float3( 1, -1,0),&#xD;&#xA;    };&#xD;&#xA;&#xD;&#xA;    static const float2 QuadUV[4] = &#xD;&#xA;    {&#xD;&#xA;        float2(0,1), &#xD;&#xA;        float2(1,1),&#xD;&#xA;        float2(0,0),&#xD;&#xA;        float2(1,0)&#xD;&#xA;    };&#xD;&#xA;    [maxvertexcount(4)]&#xD;&#xA;    stage void GSMain(point Input input[1], inout TriangleStream&lt;Output&gt; triangleStream)&#xD;&#xA;    {&#xD;&#xA;        streams = input[0];&#xD;&#xA;        if(streams.Skip)return;&#xD;&#xA;        &#xD;&#xA;        float cRot = cos(streams.Rotation);&#xD;&#xA;        float sRot = sin(streams.Rotation);&#xD;&#xA;        float2x2 rotMat = float2x2(cRot ,-sRot,sRot, cRot );&#xD;&#xA;&#xD;&#xA;        //= ;&#xD;&#xA;&#xD;&#xA;        for(int i = 0; i &lt; 4; i++)&#xD;&#xA;        {&#xD;&#xA;            streams.TexCoord  = QuadUV[i].xy;&#xD;&#xA;            &#xD;&#xA;            float4 posView = mul(streams.PositionWS, WorldView);&#xD;&#xA;            float3 quadPos = QuadPositions[i].xyz;&#xD;&#xA;           quadPos.xy *= streams.Scale;&#xD;&#xA;           quadPos.xy = mul(quadPos.xy,rotMat ) ;&#xD;&#xA;           posView.xyz += quadPos * streams.Size;&#xD;&#xA;            streams.ShadingPosition = mul(posView, Projection);&#xD;&#xA;            &#xD;&#xA;            triangleStream.Append(streams);&#xD;&#xA;        }&#xD;&#xA;       &#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    stage override void PSMain()&#xD;&#xA;    {&#xD;&#xA;${sourcePS}&#xD;&#xA;${streamsPS}&#xD;&#xA;       clip( streams.ColorTarget.a  &lt; streams.Clip ? -1:1 );&#xD;&#xA;    }&#xD;&#xA;};">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="String" />
+                </p:TypeAnnotation>
+                <p:ValueBoxSettings>
+                  <p:fontsize p:Type="Int32">3</p:fontsize>
+                </p:ValueBoxSettings>
+              </Pad>
+              <Node Bounds="1202,204,77,19" Id="SsS5gCnolVmMGGpyn1mpoM">
+                <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
+                </p:NodeReference>
+                <Pin Id="TJvZCMBdrpGN65b3s7m1f1" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="TIPeDoK354oLYTI1beph0V" Name="The Value" Kind="InputPin" />
+                <Pin Id="I2Nc4SC88JtQFMxOyGjwDw" Name="Output" Kind="OutputPin" />
+              </Node>
+              <ControlPoint Id="Ne3ySTb2Q5VOVUBuv6Ce0Y" Bounds="1204,189" />
+              <Node Bounds="1233,269,77,19" Id="DuYZ7KrPnvPMJkOfw1HwV9">
+                <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastSymbolSource="Fuse.Core.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="CheckDefault" />
+                </p:NodeReference>
+                <Pin Id="TodVhs47RyHOF9sn4J4jEX" Name="GpuValue" Kind="InputPin" />
+                <Pin Id="JwcDFuf4UDVMoYFwz3ZS32" Name="The Value" Kind="InputPin" />
+                <Pin Id="NAfrKiQMTKpNh6h8RUjQtY" Name="Output" Kind="OutputPin" />
+              </Node>
+              <ControlPoint Id="FGhQq5QqDdpQW3oTxVAZVU" Bounds="1235,250" />
+              <Pad Id="Cg5LwMni0EiQGkG23e2MjB" Comment="" Bounds="1307,240,35,28" ShowValueBox="true" isIOBox="true" Value="1, 1">
+                <p:TypeAnnotation LastCategoryFullName="2D" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="Vector2" />
+                </p:TypeAnnotation>
+              </Pad>
+              <Pad Id="CXDe0BkQCXHN9mAU2miUCm" Comment="The Value" Bounds="1276,175,35,15" ShowValueBox="true" isIOBox="true" Value="0">
+                <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="Float32" />
+                </p:TypeAnnotation>
+              </Pad>
+              <ControlPoint Id="MIjSuGYPQ6vNxxAnMsU6CR" Bounds="1543,277" />
             </Canvas>
             <Link Id="LOHPsVWXGbaLvPUDqT4k1V" Ids="BQ6bJeXQySzQSk9axzXj7E,KWjfC1y0ZQcO3dZO1JSoZ1" IsHidden="true" />
-            <Link Id="ECdUPcBhPHSOLji4eBAiEI" Ids="RGqIjVL2EQ8QPkP2K5f5Sw,MsjHzAQgG1TLbx8Xk1ChDq,LRJhp4yL2QKPvgGJSljGQu" />
             <Link Id="JnuQwOQ3UzVP7u6DzmZBRt" Ids="KZMPwX6P24eN4OR06QAdRq,A9ET4iLcNMUMR2nfpi7iag" />
             <Link Id="KtUmNQtnQlyQDx7FohrLHg" Ids="GWq09rngsuhOZBdWFl08oS,IuwpAiOoN2aNQhXXjAANoq" />
             <Link Id="UuCPwPZi4ujLqZ4dQcXSis" Ids="IXQHdxalP1bNLhVTxEY3NR,GIqX8h92U3sLLcA0X3jx4N,DA0b2CzwrM9OD11iILf2hd" />
@@ -10318,7 +10354,7 @@
             <Link Id="RpouYDuxn4oPj4r6gIh3Kg" Ids="TA3uN0r8XinPqhFqEJBH93,BasfS2DFBpPP2gKmqcw8k0" />
             <Link Id="S3HWP84IUzhNWG4iPos0fX" Ids="TbSBl6i0NtqO5mrdpub1Zl,TA3uN0r8XinPqhFqEJBH93" IsHidden="true" />
             <Patch Id="PZ0jHFIk53KNq5JxK3RmR8" Name="Create" />
-            <Patch Id="DxkRLevn4qJMj4niqcC8iO" Name="Update" ParticipatingElements="EZ8nYLD5yctQKECHnvIJGw,RJu6G1RlKBXPWTQgd4LngG,N2qG1KOiXM4PVvn0POyimd,ECdUPcBhPHSOLji4eBAiEI,JnuQwOQ3UzVP7u6DzmZBRt,KtUmNQtnQlyQDx7FohrLHg,UuCPwPZi4ujLqZ4dQcXSis,NWhLWotV9JBNro7Kk60L2A,VZ9IS2IWjl3Pv9qO7qqWyA,CrYhyIXSZMgNITK9y7XeLe,KiSnJseVpVTLRjRjbUoSbK,AXmbUMvnr1ROkVq2xbRdEE" ManuallySortedPins="true">
+            <Patch Id="DxkRLevn4qJMj4niqcC8iO" Name="Update" ParticipatingElements="EZ8nYLD5yctQKECHnvIJGw,RJu6G1RlKBXPWTQgd4LngG,N2qG1KOiXM4PVvn0POyimd,JnuQwOQ3UzVP7u6DzmZBRt,KtUmNQtnQlyQDx7FohrLHg,UuCPwPZi4ujLqZ4dQcXSis,NWhLWotV9JBNro7Kk60L2A,VZ9IS2IWjl3Pv9qO7qqWyA,CrYhyIXSZMgNITK9y7XeLe,KiSnJseVpVTLRjRjbUoSbK,AXmbUMvnr1ROkVq2xbRdEE" ManuallySortedPins="true">
               <Pin Id="PvwBMVuuZGnNLxoaXanu7j" Name="Depth Stencil State" Kind="InputPin" Bounds="980,477" />
               <Pin Id="PpNLj5C6N0RPJwnyPb7ny7" Name="Position" Kind="InputPin" />
               <Pin Id="Te2do41fBizOxaquMMLMJv" Name="Size" Kind="InputPin">
@@ -10363,14 +10399,34 @@
                 </p:TypeAnnotation>
               </Pin>
               <Pin Id="RPyjq4YUUpnMIboydFQGc4" Name="Force Cache" Kind="InputPin" Visibility="Optional" />
-              <Pin Id="R1G7v3Jb0q2PShZDMHGYaF" Name="Circle Clip Threshold Value" Kind="InputPin" Bounds="366,168" Visibility="Optional" />
-              <Pin Id="BfewXXVMKNvOwQXZB9lhEZ" Name="DefaultCount" Kind="InputPin" />
               <Pin Id="TbSBl6i0NtqO5mrdpub1Zl" Name="Enabled" Kind="InputPin" Bounds="626,385" />
+              <Pin Id="BfewXXVMKNvOwQXZB9lhEZ" Name="DefaultCount" Kind="InputPin" />
               <Pin Id="B7rdKFFgM7WL6VqbRCzNnG" Name="ComputeStage" Kind="OutputPin" />
               <Pin Id="RFMza0JUOv2OqwB3qFBGzy" Name="Entity" Kind="OutputPin" />
               <Pin Id="HjFtmqNgDCtLWWYGgH25UQ" Name="lastError" Kind="OutputPin" />
               <Pin Id="RaH7E7K1fC0MT4re6EWaPP" Name="Shader Code" Kind="OutputPin" />
               <Pin Id="E8VvrcMEwZYNlGyHUUXXtE" Name="Ticket" Kind="OutputPin" />
+              <Pin Id="R1G7v3Jb0q2PShZDMHGYaF" Name="Circle Clip Threshold Value" Kind="InputPin" Bounds="366,168" Visibility="Optional" />
+              <Pin Id="TgVxr3KrmAAQN7TJYNs38n" Name="Rotation" Kind="InputPin">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="Float32" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
+              <Pin Id="Bn153O3q4HdMCDGI8eQ4Gm" Name="Scale" Kind="InputPin" DefaultValue="1, 1">
+                <p:TypeAnnotation>
+                  <Choice Kind="TypeFlag" Name="GpuValue" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="Vector2" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
             </Patch>
             <Patch Id="Mt03geeMOgSPSLqWf1WT5O" Name="DefaultColorTarget">
               <Pin Id="KWjfC1y0ZQcO3dZO1JSoZ1" Name="Shader Graph" Kind="OutputPin" />
@@ -10408,6 +10464,15 @@
             <Link Id="B1Jv3FHjTINP5pS6uhdujX" Ids="UsvbytfK0auMVQkaDi4w1Z,STG03kj6aNXPGfZwKiZxYH" />
             <Link Id="LKLT1husXb9OSSNeM0j8UT" Ids="R1G7v3Jb0q2PShZDMHGYaF,UsvbytfK0auMVQkaDi4w1Z" IsHidden="true" />
             <Link Id="UmoPAbjYEG2K9yhLh7b8mp" Ids="UmpkIY29FPfMyZgy9jEdPH,QIN6Z8j5lnXPfmt1WSbv4z" />
+            <Link Id="G5s8kipBVwJM07N7jcaXpM" Ids="TgVxr3KrmAAQN7TJYNs38n,Ne3ySTb2Q5VOVUBuv6Ce0Y" IsHidden="true" />
+            <Link Id="MVOqbZmP7kWLd9d02SpYeq" Ids="Ne3ySTb2Q5VOVUBuv6Ce0Y,TJvZCMBdrpGN65b3s7m1f1" />
+            <Link Id="IBRrz3V4uwCQXtsVusp9M5" Ids="Bn153O3q4HdMCDGI8eQ4Gm,FGhQq5QqDdpQW3oTxVAZVU" IsHidden="true" />
+            <Link Id="CIAMeTUtrO6OBoe6PjZeKA" Ids="FGhQq5QqDdpQW3oTxVAZVU,TodVhs47RyHOF9sn4J4jEX" />
+            <Link Id="GTl53xI3cUVPpBsGJvEFnz" Ids="Cg5LwMni0EiQGkG23e2MjB,JwcDFuf4UDVMoYFwz3ZS32" />
+            <Link Id="IF8Gq8KEwlKLeDlecY3QtL" Ids="I2Nc4SC88JtQFMxOyGjwDw,VT1r938jwtSPmfVQnAHaFq" />
+            <Link Id="HJkmUVDSE2mLQBlzwFbM4F" Ids="NAfrKiQMTKpNh6h8RUjQtY,VfmxGtlGDC5N7tObE52748" />
+            <Link Id="O4PGzIs51sPOcIvDQX9N2f" Ids="CXDe0BkQCXHN9mAU2miUCm,TIPeDoK354oLYTI1beph0V" />
+            <Link Id="RXQSpGfNTIIMh382CtKdJ2" Ids="LVZ0G7ydwdrLi2o3SqEgRF,MIjSuGYPQ6vNxxAnMsU6CR,LRJhp4yL2QKPvgGJSljGQu" />
           </Patch>
         </Node>
         <!--
@@ -20965,8 +21030,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.8" />
-  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.8" />
+  <NugetDependency Id="MHdJL4N0OXVNS4EVs2Aloa" Location="VL.HDE" Version="2021.4.9-0949-g67598d91aa" />
+  <NugetDependency Id="FUqyFF6zK3kP3uXIrhaTdA" Location="VL.Stride" Version="2021.4.9-0949-g67598d91aa" />
   <DocumentDependency Id="TrD0OOB86nDLU7T7NT4N26" Location="./Fuse.Core.Math.vl" IsFriend="true" />
   <DocumentDependency Id="I5yNWilZPoXMl35gd4y1DO" Location="./Fuse.Core.vl" IsFriend="true" />
   <DocumentDependency Id="TwlrykDdxf0OHBCI0TciFj" Location="./Fuse.Core.Domain.vl" />
