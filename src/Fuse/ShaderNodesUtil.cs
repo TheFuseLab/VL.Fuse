@@ -52,12 +52,12 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractComputeTextureGet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(GpuValuePassThrough<>), new object[]{theTexture, theIndex, null});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theTexture, theIndex, null});
         }
         
         public static AbstractShaderNode AbstractShaderNodePassThrough(AbstractShaderNode theValue)
         {
-            var getBaseType = typeof(GpuValuePassThrough<>);
+            var getBaseType = typeof(PassThroughNode<>);
             var dataType = new[] { theValue.GetType().GetGenericArguments()[0] };
             var getType = getBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractShaderNode;
@@ -97,10 +97,10 @@ namespace Fuse
     public static class ShaderNodesUtil
     {
 
-        private static int id = 0;
+        private static int _id = 0;
         public static int GenerateID()
         {
-            return id++;
+            return _id++;
         }
         
         public static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
@@ -213,11 +213,11 @@ namespace Fuse
             return toComputeMatrix;
         }
 
-        public static void ListInputs(List<IGpuInput> theInputs, AbstractGpuValue theGpuValue)
+        public static void ListInputs(List<IGpuInput> theInputs, AbstractShaderNode theGpuValue)
         {
-            if (theGpuValue?.ParentNode == null) return;
+            if (theGpuValue == null) return;
             
-            theInputs.AddRange(theGpuValue.ParentNode.InputList());
+            theInputs.AddRange(theGpuValue.InputList());
         }
         
         public static Dictionary<string, List<TResource>> ResourcesForTreeBreadthFirst<TResource>(AbstractShaderNode theNode)
