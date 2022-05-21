@@ -116,6 +116,9 @@ shader Fluid3DProjectVelocity_Internal_ComputeFX : ComputeShaderBase, Fluid3DGlo
 
         velocity = (vMask * v) + obstV;
 
+        // workaround to guard against current fluid 3d instability issues
+        if(length(velocity) > 1.0) velocity = 0.;
+
         Texture_Velocity_RW[i] = velocity;
     }
 
