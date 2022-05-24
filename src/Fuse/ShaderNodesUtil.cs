@@ -223,18 +223,19 @@ namespace Fuse
         public static Dictionary<string, List<TResource>> ResourcesForTreeBreadthFirst<TResource>(AbstractShaderNode theNode)
         {
             var result = new Dictionary<string, List<TResource>>();
-            Trees.ReadOnlyTreeNode.TraverseBreadthFirst<AbstractShaderNode>(theNode, node =>
+            Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
             {
-                if (!(node is AbstractShaderNode input)) return Trees.SkipAllChilds;
-                input.Resources.ForEach(kv =>
+                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TResource>();
-                    if (values.IsEmpty()) return;
+                    var tResources = values.ToList();
+                    if (tResources.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
                         result[kv.Key] = new List<TResource>();
                     }
-                    values.ForEach(v => result[kv.Key].Add(v));
+                    tResources.ForEach(v => result[kv.Key].Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _);
@@ -246,14 +247,15 @@ namespace Fuse
         public static List<TResource> ResourcesForTreeBreadthFirstList<TResource>(AbstractShaderNode theNode)
         {
             var result = new List<TResource>();
-            Trees.ReadOnlyTreeNode.TraverseBreadthFirst<AbstractShaderNode>(theNode, node =>
+            Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
             {
-                if (!(node is AbstractShaderNode input)) return Trees.SkipAllChilds;
-                input.Resources.ForEach(kv =>
+                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TResource>();
-                    if (values.IsEmpty()) return;
-                    values.ForEach(v => result.Add(v));
+                    var tResources = values as TResource[] ?? values.ToArray();
+                    if (tResources.IsEmpty()) return;
+                    tResources.ForEach(v => result.Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _);
@@ -263,18 +265,19 @@ namespace Fuse
         public static Dictionary<string, List<TResource>> ResourcesForTree<TResource>(AbstractShaderNode theNode)
         {
             var result = new Dictionary<string, List<TResource>>();
-            Trees.ReadOnlyTreeNode.Traverse<AbstractShaderNode>(theNode, node =>
+            Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
             {
-                if (!(node is AbstractShaderNode input)) return Trees.SkipAllChilds;
-                input.Resources.ForEach(kv =>
+                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TResource>();
-                    if (values.IsEmpty()) return;
+                    var tResources = values as TResource[] ?? values.ToArray();
+                    if (tResources.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
                         result[kv.Key] = new List<TResource>();
                     }
-                    values.ForEach(v => result[kv.Key].Add(v));
+                    tResources.ForEach(v => result[kv.Key].Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);
@@ -286,14 +289,15 @@ namespace Fuse
         public static List<TResource> ResourcesForTreeList<TResource>(AbstractShaderNode theNode)
         {
             var result = new List<TResource>();
-            Trees.ReadOnlyTreeNode.Traverse<AbstractShaderNode>(theNode, node =>
+            Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
             {
-                if (!(node is AbstractShaderNode input)) return Trees.SkipAllChilds;
-                input.Resources.ForEach(kv =>
+                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TResource>();
-                    if (values.IsEmpty()) return;
-                    values.ForEach(v => result.Add(v));
+                    var tResources = values as TResource[] ?? values.ToArray();
+                    if (tResources.IsEmpty()) return;
+                    tResources.ForEach(v => result.Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);

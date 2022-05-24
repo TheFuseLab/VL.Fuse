@@ -43,8 +43,32 @@ namespace Fuse
 
         public bool IsResource { get; }
     }
+
+    public class ShaderTree : Trees.IReadOnlyTreeNode
+    {
+
+        public readonly AbstractShaderNode Node;
+        public ShaderTree(AbstractShaderNode theNode)
+        {
+            Node = theNode;
+        }
+        
+        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
+        {
+            get
+            {
+                var result = new List<Trees.IReadOnlyTreeNode>();
+                
+                Node.Ins.ForEach(input =>
+                {
+                    if(input != null)result.Add(input.Tree);
+                });
+                return result;
+            }
+        }
+    }
     
-    public abstract class AbstractShaderNode : Trees.IReadOnlyTreeNode, IComputeNode
+    public abstract class AbstractShaderNode : IComputeNode
     {
         public List<AbstractShaderNode> Ins = new List<AbstractShaderNode>();
         
@@ -58,29 +82,23 @@ namespace Fuse
 
         protected abstract string SourceTemplate();
 
+        public abstract int Dimension();
+
+        public readonly ShaderTree Tree;
+
         protected AbstractShaderNode(string theId)
         {
             Name = theId;
             HashCode = ShaderNodesUtil.GenerateID();
+
+            Tree = new ShaderTree(this);
         }
         
         public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
 
-        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children
-        {
-            get
-            {
-                var result = new List<Trees.IReadOnlyTreeNode>();
-                
-                Ins.ForEach(input =>
-                {
-                    if(input != null)result.Add(input);
-                });
-                return result;
-            }
-        }
-        
-        protected const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
+        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children => Tree.Children;
+
+        private const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
         
         public string SourceCode => GenerateSource( Ins);
         
@@ -116,8 +134,6 @@ namespace Fuse
                 var name = input.Name;
                 Console.WriteLine(name);
                 input.HashCode = theContext.GetAndIncIDCount();
-                if (!(input is AbstractShaderNode abstractinput)) return;
-               
                 input.SetHashCodes(theContext);
             });
         }
@@ -126,9 +142,9 @@ namespace Fuse
         {
             Children.ForEach(child =>
             {
-                if (!(child is AbstractShaderNode input)) return;
+                if (!(child is ShaderTree input)) return;
                
-                input.BuildSource( theSourceBuilder, theHashes);
+                input.Node.BuildSource( theSourceBuilder, theHashes);
             });
         }
 
@@ -168,9 +184,12 @@ namespace Fuse
         public List<TNode> ChildrenOfType<TNode>()
         {
             var result = new HashSet<TNode>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if(n is TNode input)result.Add(input);
+                if (n is ShaderTree {Node: TNode input})
+                {
+                    result.Add(input);
+                }
             });
             return result.ToList();
         }
@@ -185,9 +204,9 @@ namespace Fuse
         private  List<T> GetInfo<T>(GetInfoElement<T> theDelegate)
         {
             var result = new HashSet<T>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if(n is AbstractShaderNode input)result.AddRange(theDelegate(input));
+                if(n is ShaderTree tree)result.AddRange(theDelegate(tree.Node));
             });
             return result.ToList();
         }
@@ -195,10 +214,10 @@ namespace Fuse
         public List<TResourceType> ResourceForTree<TResourceType>(string theResourceId)
         {
             var result = new HashSet<TResourceType>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input) || !input.Resources.ContainsKey(theResourceId)) return;
-                Stride.Core.Extensions.EnumerableExtensions.ForEach<TResourceType>(input.Resources[theResourceId], i => result.Add(i));
+                if (!(n is ShaderTree tree) || !tree.Node.Resources.ContainsKey(theResourceId)) return;
+                Stride.Core.Extensions.EnumerableExtensions.ForEach<TResourceType>(tree.Node.Resources[theResourceId], i => result.Add(i));
 
             });
             return result.ToList();
@@ -207,10 +226,10 @@ namespace Fuse
         public List<string> ResourceIdsForTree()
         {
             var result = new HashSet<string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input)) return;
-                input.Resources.ForEach(kv =>
+                if (!(n is ShaderTree tree)) return;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     if (result.Add(kv.Key)) return;
                 });
@@ -221,10 +240,10 @@ namespace Fuse
         public Dictionary<string, IList> ResourcesForTree()
         {
             var result = new Dictionary<string, IList>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input)) return;
-                input.Resources.ForEach(kv =>
+                if (!(n is ShaderTree tree)) return;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     if (result.ContainsKey(kv.Key)) return;
                     
@@ -239,10 +258,10 @@ namespace Fuse
         public Dictionary<string, List<TResource>> ResourcesForTree<TResource>()
         {
             var result = new Dictionary<string, List<TResource>>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input)) return;
-                input.Resources.ForEach(kv =>
+                if (!(n is ShaderTree tree)) return;
+                tree.Node.Resources.ForEach(kv =>
                 {
                     var values = kv.Value.OfType<TResource>();
                     if (values.IsEmpty()) return;
@@ -313,11 +332,11 @@ namespace Fuse
         public Dictionary<string,string> FunctionMap(){
        
             var result = new Dictionary<string,string>();
-            Trees.ReadOnlyTreeNode.Flatten(this).ForEach(n =>
+            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is AbstractShaderNode input)) return;
+                if (!(n is ShaderTree tree)) return;
                 
-                input.Functions?.ForEach(kv =>
+                tree.Node.Functions?.ForEach(kv =>
                 {
                     if (result.ContainsKey(kv.Key)) return;
                     
@@ -378,6 +397,11 @@ namespace Fuse
         protected override string SourceTemplate()
         {
             return "";
+        }
+
+        public override int Dimension()
+        {
+            return TypeHelpers.GetDimension<T>();
         }
 
         public override string ID => Name + "_" + HashCode;

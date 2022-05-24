@@ -335,6 +335,11 @@ namespace Fuse
                 return GetDimension(typeof(T));
             }
             
+            public static int GetDimension<T>()
+            {
+                return GetDimension(typeof(T));
+            }
+            
             public static int GetDimension(Type theType)
             {
                 if (theType == typeof(float)) return 1;

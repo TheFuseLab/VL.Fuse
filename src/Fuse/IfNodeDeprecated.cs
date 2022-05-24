@@ -6,12 +6,12 @@ using Stride.Core.Extensions;
 
 namespace Fuse
 {
-    public class BooleanSwitchNode<T> : ShaderNode<T>
+    public class IfNodeDeprecated<T> : ShaderNode<T>
     {
         private readonly ShaderNode<bool> _inCheck;
         private readonly ShaderNode<T> _inFalse;
         private readonly ShaderNode<T> _inTrue;
-        public BooleanSwitchNode(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "bool_switch_result", theDefault)
+        public IfNodeDeprecated(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "bool_switch_result", theDefault)
         {
 
             var ins = new List<AbstractShaderNode>(){inCheck};

@@ -9,7 +9,7 @@ namespace Fuse
     public abstract class AbstractFunctionNode<T> : ShaderNode<T>
     {
         private bool _isGroupable;
-        private string _functionName;
+        private readonly string _functionName;
 
         protected AbstractFunctionNode(string theFunction, ShaderNode<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {

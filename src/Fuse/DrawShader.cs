@@ -29,6 +29,11 @@ namespace Fuse
         {
             return "";
         }
+
+        public override int Dimension()
+        {
+            return 0;
+        }
     }
 
     public abstract class AbstractShader
