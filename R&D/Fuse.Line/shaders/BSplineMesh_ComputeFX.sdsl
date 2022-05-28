@@ -1,0 +1,54 @@
+shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplineCommon, LineAttributeStream, LineCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> ControlPointBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer;
+
+        stage int SampleCount;
+        stage int Resolution;
+        stage bool IsClose;
+
+        stage int ThicknessSpace = 0;
+        stage int MeshType = 0;
+        stage float4x4 Transform;
+    }
+
+    compose ComputeFloat Width;
+    compose ComputeFloat4 Color;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+        if(dtid >= SampleCount + IsClose) return;
+
+        uint ctrlPtSize = sbSize3(ControlPointBuffer);
+        int SegmentCount = SampleCount - 1 + IsClose;
+
+        float t = dtid * (ctrlPtSize-(1-IsClose)) / (float)SegmentCount;
+        if(dtid == SampleCount) t = 0;
+
+        PointAttribute p = SampleBSpline(ControlPointBuffer, t, IsClose);
+        float3 pos = mul(float4(p.p, 1), Transform).xyz;
+        float3 tan = mul(p.t, (float3x3)Transform).xyz;
+
+        streams.LinePosition = pos;
+
+        float3 viewDir = ViewInverse[3].xyz - pos;
+        float3 viewFront = ViewInverse[2].xyz;
+
+        float scale = ThicknessSpace == 1 ? dot(viewFront, viewDir)/min(ViewSize.x,ViewSize.y) : 1;
+        scale *= Width.Compute();
+
+        if(MeshType == 0) // Ribbon Triangle Strip
+        {
+            FlatMeshLineStrip(outputBuffer, dtid, pos, tan, scale, Color.Compute(),
+                        SegmentCount, normalize(viewDir));
+        }
+        else // Tube Triangle List
+        {
+            TubeMeshLineStrip(outputBuffer, dtid, pos, tan, scale, Color.Compute(), 
+                        SegmentCount, Resolution);
+        }
+    }
+};
