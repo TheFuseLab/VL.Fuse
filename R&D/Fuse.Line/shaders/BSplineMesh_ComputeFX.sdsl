@@ -12,6 +12,9 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
         stage int ThicknessSpace = 0;
         stage int MeshType = 0;
         stage float4x4 Transform;
+
+        stage int LineCount;
+        stage int CtrlPtCount;
     }
 
     compose ComputeFloat Width;
@@ -20,15 +23,17 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
     override void Compute()
     {
         uint dtid = streams.DispatchThreadId.x;
-        if(dtid >= SampleCount + IsClose) return;
+        if(dtid >= (SampleCount + IsClose) * LineCount) return;
 
-        uint ctrlPtSize = sbSize3(ControlPointBuffer);
-        int SegmentCount = SampleCount - 1 + IsClose;
+        int SegmentCount = SampleCount + IsClose;
 
-        float t = dtid * (ctrlPtSize-(1-IsClose)) / (float)SegmentCount;
-        if(dtid == SampleCount) t = 0;
+        uint lineId = streams.LineId = dtid / SegmentCount;
+        uint segmentId = streams.SegmentId = dtid % SegmentCount;
 
-        PointAttribute p = SampleBSpline(ControlPointBuffer, t, IsClose);
+        float t = segmentId * (CtrlPtCount-(1-IsClose)) / ((float)SegmentCount-1);
+        t = segmentId == SampleCount? .0 : t;
+
+        PointAttribute p = SampleBSpline(ControlPointBuffer, t, lineId, CtrlPtCount, IsClose);
         float3 pos = mul(float4(p.p, 1), Transform).xyz;
         float3 tan = mul(p.t, (float3x3)Transform).xyz;
 
@@ -42,12 +47,12 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
 
         if(MeshType == 0) // Ribbon Triangle Strip
         {
-            FlatMeshLineStrip(outputBuffer, dtid, pos, tan, scale, Color.Compute(),
+            FlatMeshLineStrip(outputBuffer, dtid - lineId, segmentId, pos, tan, scale, Color.Compute(),
                         SegmentCount, normalize(viewDir));
         }
         else // Tube Triangle List
         {
-            TubeMeshLineStrip(outputBuffer, dtid, pos, tan, scale, Color.Compute(), 
+            TubeMeshLineStrip(outputBuffer, dtid - lineId, segmentId, pos, tan, scale, Color.Compute(), 
                         SegmentCount, Resolution);
         }
     }

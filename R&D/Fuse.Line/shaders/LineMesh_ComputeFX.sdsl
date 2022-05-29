@@ -9,6 +9,9 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
         stage int ThicknessSpace = 0;
         stage int MeshType = 0;
         stage float4x4 Transform;
+
+        stage int SegmentCount;
+        stage StructuredBuffer<int> CountBuffer;
     }
 
     compose ComputeFloat Width;
@@ -21,8 +24,14 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
         uint n = sbSize3(PositionBuffer);
         if(dtid >= n) return;
 
-        uint prevId = dtid == 0   ? dtid : dtid - 1;
-        uint nextId = dtid == n-1 ? dtid : dtid + 1;
+        uint segmentId = dtid % SegmentCount;
+        uint lineId    = dtid / SegmentCount;
+
+        streams.SegmentId = segmentId;
+        streams.LineId = lineId;
+
+        uint prevId = segmentId == 0 ? dtid : dtid - 1;
+        uint nextId = segmentId == SegmentCount-1 ? dtid : dtid + 1;
 
         float3 p = PositionBuffer[dtid];
         float3 prevPt = PositionBuffer[prevId];
@@ -41,13 +50,13 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
 
         if(MeshType == 0) // Ribbon Triangle Strip
         {
-            FlatMeshLineStrip(outputBuffer, dtid, p, t, 
-                                scale, Color.Compute(), n, normalize(viewDir));
+            FlatMeshLineStrip(outputBuffer, dtid - lineId, segmentId, p, t, 
+                                scale, Color.Compute(), SegmentCount, normalize(viewDir));
         }
         else // Tube Triangle List
         {
-            TubeMeshLineStrip(outputBuffer, dtid, p, t, 
-                            scale, Color.Compute(), n, Resolution);
+            TubeMeshLineStrip(outputBuffer, dtid - lineId, segmentId, p, t, 
+                            scale, Color.Compute(), SegmentCount, Resolution);
         }
     }
 };

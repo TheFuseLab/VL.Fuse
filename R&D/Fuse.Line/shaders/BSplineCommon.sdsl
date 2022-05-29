@@ -22,40 +22,42 @@ shader BSplineCommon : FuseCommonBuffer
         return o;
     }
 
-    PointAttribute SampleBSpline(StructuredBuffer<float3> CtrlPtBuffer, float t, bool Close)
+    PointAttribute SampleBSpline(StructuredBuffer<float3> CtrlPtBuffer, float t, 
+                                uint lineId, uint ctrlPtCount, bool Close)
     {
         float range = frac(t);
         int t2 = round(t - range);
-        uint ctrlPtSize = sbSize3(CtrlPtBuffer);
+
+        uint start = lineId * ctrlPtCount;
 
         float3 p1,p2,p3,p4;
 
         if(Close)
         {
-            p1 = sbLoadZ(t2 - 1, CtrlPtBuffer);
-            p2 = sbLoadZ(t2    , CtrlPtBuffer);
-            p3 = sbLoadZ(t2 + 1, CtrlPtBuffer);
-            p4 = sbLoadZ(t2 + 2, CtrlPtBuffer);
+            p1 = sbLoadRange(t2 - 1, CtrlPtBuffer, start, ctrlPtCount);
+            p2 = sbLoadRange(t2    , CtrlPtBuffer, start, ctrlPtCount);
+            p3 = sbLoadRange(t2 + 1, CtrlPtBuffer, start, ctrlPtCount);
+            p4 = sbLoadRange(t2 + 2, CtrlPtBuffer, start, ctrlPtCount);
         }
         else
         {
-            p1 = sbLoadZ(max(t2 - 1, 0), CtrlPtBuffer);
-            p2 = sbLoadZ(t2,             CtrlPtBuffer);
-            p3 = sbLoadZ(min(t2 + 1, ctrlPtSize - 1), CtrlPtBuffer);
-            p4 = sbLoadZ(min(t2 + 2, ctrlPtSize - 1), CtrlPtBuffer);
+            p1 = sbLoadRange(max(t2 - 1, 0), CtrlPtBuffer, start, ctrlPtCount);
+            p2 = sbLoadRange(    t2,         CtrlPtBuffer, start, ctrlPtCount);
+            p3 = sbLoadRange(min(t2 + 1, ctrlPtCount - 1), CtrlPtBuffer, start, ctrlPtCount);
+            p4 = sbLoadRange(min(t2 + 2, ctrlPtCount - 1), CtrlPtBuffer, start, ctrlPtCount);
         }
 
         return BSplineCubic(p1, p2, p3, p4, range);
     }
 
-    float3 sbLoadZ(int index, StructuredBuffer<float3> sBuffer, float3 defaultValue = 0.)
+    float3 sbLoadRange(int index, StructuredBuffer<float3> sBuffer, uint start, uint range, float3 defaultValue = 0.)
 	{
 		float3 value = defaultValue;
-		uint count = sbSize3(sBuffer);
+		uint count = min(range, max(sbSize3(sBuffer)-start, 0));
 		if (count > 0)
         {
             index = index < 0 ? count - (abs(index) % count) : index % count;
-            value = sBuffer[index];
+            value = sBuffer[index+start];
         }
 		return value;
 	}

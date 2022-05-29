@@ -57,7 +57,7 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         outputBuffer[id * 6 + 5] = v1;
     }
 
-    void FlatMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id,
+    void FlatMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id, uint segmentId,
                         float3 pos, float3 tan, float scale, float4 color,
                         int sampleCnt, float3 up = float3(0,1,0))
     {
@@ -73,17 +73,26 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
 
         v0.Color = v1.Color = color;
 
-        float div = 1.0 / sampleCnt;
-        v0.TexCoord = float2(div*id, 1);
-        v1.TexCoord = float2(div*id, 0);
+        float div = 1.0 / (sampleCnt-1);
+        v0.TexCoord = float2(div*segmentId, 1);
+        v1.TexCoord = float2(div*segmentId, 0);
 
-        outputBuffer[max(id-1,0) * 6 + 1] = v0;
-        outputBuffer[max(id-1,0) * 6 + 4] = v1;
-        outputBuffer[max(id-1,0) * 6 + 5] = v0;
+        uint pOffset = (id - 1) * 6;
+        uint offset = id * 6;
 
-        outputBuffer[id * 6 + 0] = v1;
-        outputBuffer[id * 6 + 2] = v0;
-        outputBuffer[id * 6 + 3] = v1;
+        if(segmentId != 0)
+        {
+            outputBuffer[pOffset + 1] = v0;
+            outputBuffer[pOffset + 4] = v1;
+            outputBuffer[pOffset + 5] = v0;
+        }
+
+        if(segmentId != sampleCnt - 1)
+        {
+            outputBuffer[offset + 0] = v1;
+            outputBuffer[offset + 2] = v0;
+            outputBuffer[offset + 3] = v1;
+        }
     }
 
     void TubeMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id, 
@@ -148,7 +157,7 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         }
     }
 
-    void TubeMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id, 
+    void TubeMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id, uint segmentId,
                     float3 pos, float3 tan, float scale, float4 color,
                     int sampleCnt, int resolution, float3 up = float3(0,1,0))
     {
@@ -164,7 +173,7 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         float divX = 1.0 / (float)sampleCnt;
         float divY = 1.0 / resolution;
 
-        v0.TexCoord = float2(divX * id, 0);
+        v0.TexCoord = float2(divX * segmentId, 0);
 
         for(uint i = 0; i < resolution; i++)
         {
@@ -173,20 +182,24 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
 
             v1.Position = pos + dir * .5 * scale;
             v1.Normal = dir;
-            v1.TexCoord = float2(divX * id, divY * (i+1));
+            v1.TexCoord = float2(divX * segmentId, divY * (i+1));
 
+            uint prevOffset = (id - 1) * 6 * resolution + 6 * i;
             uint offset = id * 6 * resolution + 6 * i;
-            uint prevOffset = max(id-1,0) * 6 * resolution + 6 * i;
 
-            // tri0
-            outputBuffer[prevOffset + 1] = v0;
-            outputBuffer[prevOffset + 4] = v1;
-            outputBuffer[prevOffset + 5] = v0;
+            if(segmentId != 0)
+            {
+                outputBuffer[prevOffset + 1] = v0;
+                outputBuffer[prevOffset + 4] = v1;
+                outputBuffer[prevOffset + 5] = v0;
+            }
 
-            // tri1
-            outputBuffer[offset + 0] = v1;
-            outputBuffer[offset + 2] = v0;
-            outputBuffer[offset + 3] = v1;
+            if(segmentId != sampleCnt - 1)
+            {
+                outputBuffer[offset + 0] = v1;
+                outputBuffer[offset + 2] = v0;
+                outputBuffer[offset + 3] = v1;
+            }
 
             v0.Position = v1.Position;
             v0.TexCoord = v1.TexCoord;
