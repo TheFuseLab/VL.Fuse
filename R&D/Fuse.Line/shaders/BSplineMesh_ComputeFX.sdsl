@@ -14,7 +14,8 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
         stage float4x4 Transform;
 
         stage int LineCount;
-        stage int CtrlPtCount;
+        stage int CtrlPtCountGlobal;
+        stage StructuredBuffer<LineInfo> InfoBuffer;
     }
 
     compose ComputeFloat Width;
@@ -30,10 +31,26 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
         uint lineId = streams.LineId = dtid / SegmentCount;
         uint segmentId = streams.SegmentId = dtid % SegmentCount;
 
-        float t = segmentId * (CtrlPtCount-(1-IsClose)) / ((float)SegmentCount-1);
+        int startIndex, ctrlPtCount;
+
+        uint count, dummy;	
+		InfoBuffer.GetDimensions(count,dummy);
+        if(count > 0)
+        {
+            LineInfo info = InfoBuffer[lineId];
+            startIndex = info.start;
+            ctrlPtCount = info.count;
+        }
+        else
+        {
+            startIndex = lineId * CtrlPtCountGlobal;
+            ctrlPtCount = CtrlPtCountGlobal;
+        }
+
+        float t = segmentId * (ctrlPtCount-(1-IsClose)) / ((float)SegmentCount-1);
         t = segmentId == SampleCount? .0 : t;
 
-        PointAttribute p = SampleBSpline(ControlPointBuffer, t, lineId, CtrlPtCount, IsClose);
+        PointAttribute p = SampleBSpline(ControlPointBuffer, t, startIndex, ctrlPtCount, IsClose);
         float3 pos = mul(float4(p.p, 1), Transform).xyz;
         float3 tan = mul(p.t, (float3x3)Transform).xyz;
 
