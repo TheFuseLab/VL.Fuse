@@ -20,7 +20,7 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
     void FlatMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id,
                     float3 pos, float3 tan, float scale, float4 color,
                     float3 posNext, float3 tanNext, float scaleNext, float4 colorNext,
-                    float radius, int sampleCnt, float3 up = float3(0,1,0), float3 upNext = float3(0,1,0))
+                    float radius, int sampleCnt, bool normalBend, float3 up = float3(0,1,0), float3 upNext = float3(0,1,0))
     {
         Pos3Norm3Col4Tex2 v0, v1, v2, v3;
 
@@ -32,10 +32,11 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         v2.Position = pos - dir * radius * .5 * scale;
         v3.Position = posNext - dirNext * radius * .5 * scaleNext;
 
-        v0.Normal = normalize(lerp( dir, up, 0.5));
-        v1.Normal = normalize(lerp( dirNext, upNext, 0.5));
-        v2.Normal = normalize(lerp(-dir, up, 0.5));
-        v3.Normal = normalize(lerp(-dirNext, upNext, 0.5));
+        float t = normalBend? .5 : 1;
+        v0.Normal = normalize(lerp( dir, up, t));
+        v1.Normal = normalize(lerp( dirNext, upNext, t));
+        v2.Normal = normalize(lerp(-dir, up, t));
+        v3.Normal = normalize(lerp(-dirNext, upNext, t));
 
         v0.Color = v2.Color = color;
         v1.Color = v3.Color = colorNext;
@@ -59,7 +60,7 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
 
     void FlatMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer, uint id, uint segmentId,
                         float3 pos, float3 tan, float scale, float4 color,
-                        int sampleCnt, float3 up = float3(0,1,0))
+                        int sampleCnt, bool normalBend, float3 up = float3(0,1,0))
     {
         Pos3Norm3Col4Tex2 v0, v1;
 
@@ -68,8 +69,9 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         v0.Position = pos + dir * .5 * scale;
         v1.Position = pos - dir * .5 * scale;
 
-        v0.Normal = normalize(lerp( dir, up, 0.5));
-        v1.Normal = normalize(lerp(-dir, up, 0.5));
+        float t = normalBend? .5 : 1;
+        v0.Normal = normalize(lerp( dir, up, t));
+        v1.Normal = normalize(lerp(-dir, up, t));
 
         v0.Color = v1.Color = color;
 

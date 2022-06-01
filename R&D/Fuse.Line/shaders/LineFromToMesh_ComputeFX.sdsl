@@ -7,14 +7,20 @@ shader LineFromToMesh_ComputeFX: ComputeShaderBase, Transformation, Camera, Fuse
         stage RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer;
 
         stage float Radius = .15;
-        stage int Resolution;
         stage int ThicknessSpace = 0;
         stage int MeshType = 0;
         stage float4x4 Transform;
+        stage int Resolution;
+
+        stage bool ViewAlign;
+        stage bool NormalBend;
     }
 
     compose ComputeFloat Width;
     compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 RibbonUp;
+    compose ComputeFloat3 TubeUp;
 
     override void Compute()
     {
@@ -50,14 +56,15 @@ shader LineFromToMesh_ComputeFX: ComputeShaderBase, Transformation, Camera, Fuse
         if(MeshType == 0) // Ribbon
         {
             FlatMeshLine(outputBuffer, dtid, from, t, fromScale, color,
-                        to, t, toScale, color,
-                        Radius, 2, normalize(fromViewDir), normalize(toViewDir));
+                        to, t, toScale, color, Radius, 2, NormalBend,
+                        ViewAlign? normalize(fromViewDir) : RibbonUp.Compute(),
+                        ViewAlign? normalize(toViewDir)   : RibbonUp.Compute());
         }
         else // Tube
         {
             TubeMeshLine(outputBuffer, dtid, from, t, fromScale, color,
                         to, t, toScale, color,
-                        Radius, 2, Resolution);
+                        Radius, 2, Resolution, TubeUp.Compute());
         }
     }
 };

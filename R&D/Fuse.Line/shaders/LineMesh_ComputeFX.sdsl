@@ -5,10 +5,14 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
         stage StructuredBuffer<float3> PositionBuffer;
         stage RWStructuredBuffer<Pos3Norm3Col4Tex2> outputBuffer;
 
-        stage int Resolution;
         stage int ThicknessSpace = 0;
         stage int MeshType = 0;
         stage float4x4 Transform;
+
+        stage bool ViewAlign;
+        stage bool NormalBend;
+
+        stage int Resolution;
 
         stage int SegmentCountGlobal;
         stage StructuredBuffer<LineInfo> InfoBuffer;
@@ -16,6 +20,9 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
 
     compose ComputeFloat Width;
     compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 RibbonUp;
+    compose ComputeFloat3 TubeUp;
 
     override void Compute()
     {
@@ -70,12 +77,14 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
         if(MeshType == 0) // Ribbon Triangle Strip
         {
             FlatMeshLineStrip(outputBuffer, dtid - lineId, segmentId, p, t, 
-                                scale, Color.Compute(), segmentCount, normalize(viewDir));
+                                scale, Color.Compute(), segmentCount, NormalBend,
+                                ViewAlign? normalize(viewDir) : RibbonUp.Compute());
         }
         else // Tube Triangle List
         {
             TubeMeshLineStrip(outputBuffer, dtid - lineId, segmentId, p, t, 
-                            scale, Color.Compute(), segmentCount, Resolution);
+                            scale, Color.Compute(), segmentCount, Resolution,
+                            TubeUp.Compute());
         }
     }
 };

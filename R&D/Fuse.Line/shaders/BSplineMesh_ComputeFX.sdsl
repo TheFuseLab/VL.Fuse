@@ -13,6 +13,9 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
         stage int MeshType = 0;
         stage float4x4 Transform;
 
+        stage bool ViewAlign;
+        stage bool NormalBend;
+
         stage int LineCount;
         stage int CtrlPtCountGlobal;
         stage StructuredBuffer<LineInfo> InfoBuffer;
@@ -20,6 +23,9 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
 
     compose ComputeFloat Width;
     compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 RibbonUp;
+    compose ComputeFloat3 TubeUp;
 
     override void Compute()
     {
@@ -64,13 +70,14 @@ shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplin
 
         if(MeshType == 0) // Ribbon Triangle Strip
         {
-            FlatMeshLineStrip(outputBuffer, dtid - lineId, segmentId, pos, tan, scale, Color.Compute(),
-                        SegmentCount, normalize(viewDir));
+            FlatMeshLineStrip(outputBuffer, dtid - lineId, segmentId, pos, tan, 
+                        scale, Color.Compute(), SegmentCount, NormalBend,
+                        ViewAlign? normalize(viewDir) : RibbonUp.Compute());
         }
         else // Tube Triangle List
         {
             TubeMeshLineStrip(outputBuffer, dtid - lineId, segmentId, pos, tan, scale, Color.Compute(), 
-                        SegmentCount, Resolution);
+                        SegmentCount, Resolution, TubeUp.Compute());
         }
     }
 };
