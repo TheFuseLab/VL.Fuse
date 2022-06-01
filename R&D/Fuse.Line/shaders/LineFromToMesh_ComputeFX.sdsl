@@ -37,9 +37,8 @@ shader LineFromToMesh_ComputeFX: ComputeShaderBase, Transformation, Camera, Fuse
         float width = Width.Compute();
         float4 color = Color.Compute();
 
-        float d = 1 / min(ViewSize.x,ViewSize.y);
-        float fromScale = ThicknessSpace == 1 ? dot(viewFront, fromViewDir) * d : 1;
-        float toScale   = ThicknessSpace == 1 ? dot(viewFront, toViewDir)   * d : 1;
+        float fromScale = ThicknessSpace == 1 ? mul(float4(dot(viewFront, fromViewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
+        float toScale   = ThicknessSpace == 1 ? mul(float4(dot(viewFront, toViewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
         fromScale *= width;
         toScale   *= width;
 

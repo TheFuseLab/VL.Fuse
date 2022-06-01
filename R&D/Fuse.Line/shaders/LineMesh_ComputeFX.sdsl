@@ -64,7 +64,7 @@ shader LineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommo
         float3 viewDir = ViewInverse[3].xyz - p;
         float3 viewFront = ViewInverse[2].xyz;
 
-        float scale = ThicknessSpace == 1 ? dot(viewFront, viewDir)/min(ViewSize.x,ViewSize.y) : 1;
+        float scale = ThicknessSpace == 1 ? mul(float4(dot(viewFront, viewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
         scale *= Width.Compute();
 
         if(MeshType == 0) // Ribbon Triangle Strip
