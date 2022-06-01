@@ -13,7 +13,7 @@ namespace Fuse
             _x = x ?? new ConstantValue<float>(0);
             _y = y ?? new ConstantValue<float>(0);
             
-            Setup( new List<AbstractShaderNode>{_x,_y});
+            SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
         
         protected override string SourceTemplate()
@@ -41,7 +41,7 @@ namespace Fuse
             _y = y ?? new ConstantValue<float>(0);
             _z = z ?? new ConstantValue<float>(0);
             
-            Setup( new List<AbstractShaderNode>{_x,_y,_z});
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
         
         protected override string SourceTemplate()
@@ -71,7 +71,7 @@ namespace Fuse
             _z = z ?? new ConstantValue<float>(0);
             _w = w ?? new ConstantValue<float>(1);
             
-            Setup( new List<AbstractShaderNode>{_x,_y,_z,_w});
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
 
 
@@ -97,7 +97,7 @@ namespace Fuse
         {
             _x = x ?? new ConstantValue<float>(0);
             
-            Setup(new List<AbstractShaderNode>{x});
+            SetInputs(new List<AbstractShaderNode>{x});
         }
 
         protected override string SourceTemplate()
@@ -128,7 +128,7 @@ namespace Fuse
         {
             _x = x ?? new ConstantValue<float>(0);
             
-            Setup(new List<AbstractShaderNode>{x});
+            SetInputs(new List<AbstractShaderNode>{x});
         }
 
         protected override string SourceTemplate()

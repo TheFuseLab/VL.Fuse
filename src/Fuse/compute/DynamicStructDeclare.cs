@@ -10,7 +10,7 @@ namespace Fuse.compute
         {
             _struct = theStruct;
             
-            Setup(new List<AbstractShaderNode>(){theStruct});
+            SetInputs(new List<AbstractShaderNode>(){theStruct});
 
             TypeOverride = theStruct.TypeOverride;
         }

@@ -27,7 +27,7 @@ namespace Fuse.regions
                     abstractShaderNodes.Add(input);
                 });
             
-                Setup(abstractShaderNodes);
+                SetInputs(abstractShaderNodes);
             }
 
             protected override string SourceTemplate()
@@ -120,7 +120,7 @@ namespace Fuse.regions
                 var outputs = theOutputs.ToList();
                 if (inputs.Count() != outputs.Count())
                 {
-                    Setup(inputs);
+                    SetInputs(inputs);
                     return;
                 }
                 
@@ -186,7 +186,7 @@ namespace Fuse.regions
                     _forGroup
                 };
                 
-                Setup(inputList);
+                SetInputs(inputList);
             }
 
             protected override string SourceTemplate()

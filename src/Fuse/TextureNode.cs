@@ -27,7 +27,7 @@ namespace Fuse
                 myInputs.Add(myDeclareValue);
                 OptionalOutputs.Add(myDeclareValue);
             }
-            Setup(myInputs);
+            SetInputs(myInputs);
         }
 
         protected override string SourceTemplate()
@@ -61,7 +61,7 @@ namespace Fuse
             _functionName = theFunction;
 
             var ins = new List<AbstractShaderNode>(_arguments) {theTexture};
-            Setup(ins);
+            SetInputs(ins);
         }
         
         protected override string SourceTemplate()

@@ -97,12 +97,6 @@ namespace Fuse
     public static class ShaderNodesUtil
     {
 
-        private static int _id = 0;
-        public static int GenerateID()
-        {
-            return _id++;
-        }
-        
         public static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
@@ -189,7 +183,7 @@ namespace Fuse
         
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static VLComputeEffectShader RegisterComputeShader(Game game, ToComputeFx theComputeFx)
+        public static VLComputeEffectShader RegisterComputeShader<T>(Game game, ToComputeFx<T> theComputeFx)
         {
             AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);

@@ -10,7 +10,7 @@ namespace Fuse
         {
             _in = theIn ??  ConstantHelper.FromFloat<T>(0);
             
-            Setup( new List<AbstractShaderNode>{_in});
+            SetInputs( new List<AbstractShaderNode>{_in});
         }
         
         protected override string SourceTemplate()

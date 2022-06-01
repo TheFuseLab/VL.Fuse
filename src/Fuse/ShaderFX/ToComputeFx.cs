@@ -5,7 +5,7 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
 {
-    public class ToComputeFx : AbstractToShaderFX<GpuVoid>  , IComputeVoid
+    public class ToComputeFx<T> : AbstractToShaderFX<T>, IComputeVoid
     {
         
         private const string ComputeShaderSource = @"
@@ -26,7 +26,7 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeFx(Game theGame, ShaderNode<GpuVoid> theCompute) : base(theGame,
+        public ToComputeFx(Game theGame, ShaderNode<T> theCompute) : base(theGame,
             new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
                 {
                     "CS", new Dictionary<string, AbstractShaderNode>{{"val1", theCompute}}

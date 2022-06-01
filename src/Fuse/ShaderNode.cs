@@ -41,6 +41,11 @@ namespace Fuse
             return theIsComputeShader && _computeShaderDeclaration != null ? _computeShaderDeclaration : _declaration;
         }
 
+        public override string ToString()
+        {
+            return _declaration;
+        }
+
         public bool IsResource { get; }
     }
 
@@ -89,7 +94,7 @@ namespace Fuse
         protected AbstractShaderNode(string theId)
         {
             Name = theId;
-            HashCode = ShaderNodesUtil.GenerateID();
+            HashCode = -1;
 
             Tree = new ShaderTree(this);
         }
@@ -124,18 +129,23 @@ namespace Fuse
             return sourceCode.Trim() == "" ? "" : ShaderNodesUtil.Evaluate(sourceCode, CreateTemplateMap());
         }
 
+        public virtual void OnGenerateCode(ShaderGeneratorContext theContext)
+        {
+            
+        }
+
         public virtual void SetHashCodes(ShaderGeneratorContext theContext)
         {
+            HashCode = theContext.GetAndIncIDCount();
             
             Ins.ForEach(input =>
             {
                 if (input == null) return;
                 
-                var name = input.Name;
-                Console.WriteLine(name);
-                input.HashCode = theContext.GetAndIncIDCount();
                 input.SetHashCodes(theContext);
             });
+
+            OnGenerateCode(theContext);
         }
 
         public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<int> theHashes)
@@ -354,7 +364,7 @@ namespace Fuse
 
         public List<AbstractShaderNode> OptionalOutputs { get; protected set; }
 
-        private ShaderNode<T> _default;
+        private readonly ShaderNode<T> _default;
         public  ShaderNode<T> Default => _default ?? ConstantHelper.FromFloat<T>(0);
 
         public ShaderNode(string theId, ShaderNode<T> theDefault = null) : base(theId)
@@ -373,7 +383,7 @@ namespace Fuse
             };
         }
 
-        protected void Setup(IEnumerable<AbstractShaderNode> theIns)
+        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
         {
             Ins = new List<AbstractShaderNode>();
                 

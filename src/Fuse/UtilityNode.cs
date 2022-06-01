@@ -17,12 +17,12 @@ namespace Fuse
 
         public void SetInput(ShaderNode<T> theIn)
         {
-            Setup(new List<AbstractShaderNode>{theIn});
+            SetInputs(new List<AbstractShaderNode>{theIn});
         }
         
         public void SetAbstractInput(AbstractShaderNode theIn)
         {
-            Setup(new List<AbstractShaderNode>{theIn});
+            SetInputs(new List<AbstractShaderNode>{theIn});
         }
     }
     
@@ -62,7 +62,7 @@ namespace Fuse
     {
         public UtilityNode(AbstractShaderNode theIn, string theID) : base(theID)
         {
-            Setup(new List<AbstractShaderNode>{theIn});
+            SetInputs(new List<AbstractShaderNode>{theIn});
         }
 
         protected override string SourceTemplate()

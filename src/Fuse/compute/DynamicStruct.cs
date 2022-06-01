@@ -12,7 +12,7 @@ namespace Fuse.compute
         
         public DynamicStruct(IEnumerable<AbstractShaderNode> theInputs, string theName) : base("GPUAttributeStruct")
         {
-            Setup(theInputs);
+            SetInputs(theInputs);
             
             const string shaderCode = 
 @"    struct ${structName}{

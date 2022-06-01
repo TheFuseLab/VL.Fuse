@@ -12,7 +12,7 @@ namespace Fuse.compute
         {
             _struct = theStruct;
             _member = theMember;
-            Setup(new List<AbstractShaderNode>{theStruct});
+            SetInputs(new List<AbstractShaderNode>{theStruct});
         }
 
         protected override string SourceTemplate()

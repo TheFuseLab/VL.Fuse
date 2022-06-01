@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Graphics;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.compute
 {
@@ -43,7 +44,7 @@ ${structMembers}
         
         public DeclareStructVariable(ConstantValue<T> theDefault) : base( "getBuffer")
         {
-            Setup(new List<AbstractShaderNode>(){});
+            SetInputs(new List<AbstractShaderNode>(){});
         }
 
         protected override string SourceTemplate()
@@ -62,7 +63,7 @@ ${structMembers}
         {
             _buffer = theBuffer;
             _index = theIndex;
-            Setup(new List<AbstractShaderNode>(){theBuffer,theIndex});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -76,7 +77,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid> where TIn : struct
+    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, TIn>, IComputeVoid where TIn : struct
     {
         private readonly ShaderNode<Buffer<TIn>> _buffer;
         private readonly ShaderNode<int> _index;
@@ -88,7 +89,7 @@ ${structMembers}
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractShaderNode>(){theBuffer,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -123,7 +124,7 @@ ${structMembers}
             _buffer = theBuffer;
             _value = theValue;
             
-            Setup(new List<AbstractShaderNode>(){theBuffer,theValue});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -154,7 +155,7 @@ ${structMembers}
         public TypedBufferConsume(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theDefault) : base( "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
-            Setup(new List<AbstractShaderNode>(){theBuffer});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer});
         }
 
         protected override string SourceTemplate()

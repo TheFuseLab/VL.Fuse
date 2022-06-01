@@ -14,7 +14,7 @@ namespace Fuse.compute
             _struct = theStruct;
             _member = theMember;
             _value = theValue;
-            Setup(new List<AbstractShaderNode>{theStruct,theValue});
+            SetInputs(new List<AbstractShaderNode>{theStruct,theValue});
         }
 
         protected override string SourceTemplate()

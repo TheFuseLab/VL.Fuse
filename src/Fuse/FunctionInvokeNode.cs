@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Stride.Rendering.Materials;
 
 namespace Fuse
 {
@@ -44,6 +45,8 @@ namespace Fuse
             Name = "arg_"+theParameters[_id].ID;
         }
 
+        public override string ID => Name;
+
         public void DeleteRemap()
         {
             Name = _name;
@@ -74,24 +77,31 @@ namespace Fuse
 
 
          Dictionary<string, IList> ResourcesForTree();
+
+         public void SetHashCodes(ShaderGeneratorContext theContext);
     }
 
     public class FunctionInvokeNode<T> : ShaderNode<T>, IFunctionInvokeNode
     {
-        public FunctionInvokeNode(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null, string outputName = "result") : base(theId, theDefault)
+        private readonly AbstractShaderNode _delegate;
+        public FunctionInvokeNode(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null) : base("Invoke", theDefault)
         {
             Functions = new Dictionary<string, string>();
 
+            _delegate = theDelegate;
+
+            SetInputs(theParameters);
+            
             Name = theId;
-            FunctionName = theId + (theDelegate?.HashCode ?? HashCode);
-            
-            var gpuValues = theParameters.ToList();
-            
-            AddFunctionInvoke(FunctionName,theDelegate, gpuValues);
-            
-            Setup(gpuValues);
         }
-        
+
+        public override void OnGenerateCode(ShaderGeneratorContext theContext)
+        {
+            Functions.Clear();
+            _delegate.SetHashCodes(theContext);
+            AddFunctionInvoke(FunctionName,_delegate, Ins);
+        }
+
         protected override Dictionary<string,string> CreateTemplateMap ()
         {
             var result = base.CreateTemplateMap();
@@ -144,11 +154,21 @@ ${functionImplementation}
 
         protected override string SourceTemplate()
         {
-            return "${resultType} ${resultName} = ${functionName}(${arguments});";
+            if (_delegate == null)
+            {
+                return GenerateDefaultSource();
+            }
+            const string shader = "${resultType} ${resultName} = ${functionName}(${arguments});";
+
+            return ShaderNodesUtil.Evaluate(shader, 
+                new Dictionary<string, string>
+                {
+                    {"functionName", FunctionName}
+                });
         }
 
         public sealed override IDictionary<string, string> Functions { get; }
-        public string FunctionName { get;  }
+        public string FunctionName => Name + HashCode;
 
     }
 }

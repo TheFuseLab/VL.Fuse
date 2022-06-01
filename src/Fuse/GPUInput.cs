@@ -20,7 +20,7 @@ namespace Fuse{
     {
         public DefaultInput(string theName) : base(theName, null)
         {
-            Setup(new List<AbstractShaderNode>());
+            SetInputs(new List<AbstractShaderNode>());
         }
 
         public void SetParameterValue(ParameterCollection theCollection)
@@ -39,6 +39,8 @@ namespace Fuse{
         {
             return "";
         }
+        
+        public override string ID => Name;
     }
     
     public abstract class UnhandledResourcesAbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
@@ -67,7 +69,7 @@ namespace Fuse{
          {
              Value = theValue;
              Parameters = new HashSet<ParameterCollection>();
-             Setup( new List<AbstractShaderNode>());
+             SetInputs( new List<AbstractShaderNode>());
          }
 
          private T _inputValue;
@@ -100,7 +102,7 @@ namespace Fuse{
          protected AbstractInput(string theName, bool theIsResource, T theValue = default): base(theName, theValue)
          {
              _isResource = theIsResource;
-             Setup( new List<AbstractShaderNode>());
+             SetInputs( new List<AbstractShaderNode>());
              AddResource(Inputs, this);
          }
 
@@ -146,8 +148,8 @@ namespace Fuse{
 
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
+             if (HashCode >= 0) return;
              base.SetHashCodes(theContext);
-             HashCode = theContext.GetAndIncIDCount();
              ParameterKey = theContext.GetParameterKey(new ObjectParameterKey<T>(ID)) as ObjectParameterKey<T>;
          }
      }
@@ -162,6 +164,8 @@ namespace Fuse{
          
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
+             if (HashCode >= 0) return;
+             
              base.SetHashCodes(theContext);
              
              if (Value == null)
@@ -189,6 +193,8 @@ namespace Fuse{
 
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
+             if (HashCode >= 0) return;
+             
              base.SetHashCodes(theContext);
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
@@ -218,6 +224,8 @@ namespace Fuse{
          
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
+             if (HashCode >= 0) return;
+             
              base.SetHashCodes(theContext);
              SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,_struct.TypeOverride, _append));
          }
@@ -234,6 +242,8 @@ namespace Fuse{
          
          public override void SetHashCodes(ShaderGeneratorContext theContext)
          {
+             if (HashCode >= 0) return;
+             
              base.SetHashCodes(theContext);
              SetFieldDeclaration(TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), _append));
          }
@@ -248,8 +258,9 @@ namespace Fuse{
 
         public override void SetHashCodes(ShaderGeneratorContext theContext)
         {
+            if (HashCode >= 0) return;
+            
             base.SetHashCodes(theContext);
-            HashCode = theContext.GetAndIncIDCount();
             ParameterKey = new ValueParameterKey<T>(ID);
             SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
         }

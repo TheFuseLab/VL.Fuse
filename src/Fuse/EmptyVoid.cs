@@ -12,7 +12,7 @@ namespace Fuse
         public SimpleKeyword(string theKeyword) : base( "void")
         {
             _keyword = theKeyword;
-            Setup(new List<AbstractShaderNode>{null});
+            SetInputs(new List<AbstractShaderNode>{null});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

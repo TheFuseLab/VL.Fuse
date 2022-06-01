@@ -11,7 +11,7 @@ namespace Fuse
         public OperatorNode(IEnumerable<ShaderNode<TIn>> theInputs, ShaderNode<TOut> theDefault, string theOperator) : base("result", theDefault)
         {
             _operator = theOperator;
-            Setup(theInputs);
+            SetInputs(theInputs);
         }
 
         public OperatorNode(ShaderNode<TIn> input0, ShaderNode<TIn> input1, ShaderNode<TOut> theDefault, string theOperator) :

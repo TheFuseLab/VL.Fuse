@@ -13,7 +13,7 @@ namespace Fuse.compute
             _buffer = theBuffer;
             _value = theValue;
             
-            Setup(new List<AbstractShaderNode>(){theBuffer, theValue});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer, theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

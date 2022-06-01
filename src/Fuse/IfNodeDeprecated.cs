@@ -23,7 +23,7 @@ namespace Fuse
             if(_inTrue != null)ins.Add(_inTrue);
             if(_inFalse == null && _inTrue == null)ins.Add(null);
             
-            Setup(ins);
+            SetInputs(ins);
         }
 
         private string BuildCaseSource(AbstractShaderNode theCase,StringBuilder theSourceBuilder, HashSet<int> theHashes)

@@ -23,7 +23,7 @@ namespace Fuse
             _sampler = theSampler;
             _texCoord = theTexCoords;
             _level = theLevel ?? new ConstantValue<float>(0);
-            Setup(new List<AbstractShaderNode> {theTexture, theSampler, theTexCoords, theLevel});
+            SetInputs(new List<AbstractShaderNode> {theTexture, theSampler, theTexCoords, theLevel});
         }
         
         protected override string SourceTemplate()

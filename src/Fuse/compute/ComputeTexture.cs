@@ -13,7 +13,7 @@ namespace Fuse.compute
         {
             _texture = theTexture;
             _index = theIndex;
-            Setup(new List<AbstractShaderNode>(){theTexture,theIndex});
+            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -39,7 +39,7 @@ namespace Fuse.compute
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -76,7 +76,7 @@ namespace Fuse.compute
             _index = theIndex;
             _value = theValue;
             
-            Setup(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

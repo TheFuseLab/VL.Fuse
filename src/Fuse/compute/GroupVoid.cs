@@ -15,7 +15,7 @@ namespace Fuse.compute
                 abstractGpuValues.Add(input);
             });
             
-            Setup(abstractGpuValues);
+            SetInputs(abstractGpuValues);
         }
 
         protected override string SourceTemplate()

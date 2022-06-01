@@ -3,28 +3,29 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Stride.Rendering.Materials;
 
 namespace Fuse
 {
     public abstract class AbstractFunctionNode<T> : ShaderNode<T>
     {
         private bool _isGroupable;
-        private readonly string _functionName;
+        public virtual string FunctionName { get;  }
 
         protected AbstractFunctionNode(string theFunction, ShaderNode<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
-            _functionName = theFunction;
+            FunctionName = theFunction;
             _isGroupable = theIsGroupable;
             OptionalOutputs = new List<AbstractShaderNode>();
         }
 
-        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers, string theFunction)
+        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers)
         {
             var abstractGpuValues = theArguments.ToList();
 
             if (theModifiers == null || theModifiers.Count() != abstractGpuValues.Count())
             {
-                Setup(abstractGpuValues);
+                SetInputs(abstractGpuValues);
                 return;
             }
             
@@ -45,20 +46,20 @@ namespace Fuse
                 OptionalOutputs.Add(myDeclareValue);
                 _isGroupable = false;
             }
-            Setup(myInputs);
+            SetInputs(myInputs);
         }
         
         protected override Dictionary<string,string> CreateTemplateMap ()
         {
             var result = base.CreateTemplateMap();
-            result["function"] = _functionName;
+            result["function"] = FunctionName;
             return result;
         }
 
 
         protected override string SourceTemplate()
         {
-            if(!_isGroupable || Ins.Count() <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
+            if(!_isGroupable || Ins.Count <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
 
             var inputList = new List<AbstractShaderNode>(Ins);
             var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID + ")");
@@ -89,7 +90,7 @@ namespace Fuse
             IEnumerable<InputModifier> theModifiers = null
             ) : base(theFunction, theDefault, theIsGroupable)
         {
-            Setup(theArguments, theModifiers, theFunction);
+            Setup(theArguments, theModifiers);
         }
     }
     
@@ -106,12 +107,19 @@ namespace Fuse
             ) : base(theFunction, theDefault, theIsGroupable)
         {
             AddResource(Mixins, theMixin);
-            Setup(theArguments, theModifiers, theFunction);
+            Setup(theArguments, theModifiers);
         }
     }
     
     public sealed class CustomFunctionNode<T>: AbstractFunctionNode<T>
     {
+        private readonly IEnumerable<IFunctionInvokeNode> _delegates;
+
+        private readonly IDictionary<string, string> _functionValues;
+
+        private readonly string _codeTemplate;
+
+        private string _signature;
         
         public CustomFunctionNode(
             IEnumerable<AbstractShaderNode> theArguments, 
@@ -133,25 +141,17 @@ namespace Fuse
                 AddResources(Mixins, mixinList);
             }
             Functions = new Dictionary<string, string>();
+
+            _delegates = theDelegates;
+
+            _functionValues = theFunctionValues;
             
-            var signature = theFunction + HashCode;
-
-            var functionValueMap = new Dictionary<string, string>
-            {
-                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
-                {"signature", signature}
-            };
-
             var inputs = theArguments.ToList();
             Ins = inputs;
-            HandleDelegates(theDelegates,functionValueMap);
-
-            theCodeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
-            theFunctionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
-            Functions.Add(signature, ShaderNodesUtil.Evaluate(theCodeTemplate, functionValueMap) + Environment.NewLine);
-            //Setup(inputs, new Dictionary<string, string> {{"function", signature}});
             
-            Setup(theArguments, theModifiers, signature);
+            _codeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
+            
+            Setup(theArguments, theModifiers);
         }
         
         private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
@@ -168,8 +168,36 @@ namespace Fuse
                 });
             });
         }
-        
+
+        public override void OnGenerateCode(ShaderGeneratorContext theContext)
+        {
+            _delegates?.ForEach(delegateNode =>
+            {
+                if (delegateNode == null) return;
+                
+                delegateNode.SetHashCodes(theContext);
+            });
+            
+            Functions.Clear();
+            
+            _signature = base.FunctionName + HashCode;
+
+            var functionValueMap = new Dictionary<string, string>
+            {
+                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
+                {"signature", _signature}
+            };
+            
+            HandleDelegates(_delegates,functionValueMap);
+
+            _functionValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
+            Functions.Add(_signature, ShaderNodesUtil.Evaluate(_codeTemplate, functionValueMap) + Environment.NewLine);
+            
+        }
+
         public override IDictionary<string, string> Functions { get; }
+
+        public override string FunctionName => _signature;
     }
     
     

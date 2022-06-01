@@ -17,7 +17,7 @@ namespace Fuse
             inputList.Add(theValue);
             
             Ins = inputList;
-            Setup(Ins);
+            SetInputs(Ins);
             _value = theValue;
         }
 

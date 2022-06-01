@@ -24,7 +24,7 @@ namespace Fuse
             if(_inTrue != null)ins.Add(_inTrue);
             if(_inFalse == null && _inTrue == null)ins.Add(null);
             
-            Setup(ins);
+            SetInputs(ins);
         }
 
         protected override string SourceTemplate()
@@ -66,7 +66,7 @@ ${cases}
             {
                 {"check", theCheck.ID}
             };
-            Setup(myIns);
+            SetInputs(myIns);
             
         }
         
@@ -112,7 +112,7 @@ ${cases}
         {
             _in = theIn ??  new ConstantValue<bool>(false);
             
-            Setup( new List<AbstractShaderNode>{_in});
+            SetInputs( new List<AbstractShaderNode>{_in});
         }
         
         protected override string SourceTemplate()

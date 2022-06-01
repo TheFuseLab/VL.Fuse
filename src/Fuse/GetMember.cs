@@ -11,7 +11,7 @@ namespace Fuse
         {
             _input = theInput;
             _member = theMember;
-            Setup(new List<AbstractShaderNode>{theInput});
+            SetInputs(new List<AbstractShaderNode>{theInput});
         }
 
         protected override string SourceTemplate()

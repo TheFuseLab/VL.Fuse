@@ -38,23 +38,23 @@ namespace Fuse
 
     public abstract class AbstractShader
     {
-        public string ShaderCode { get; set; }
+        public string ShaderCode { get; private set; }
 
-        public string ShaderName { get; set; }
+        public string ShaderName { get; private set; }
 
         private readonly List<string> _definedStreams;
 
         protected readonly IDictionary<string, IDictionary<string, AbstractShaderNode>> Inputs;
         
         protected readonly HashSet<string>Declarations = new HashSet<string>();
-        protected readonly HashSet<string>Structs = new HashSet<string>();
-        protected readonly HashSet<string>Mixins = new HashSet<string>();
-        protected readonly HashSet<string>Compositions = new HashSet<string>();
-        protected readonly Dictionary<string, string> FunctionMap = new Dictionary<string, string>();
+        private readonly HashSet<string>_structs = new HashSet<string>();
+        private readonly HashSet<string>_mixins = new HashSet<string>();
+        private readonly HashSet<string>_compositions = new HashSet<string>();
+        private readonly Dictionary<string, string> _functionMap = new Dictionary<string, string>();
 
         private readonly bool _isComputeShader;
         private readonly string _sourceTemplate;
-        protected readonly Game _game;
+        protected readonly Game Game;
             
         protected AbstractShader(Game theGame, bool theIsComputeShader, IDictionary<string,IDictionary<string,AbstractShaderNode>> theInputs, List<string> theDefinedStreams, string theSource)
         {
@@ -62,7 +62,7 @@ namespace Fuse
             _definedStreams = theDefinedStreams;
             _isComputeShader = theIsComputeShader;
             _sourceTemplate = theSource;
-            _game = theGame;
+            Game = theGame;
 
             /*
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -116,16 +116,16 @@ namespace Fuse
             Declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
             
             var structBuilder = new StringBuilder();
-            Structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
+            _structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
             var mixinBuilder = new StringBuilder();
-            Mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+            _mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
 
             var compositionBuilder = new StringBuilder();
-            Compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
+            _compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
             
             var functionBuilder = new StringBuilder();
-            FunctionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
+            _functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
 
             return new Dictionary<string, string>
             {
@@ -149,7 +149,7 @@ namespace Fuse
         
         protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
         {
-            if(!FunctionMap.ContainsKey(theKeyFunction.Key))FunctionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
+            if(!_functionMap.ContainsKey(theKeyFunction.Key))_functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
         }
 
         private void HandleShader(ShaderGeneratorContext theContext,bool theIsComputeShader, IDictionary<string,AbstractShaderNode> theShaderInputs, out string theSource, out string theStreams, out string theDefinedStreams)
@@ -166,9 +166,9 @@ namespace Fuse
             theShaderInputs.ForEach(kv =>
             {
                 kv.Value?.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
-                kv.Value?.StructList().ForEach(value => Structs.Add(value));
-                kv.Value?.MixinList().ForEach(value => Mixins.Add(value));
-                kv.Value?.CompositionList().ForEach(value => Compositions.Add(value));
+                kv.Value?.StructList().ForEach(value => _structs.Add(value));
+                kv.Value?.MixinList().ForEach(value => _mixins.Add(value));
+                kv.Value?.CompositionList().ForEach(value => _compositions.Add(value));
                 kv.Value?.FunctionMap().ForEach(HandleFunction);
 
                 streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");

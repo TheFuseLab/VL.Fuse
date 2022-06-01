@@ -9,7 +9,7 @@ namespace Fuse
         public Semantic (string theSemantic) : base("Semantic")
         {
             Name = theSemantic;
-            Setup(new List<AbstractShaderNode>() );
+            SetInputs(new List<AbstractShaderNode>() );
         }
         
         public override string ID => "streams." + Name;

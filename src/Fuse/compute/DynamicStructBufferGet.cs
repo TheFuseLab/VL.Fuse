@@ -15,7 +15,7 @@ namespace Fuse.compute
             _index = theIndex;
             _struct = theStruct;
             
-            Setup(new List<AbstractShaderNode>(){theBuffer,theIndex, theStruct});
+            SetInputs(new List<AbstractShaderNode>(){theBuffer,theIndex, theStruct});
 
             TypeOverride = theStruct.TypeOverride;
         }

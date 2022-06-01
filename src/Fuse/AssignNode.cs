@@ -12,7 +12,7 @@ namespace Fuse
         {
             _target = theTarget;
             _source = theSource;
-            Setup(new List<AbstractShaderNode>{theTarget,theSource});
+            SetInputs(new List<AbstractShaderNode>{theTarget,theSource});
         }
         
         protected override string GenerateDefaultSource()

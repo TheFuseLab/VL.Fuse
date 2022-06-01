@@ -8,7 +8,7 @@ namespace Fuse
         public GpuStructNode(ShaderNode<T> theStruct, string theStructName) : base("GpuStruct")
         {
             theStruct.TypeOverride = theStructName;
-            Setup(new List<AbstractShaderNode>());
+            SetInputs(new List<AbstractShaderNode>());
         }
 
         protected override string SourceTemplate()

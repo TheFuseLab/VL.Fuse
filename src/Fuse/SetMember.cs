@@ -14,7 +14,7 @@ namespace Fuse
             _object = theObject;
             _value = theValue;
             _member = theMember;
-            Setup(new List<AbstractShaderNode>{theObject, theValue});
+            SetInputs(new List<AbstractShaderNode>{theObject, theValue});
         }
 
         protected override string SourceTemplate()

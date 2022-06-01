@@ -85,7 +85,7 @@ ${functionImplementation}
             HandleDelegates(theDelegates,functionValueMap);
 
             Functions.Add(_signature, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
-            Setup(inputs);
+            SetInputs(inputs);
             
         }
         

@@ -21,11 +21,29 @@ using VL.Stride.Shaders.ShaderFX;
  */
 namespace Fuse.ShaderFX
 {
-    public abstract class AbstractToShaderFX<T> : AbstractShader, IComputeValue<T>
+    public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     {
 
         private readonly Dictionary<string, string> _customTemplate;
         private readonly IDictionary<string, AbstractShaderNode> _results;
+        
+        public string ShaderCode { get; private set; }
+
+        public string ShaderName { get; private set; }
+
+        private readonly List<string> _definedStreams;
+
+        protected readonly IDictionary<string, IDictionary<string, AbstractShaderNode>> Inputs;
+        
+        protected readonly HashSet<string>Declarations = new HashSet<string>();
+        private readonly HashSet<string>_structs = new HashSet<string>();
+        private readonly HashSet<string>_mixins = new HashSet<string>();
+        private readonly HashSet<string>_compositions = new HashSet<string>();
+        private readonly Dictionary<string, string> _functionMap = new Dictionary<string, string>();
+
+        private readonly bool _isComputeShader;
+        private readonly string _sourceTemplate;
+        protected readonly Game Game;
         
         protected AbstractToShaderFX(
             Game theGame,
@@ -33,10 +51,16 @@ namespace Fuse.ShaderFX
             IDictionary<string,AbstractShaderNode> theResults, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
-            string theSource) : base(theGame, false, theInputs, theDefinedStreams, theSource)
+            string theSource) 
         {
             _customTemplate = theCustomTemplate;
             _results = theResults;
+            
+            Inputs = theInputs;
+            _definedStreams = theDefinedStreams;
+            _isComputeShader = false;
+            _sourceTemplate = theSource;
+            Game = theGame;
         }
 
         private static Dictionary<string, string> AppendTemplateValues(
@@ -49,7 +73,7 @@ namespace Fuse.ShaderFX
             return theTemplateMap;
         }
         
-        protected override Dictionary<string,string> CustomTemplates ()
+        protected Dictionary<string,string> CustomTemplates ()
         {
             return AppendTemplateValues(_customTemplate,_results);
         }
@@ -65,12 +89,115 @@ namespace Fuse.ShaderFX
         {
             return Enumerable.Empty<ComputeNode>();
         }
-
-        public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
+        
+        protected virtual Dictionary<string, string> BuildTemplateMap()
         {
-            GenerateSourceCode(context);
-            ShaderNodesUtil.AddShaderSource(_game, ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
-            _parameters = context.Parameters;
+            var declarationBuilder = new StringBuilder();
+            Declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
+            
+            var structBuilder = new StringBuilder();
+            _structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
+            
+            var mixinBuilder = new StringBuilder();
+            _mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+
+            var compositionBuilder = new StringBuilder();
+            _compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
+            
+            var functionBuilder = new StringBuilder();
+            _functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
+
+            return new Dictionary<string, string>
+            {
+                {"mixins", mixinBuilder.ToString()},
+                {"declarations", declarationBuilder.ToString()},
+                {"compositions", compositionBuilder.ToString()},
+                {"structs", structBuilder.ToString()},
+                {"functions", functionBuilder.ToString()}
+            };
+        }
+        
+        protected virtual void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
+        {
+            Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
+        }
+        
+        protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
+        {
+            if(!_functionMap.ContainsKey(theKeyFunction.Key))_functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
+        }
+        
+        private void HandleShader(ShaderGeneratorContext theContext,bool theIsComputeShader, IDictionary<string,AbstractShaderNode> theShaderInputs, out string theSource, out string theStreams, out string theDefinedStreams)
+        {
+            theShaderInputs.ForEach(kv =>
+            {
+                kv.Value?.SetHashCodes(theContext);
+            });
+            
+            var streamBuilder = new StringBuilder();
+            var streamDeclareBuilder = new StringBuilder();
+            
+            theShaderInputs.ForEach(kv =>
+            {
+                kv.Value?.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+                kv.Value?.StructList().ForEach(value => _structs.Add(value));
+                kv.Value?.MixinList().ForEach(value => _mixins.Add(value));
+                kv.Value?.CompositionList().ForEach(value => _compositions.Add(value));
+                kv.Value?.FunctionMap().ForEach(HandleFunction);
+
+                streamBuilder.AppendLine("        streams." + kv.Key + " = " + kv.Value.ID+";");
+                if (_definedStreams.Contains(kv.Key)) return;
+
+                streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuTypeByValue(kv.Value) + " " + kv.Key + ";");
+            });
+
+            var drawShaderNode = new DrawShaderNode(theShaderInputs) {HashCode = theContext.GetAndIncIDCount()};
+
+            theSource = drawShaderNode.BuildSourceCode();
+            theStreams = streamBuilder.ToString();
+            theDefinedStreams = streamDeclareBuilder.ToString();
+        }
+        
+        protected virtual string CheckCode(string theCode)
+        {
+            return theCode;
+        }
+
+        private ShaderSource _source = null;
+
+        public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
+        {
+            if (_source != null) return _source;
+            var sourceStream = new Dictionary<string,(string source, string stream)>();
+            var streamDefinesBuilder = new StringBuilder();
+            Inputs.ForEach(input =>
+            {
+                HandleShader(theContext, _isComputeShader, input.Value, out var source, out var stream, out var streamDefines);
+                sourceStream.Add(input.Key,(source,stream));
+                streamDefinesBuilder.AppendLine(streamDefines);
+            });
+
+            var templateMap = BuildTemplateMap();
+            templateMap["streamDeclaration"] = streamDefinesBuilder.ToString();
+            CustomTemplates ().ForEach(kv =>
+            {
+                templateMap.Add(kv.Key,kv.Value);
+            });
+            
+            sourceStream.ForEach(kv =>
+            {
+                templateMap.Add("source" + kv.Key,kv.Value.source);
+                templateMap.Add("streams" + kv.Key,kv.Value.stream);
+            });
+            
+            ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
+            // ReSharper disable once VirtualMemberCallInConstructor
+            ShaderCode = CheckCode(ShaderCode);
+            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
+
+            ShaderNodesUtil.AddShaderSource(Game, ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+            _parameters = theContext.Parameters;
             Inputs.ForEach(shaderInputs =>
             {
                 shaderInputs.Value.ForEach(gpuValue =>
@@ -78,7 +205,9 @@ namespace Fuse.ShaderFX
                     gpuValue.Value.InputList().ForEach(input => input.AddParameters(_parameters));
                 });
             });//input.ParentNode.SetParameters(_parameters)
-            return new ShaderClassSource(ShaderName);
+            
+            _source = new ShaderClassSource(ShaderName);
+            return _source;
         }
     }
 }
