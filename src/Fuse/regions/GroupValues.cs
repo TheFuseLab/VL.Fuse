@@ -5,7 +5,7 @@ namespace Fuse.regions
 {
     public class GroupValues: ShaderNode<GpuVoid> 
     {
-        public GroupValues(IEnumerable<AbstractShaderNode> theInputs) : base("CallStack")
+        public GroupValues(IEnumerable<AbstractShaderNode> theInputs) : base("Group")
         { 
             
             var abstractGpuValues = new List<AbstractShaderNode>();

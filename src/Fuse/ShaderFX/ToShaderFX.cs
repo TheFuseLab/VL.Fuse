@@ -32,9 +32,8 @@ ${sourceFX}
     }
 };";
 
-        private readonly bool _isCompute;
         
-        protected readonly HashSet<string>GroupDeclarations = new HashSet<string>();
+        
         
         public ToShaderFX(Game theGame, ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
             new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
@@ -45,36 +44,11 @@ ${sourceFX}
             new Dictionary<string, AbstractShaderNode>{{"FX",theCompute}},
             new List<string>(),
             new Dictionary<string, string>(),
+            theIsCompute,
             theShaderSource)
         {
-            _isCompute = theIsCompute;
         }
-        
-        protected override Dictionary<string, string> BuildTemplateMap()
-        {
-            var templateMap = base.BuildTemplateMap();
-            var groupDeclarationBuilder = new StringBuilder();
-            GroupDeclarations.ForEach(declaration => groupDeclarationBuilder.AppendLine(declaration));
-            templateMap["groupDeclarations"] = groupDeclarationBuilder.ToString();
-            return templateMap;
-        }
-        
-        protected override void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
-        {
-            if (theDeclaration.IsResource)
-            {
-                GroupDeclarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
-            }
-            else
-            {
-                Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
-            }
-        }
-        
-        protected override string CheckCode(string theCode)
-        {
-            if (_isCompute) return theCode;
-            return theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
-        }
+
+       
     }
 }

@@ -76,9 +76,8 @@ namespace Fuse.regions
                 ShaderNode<bool> inCheck, 
                 IEnumerable<AbstractShaderNode> theInputs, 
                 IEnumerable<AbstractShaderNode> theOutputs, 
-                IEnumerable<AbstractShaderNode> theCrossLinks, 
-                string outputName = "result"
-                ) : base("if region", null)
+                IEnumerable<AbstractShaderNode> theCrossLinks
+                ) : base("if region")
             {
                 _inCheck = inCheck;
                 var outputs = theOutputs.ToList();
@@ -87,7 +86,7 @@ namespace Fuse.regions
                 Setup(theInputs, outputs);
             }
 
-            private List<AbstractShaderNode> ResolveVoidCrossLink(AbstractShaderNode theCrossLink)
+            private static IEnumerable<AbstractShaderNode> ResolveVoidCrossLink(AbstractShaderNode theCrossLink)
             {
                 var myResult = new List<AbstractShaderNode>();
 
@@ -96,8 +95,8 @@ namespace Fuse.regions
                     if (!(child is AbstractShaderNode input)) return;
                     switch (input)
                     {
-                        case ShaderNode<GpuVoid> ShaderNode:
-                            myResult.AddRange(ResolveVoidCrossLink(ShaderNode));
+                        case ShaderNode<GpuVoid> shaderNode:
+                            myResult.AddRange(ResolveVoidCrossLink(shaderNode));
                             break;
                         default:
                             myResult.Add(input);
@@ -123,8 +122,8 @@ namespace Fuse.regions
                     if (c == null) return;
                     switch (c)
                     {
-                        case ShaderNode<GpuVoid> ShaderNode:
-                            myCrossLinks.AddRange(ResolveVoidCrossLink(ShaderNode));
+                        case ShaderNode<GpuVoid> shaderNode:
+                            myCrossLinks.AddRange(ResolveVoidCrossLink(shaderNode));
                             //myCrossLinks.Add(AbstractCreation.AbstractShaderNodePassThrough(c));
                             break;
                         default:
@@ -142,11 +141,11 @@ namespace Fuse.regions
                 {
                     switch (outputs[i])
                     {
-                        case ShaderNode<GpuVoid> ShaderNode:
+                        case ShaderNode<GpuVoid> shaderNode:
                             var myInputVoid = inputs[i];
                             myInputs.Add(myInputVoid);
-                            myOutputs.Add(ShaderNode);
-                            var myPassVoid = AbstractCreation.AbstractShaderNodePassThrough(ShaderNode);
+                            myOutputs.Add(shaderNode);
+                            var myPassVoid = AbstractCreation.AbstractShaderNodePassThrough(shaderNode);
                             myPassVoid = this;
                             OptionalOutputs.Add(myPassVoid);
                             break;

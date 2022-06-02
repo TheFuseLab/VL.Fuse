@@ -361,7 +361,8 @@ namespace Fuse
     [Monadic(typeof(ShaderNodeMonadicFactory<>))]
     public class ShaderNode<T> : AbstractShaderNode , IComputeValue<T>
     {
-
+        // ReSharper disable once CollectionNeverQueried.Global
+        // ReSharper disable once MemberCanBeProtected.Global
         public List<AbstractShaderNode> OptionalOutputs { get; protected set; }
 
         private readonly ShaderNode<T> _default;

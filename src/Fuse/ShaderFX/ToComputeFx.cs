@@ -8,17 +8,23 @@ namespace Fuse.ShaderFX
     public class ToComputeFx<T> : AbstractToShaderFX<T>, IComputeVoid
     {
         
-        private const string ComputeShaderSource = @"
+        private const string ShaderSource = @"
 shader ${shaderID} : ComputeVoid, ComputeShaderBase${mixins}
 {
 
-${structs}
+    rgroup ResourceGroup{
+${groupDeclarations}
+    }
 
     cbuffer PerDispatch{
 ${declarations}
     }
 
+${structs}
+
 ${functions}
+
+${compositions}
 
     override void Compute()
     {
@@ -35,7 +41,8 @@ ${sourceCS}
             new Dictionary<string, AbstractShaderNode>(),
             new List<string>(),
             new Dictionary<string, string>(),
-            ComputeShaderSource)
+            true,
+            ShaderSource)
         {
         }
     }

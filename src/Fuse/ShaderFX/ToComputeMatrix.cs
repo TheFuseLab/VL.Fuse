@@ -36,6 +36,7 @@ ${sourceCS}
             new Dictionary<string, AbstractShaderNode>(),
             new List<string>(),
             new Dictionary<string, string>(),
+            true,
             ComputeShaderSource)
         {
         }

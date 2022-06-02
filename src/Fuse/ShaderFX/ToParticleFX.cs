@@ -89,6 +89,7 @@ ${sourceFX}
             new Dictionary<string, AbstractShaderNode>{{"resultParticle", thePosition}},
             new List<string>(),
             new Dictionary<string, string>(),
+            true,
             ComputeShaderSource)
         {
         }

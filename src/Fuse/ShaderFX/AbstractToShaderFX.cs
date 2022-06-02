@@ -36,6 +36,7 @@ namespace Fuse.ShaderFX
         protected readonly IDictionary<string, IDictionary<string, AbstractShaderNode>> Inputs;
         
         protected readonly HashSet<string>Declarations = new HashSet<string>();
+        protected readonly HashSet<string>GroupDeclarations = new HashSet<string>();
         private readonly HashSet<string>_structs = new HashSet<string>();
         private readonly HashSet<string>_mixins = new HashSet<string>();
         private readonly HashSet<string>_compositions = new HashSet<string>();
@@ -45,15 +46,19 @@ namespace Fuse.ShaderFX
         private readonly string _sourceTemplate;
         protected readonly Game Game;
         
+        private readonly bool _isCompute;
+        
         protected AbstractToShaderFX(
             Game theGame,
             IDictionary<string,IDictionary<string,AbstractShaderNode>> theInputs, 
             IDictionary<string,AbstractShaderNode> theResults, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
+            bool theIsCompute,
             string theSource) 
         {
             _customTemplate = theCustomTemplate;
+            _isCompute = theIsCompute;
             _results = theResults;
             
             Inputs = theInputs;
@@ -95,6 +100,9 @@ namespace Fuse.ShaderFX
             var declarationBuilder = new StringBuilder();
             Declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
             
+            var groupDeclarationBuilder = new StringBuilder();
+            GroupDeclarations.ForEach(declaration => groupDeclarationBuilder.AppendLine(declaration));
+            
             var structBuilder = new StringBuilder();
             _structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
@@ -113,15 +121,23 @@ namespace Fuse.ShaderFX
                 {"declarations", declarationBuilder.ToString()},
                 {"compositions", compositionBuilder.ToString()},
                 {"structs", structBuilder.ToString()},
-                {"functions", functionBuilder.ToString()}
+                {"functions", functionBuilder.ToString()},
+                {"groupDeclarations", groupDeclarationBuilder.ToString()}
             };
         }
         
         protected virtual void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
         {
-            Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
+            if (theDeclaration.IsResource)
+            {
+                GroupDeclarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
+            }
+            else
+            {
+                Declarations.Add(theDeclaration.GetDeclaration(theIsComputeShader));
+            }
         }
-        
+
         protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
         {
             if(!_functionMap.ContainsKey(theKeyFunction.Key))_functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
@@ -160,7 +176,8 @@ namespace Fuse.ShaderFX
         
         protected virtual string CheckCode(string theCode)
         {
-            return theCode;
+            if (_isCompute) return theCode;
+            return theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
 
         private ShaderSource _source = null;

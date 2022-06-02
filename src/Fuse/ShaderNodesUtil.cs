@@ -185,9 +185,10 @@ namespace Fuse
         // accessed from vl
         public static VLComputeEffectShader RegisterComputeShader<T>(Game game, ToComputeFx<T> theComputeFx)
         {
-            AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
             var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
+            AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
+            
             return computeShader;
         }
 
