@@ -10,6 +10,16 @@ namespace PatchTests
     public class TestIfRegion
     {
         [Test]
+        public void TestAbstractPassThrough()
+        {
+            var in0 = new GpuInput<float>();
+            var decl = new DeclareValue<float>();
+            var assign = new AssignNode<float>(decl, in0);
+            AbstractCreation.AbstractShaderNodePassThrough(assign);
+            var pass = new PassThroughNode<GpuVoid>(assign);
+        }
+        
+        [Test]
         public void TestValueExchangeIf()
         {
             var check = new GpuInput<bool>();

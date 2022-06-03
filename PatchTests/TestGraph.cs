@@ -32,32 +32,6 @@ namespace PatchTests
             Console.WriteLine(sin.InputList().Count);
             sin.InputList().ForEach(Console.WriteLine);
         }
-        
-        [Test]
-        public static void TestDrawShaderGraph()
-        {
-            var ShaderNode0 = new GpuInput<float>();
-            var ShaderNode1 = new GpuInput<float>();
-
-            var add = new OperatorNode<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1},new ConstantValue<float>(0),"+");
-
-            var ShaderNode2 = new GpuInput<float>();
-            var add2 = new OperatorNode<float, float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
-
-            var sin = new IntrinsicFunctionNode<float>(
-                new List<AbstractShaderNode> {add, ShaderNode2},
-                "sin", new ConstantValue<float>(0));
-            var drawShader = new DrawShader(null,
-                new Dictionary<string, AbstractShaderNode>
-                {
-                    {"ShadingPosition", sin}
-                }, 
-                new Dictionary<string, AbstractShaderNode>
-                {
-                    {"ColorTarget", sin}
-                });
-            Console.WriteLine(drawShader.ShaderCode);
-        }
 
         [Test]
         public static void TestDeclarations()

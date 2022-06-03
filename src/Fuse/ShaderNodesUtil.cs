@@ -44,7 +44,7 @@ namespace Fuse
     {
         public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theType, object[] theArguments )
         {
-            var dataType = new[] { theValue.GetType().GetGenericArguments()[0]};
+            var dataType = new[] { theValue.GetType().BaseType.GetGenericArguments()[0]};
             var getType = theType.MakeGenericType(dataType);
             var getInstance = Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
             return getInstance;
@@ -58,9 +58,11 @@ namespace Fuse
         public static AbstractShaderNode AbstractShaderNodePassThrough(AbstractShaderNode theValue)
         {
             var getBaseType = typeof(PassThroughNode<>);
-            var dataType = new[] { theValue.GetType().GetGenericArguments()[0] };
+            var memberInfo = theValue.GetType().BaseType;
+            if (memberInfo == null) return null;
+            var dataType = new[] { memberInfo.GetGenericArguments()[0] };
             var getType = getBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, new object[] { theValue }) as AbstractShaderNode;
+            return Activator.CreateInstance(getType, theValue) as AbstractShaderNode;
         }
         
         public static AbstractShaderNode AbstractDeclareValue(AbstractShaderNode theValue)
@@ -70,14 +72,14 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
         {
-            var dataType = new[] { theGpuValue.GetType().GetGenericArguments()[0]};
+            var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
             return ConstantHelper.AbstractFromFloat(dataType[0], theValue);
         }
         
         public static AbstractShaderNode AbstractGetMember(ShaderNode<GpuStruct> theStruct, AbstractShaderNode theMember)
         {
             var getMemberBaseType = typeof(GetMember<,>);
-            var dataType = new Type[] {typeof(GpuStruct), theMember.GetType().GetGenericArguments()[0]};
+            var dataType = new Type[] {typeof(GpuStruct), theMember.GetType().BaseType.GetGenericArguments()[0]};
             var getMemberType = getMemberBaseType.MakeGenericType(dataType);
             var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
             return getMemberInstance;
@@ -173,14 +175,6 @@ namespace Fuse
             sourceManager.AddShaderSource(type, sourceCode, sourcePath);
         }
 
-        // ReSharper disable once UnusedMember.Global
-        // accessed from vl
-        public static DynamicEffectInstance RegisterDrawShader(Game game, DrawShader theDrawShader)
-        {
-            AddShaderSource(game, theDrawShader.ShaderName, theDrawShader.ShaderCode, "shaders\\" + theDrawShader.ShaderName + ".sdsl");
-            return new DynamicEffectInstance(theDrawShader.ShaderName);
-        }
-        
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
         public static VLComputeEffectShader RegisterComputeShader<T>(Game game, ToComputeFx<T> theComputeFx)

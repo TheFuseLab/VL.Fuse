@@ -36,7 +36,6 @@ ${sourceCompute}
             theInput.StructList().ForEach(gpuStruct => theStructs.Add(gpuStruct));
             theInput.MixinList().ForEach(mixin => theMixins.Add(mixin));
             theInput.FunctionMap().ForEach(keyFunction => {if(!theFunctions.ContainsKey(keyFunction.Key))theFunctions.Add(keyFunction.Key, keyFunction.Value);});
-            theSource = new DrawShaderNode(new Dictionary<string, AbstractShaderNode>{{"in", theInput}}).BuildSourceCode();
             
             theSource = "";
         }
