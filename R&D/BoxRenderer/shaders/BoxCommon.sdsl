@@ -1,0 +1,77 @@
+shader BoxCommon
+{
+    stage stream uint Id : BOXID;
+    stage stream float3 Position : POSITION;
+
+    struct Pos3Norm3Col4Tex2Id
+    {
+        float3 Position;
+        float3 Normal;
+        float4 Color;
+        float2 TexCoord;
+        uint Id;
+    };
+
+    static const float3 QuadPositions[24] = 
+    {
+        // +Z
+        float3(-1, 1, 1),
+        float3( 1, 1, 1),
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+
+        // -Z
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+        float3( 1,-1,-1),
+        float3(-1,-1,-1),
+
+        // +Y
+        float3( 1, 1, 1),
+        float3(-1, 1, 1),
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+
+        // -Y
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+        float3(-1,-1,-1),
+        float3( 1,-1,-1),
+
+        // +X
+        float3( 1,-1, 1),
+        float3( 1, 1, 1),
+        float3( 1,-1,-1),
+        float3( 1, 1,-1),
+
+        // -X
+        float3(-1, 1, 1),
+        float3(-1,-1, 1),
+        float3(-1, 1,-1),
+        float3(-1,-1,-1),
+    };
+
+    static const float3 QuadNormals[6] = 
+    {
+        // +Z
+        float3(0, 0, 1),
+        // -Z
+        float3(0, 0,-1),
+        // +Y
+        float3(0, 1, 0),
+        // -Y
+        float3(0,-1, 0),
+        // +X
+        float3(1, 0, 0),
+        // -X
+        float3(-1, 0, 0),
+    };
+
+    static const float2 QuadUV[4] = 
+    {
+        float2(0,1), 
+        float2(1,1),
+        float2(0,0),
+        float2(1,0)
+    };
+};
