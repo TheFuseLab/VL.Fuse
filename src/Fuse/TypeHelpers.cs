@@ -133,7 +133,7 @@ namespace Fuse
                 {typeof(Texture), "Texture"},
                 {typeof(SamplerState), "Sampler"},
                 
-                {typeof(GpuVoid), "Void"},
+                {typeof(GpuVoid), "void"},
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
