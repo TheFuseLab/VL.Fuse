@@ -5,7 +5,7 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
 {
-    public class ToShaderFX<T> : AbstractToShaderFX<T> where T : struct
+    public class ToShaderFX<T> : AbstractToShaderFX<T> 
     {
 
         private const string ShaderSource = @"
@@ -28,7 +28,7 @@ ${compositions}
     override ${resultType} Compute()
     {
 ${sourceFX}
-        return ${resultFX};
+        ${resultFX}
     }
 };";
 
@@ -36,12 +36,7 @@ ${sourceFX}
         
         
         public ToShaderFX(Game theGame, ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
-            new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
-                {
-                    "FX", new Dictionary<string, AbstractShaderNode>{{"val1", theCompute}}
-                }
-            }, 
-            new Dictionary<string, AbstractShaderNode>{{"FX",theCompute}},
+            theCompute, 
             new List<string>(),
             new Dictionary<string, string>(),
             theIsCompute,

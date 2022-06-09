@@ -33,12 +33,7 @@ ${sourceCS}
 };";
 
         public ToComputeFx(Game theGame, ShaderNode<T> theCompute) : base(theGame,
-            new Dictionary<string, IDictionary<string, AbstractShaderNode>> {
-                {
-                    "CS", new Dictionary<string, AbstractShaderNode>{{"val1", theCompute}}
-                }
-            }, 
-            new Dictionary<string, AbstractShaderNode>(),
+            theCompute, 
             new List<string>(),
             new Dictionary<string, string>(),
             true,
