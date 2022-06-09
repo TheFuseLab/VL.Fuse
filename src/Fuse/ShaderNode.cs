@@ -105,6 +105,21 @@ namespace Fuse
 
         private const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
         
+        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
+        {
+            Ins = new List<AbstractShaderNode>();
+                
+            theIns.ForEach(input =>
+            {
+                if(input != null)Ins.Add(input);
+            });
+        }
+
+        public void AddInput(AbstractShaderNode theInput)
+        {
+            if(theInput != null)Ins.Add(theInput);
+        }
+        
         public string SourceCode => GenerateSource( Ins);
         
         protected virtual Dictionary<string, string> CreateTemplateMap()
@@ -383,26 +398,12 @@ namespace Fuse
                 {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
         }
-
-        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
-        {
-            Ins = new List<AbstractShaderNode>();
-                
-            theIns.ForEach(input =>
-            {
-                if(input != null)Ins.Add(input);
-            });
-        }
         
         public string TypeOverride { get; set; }
         
         public override string TypeName()
         {
-            if (typeof(T) == typeof(GpuStruct))
-            {
-                return TypeOverride;
-            }
-            return TypeHelpers.GetGpuTypeForType<T>();
+            return typeof(T) == typeof(GpuStruct) ? TypeOverride : TypeHelpers.GetGpuTypeForType<T>();
         }
 
         protected override string SourceTemplate()
