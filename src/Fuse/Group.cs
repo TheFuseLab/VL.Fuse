@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
 
-namespace Fuse.regions
+namespace Fuse
 {
-    public class GroupValues: ShaderNode<GpuVoid> 
+    public class Group: ShaderNode<GpuVoid> 
     {
-        public GroupValues(IEnumerable<AbstractShaderNode> theInputs) : base("Group")
+        public Group(IEnumerable<AbstractShaderNode> theInputs, string name = "Group") : base(name)
         { 
             
             var abstractGpuValues = new List<AbstractShaderNode>();
