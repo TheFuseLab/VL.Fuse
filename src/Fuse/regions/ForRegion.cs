@@ -172,8 +172,8 @@ namespace Fuse.regions
                     }
                 }
 
-                _inCall = new GroupValues(myInputs);
-                _crossLinkCall = new GroupValues(myCrossLinks);
+                _inCall = new Group(myInputs);
+                _crossLinkCall = new Group(myCrossLinks);
                 
                 var index = inputs.Count > 0 ? inputs[0] as ShaderNode<int> : new ConstantValue<int>(0);
                 _forGroup = new ForGroup(index, _inEnd, myOutputs);

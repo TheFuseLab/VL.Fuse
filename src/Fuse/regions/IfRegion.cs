@@ -6,36 +6,20 @@ using System.Text;
 
 namespace Fuse.regions
 {
-    public class IfRegion
-    {
-        
-        
-        public class IfGroup: ShaderNode<GpuVoid> 
+    public class IfGroup: Group 
         {
             private readonly ShaderNode<bool> _inCheck;
             public IfGroup(
                 ShaderNode<bool> inCheck, 
                 IEnumerable<AbstractShaderNode> theInputs
-                ) : base("IfGroup")
+                ) : base(theInputs, "IfGroup")
             {
                 _inCheck = inCheck;
-                var abstractShaderNodes = new List<AbstractShaderNode>();
-                theInputs.ForEach(input =>
-                {
-                    if (input == null) return;
-                    abstractShaderNodes.Add(input);
-                });
-            
-                SetInputs(abstractShaderNodes);
-            }
-
-            protected override string SourceTemplate()
-            {
-                return "";
             }
             
             protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
             {
+                Console.Out.WriteLine("Yo");
                 if (!theHashes.Add(HashCode)) return;
 
                 const string shaderCode = @"
@@ -146,7 +130,8 @@ namespace Fuse.regions
                             myInputs.Add(myInputVoid);
                             myOutputs.Add(shaderNode);
                             var myPassVoid = AbstractCreation.AbstractShaderNodePassThrough(shaderNode);
-                            myPassVoid = this;
+                            myPassVoid.AddInput(this);
+                           // myPassVoid = this;
                             OptionalOutputs.Add(myPassVoid);
                             break;
                         default:
@@ -158,14 +143,15 @@ namespace Fuse.regions
                             var myAssign = AbstractCreation.AbstractAssignNode(myDeclareValue, myOutput);
                             myOutputs.Add(myAssign);
                             var myPass = AbstractCreation.AbstractShaderNodePassThrough(myDeclareValue);
-                            myPass = this;
+                            myPass.AddInput(this);
+                            // myPass = this;
                             OptionalOutputs.Add(myPass);
                             break;
                     }
                 }
 
-                _inCall = new GroupValues(myInputs);
-                _crossLinkCall = new GroupValues(myCrossLinks);
+                _inCall = new Group(myInputs);
+                _crossLinkCall = new Group(myCrossLinks);
                 _ifGroup = new IfGroup(_inCheck, myOutputs);
                 
                 var inputList = new List<AbstractShaderNode>
@@ -183,7 +169,5 @@ namespace Fuse.regions
                 return "";
             }
             
-            
         }
-    }
 }
