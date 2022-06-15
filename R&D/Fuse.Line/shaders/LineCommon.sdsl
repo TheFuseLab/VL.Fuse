@@ -1,5 +1,7 @@
-shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
+shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Tan4Vertex
 {
+    #define BITANGENT_DIR -1
+
     float3x3 rot3D(float3 axis, float angle)
     {
         float c, s;
@@ -17,12 +19,12 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         );
     }
 
-    void FlatMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2Id2> outputBuffer, uint id,
+    void FlatMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer, uint id,
                     float3 pos, float3 tan, float scale, float4 color,
                     float3 posNext, float3 tanNext, float scaleNext, float4 colorNext,
                     float radius, int sampleCnt, bool normalBend, float3 up = float3(0,1,0), float3 upNext = float3(0,1,0))
     {
-        Pos3Norm3Col4Tex2Id2 v0, v1, v2, v3;
+        Pos3Norm3Col4Tex2Tan4Id2 v0, v1, v2, v3;
 
         float3 dir = normalize(cross(tan, up));
         float3 dirNext = normalize(cross(tanNext, upNext));
@@ -40,6 +42,9 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
 
         v0.Color = v2.Color = color;
         v1.Color = v3.Color = colorNext;
+
+        v0.Tangent = v2.Tangent = float4(tan, BITANGENT_DIR);
+        v1.Tangent = v3.Tangent = float4(tanNext, BITANGENT_DIR);
 
         float div = 1.0 / sampleCnt;
         v0.TexCoord = float2(div*id, 1);
@@ -62,11 +67,11 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         outputBuffer[id * 6 + 5] = v1;
     }
 
-    void FlatMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2Id2> outputBuffer, uint id, uint lineId, uint segmentId,
+    void FlatMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer, uint id, uint lineId, uint segmentId,
                         float3 pos, float3 tan, float scale, float4 color,
                         int sampleCnt, bool normalBend, float3 up = float3(0,1,0))
     {
-        Pos3Norm3Col4Tex2Id2 v0, v1;
+        Pos3Norm3Col4Tex2Tan4Id2 v0, v1;
 
         float3 dir = normalize(cross(tan, up));
 
@@ -82,6 +87,9 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         float div = 1.0 / (sampleCnt-1);
         v0.TexCoord = float2(div*segmentId, 1);
         v1.TexCoord = float2(div*segmentId, 0);
+
+        v0.Tangent = float4(tan, BITANGENT_DIR);
+        v1.Tangent = float4(tan, BITANGENT_DIR);
 
         v0.LineId = v1.LineId = lineId;
         v0.SegmentId = v1.SegmentId = segmentId;
@@ -104,12 +112,12 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         }
     }
 
-    void TubeMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2Id2> outputBuffer, uint id, 
+    void TubeMeshLine(RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer, uint id, 
                     float3 pos, float3 tan, float scale, float4 color,
                     float3 posNext, float3 tanNext, float scaleNext, float4 colorNext,
                     float radius, int sampleCnt, int resolution, float3 up = float3(0,1,0))
     {
-        Pos3Norm3Col4Tex2Id2 v0, v1, v2, v3;
+        Pos3Norm3Col4Tex2Tan4Id2 v0, v1, v2, v3;
 
         float3 dir = normalize(cross(tan, cross(tan, up)));
         float3 dirNext = normalize(cross(tanNext, cross(tanNext, up)));
@@ -122,6 +130,9 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
 
         v0.Color = v2.Color = color;
         v1.Color = v3.Color = colorNext;
+
+        v0.Tangent = v2.Tangent = float4(tan, BITANGENT_DIR);
+        v1.Tangent = v3.Tangent = float4(tanNext, BITANGENT_DIR);
 
         float divX = 1.0 / (float)sampleCnt;
         float divY = 1.0 / resolution;
@@ -170,11 +181,11 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         }
     }
 
-    void TubeMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2Id2> outputBuffer, uint id, uint lineId, uint segmentId,
+    void TubeMeshLineStrip(RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer, uint id, uint lineId, uint segmentId,
                     float3 pos, float3 tan, float scale, float4 color,
                     int sampleCnt, int resolution, float3 up = float3(0,1,0))
     {
-        Pos3Norm3Col4Tex2Id2 v0, v1;
+        Pos3Norm3Col4Tex2Tan4Id2 v0, v1;
 
         float3 dir = normalize(cross(tan, cross(tan, up)));
 
@@ -187,6 +198,9 @@ shader LineCommon : FuseCoreMath, Pos3Norm3Col4Tex2Vertex
         float divY = 1.0 / resolution;
 
         v0.TexCoord = float2(divX * segmentId, 0);
+
+        v0.Tangent = float4(tan, BITANGENT_DIR);
+        v1.Tangent = float4(tan, BITANGENT_DIR);
 
         v0.LineId = v1.LineId = lineId;
         v0.SegmentId = v1.SegmentId = segmentId;
