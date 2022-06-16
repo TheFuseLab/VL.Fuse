@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Fuse.compute;
 using System.Linq;
 using System.Text;
+using NUnit.Framework;
 
 namespace Fuse.regions
 {
@@ -27,7 +28,7 @@ namespace Fuse.regions
                 theSourceBuilder.Append(
                     ShaderNodesUtil.Evaluate(
                         shaderCode, 
-                        new Dictionary<string, string>(){{"check", _inCheck.ID}}
+                        new Dictionary<string, string> {{"check", _inCheck.ID}}
                         )
                     );
                 theSourceBuilder.AppendLine();
@@ -162,6 +163,27 @@ namespace Fuse.regions
                     _ifGroup
                 };
                 SetInputs(inputList);
+            }
+            
+            protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+            {
+                var nodes = new List<AbstractShaderNode>();
+                Children.ForEach(child =>
+                {
+                    if (!(child is ShaderTree input))
+                    {
+                        return;
+                    }
+                    nodes.Add(input.Node);
+                    input.Node.BuildSource( theSourceBuilder, theHashes);
+                });
+                
+
+                var source = SourceCode;
+                if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(HashCode))
+                {
+                    theSourceBuilder.Append("        " + source + Environment.NewLine);
+                }
             }
 
             protected override string SourceTemplate()

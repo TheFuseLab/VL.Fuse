@@ -35,7 +35,7 @@ ${sourceFX}
         
         
         
-        public ToShaderFX(Game theGame, ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base(theGame, 
+        public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base( 
             theCompute, 
             new List<string>(),
             new Dictionary<string, string>(),

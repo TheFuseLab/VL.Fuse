@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Fuse.ShaderFX;
 using Stride.Rendering.Materials;
+using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Core;
 using VL.Lib.Collections;
@@ -167,7 +168,10 @@ namespace Fuse
         {
             Children.ForEach(child =>
             {
-                if (!(child is ShaderTree input)) return;
+                if (!(child is ShaderTree input))
+                {
+                    return;
+                }
                
                 input.Node.BuildSource( theSourceBuilder, theHashes);
             });
@@ -186,12 +190,12 @@ namespace Fuse
         
         
 
-        public IEnumerable<IComputeNode> GetChildren(object context = null)
+        public virtual IEnumerable<IComputeNode> GetChildren(object context = null)
         {
-            return null;//Children;
+            return Enumerable.Empty<ComputeNode>();
         }
 
-        public ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
+        public virtual ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
             return null; //throw new NotImplementedException();
         }
@@ -397,6 +401,11 @@ namespace Fuse
                 {"default", Default == null ? "": Default.ID},
                 {"arguments", ShaderNodesUtil.BuildArguments(Ins)}
             };
+        }
+        
+        public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
+        {
+            return new ToShaderFX<T>(this).GenerateShaderSource(context, baseKeys); //throw new NotImplementedException();
         }
         
         public string TypeOverride { get; set; }

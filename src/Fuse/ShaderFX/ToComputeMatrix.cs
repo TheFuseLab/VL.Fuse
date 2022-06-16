@@ -27,7 +27,7 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeMatrix(Game theGame, ShaderNode<Matrix> theCompute) : base(theGame, 
+        public ToComputeMatrix(Game theGame, ShaderNode<Matrix> theCompute) : base( 
             theCompute, 
             new List<string>(),
             new Dictionary<string, string>(),

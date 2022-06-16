@@ -20,7 +20,7 @@ namespace PatchTests
             AbstractCreation.AbstractShaderNodePassThrough(assign);
             var pass = new PassThroughNode<GpuVoid>(assign);
             
-            var toShaderFx = new ToShaderFX<GpuVoid>(null,assign as ShaderNode<GpuVoid>);
+            var toShaderFx = new ToShaderFX<GpuVoid>(assign as ShaderNode<GpuVoid>);
             var context = new ShaderGeneratorContext();
             toShaderFx.GenerateShaderSource(context, null);
             Console.WriteLine(toShaderFx.ShaderCode);
@@ -52,7 +52,7 @@ namespace PatchTests
             
             var add2 = new OperatorNode<float, float>(ifRegion.OptionalOutputs[0] as ShaderNode<float>, ifRegion.OptionalOutputs[1] as ShaderNode<float>, null,"+");
 
-            var toShaderFx = new ToShaderFX<float>(null,add2 as ShaderNode<float>);
+            var toShaderFx = new ToShaderFX<float>(add2 as ShaderNode<float>);
             var context = new ShaderGeneratorContext();
             toShaderFx.GenerateShaderSource(context, null);
             Console.WriteLine(toShaderFx.ShaderCode);
@@ -78,7 +78,7 @@ namespace PatchTests
             var ins = new Dictionary<string, AbstractShaderNode> {{"val1", ifRegion.OptionalOutputs[0] as ShaderNode<float>}};
 
             
-            var toShaderFx = new ToShaderFX<float>(null,ifRegion.OptionalOutputs[0] as ShaderNode<float>);
+            var toShaderFx = new ToShaderFX<float>(ifRegion.OptionalOutputs[0] as ShaderNode<float>);
             var context = new ShaderGeneratorContext();
             toShaderFx.GenerateShaderSource(context, null);
             Console.WriteLine(toShaderFx.ShaderCode);

@@ -14,10 +14,13 @@ using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
+using VL.Core;
 using VL.Lib.Collections;
+using VL.Stride;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
+using ServiceRegistry = VL.Core.ServiceRegistry;
 
 namespace Fuse
 {
@@ -158,8 +161,11 @@ namespace Fuse
                 });
         }
 
-        public static void AddShaderSource(Game game, string type, string sourceCode, string sourcePath)
+        public static void AddShaderSource(string type, string sourceCode, string sourcePath)
         {
+            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            if (game == null) return;
+            
             var effectSystem = game.EffectSystem;
             var compiler = effectSystem.Compiler as EffectCompiler;
             if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
@@ -177,28 +183,34 @@ namespace Fuse
 
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static VLComputeEffectShader RegisterComputeShader<T>(Game game, ToComputeFx<T> theComputeFx)
+        public static VLComputeEffectShader RegisterComputeShader<T>( ToComputeFx<T> theComputeFx)
         {
+            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            if (game == null) return null;
+            
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
             var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-            AddShaderSource(game, theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
+            AddShaderSource( theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
             
             return computeShader;
         }
 
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static ToShaderFX<T> RegisterShaderFX<T>(Game game, ShaderNode<T> theGpuValue, bool isCompute = true) where T : struct
+        public static ToShaderFX<T> RegisterShaderFX<T>(ShaderNode<T> theGpuValue, bool isCompute = true) where T : struct
         {
-            var toShaderFx = new ToShaderFX<T>(game,theGpuValue);
-            AddShaderSource(game, toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
+            var toShaderFx = new ToShaderFX<T>(theGpuValue);
+            AddShaderSource( toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
             return toShaderFx;
         }
         
-        public static ToComputeMatrix RegisterComputeMatrix(Game game, ShaderNode<Matrix> theGpuValue) 
+        public static ToComputeMatrix RegisterComputeMatrix(ShaderNode<Matrix> theGpuValue) 
         {
+            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            if (game == null) return null;
+            
             var toComputeMatrix = new ToComputeMatrix(game,theGpuValue);
-            AddShaderSource(game, toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
+            AddShaderSource( toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
             return toComputeMatrix;
         }
 

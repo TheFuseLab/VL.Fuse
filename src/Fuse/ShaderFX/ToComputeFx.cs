@@ -32,7 +32,7 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeFx(Game theGame, ShaderNode<T> theCompute) : base(theGame,
+        public ToComputeFx(ShaderNode<T> theCompute) : base(
             theCompute, 
             new List<string>(),
             new Dictionary<string, string>(),

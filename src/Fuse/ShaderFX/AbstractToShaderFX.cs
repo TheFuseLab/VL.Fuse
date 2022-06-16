@@ -2,53 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stride.Engine;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
+using VL.Core;
+using VL.Stride;
 using VL.Stride.Shaders.ShaderFX;
 
-/*
- * var templateMap = new Dictionary<string, string>
-            {
-                {"resultName", theCompute.ID},
-                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
-                {"shaderType", TypeHelpers.GetSignatureTypeForType<T>()},
-                {"sourceCompute", source},
-                {"result", theCompute.ID}
-            };
- */
+
 namespace Fuse.ShaderFX
 {
-    /*
-    public class DrawShaderNode : AbstractShaderNode
-    {
-        
-        public DrawShaderNode(IDictionary<string,AbstractShaderNode> theVertexInputs) : base("drawShader")
-        {
-            Ins = new List<AbstractShaderNode>(theVertexInputs.Values);
-            
-        }
 
-        public override string ID { get; }
-
-        public override string TypeName()
-        {
-            return TypeHelpers.GetGpuTypeForType<float>();
-        }
-
-        protected override string SourceTemplate()
-        {
-            return "";
-        }
-
-        public override int Dimension()
-        {
-            return 0;
-        }
-    }*/
-    
     public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     {
 
@@ -71,12 +36,10 @@ namespace Fuse.ShaderFX
 
         private readonly bool _isComputeShader;
         private readonly string _sourceTemplate;
-        private readonly Game _game;
         
         private readonly bool _isCompute;
         
         protected AbstractToShaderFX(
-            Game theGame,
             AbstractShaderNode theInput, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
@@ -90,7 +53,6 @@ namespace Fuse.ShaderFX
             _definedStreams = theDefinedStreams;
             _isComputeShader = false;
             _sourceTemplate = theSource;
-            _game = theGame;
         }
 
         private Dictionary<string, string> AppendTemplateValues(Dictionary<string, string> theTemplateMap) {
@@ -109,8 +71,8 @@ namespace Fuse.ShaderFX
 
             return theTemplateMap;
         }
-        
-        protected Dictionary<string,string> CustomTemplates ()
+
+        private Dictionary<string,string> CustomTemplates ()
         {
             return AppendTemplateValues(_customTemplate);
         }
@@ -126,8 +88,8 @@ namespace Fuse.ShaderFX
         {
             return Enumerable.Empty<ComputeNode>();
         }
-        
-        protected virtual Dictionary<string, string> BuildTemplateMap()
+
+        private Dictionary<string, string> BuildTemplateMap()
         {
             var declarationBuilder = new StringBuilder();
             _declarations.ForEach(declaration => declarationBuilder.AppendLine(declaration));
@@ -157,8 +119,8 @@ namespace Fuse.ShaderFX
                 {"groupDeclarations", groupDeclarationBuilder.ToString()}
             };
         }
-        
-        protected virtual void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
+
+        private void HandleDeclaration(FieldDeclaration theDeclaration, bool theIsComputeShader)
         {
             if (theDeclaration.IsResource)
             {
@@ -170,7 +132,7 @@ namespace Fuse.ShaderFX
             }
         }
 
-        protected virtual void HandleFunction(KeyValuePair<string,string> theKeyFunction)
+        private void HandleFunction(KeyValuePair<string,string> theKeyFunction)
         {
             if(!_functionMap.ContainsKey(theKeyFunction.Key))_functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
         }
@@ -196,8 +158,8 @@ namespace Fuse.ShaderFX
             theStreams = streamBuilder.ToString();
             theDefinedStreams = streamDeclareBuilder.ToString();
         }
-        
-        protected virtual string CheckCode(string theCode)
+
+        private string CheckCode(string theCode)
         {
             return _isCompute ? theCode : theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
@@ -213,7 +175,6 @@ namespace Fuse.ShaderFX
             HandleShader(theContext, _isComputeShader, _input, out var source, out var stream, out var streamDefines);
             sourceStream.Add("FX",(source,stream));
             streamDefinesBuilder.AppendLine(streamDefines);
-            
 
             var templateMap = BuildTemplateMap();
             templateMap["streamDeclaration"] = streamDefinesBuilder.ToString();
@@ -234,7 +195,8 @@ namespace Fuse.ShaderFX
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
 
-            if(_game != null)ShaderNodesUtil.AddShaderSource(_game, ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
             _parameters = theContext.Parameters;
             
             _input.InputList().ForEach(input => input.AddParameters(_parameters));

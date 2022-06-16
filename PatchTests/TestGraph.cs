@@ -257,7 +257,7 @@ namespace PatchTests
                 new List<AbstractShaderNode> {add, ShaderNode2},
                 "sin", new ConstantValue<float>(0));
 
-            var toMaterial = new ToShaderFX<float>(null,ShaderNode0);
+            var toMaterial = new ToShaderFX<float>(ShaderNode0);
            Console.WriteLine(toMaterial.ShaderCode);
         }
 
