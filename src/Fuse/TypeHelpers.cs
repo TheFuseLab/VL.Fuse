@@ -183,6 +183,31 @@ namespace Fuse
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
+            private static readonly Dictionary<Type, PixelFormat> KnownPixelFormats = new Dictionary<Type, PixelFormat>
+            {
+                {typeof(float), PixelFormat.R32_Float},
+                {typeof(Vector2), PixelFormat.R32G32_Float},
+                {typeof(Vector3), PixelFormat.R32G32B32_Float},
+                {typeof(Vector4), PixelFormat.R32G32B32A32_Float},
+                {typeof(Color4), PixelFormat.R32G32B32A32_Float},
+                {typeof(Matrix), PixelFormat.None},
+                
+                {typeof(int), PixelFormat.R32_SInt},
+                {typeof(Int2), PixelFormat.R32G32_SInt},
+                {typeof(Int3), PixelFormat.R32G32B32_SInt},
+                {typeof(Int4), PixelFormat.R32G32B32A32_SInt},
+                {typeof(uint), PixelFormat.R32_UInt},
+                {typeof(bool), PixelFormat.None},
+                
+                {typeof(GpuStruct), PixelFormat.None},
+                
+                {typeof(Texture), PixelFormat.None},
+                {typeof(SamplerState), PixelFormat.None},
+                
+                {typeof(GpuVoid), PixelFormat.None},
+                {typeof(Fuse.sdf.Ray), PixelFormat.None},
+            };
+            
             private static readonly Dictionary<Type, string> StructTypes = new Dictionary<Type, string>
             {
                 {typeof(Fuse.sdf.Ray), "Ray"},
@@ -212,6 +237,16 @@ namespace Fuse
                 {typeof(GpuVoid), 0},
                 {typeof(Fuse.sdf.Ray), 0},
             };
+            
+            public static PixelFormat GetPixelFormatForType<T>()
+            {
+                return GetPixelFormatForType(typeof(T));        
+            }
+
+            public static PixelFormat GetPixelFormatForType(Type t)
+            {
+                return KnownPixelFormats.TryGetValue(t, out var result) ? result : PixelFormat.None;
+            }
             
             public static string GetGpuTypeForType<T>()
             {

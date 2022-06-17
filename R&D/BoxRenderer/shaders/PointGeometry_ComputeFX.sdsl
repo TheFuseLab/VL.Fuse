@@ -1,0 +1,41 @@
+shader PointGeometry_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommonBuffer, BoxCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> PositionBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2Id> outputBuffer;
+    }
+
+    compose ComputeFloat4 Color;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+
+        uint n = sbSize3(PositionBuffer);
+        if(dtid >= n) return;
+
+        streams.Id = dtid;
+
+        float3 p = PositionBuffer[dtid];
+        streams.Position = p;
+        float4 col = Color.Compute();
+
+        
+
+        Pos3Norm3Col4Tex2Id v0;
+
+        v0.Color = col;
+
+        v0.Id = dtid;
+
+        v0.TexCoord = QuadUV[0];
+        
+        v0.Normal = float3(1,0,0);
+        v0.Position = p;
+
+        uint offset = dtid;
+        outputBuffer[offset + 0] = v0;
+        
+    }
+};

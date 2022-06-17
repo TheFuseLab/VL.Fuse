@@ -209,15 +209,25 @@ namespace Fuse{
          }
      }
      
-     public class UntypedBufferInput<T>: ObjectInput<Buffer> 
+     public class UntypedBufferInput<T>: ObjectInput<Buffer<T>> where T : struct
      {
+ 
+         private readonly Buffer _buffer;
+         private readonly ObjectParameterKey<Buffer> _parameterKey;
 
-         public UntypedBufferInput(T theType, Buffer theBuffer = null, bool theAppend = true) : base("BufferInput", theBuffer)
+         public UntypedBufferInput(T theType, Buffer theBuffer = null, bool theAppend = true) : base("BufferInput")
          {
+             _buffer = theBuffer;
+             _parameterKey = new ObjectParameterKey<Buffer>(Output.ID);
              SetFieldDeclaration(
                  TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
                  //  TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), theAppend)
              );
+         }
+         
+         public override void SetParameterValue(ParameterCollection theCollection)
+         {
+             theCollection.Set(_parameterKey, _buffer);
          }
      }
      
