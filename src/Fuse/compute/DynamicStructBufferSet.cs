@@ -3,7 +3,7 @@ using Stride.Graphics;
 
 namespace Fuse.compute
 {
-    public class DynamicStructBufferSet<GpuStruct> : ShaderNode<GpuVoid> 
+    public class DynamicStructBufferSet : ShaderNode<GpuVoid> 
     {
         private readonly ShaderNode<Buffer> _buffer;
         private readonly ShaderNode<int> _index;

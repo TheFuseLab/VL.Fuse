@@ -83,7 +83,7 @@ namespace MyTests
         /// Checks if the document comes with compile time errors (e.g. red nodes). Doesn't actually run the patches.
         /// </summary>
         /// <param name="filePath"></param>
-        [TestCaseSource(nameof(NormalPatches))]
+      //  [TestCaseSource(nameof(NormalPatches))]
         public static async Task IsntRed(string filePath)
         {
             filePath = Path.Combine(MainLibPath, filePath);

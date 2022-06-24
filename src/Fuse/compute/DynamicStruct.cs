@@ -8,11 +8,13 @@ namespace Fuse.compute
     
     public class DynamicStruct: ShaderNode<GpuStruct>
     {
-        private readonly int _stride;
+        private string _name;
         
         public DynamicStruct(IEnumerable<AbstractShaderNode> theInputs, string theName) : base("GPUAttributeStruct")
         {
             SetInputs(theInputs);
+
+            _name = theName;
             
             const string shaderCode = 
 @"    struct ${structName}{
@@ -35,7 +37,7 @@ ${structMembers}
             });
             
             AddResource(Structs, _struct);
-            _stride = myStride;
+            Stride = myStride;
 
             TypeOverride = theName;
         }
@@ -45,10 +47,16 @@ ${structMembers}
         {
             return "";
         }
-        
-        public int Stride()
-        {
-            return _stride;
+
+        public List<string> Description {
+            get
+            {
+                var result = new List<string>();
+                Ins.ForEach(input => result.Add(_name + "." + TypeHelpers.GetDescription(input)));
+                return result;
+            }
         }
+
+        public int Stride { get; }
     }
 }

@@ -194,8 +194,7 @@ namespace Fuse.ShaderFX
             ShaderCode = CheckCode(ShaderCode);
             ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
-
-            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            _input.ShaderCode = ShaderCode;
             ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
             _parameters = theContext.Parameters;
             

@@ -7,7 +7,7 @@ namespace Fuse
 
         private readonly ShaderNode<TIn> _input;
         private readonly string _member;
-        public GetMember(ShaderNode<TIn> theInput, string theMember, ShaderNode<TOut> theDefault = null) : base("Member", theDefault)
+        public GetMember(ShaderNode<TIn> theInput, string theMember, ShaderNode<TOut> theDefault = null) : base(theMember, theDefault)
         {
             _input = theInput;
             _member = theMember;

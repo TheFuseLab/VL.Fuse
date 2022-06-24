@@ -47,7 +47,12 @@ namespace Fuse
     {
         public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theType, object[] theArguments )
         {
-            var dataType = new[] { theValue.GetType().BaseType.GetGenericArguments()[0]};
+            var nodeType = theValue.GetType();
+            while (nodeType.BaseType != typeof(AbstractShaderNode))
+            {
+                nodeType = nodeType.BaseType;
+            }
+            var dataType = new[] { nodeType.GetGenericArguments()[0]};
             var getType = theType.MakeGenericType(dataType);
             var getInstance = Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
             return getInstance;
@@ -82,10 +87,15 @@ namespace Fuse
         public static AbstractShaderNode AbstractGetMember(ShaderNode<GpuStruct> theStruct, AbstractShaderNode theMember)
         {
             var getMemberBaseType = typeof(GetMember<,>);
-            var dataType = new Type[] {typeof(GpuStruct), theMember.GetType().BaseType.GetGenericArguments()[0]};
-            var getMemberType = getMemberBaseType.MakeGenericType(dataType);
-            var getMemberInstance = Activator.CreateInstance(getMemberType, theStruct, theMember.Name, null) as AbstractShaderNode;
-            return getMemberInstance;
+            var nodeType = theMember.GetType();
+            while (nodeType.BaseType != typeof(AbstractShaderNode))
+            {
+                nodeType = nodeType.BaseType;
+            }
+            var dataType = new[] {typeof(GpuStruct), nodeType.GetGenericArguments()[0]};
+            var getType = getMemberBaseType.MakeGenericType(dataType);
+            var getInstance = Activator.CreateInstance(getType, theStruct, theMember.Name, null) as AbstractShaderNode;
+            return getInstance;
         }
         
         public static AbstractShaderNode AbstractDeclareValueAssigned(AbstractShaderNode theMember)
@@ -163,22 +173,33 @@ namespace Fuse
 
         public static void AddShaderSource(string type, string sourceCode, string sourcePath)
         {
-            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
-            if (game == null) return;
-            
-            var effectSystem = game.EffectSystem;
-            var compiler = effectSystem.Compiler as EffectCompiler;
-            if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
-                compiler = typeof(EffectCompilerChain).GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(effectCompilerCache) as EffectCompiler;
-            
-            if (compiler == null) return;
-            
-            var getParserMethod = typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
-            if (getParserMethod == null) return;
-            if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
-            
-            var sourceManager = parser.SourceManager;
-            sourceManager.AddShaderSource(type, sourceCode, sourcePath);
+            try
+            {
+                var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+                if (game == null) return;
+
+                var effectSystem = game.EffectSystem;
+                var compiler = effectSystem.Compiler as EffectCompiler;
+                if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
+                    compiler = typeof(EffectCompilerChain)
+                        .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?.GetValue(effectCompilerCache) as EffectCompiler;
+
+                if (compiler == null) return;
+
+                var getParserMethod =
+                    typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (getParserMethod == null) return;
+                if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
+
+                var sourceManager = parser.SourceManager;
+                sourceManager.AddShaderSource(type, sourceCode, sourcePath);
+            }
+            catch (Exception e)
+            {
+            }
+
+            ;
         }
 
         // ReSharper disable once UnusedMember.Global

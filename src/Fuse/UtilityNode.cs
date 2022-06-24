@@ -1,28 +1,28 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Fuse
 {
-    public interface IReferenceNode
+    public class UtilityNode<T> : ShaderNode<T>
     {
-        void SetAbstractInput(AbstractShaderNode theIn);
-    }
-    
-    public class ReferenceNode<T> : UtilityNode<T> , IReferenceNode
-    {
-
-        public ReferenceNode(AbstractShaderNode theIn) : base(theIn, "Reference")
-        {
-            
-        }
-
-        public void SetInput(ShaderNode<T> theIn)
+        public UtilityNode(AbstractShaderNode theIn, string theID) : base(theID)
         {
             SetInputs(new List<AbstractShaderNode>{theIn});
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";
         }
         
-        public void SetAbstractInput(AbstractShaderNode theIn)
+        protected override string GenerateDefaultSource()
         {
-            SetInputs(new List<AbstractShaderNode>{theIn});
+            return "";
+        }
+        
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
         }
     }
     
@@ -58,26 +58,5 @@ namespace Fuse
         }
     }
     
-    public class UtilityNode<T> : ShaderNode<T>
-    {
-        public UtilityNode(AbstractShaderNode theIn, string theID) : base(theID)
-        {
-            SetInputs(new List<AbstractShaderNode>{theIn});
-        }
-
-        protected override string SourceTemplate()
-        {
-            return "";
-        }
-        
-        protected override string GenerateDefaultSource()
-        {
-            return "";
-        }
-        
-        protected override Dictionary<string, string> CreateTemplateMap()
-        {
-            return new Dictionary<string, string>();
-        }
-    }
+   
 }

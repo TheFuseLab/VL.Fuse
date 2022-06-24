@@ -122,7 +122,9 @@ namespace Fuse
         }
         
         public string SourceCode => GenerateSource( Ins);
-        
+
+        public string ShaderCode { get; set; }
+
         protected virtual Dictionary<string, string> CreateTemplateMap()
         {
             return new Dictionary<string, string>();
@@ -284,9 +286,9 @@ namespace Fuse
             return result;
         }
         
-        public Dictionary<string, List<TResource>> ResourcesForTree<TResource>()
+        public Dictionary<string, List<TResource>> ResourcesForTree<TResource>(Dictionary<string, List<TResource>> theResources = null)
         {
-            var result = new Dictionary<string, List<TResource>>();
+            theResources ??= new Dictionary<string, List<TResource>>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
                 if (!(n is ShaderTree tree)) return;
@@ -294,14 +296,14 @@ namespace Fuse
                 {
                     var values = kv.Value.OfType<TResource>();
                     if (values.IsEmpty()) return;
-                    if (!result.ContainsKey(kv.Key))
+                    if (!theResources.ContainsKey(kv.Key))
                     {
-                        result[kv.Key] = new List<TResource>();
+                        theResources[kv.Key] = new List<TResource>();
                     }
-                    values.ForEach(v => result[kv.Key].Add(v));
+                    values.ForEach(v => theResources[kv.Key].Add(v));
                 });
             });
-            return result;
+            return theResources;
         }
 
         public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();

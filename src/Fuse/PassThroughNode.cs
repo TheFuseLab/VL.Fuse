@@ -4,20 +4,24 @@ namespace Fuse
 {
     public class PassThroughNode<T> : ShaderNode<T>
     {
-       
-        private ShaderNode<T> _value;
+        private ShaderNode<T> _input;
+        public ShaderNode<T> Input { get => _input;
+            set
+            {
+                _input = value ?? new ShaderNode<T>("");
+                SetInputs(new List<AbstractShaderNode>{Input});
+            }
+        }
         
-        public PassThroughNode(ShaderNode<T> theValue) : base(theValue == null ? "": theValue.Name)
+        public PassThroughNode(ShaderNode<T> theValue = null) : base(theValue == null ? "": theValue.Name)
         {
-            _value = theValue ?? new ShaderNode<T>("");
-            SetInputs(new List<AbstractShaderNode>{_value});
+            Input = theValue ?? new ShaderNode<T>("");
         }
 
-        public void SetInput(ShaderNode<T> theValue)
+        public void SetInput(AbstractShaderNode theValue)
         {
-            
-            _value = theValue ?? new ShaderNode<T>("");
+            Input = theValue as ShaderNode<T>;
         }
-        public override string ID => _value.ID;
+        public override string ID => _input.ID;
     }
 }
