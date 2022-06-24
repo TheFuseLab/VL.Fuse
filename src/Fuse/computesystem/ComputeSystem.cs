@@ -45,7 +45,7 @@ namespace Fuse.ComputeSystem
             _resources[theGroup].AddAttribute(theMember);
         }
 
-        private void AddAttributes(Dictionary<string, List<AbstractAttributeReference>> theAttributes)
+        private void AddAttributes(Dictionary<string, List<AbstractAttribute>> theAttributes)
         {
             theAttributes.ForEach(kv =>
             {

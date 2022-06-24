@@ -32,7 +32,7 @@ namespace Fuse.ComputeSystem
             }
         }
 
-        private static void BindResource(AbstractAttributeReference theReference, AbstractResourceBinder theAbstractResourceBinder)
+        private static void BindResource(AbstractAttribute theReference, AbstractResourceBinder theAbstractResourceBinder)
         {
             theReference.SetInput(theAbstractResourceBinder.GetAttribute(theReference.Member.Name));
         }

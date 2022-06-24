@@ -21,7 +21,7 @@ namespace Fuse.ComputeSystem
         
         public int Ticket { get; }
         
-        public Dictionary<string, List<AbstractAttributeReference>> Attributes { get;  }
+        public Dictionary<string, List<AbstractAttribute>> Attributes { get;  }
 
         public void Build();
 
@@ -46,7 +46,7 @@ namespace Fuse.ComputeSystem
 
         public string Name { get; set; }
 
-        public Dictionary<string, List<AbstractAttributeReference>> Attributes { get; protected set; }
+        public Dictionary<string, List<AbstractAttribute>> Attributes { get; protected set; }
         public abstract ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys);
 
         public int Ticket { get; }
@@ -65,18 +65,18 @@ namespace Fuse.ComputeSystem
 
         public ComputeStage(ShaderNode<GpuVoid> theNode) : base(theNode)
         {
-            Attributes = new Dictionary<string, List<AbstractAttributeReference>>();
+            Attributes = new Dictionary<string, List<AbstractAttribute>>();
             
             if (theNode == null)
             {
                 return;
             }
             
-            foreach (var attribute in  theNode.ResourcesForTree<AbstractAttributeReference>())
+            foreach (var attribute in  theNode.ResourcesForTree<AbstractAttribute>())
             {
                 if (!Attributes.ContainsKey(attribute.Key))
                 {
-                    Attributes[attribute.Key] = new List<AbstractAttributeReference>();
+                    Attributes[attribute.Key] = new List<AbstractAttribute>();
                 }
 
                 var referenceList = Attributes[attribute.Key];
@@ -186,10 +186,10 @@ namespace Fuse.ComputeSystem
                 return ticket;
             }
         }
-        public Dictionary<string, List<AbstractAttributeReference>> Attributes {
+        public Dictionary<string, List<AbstractAttribute>> Attributes {
             get
             {
-                var result = new Dictionary<string, List<AbstractAttributeReference>>();
+                var result = new Dictionary<string, List<AbstractAttribute>>();
 
                 foreach (var stage in _computeStages)
                 {
@@ -197,7 +197,7 @@ namespace Fuse.ComputeSystem
                     {
                         if (!result.ContainsKey(attribute.Key))
                         {
-                            result[attribute.Key] = new List<AbstractAttributeReference>();
+                            result[attribute.Key] = new List<AbstractAttribute>();
                         }
                         result[attribute.Key].AddRange(attribute.Value);
                     }
