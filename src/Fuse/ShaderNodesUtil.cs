@@ -195,8 +195,9 @@ namespace Fuse
                 var sourceManager = parser.SourceManager;
                 sourceManager.AddShaderSource(type, sourceCode, sourcePath);
             }
-            catch (Exception e)
+            catch (Exception)
             {
+                // ignored
             }
 
             ;

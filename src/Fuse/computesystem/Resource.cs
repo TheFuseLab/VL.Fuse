@@ -6,7 +6,7 @@ namespace Fuse.ComputeSystem
 {
     public abstract class AbstractResource
     {
-        public Dictionary<string, IMember> Attributes { get; private set; }
+        public Dictionary<string, IAttribute> Attributes { get; private set; }
 
         protected List<IResourceListener> Listeners;
 
@@ -14,7 +14,7 @@ namespace Fuse.ComputeSystem
 
         public AbstractResource(string theName)
         {
-            Attributes = new Dictionary<string, IMember>();
+            Attributes = new Dictionary<string, IAttribute>();
 
             Listeners = new List<IResourceListener>();
 
@@ -23,10 +23,10 @@ namespace Fuse.ComputeSystem
         
         protected virtual void OnChangeAttributes(){}
 
-        public void AddAttribute(IMember theMember)
+        public void AddAttribute(IAttribute theAttribute)
         {
-            if (Attributes.ContainsKey(theMember.Name)) return;
-            Attributes[theMember.Name] = theMember;
+            if (Attributes.ContainsKey(theAttribute.Name)) return;
+            Attributes[theAttribute.Name] = theAttribute;
             OnChangeAttributes();
         }
 
@@ -48,9 +48,12 @@ namespace Fuse.ComputeSystem
 
         private readonly int _elementCount;
 
-        public BufferResource(string theName, int theElementCount) : base(theName)
+        private readonly IBufferCreator _bufferCreator;
+
+        public BufferResource(string theName, int theElementCount, IBufferCreator theBufferCreator = null) : base(theName)
         {
             _elementCount = theElementCount;
+            _bufferCreator = theBufferCreator;
         }
 
         private bool _changedAttributes = false;
@@ -72,10 +75,13 @@ namespace Fuse.ComputeSystem
                 fields.Add(field.ShaderNode);
             });
             Struct = new DynamicStruct(fields, Name);
+            if (_bufferCreator != null)
+            {
+                Buffer = _bufferCreator.CreateBuffer(_elementCount, Struct.Stride);
+            }
+            //const BufferFlags bufferFlags = BufferFlags.ShaderResource | BufferFlags.UnorderedAccess | BufferFlags.StructuredBuffer;
 
-            const BufferFlags bufferFlags = BufferFlags.ShaderResource | BufferFlags.UnorderedAccess | BufferFlags.StructuredBuffer;
-
-           // Buffer = Buffer.New(null, _elementCount * Struct.Stride, Struct.Stride, bufferFlags);
+           //  = Buffer.New(null, _elementCount * Struct.Stride, Struct.Stride, bufferFlags);
         }
 
         public Buffer Buffer { get; private set; }

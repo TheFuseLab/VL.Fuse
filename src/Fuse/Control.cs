@@ -41,7 +41,7 @@ namespace Fuse
     
     public class SwitchNumeric<T> : ShaderNode<T>
     {
-        private const string ShaderCode = @"
+        private new const string ShaderCode = @"
     ${resultType} ${resultName}; 
     switch(${check}){
 ${cases}

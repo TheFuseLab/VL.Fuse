@@ -22,19 +22,19 @@ namespace Fuse.ComputeSystem
                 _resources[kv.Key] = theBindingCreator(kv.Value);
             }
 
-            foreach (var attributesKv in theComputeStage.Attributes)
+            foreach (var attributeGroup in theComputeStage.AttributeGroups)
             {
-                if (!_resources.ContainsKey(attributesKv.Key)) return;
-                foreach (var kv in attributesKv.Value)
+                if (!_resources.ContainsKey(attributeGroup.Key)) return;
+                foreach (var attribute in attributeGroup.Value)
                 {
-                    BindResource(kv, _resources[attributesKv.Key]);
+                    BindResource(attribute, _resources[attributeGroup.Key]);
                 }
             }
         }
 
-        private static void BindResource(AbstractAttribute theReference, AbstractResourceBinder theAbstractResourceBinder)
+        private static void BindResource(IAttribute theAttribute, AbstractResourceBinder theAbstractResourceBinder)
         {
-            theReference.SetInput(theAbstractResourceBinder.GetAttribute(theReference.Member.Name));
+            theAttribute.SetInput(theAbstractResourceBinder.GetAttribute(theAttribute.Name));
         }
 
         public List<AbstractShaderNode> WriteAttributeNodes()

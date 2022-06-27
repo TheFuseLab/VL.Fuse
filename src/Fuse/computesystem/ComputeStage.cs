@@ -21,7 +21,7 @@ namespace Fuse.ComputeSystem
         
         public int Ticket { get; }
         
-        public Dictionary<string, List<AbstractAttribute>> Attributes { get;  }
+        public Dictionary<string, List<IAttribute>> AttributeGroups { get;  }
 
         public void Build();
 
@@ -46,7 +46,7 @@ namespace Fuse.ComputeSystem
 
         public string Name { get; set; }
 
-        public Dictionary<string, List<AbstractAttribute>> Attributes { get; protected set; }
+        public Dictionary<string, List<IAttribute>> AttributeGroups { get; protected set; }
         public abstract ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys);
 
         public int Ticket { get; }
@@ -65,26 +65,26 @@ namespace Fuse.ComputeSystem
 
         public ComputeStage(ShaderNode<GpuVoid> theNode) : base(theNode)
         {
-            Attributes = new Dictionary<string, List<AbstractAttribute>>();
+            AttributeGroups = new Dictionary<string, List<IAttribute>>();
             
             if (theNode == null)
             {
                 return;
             }
             
-            foreach (var attribute in  theNode.ResourcesForTree<AbstractAttribute>())
+            foreach (var attributeGroup in  theNode.ResourcesForTree<IAttribute>())
             {
-                if (!Attributes.ContainsKey(attribute.Key))
+                if (!AttributeGroups.ContainsKey(attributeGroup.Key))
                 {
-                    Attributes[attribute.Key] = new List<AbstractAttribute>();
+                    AttributeGroups[attributeGroup.Key] = new List<IAttribute>();
                 }
 
-                var referenceList = Attributes[attribute.Key];
-                foreach (var attributeRef in attribute.Value)
+                var referenceList = AttributeGroups[attributeGroup.Key];
+                foreach (var attribute in attributeGroup.Value)
                 {
-                    if (!referenceList.Contains(attributeRef))
+                    if (!referenceList.Contains(attribute))
                     {
-                        referenceList.Add(attributeRef);
+                        referenceList.Add(attribute);
                     }
                 }
             }
@@ -129,7 +129,7 @@ namespace Fuse.ComputeSystem
 
     public class ComputeStageGroup : IComputeStage
     {
-        private List<IComputeStage> _computeStages;
+        private readonly List<IComputeStage> _computeStages;
 
         public ComputeStageGroup()
         {
@@ -172,6 +172,7 @@ namespace Fuse.ComputeSystem
         public IResourceHandler ResourceHandler { get => _resourceHandler;
             set
             {
+                _resourceHandler = value;
                 foreach (var stage in _computeStages)
                 {
                     stage.ResourceHandler = value;
@@ -186,20 +187,20 @@ namespace Fuse.ComputeSystem
                 return ticket;
             }
         }
-        public Dictionary<string, List<AbstractAttribute>> Attributes {
+        public Dictionary<string, List<IAttribute>> AttributeGroups {
             get
             {
-                var result = new Dictionary<string, List<AbstractAttribute>>();
+                var result = new Dictionary<string, List<IAttribute>>();
 
                 foreach (var stage in _computeStages)
                 {
-                    foreach (var attribute in  stage.Attributes)
+                    foreach (var attributeGroup in  stage.AttributeGroups)
                     {
-                        if (!result.ContainsKey(attribute.Key))
+                        if (!result.ContainsKey(attributeGroup.Key))
                         {
-                            result[attribute.Key] = new List<AbstractAttribute>();
+                            result[attributeGroup.Key] = new List<IAttribute>();
                         }
-                        result[attribute.Key].AddRange(attribute.Value);
+                        result[attributeGroup.Key].AddRange(attributeGroup.Value);
                     }
                 }
                 

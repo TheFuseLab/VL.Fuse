@@ -18,14 +18,14 @@ namespace PatchTests
             var position = new Attribute<Vector3>("particle", "position", true, false);
             var velocity = new Attribute<Vector3>("particle", "velocity", true, false);
 
-            var add = new OperatorNode<Vector3, Vector3>(position.Node, velocity.Node, null, "+");
-            var assign = new AssignNode<Vector3>(position.Node,add);
+            var add = new OperatorNode<Vector3, Vector3>(position, velocity, null, "+");
+            var assign = new AssignNode<Vector3>(position,add);
             var computeStage = new ComputeStage(assign)
             {
                 WriteAttributes = true
             };
 
-            var resourceHandler = new BufferResourceHandler();
+            var resourceHandler = new BufferResourceHandler(null);
 
             var computeSystem = new ComputeSystem();
             computeSystem.Update(resourceHandler,new List<IComputeStage>(){computeStage });

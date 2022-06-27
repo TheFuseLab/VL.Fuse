@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Stride.Core.Mathematics;
+using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse.ComputeSystem
 {
@@ -14,6 +15,11 @@ namespace Fuse.ComputeSystem
 
         public int Ticket { get; }
     }
+
+    public interface IBufferCreator
+    {
+        public Buffer CreateBuffer(int theElementCount, int theStride);
+    }
     
     public class BufferResourceHandler : IResourceHandler
     {
@@ -23,8 +29,11 @@ namespace Fuse.ComputeSystem
 
         private Dictionary<string, AbstractResource> _resources;
 
-        public BufferResourceHandler()
+        private IBufferCreator _bufferCreator;
+
+        public BufferResourceHandler(IBufferCreator theBufferCreator)
         {
+            _bufferCreator = theBufferCreator;
             _ticket = 0;
             ThreadGroupSize = 128;
             _elementCount = 1000000;

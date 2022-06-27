@@ -5,13 +5,13 @@ namespace Fuse.ComputeSystem
 {
     public class ComputeSystem
     {
-        private Dictionary<string, AbstractResource> _resources;
+        private readonly Dictionary<string, AbstractResource> _resources;
 
         private int _highestTicket;
 
-        private HashSet<string> _groups;
+        private readonly HashSet<string> _groups;
 
-        private ComputeStageGroup _stageGroup;
+        private readonly ComputeStageGroup _stageGroup;
 
         public ComputeSystem()
         {
@@ -27,13 +27,14 @@ namespace Fuse.ComputeSystem
 
         private bool NeedsRebuild()
         {
+            if (ResourceHandler == null) return false;
             var ticket =  Math.Max(ResourceHandler.Ticket, _stageGroup.Ticket);
             if (ticket <= _highestTicket) return false;
             _highestTicket = ticket;
             return true;
         }
 
-        private void AddAttribute(string theGroup, IMember theMember)
+        private void AddAttribute(string theGroup, IAttribute theMember)
         {
             _groups.Add(theGroup);
 
@@ -45,15 +46,15 @@ namespace Fuse.ComputeSystem
             _resources[theGroup].AddAttribute(theMember);
         }
 
-        private void AddAttributes(Dictionary<string, List<AbstractAttribute>> theAttributes)
+        private void AddAttributeGroups(Dictionary<string, List<IAttribute>> theAttributeGroups)
         {
-            theAttributes.ForEach(kv =>
+            foreach (var attributeGroup in theAttributeGroups)
             {
-                kv.Value.ForEach(attribute =>
+                foreach (var attribute in attributeGroup.Value)
                 {
-                    AddAttribute(kv.Key, attribute.Member);
-                });
-            });
+                    AddAttribute(attributeGroup.Key, attribute);
+                }
+            }
         }
 
         private void CreateResources()
@@ -81,7 +82,7 @@ namespace Fuse.ComputeSystem
             _resources.ForEach(kv => kv.Value.Reset());
             _groups.Clear();
             _stageGroup.ResourceHandler = ResourceHandler;
-            AddAttributes(_stageGroup.Attributes);
+            AddAttributeGroups(_stageGroup.AttributeGroups);
             CreateResources();
             _stageGroup.BindResources(_resources);
             _stageGroup.Build();

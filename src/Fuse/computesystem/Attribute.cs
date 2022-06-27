@@ -1,27 +1,39 @@
 ﻿namespace Fuse.ComputeSystem
 {
-    public abstract class AbstractAttribute
+    public interface IAttribute
     {
-        public IMember Member { get; protected set; }
+        public string Name { get; }
+        
+        public bool IsBuffered { get; }
+        public bool IsDoubleBuffered { get; }
+        
+        public AbstractShaderNode ShaderNode { get; }
+        
+        
 
-        public abstract void SetInput(AbstractShaderNode theNode);
+        public void SetInput(AbstractShaderNode theNode);
     }
     
-    public class Attribute<T> : AbstractAttribute
+    public class Attribute<T> : PassThroughNode<T>, IAttribute
     {
         
-        public PassThroughNode<T> Node { get; private set; }
+        public bool IsBuffered { get; }
+        public bool IsDoubleBuffered { get; }
+        
+        public AbstractShaderNode ShaderNode { get; }
 
-        public Attribute(string theGroup, string theName, bool theIsBuffered, bool theIsDoubleBuffered)
+        public Attribute(string theGroup, string theName, bool theIsBuffered, bool theIsDoubleBuffered) : base(theName)
         {
-            Member = new Member<T>(theName, theIsBuffered, theIsDoubleBuffered);
-            Node = new PassThroughNode<T>();
-            Node.AddResource(theGroup, this);
+            IsBuffered = theIsBuffered;
+            IsDoubleBuffered = theIsDoubleBuffered;
+            ShaderNode = new ShaderNode<T>(theName);
+            
+            AddResource(theGroup, this);
         }
 
-        public override void SetInput(AbstractShaderNode theNode)
+        public void SetAbstractInput(AbstractShaderNode theNode)
         {
-            Node.SetInput(theNode);
+            SetInput(theNode);
         }
     }
 }

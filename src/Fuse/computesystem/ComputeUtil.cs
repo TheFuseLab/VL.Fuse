@@ -54,44 +54,5 @@ namespace Fuse.ComputeSystem
             sizeInBytes = ReplaceValue(sizeInBytes, theElementCount * elementSizeInBytes);
             theSize = Math.Max(sizeInBytes, 4);
         }
-        
-        public static Buffer ComputeBuffer(
-            GraphicsDevice theGraphicsDevice,
-            int theElementCount, 
-            int theElementSizeInBytes,
-            IGraphicsDataProvider theInitialData,
-            bool theIsUnorderedAccess,
-            bool theIsStructuredBuffer,
-            bool theIsStreamOutput,
-            bool theAllowRawVies,
-            bool theDoRecreate)
-        {
-            GetCountAndStrideFormat(
-                theInitialData, 
-                theElementCount, 
-                theElementSizeInBytes, 
-                theIsStructuredBuffer, 
-                theAllowRawVies, 
-                out var sizeInBytes, 
-                out var structureStride, 
-                out var format);
-
-            var graphicsResourceUsage = GraphicsResourceUsage.Default;
-
-            var bufferFlags = new BufferFlags();
-            
-            var bufferDescription = new BufferDescription
-            {
-                SizeInBytes = theElementCount * theElementSizeInBytes
-            };
-            var bufferViewDescription = new BufferViewDescription();
-            
-            
-           // var buffer = Buffer.New(bufferDescription,bufferViewDescription,null,true);
-            
-            
-            
-            return null;
-        }
     }
 }

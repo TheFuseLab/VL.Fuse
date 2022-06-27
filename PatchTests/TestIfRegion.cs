@@ -18,7 +18,7 @@ namespace PatchTests
             var decl = new DeclareValue<float>();
             var assign = new AssignNode<float>(decl, in0);
             AbstractCreation.AbstractShaderNodePassThrough(assign);
-            var pass = new PassThroughNode<GpuVoid>(assign);
+            var pass = new PassThroughNode<GpuVoid>("TestPass", assign);
             
             var toShaderFx = new ToShaderFX<GpuVoid>(assign as ShaderNode<GpuVoid>);
             var context = new ShaderGeneratorContext();

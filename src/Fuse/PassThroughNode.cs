@@ -13,7 +13,7 @@ namespace Fuse
             }
         }
         
-        public PassThroughNode(ShaderNode<T> theValue = null) : base(theValue == null ? "": theValue.Name)
+        public PassThroughNode(string theName, ShaderNode<T> theValue = null) : base(theName)
         {
             Input = theValue ?? new ShaderNode<T>("");
         }
