@@ -1,0 +1,71 @@
+shader BoxGeometry_ComputeFX : ComputeShaderBase, Transformation, Camera, FuseCommonBuffer, BoxCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> PositionBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2Id> outputBuffer;
+    }
+
+    compose ComputeFloat3 Size;
+    compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 Direction;
+    compose ComputeFloat3 UpVector;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+
+        uint n = sbSize3(PositionBuffer);
+        if(dtid >= n) return;
+
+        streams.Id = dtid;
+
+        float3 p = PositionBuffer[dtid];
+        streams.Position = p;
+
+        float3 size = Size.Compute();
+        float4 col = Color.Compute();
+
+        float3 dir = normalize(Direction.Compute());
+        float3 up = normalize(UpVector.Compute());
+
+        float3 xDir = cross(dir, up);
+        float3 yDir = cross(xDir, dir);
+
+        float3x3 transform = float3x3(xDir, yDir, dir);
+
+        Pos3Norm3Col4Tex2Id v0, v1, v2, v3;
+
+        v0.Color = v1.Color =
+        v2.Color = v3.Color =  col;
+
+        v0.Id = v1.Id =
+        v2.Id = v3.Id =  dtid;
+
+        v0.TexCoord = QuadUV[0];
+        v1.TexCoord = QuadUV[1];
+        v2.TexCoord = QuadUV[2];
+        v3.TexCoord = QuadUV[3];
+        
+        [unroll]
+        for(int i = 0; i < 6; i++)
+        {
+            v0.Position = mul(QuadPositions[i * 4 + 0] * size, transform) + p;
+            v1.Position = mul(QuadPositions[i * 4 + 1] * size, transform) + p;
+            v2.Position = mul(QuadPositions[i * 4 + 2] * size, transform) + p;
+            v3.Position = mul(QuadPositions[i * 4 + 3] * size, transform) + p;
+
+            v0.Normal = v1.Normal =
+            v2.Normal = v3.Normal =  mul(QuadNormals[i], transform);
+
+            uint offset = dtid * 36 + i * 6;
+            outputBuffer[offset + 0] = v2;
+            outputBuffer[offset + 1] = v1;
+            outputBuffer[offset + 2] = v0;
+            outputBuffer[offset + 3] = v3;
+            outputBuffer[offset + 4] = v1;
+            outputBuffer[offset + 5] = v2;
+        }
+    }
+};

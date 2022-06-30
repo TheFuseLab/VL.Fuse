@@ -1,0 +1,61 @@
+shader LineFromToMeshGpuValue_ComputeFX: ComputeShaderBase, Transformation, Camera, FuseCommonBuffer, LineAttributeStream, LineCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> FromBuffer;
+        stage StructuredBuffer<float3> ToBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer;
+
+        stage float Radius = .15;
+        stage int Resolution;
+        stage int ThicknessSpace = 0;
+        stage int MeshType = 0;
+        stage float4x4 Transform;
+    }
+
+    compose LineAttributeProvider Attribute;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+
+        uint n = min(sbSize3(FromBuffer), sbSize3(ToBuffer));
+        if(dtid >= n) return;
+
+        float3 from = mul(float4(FromBuffer[dtid], 1), Transform).xyz;
+        float3 to = mul(float4(ToBuffer[dtid], 1), Transform).xyz;
+        float3 t = to - from;
+
+        float3 viewFront = ViewInverse[2].xyz;
+
+        float3 fromViewDir = ViewInverse[3].xyz - from;
+        float3 toViewDir   = ViewInverse[3].xyz - to;
+
+        LineAttribute fromAttribute = Attribute.Compute(from, dtid);
+        LineAttribute toAttribute = Attribute.Compute(to, dtid);
+
+        float d = 1 / min(ViewSize.x,ViewSize.y);
+        float fromScale = ThicknessSpace == 1 ? dot(viewFront, fromViewDir) * d : 1;
+        float toScale   = ThicknessSpace == 1 ? dot(viewFront, toViewDir)   * d : 1;
+        fromScale *= fromAttribute.w;
+        toScale   *= toAttribute.w;
+
+        fromViewDir = normalize(fromViewDir);
+        toViewDir = normalize(toViewDir);
+        float3 fromDir = normalize(cross(t, fromViewDir));
+        float3 toDir = normalize(cross(t, toViewDir));
+
+        if(MeshType == 0) // Ribbon Triangle Strip
+        {
+            FlatMeshLine(outputBuffer, dtid, from, t, fromScale, fromAttribute.c,
+                        to, t, toScale, toAttribute.c,
+                        Radius, 2, normalize(fromViewDir), normalize(toViewDir));
+        }
+        else // Tube Triangle List
+        {
+            TubeMeshLine(outputBuffer, dtid, from, t, fromScale, fromAttribute.c,
+                        to, t, toScale, toAttribute.c,
+                        Radius, 2, Resolution);
+        }
+    }
+};

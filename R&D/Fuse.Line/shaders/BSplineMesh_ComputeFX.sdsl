@@ -1,0 +1,83 @@
+shader BSplineMesh_ComputeFX : ComputeShaderBase, Transformation, Camera, BSplineCommon, LineAttributeStream, LineCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> ControlPointBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer;
+
+        stage int SampleCount;
+        stage int Resolution;
+        stage bool IsClose;
+
+        stage int ThicknessSpace = 0;
+        stage int MeshType = 0;
+        stage float4x4 Transform;
+
+        stage bool ViewAlign;
+        stage bool NormalBend;
+
+        stage int LineCount;
+        stage int CtrlPtCountGlobal;
+        stage StructuredBuffer<LineInfo> InfoBuffer;
+    }
+
+    compose ComputeFloat Width;
+    compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 RibbonUp;
+    compose ComputeFloat3 TubeUp;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+        if(dtid >= (SampleCount + IsClose) * LineCount) return;
+
+        int SegmentCount = SampleCount + IsClose;
+
+        uint lineId = streams.LineId = dtid / SegmentCount;
+        uint segmentId = streams.SegmentId = dtid % SegmentCount;
+
+        int startIndex, ctrlPtCount;
+
+        uint count, dummy;	
+		InfoBuffer.GetDimensions(count,dummy);
+        if(count > 0)
+        {
+            LineInfo info = InfoBuffer[lineId];
+            startIndex = info.start;
+            ctrlPtCount = info.count;
+        }
+        else
+        {
+            startIndex = lineId * CtrlPtCountGlobal;
+            ctrlPtCount = CtrlPtCountGlobal;
+        }
+
+        float t = segmentId * (ctrlPtCount-(1-IsClose)) / ((float)SegmentCount-1);
+        t = segmentId == SampleCount? .0 : t;
+
+        PointAttribute p = SampleBSpline(ControlPointBuffer, t, startIndex, ctrlPtCount, IsClose);
+        float3 pos = mul(float4(p.p, 1), Transform).xyz;
+        float3 tan = mul(p.t, (float3x3)Transform).xyz;
+
+        streams.LinePosition = pos;
+
+        float3 viewDir = ViewInverse[3].xyz - pos;
+        float3 viewFront = ViewInverse[2].xyz;
+
+        float scale = ThicknessSpace == 1 ? mul(float4(dot(viewFront, viewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
+        scale *= Width.Compute();
+
+        if(MeshType == 0) // Ribbon Triangle Strip
+        {
+            FlatMeshLineStrip(outputBuffer, dtid - lineId, lineId, segmentId, pos, tan, 
+                        scale, Color.Compute(), SegmentCount, NormalBend,
+                        ViewAlign? normalize(viewDir) : RibbonUp.Compute());
+        }
+        else // Tube Triangle List
+        {
+            TubeMeshLineStrip(outputBuffer, dtid - lineId, lineId, segmentId, pos, tan, scale, Color.Compute(), 
+                        SegmentCount, Resolution, TubeUp.Compute());
+        }
+    }
+};
