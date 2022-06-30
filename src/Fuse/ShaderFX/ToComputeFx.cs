@@ -25,7 +25,7 @@ ${sourceCS}
     }
 };";
 
-        public ToComputeFx(GpuValue<GpuVoid> theCompute) : base(
+        public ToComputeFx(GpuValue<GpuVoid> theCompute, string theShaderCode=ComputeShaderSource) : base(
             new Dictionary<string, IDictionary<string, AbstractGpuValue>> {
                 {
                     "CS", new Dictionary<string, AbstractGpuValue>{{"val1", theCompute}}
@@ -34,7 +34,7 @@ ${sourceCS}
             new Dictionary<string, AbstractGpuValue>(),
             new List<string>(),
             new Dictionary<string, string>(),
-            ComputeShaderSource)
+            theShaderCode)
         {
         }
     }
