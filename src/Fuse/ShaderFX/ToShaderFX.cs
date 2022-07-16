@@ -8,7 +8,7 @@ namespace Fuse.ShaderFX
     {
 //VS_PS_Base, 
         private const string ShaderSource = @"
-shader ${shaderID} : Texturing, Compute${shaderType}${mixins}
+shader ${shaderID} : VS_PS_Base, Texturing, Compute${shaderType}${mixins}
 {
     rgroup PerMaterial{
 ${groupDeclarations}
