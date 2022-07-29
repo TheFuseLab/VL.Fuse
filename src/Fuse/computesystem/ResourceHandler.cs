@@ -7,24 +7,22 @@ namespace Fuse.ComputeSystem
 {
     public interface IResourceHandler
     {
-        public AbstractResource CreateResource(string theName);
+        public AbstractResource CreateResource(string name);
 
-        public void GetThreadGroupInfo(out Int3 theThreadGroupCount, out Int3 theThreadGroupSize);
+        public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize);
 
-        public AbstractResourceBinder CreateBinder(AbstractResource theResource, ShaderNode<Int3> theIndex);
+        public AbstractResourceBinder CreateBinder(AbstractResource resource, ShaderNode<Int3> index);
 
         public int Ticket { get; }
     }
 
     public interface IBufferCreator
     {
-        public Buffer CreateBuffer(int theElementCount, int theStride);
+        public Buffer CreateBuffer(int elementCount, int stride);
     }
     
     public class BufferResourceHandler : IResourceHandler
     {
-        private int _ticket;
-
         private int _elementCount;
 
         private Dictionary<string, AbstractResource> _resources;
@@ -34,7 +32,7 @@ namespace Fuse.ComputeSystem
         public BufferResourceHandler(IBufferCreator theBufferCreator)
         {
             _bufferCreator = theBufferCreator;
-            _ticket = 0;
+            Ticket = 0;
             ThreadGroupSize = 128;
             _elementCount = 1000000;
             _resources = new Dictionary<string, AbstractResource>();
@@ -47,12 +45,12 @@ namespace Fuse.ComputeSystem
             return new BufferResource(theName, _elementCount);
         }
 
-        public void GetThreadGroupInfo(out Int3 theThreadGroupCount, out Int3 theThreadGroupSize)
+        public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize)
         {
-            var threadGroupCount = (ElementCount + ThreadGroupSize - 1) / ThreadGroupSize;
-            threadGroupCount = Math.Max(1, threadGroupCount);
-            theThreadGroupCount = new Int3(threadGroupCount,1,1);
-            theThreadGroupSize = new Int3(ThreadGroupSize,1,1);
+            var _threadGroupCount = (ElementCount + ThreadGroupSize - 1) / ThreadGroupSize;
+            _threadGroupCount = Math.Max(1, _threadGroupCount);
+            threadGroupCount = new Int3(_threadGroupCount,1,1);
+            threadGroupSize = new Int3(ThreadGroupSize,1,1);
         }
 
         public AbstractResourceBinder CreateBinder(AbstractResource theResource, ShaderNode<Int3> theIndex)
@@ -67,14 +65,13 @@ namespace Fuse.ComputeSystem
             {
                 if (value != _elementCount)
                 {
+                    Ticket = ComputeUtil.GenerateTicket();
                 }
 
                 _elementCount = value;
             }
         }
 
-        public int Ticket => _ticket;
-
-
+        public int Ticket { get; private set; }
     }
 }

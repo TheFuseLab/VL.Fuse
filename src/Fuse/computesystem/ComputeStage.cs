@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Fuse.compute;
 using Stride.Core.Mathematics;
-using Stride.Rendering;
-using Stride.Rendering.Materials;
-using Stride.Shaders;
 
 
 namespace Fuse.ComputeSystem
 {
 
-    public interface IComputeStage : IRenderer
+    public interface IComputeStage 
     {
         public void BindResources(Dictionary<string, AbstractResource> theResources);
         
@@ -47,11 +43,9 @@ namespace Fuse.ComputeSystem
         public string Name { get; set; }
 
         public Dictionary<string, List<IAttribute>> AttributeGroups { get; protected set; }
-        public abstract ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys);
 
-        public int Ticket { get; }
-        public abstract void Draw(RenderDrawContext theContext);
-        
+        public int Ticket { get; protected set; }
+
         public abstract void Build();
     }
 
@@ -88,6 +82,8 @@ namespace Fuse.ComputeSystem
                     }
                 }
             }
+
+            Ticket = ComputeUtil.GenerateTicket();
         }
 
         private AbstractResourceBinder CreateBinder(AbstractResource theResource)
@@ -98,20 +94,6 @@ namespace Fuse.ComputeSystem
         public override void BindResources(Dictionary<string, AbstractResource> theResources)
         {
             _resourceManager = new GpuResourceManager(this,theResources, CreateBinder);
-        }
-
-        //TODO check draw
-        public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Draw(RenderDrawContext theContext)
-        {
-            if (!Enabled) return;
-            if (ResourceHandler == null) return;
-            
-            ResourceHandler.GetThreadGroupInfo(out var threadGroupCount, out var threadGroupSize);
         }
 
         public override void Build()
@@ -150,11 +132,6 @@ namespace Fuse.ComputeSystem
                     _computeStages.Add(v);
                 });
             }
-        }
-
-        public void Draw(RenderDrawContext theContext)
-        {
-            _computeStages.ForEach(stage => stage.Draw(theContext));
         }
 
         public void BindResources(Dictionary<string, AbstractResource> theResources)

@@ -28,7 +28,7 @@ ${compositions}
 
     override void Compute()
     {
-${sourceCS}
+${sourceFX}
     }
 };";
 

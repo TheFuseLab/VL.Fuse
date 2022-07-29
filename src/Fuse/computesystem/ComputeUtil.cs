@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Stride.Graphics;
 using VL.Stride.Graphics;
 using Buffer = Stride.Graphics.Buffer;
@@ -53,6 +54,13 @@ namespace Fuse.ComputeSystem
             
             sizeInBytes = ReplaceValue(sizeInBytes, theElementCount * elementSizeInBytes);
             theSize = Math.Max(sizeInBytes, 4);
+        }
+
+        private static int _ticket = 0;
+
+        public static int GenerateTicket()
+        {
+            return _ticket++;
         }
     }
 }

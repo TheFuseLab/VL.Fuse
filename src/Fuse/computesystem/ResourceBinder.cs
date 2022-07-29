@@ -27,7 +27,7 @@ namespace Fuse.ComputeSystem
     {
         private readonly BufferResource _resource;
 
-        private readonly DynamicStructBufferInput _input;
+        private readonly BufferInput<GpuStruct> _input;
         private readonly DynamicStructBufferGet _bufferGet;
         private readonly ShaderNode<int> _index;
 
@@ -38,7 +38,7 @@ namespace Fuse.ComputeSystem
             _resource = theResource;
             _index = theIndex;
             
-            _input = new DynamicStructBufferInput(theResource.Struct, theResource.Buffer);
+            _input = new BufferInput<GpuStruct>(theResource.Struct, theResource.Buffer);
             _bufferGet = new DynamicStructBufferGet(_input, theIndex, _resource.Struct, null);
 
             _bufferedAttributes = new Dictionary<string, AbstractShaderNode>();

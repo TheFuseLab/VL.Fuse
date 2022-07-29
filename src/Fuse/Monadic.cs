@@ -119,7 +119,7 @@ namespace Fuse
     
     internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, ShaderNode<Buffer<T>>> where T : struct
     {
-        private readonly BufferInput<T> _bufferInput = new BufferInput<T>(null);
+        private readonly TypedBufferInput<T> _bufferInput = new TypedBufferInput<T>(null);
 
         public ShaderNode<Buffer<T>> Return(Buffer<T> value)
         {

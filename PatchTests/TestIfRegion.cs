@@ -90,7 +90,7 @@ namespace PatchTests
         {
             var check = new GpuInput<bool>();
             
-            var bufferIn = new BufferInput<float>("buffer");
+            var bufferIn = new TypedBufferInput<float>();
             var indexIn = new GpuInput<int>();
             var in3 = new GpuInput<float>();
             var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
@@ -120,7 +120,7 @@ namespace PatchTests
         {
             var check = new GpuInput<bool>();
             
-            var bufferIn = new BufferInput<float>("buffer");
+            var bufferIn = new TypedBufferInput<float>();
             var indexIn = new GpuInput<int>();
             
             var in3 = new GpuInput<float>();

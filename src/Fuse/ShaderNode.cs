@@ -9,6 +9,7 @@ using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Core;
 using VL.Lib.Collections;
+using VL.Lib.Primitive;
 using VL.Stride.Shaders.ShaderFX;
 
 
@@ -152,18 +153,29 @@ namespace Fuse
             
         }
 
+        public virtual void OnPassContext(ShaderGeneratorContext theContext)
+        {
+            
+        }
+
         public virtual void SetHashCodes(ShaderGeneratorContext theContext)
         {
-            HashCode = theContext.GetAndIncIDCount();
+            OnPassContext(theContext);
+
+            var callOnGenerate = false;
+            if (HashCode < 0)
+            {
+                HashCode = theContext.GetAndIncIDCount();
+                callOnGenerate = true;
+            }
             
             Ins.ForEach(input =>
             {
                 if (input == null) return;
-                
                 input.SetHashCodes(theContext);
             });
 
-            OnGenerateCode(theContext);
+            if(callOnGenerate) OnGenerateCode(theContext);
         }
 
         public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<int> theHashes)
@@ -407,7 +419,19 @@ namespace Fuse
         
         public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
         {
-            return new ToShaderFX<T>(this).GenerateShaderSource(context, baseKeys); //throw new NotImplementedException();
+            AbstractToShaderFX<T> toShaderFx;
+            if (this is IComputeVoid)
+            {
+                toShaderFx = new ToComputeFx<T>(this);
+            }
+            else
+            {
+                toShaderFx = new ToShaderFX<T>(this);
+            }
+            
+            var source = toShaderFx.GenerateShaderSource(context, baseKeys);
+            ShaderCode = toShaderFx.ShaderCode;
+            return source;
         }
         
         public string TypeOverride { get; set; }

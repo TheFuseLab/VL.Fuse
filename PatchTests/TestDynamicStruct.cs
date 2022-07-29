@@ -90,7 +90,7 @@ ${sourceCompute}
             
             var valVec4 = new ShaderNode<Vector4>("valFloat4");
             var gpuStruct = new DynamicStruct(new List<AbstractShaderNode>(){valVec4},"TestStruct");
-            var bufferInput = new DynamicStructBufferInput(gpuStruct);
+            var bufferInput = new BufferInput<GpuStruct>(gpuStruct);
 
             var gpuStructInstance = new DynamicStructBufferGet(bufferInput, gpuIndex, gpuStruct, null);
             var structValue = new DynamicStructGetAttribute<Vector4>(gpuStructInstance, valVec4);

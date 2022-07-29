@@ -77,7 +77,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid>, IComputeVoid where TIn : struct
+    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, TIn>, IComputeVoid where TIn : struct
     {
         private readonly ShaderNode<Buffer<TIn>> _buffer;
         private readonly ShaderNode<int> _index;

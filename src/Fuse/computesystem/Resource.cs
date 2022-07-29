@@ -8,7 +8,7 @@ namespace Fuse.ComputeSystem
     {
         public Dictionary<string, IAttribute> Attributes { get; private set; }
 
-        protected List<IResourceListener> Listeners;
+        protected readonly List<IResourceListener> Listeners;
 
         public string Name { get; private set; }
 

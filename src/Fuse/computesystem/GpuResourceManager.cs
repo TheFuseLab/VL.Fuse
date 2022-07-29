@@ -11,7 +11,7 @@ namespace Fuse.ComputeSystem
         private readonly Dictionary<string, AbstractResourceBinder> _resources;
 
         public GpuResourceManager(
-            AbstractComputeStage theComputeStage,
+            IComputeStage theComputeStage,
             Dictionary<string, AbstractResource> theResources,
             CreateResourceBinding theBindingCreator
             )

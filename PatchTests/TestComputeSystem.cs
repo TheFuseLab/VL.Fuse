@@ -31,7 +31,9 @@ namespace PatchTests
             computeSystem.Update(resourceHandler,new List<IComputeStage>(){computeStage });
             
             var context = new ShaderGeneratorContext();
-            computeStage.Node.GenerateShaderSource(context, null);
+            var source = computeStage.Node.GenerateShaderSource(context, null);
+            
+            
             
             Console.WriteLine(computeStage.Node.ShaderCode);
         }
