@@ -320,7 +320,7 @@ namespace Fuse
 
         public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();
 
-        public void AddResource(string theResourceId, object theResource)
+        protected void AddResource(string theResourceId, object theResource)
         {
             if (!Resources.ContainsKey(theResourceId))
             {
@@ -329,8 +329,8 @@ namespace Fuse
 
             Resources[theResourceId].Add(theResource);
         }
-        
-        public void AddResources(string theResourceId, IList theResources)
+
+        protected void AddResources(string theResourceId, IList theResources)
         {
             if (!Resources.ContainsKey(theResourceId))
             {
