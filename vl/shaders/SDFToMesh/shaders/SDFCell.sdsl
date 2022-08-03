@@ -1,0 +1,57 @@
+shader SDFCell
+{
+
+    static const uint numberOfCellCorners = 8;
+
+    //     5---------6
+    //    /|        /|
+    //   / |       / |
+    //  /  |      /  |
+    // 1---------2
+    // |   |     |   |
+    // |   4-----|---7
+    // |  /      |  /
+    // | /       | /
+    // |/        |/
+    // 0---------3
+    static const uint3 cellCorners[numberOfCellCorners] =
+    {
+        uint3(0, 0, 0),
+        uint3(0, 1, 0),
+        uint3(1, 1, 0),
+        uint3(1, 0, 0),
+        uint3(0, 0, 1),
+        uint3(0, 1, 1),
+        uint3(1, 1, 1),
+        uint3(1, 0, 1)
+    };
+
+    static const uint numberOfCellEdges = 12;
+
+    //     +----6----+
+    //    /|        /|
+    //   7 |       5 |
+    //  /  11     / 10
+    // +----4----+   |
+    // |   |     |   |
+    // |   +----2|---+
+    // 8  /      9  /
+    // | 3       | 1
+    // |/        |/
+    // +----0----+
+    static const uint2 cellEdges[numberOfCellEdges] =
+    {
+        uint2(0, 3),
+        uint2(3, 7),
+        uint2(7, 4),
+        uint2(4, 0),
+        uint2(1, 2),
+        uint2(2, 6),
+        uint2(5, 6),
+        uint2(5, 1),
+        uint2(0, 1),
+        uint2(3, 2),
+        uint2(7, 6),
+        uint2(4, 5)
+    };
+};

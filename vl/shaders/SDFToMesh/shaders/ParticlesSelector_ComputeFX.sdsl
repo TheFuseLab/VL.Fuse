@@ -1,0 +1,19 @@
+shader ParticlesSelector_ComputeFX :  ComputeShaderBase
+{
+    AppendStructuredBuffer<float4> SelectedParticles;
+
+    // PARTICLES BUFFERS
+    StructuredBuffer<float4> Buffer_P_PosSize; 
+    float PosXThreshold;
+    
+    override void Compute()
+    {        
+        float4 Data = Buffer_P_PosSize[streams.DispatchThreadId.x];
+
+        if(Data.x > PosXThreshold)
+        {
+            SelectedParticles.Append(Data);
+        }
+    }
+
+};
