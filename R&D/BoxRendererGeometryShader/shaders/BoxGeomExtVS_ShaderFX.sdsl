@@ -1,4 +1,4 @@
-shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
+shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 {
     cbuffer PerMaterial
     {
@@ -60,8 +60,39 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 
     stage override void PostTransformPosition()
     {
-        streams.ShadingPosition = streams.Position;
-        AssignVertexID();
+        uint id = streams.VertexID_VS;
+        uint vid = id % 24;
+        uint iid = id / 24;
+        uint nid = vid / 4;
+
+        Particle p = Particles[iid];
+        if (p.Cycle == 0 || p.Age < 0) return;
+
+        float3 normals[6];
+
+        normals[0] = p.AxisZ;
+        normals[1] = -p.AxisZ;
+        normals[2] = p.AxisY;
+        normals[3] = -p.AxisY;
+        normals[4] = p.AxisX;
+        normals[5] = -p.AxisX;
+
+        uint i = vid;
+        
+        streams.TexCoord  = QuadUV[i % 4].xy;
+        float4 posWorld = float4(p.Position, 1);
+        posWorld.xyz += QuadPositions[i].x * p.AxisX * p.Size3.x;
+        posWorld.xyz += QuadPositions[i].y * p.AxisY * p.Size3.y;
+        posWorld.xyz += QuadPositions[i].z * p.AxisZ * p.Size3.z;
+        
+        posWorld = mul(posWorld, World);
+        
+        streams.PositionWS = posWorld;
+        streams.normalWS = normals[nid];
+
+        streams.ShadingPosition = mul(posWorld, ViewProjection);
+        streams.DepthVS = streams.ShadingPosition.w;
+
         streams.Skip = false;
     }
 
@@ -80,8 +111,8 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
             streams.PositionWS = posWorld;
             streams.normalWS = normal;
 
-            //float4 posView = mul(posWorld, View);
-            streams.ShadingPosition = mul(posWorld, ViewProjection);
+            float4 posView = mul(posWorld, View);
+            streams.ShadingPosition = mul(posView, Projection);
             streams.DepthVS = streams.ShadingPosition.w;
             
             triangleStream.Append(streams);
@@ -90,18 +121,18 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         triangleStream.RestartStrip();
     }
 
-    [maxvertexcount(24)]
-    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
-    {
-        streams = input[0];
-        Particle p = Particles[streams.VertexID];
-        if (p.Cycle == 0 || p.Age < 0) return;
+    // [maxvertexcount(24)]
+    // stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    // {
+    //     streams = input[0];
+    //     Particle p = Particles[streams.VertexID];
+    //     if (p.Cycle == 0 || p.Age < 0) return;
         
-        SpawnQuad(0, triangleStream, p.AxisZ, p);
-        SpawnQuad(4, triangleStream, -p.AxisZ, p);
-        SpawnQuad(8, triangleStream, p.AxisY, p);
-        SpawnQuad(12, triangleStream, -p.AxisY, p);
-        SpawnQuad(16, triangleStream, p.AxisX, p);
-        SpawnQuad(20, triangleStream, -p.AxisX, p);
-    }
+    //     SpawnQuad(0, triangleStream, p.AxisZ, p);
+    //     SpawnQuad(4, triangleStream, -p.AxisZ, p);
+    //     SpawnQuad(8, triangleStream, p.AxisY, p);
+    //     SpawnQuad(12, triangleStream, -p.AxisY, p);
+    //     SpawnQuad(16, triangleStream, p.AxisX, p);
+    //     SpawnQuad(20, triangleStream, -p.AxisX, p);
+    // }
 };
