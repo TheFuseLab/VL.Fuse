@@ -80,7 +80,6 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
             streams.PositionWS = posWorld;
             streams.normalWS = normal;
 
-            //float4 posView = mul(posWorld, View);
             streams.ShadingPosition = mul(posWorld, ViewProjection);
             streams.DepthVS = streams.ShadingPosition.w;
             
@@ -90,18 +89,31 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         triangleStream.RestartStrip();
     }
 
-    [maxvertexcount(24)]
+    [maxvertexcount(12)]
     stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
     {
         streams = input[0];
         Particle p = Particles[streams.VertexID];
         if (p.Cycle == 0 || p.Age < 0) return;
+
+        float3 viewDir = Eye.xyz;
         
-        SpawnQuad(0, triangleStream, p.AxisZ, p);
-        SpawnQuad(4, triangleStream, -p.AxisZ, p);
-        SpawnQuad(8, triangleStream, p.AxisY, p);
-        SpawnQuad(12, triangleStream, -p.AxisY, p);
-        SpawnQuad(16, triangleStream, p.AxisX, p);
-        SpawnQuad(20, triangleStream, -p.AxisX, p);
+        if (dot(viewDir, p.AxisZ) > 0)
+            SpawnQuad(0, triangleStream, p.AxisZ, p);
+
+        if (dot(viewDir, -p.AxisZ) > 0)
+            SpawnQuad(4, triangleStream, -p.AxisZ, p);
+        
+        if (dot(viewDir, p.AxisY) > 0)   
+            SpawnQuad(8, triangleStream, p.AxisY, p);
+        
+        if (dot(viewDir, -p.AxisY) > 0)
+            SpawnQuad(12, triangleStream, -p.AxisY, p);
+        
+        if (dot(viewDir, p.AxisX) > 0)
+            SpawnQuad(16, triangleStream, p.AxisX, p);
+        
+        if (dot(viewDir, -p.AxisX) > 0)
+            SpawnQuad(20, triangleStream, -p.AxisX, p);
     }
 };
