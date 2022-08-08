@@ -2,12 +2,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 {
     cbuffer PerMaterial
     {
-        
-
-
     }
-
-    stream bool Skip;
 
     static const float3 QuadPositions[24] = 
     {
@@ -74,7 +69,10 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
     {
         streams.ShadingPosition = streams.Position;
         AssignVertexID();
-        streams.Skip = false;
+    }
+
+    stage override void GenerateNormal_VS()
+    {
     }
 
     void SpawnQuad(uint start, inout TriangleStream<Output> triangleStream, float3 normal, Particle p)
@@ -83,8 +81,9 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
        {
             streams.TexCoord  = QuadUV[i % 4].xy;
             float4 posWorld = float4(p.Position, 1);
+
             float3 qPos = CubeVert(i);
-            //float3 qPos = CubeVertArray(i);
+
             posWorld.xyz += qPos.x * p.AxisX * p.Size3.x;
             posWorld.xyz += qPos.y * p.AxisY * p.Size3.y;
             posWorld.xyz += qPos.z * p.AxisZ * p.Size3.z;
@@ -93,6 +92,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
             
             streams.PositionWS = posWorld;
             streams.normalWS = normal;
+            streams.meshNormalWS = normal;
 
             streams.ShadingPosition = mul(posWorld, ViewProjection);
             streams.DepthVS = streams.ShadingPosition.w;
@@ -110,7 +110,7 @@ shader BoxGeomExt_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         Particle p = Particles[streams.VertexID];
         if (p.Cycle == 0 || p.Age < 0) return;
 
-        float3 viewDir = Eye.xyz;
+        float3 viewDir = Eye.xyz - p.Position;
         
         if (dot(viewDir, p.AxisZ) > 0)
             SpawnQuad(0, triangleStream, p.AxisZ, p);

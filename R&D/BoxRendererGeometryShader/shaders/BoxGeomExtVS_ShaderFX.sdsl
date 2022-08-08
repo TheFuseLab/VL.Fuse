@@ -2,12 +2,7 @@ shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 {
     cbuffer PerMaterial
     {
-        
-
-
     }
-
-    stream bool Skip;
 
     static const float3 QuadPositions[24] = 
     {
@@ -42,6 +37,18 @@ shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         float3(-1,-1,-1),
     };
 
+    // 24-vertex CCW triangle strip
+    float3 CubeVert(in uint vertexID)
+    {
+        uint b = 1 << vertexID;
+        return float3((0xFA55A & b) != 0, (0x5A0F33 & b) != 0, (0x33330F & b) != 0) - 0.5;
+    }
+
+    float3 CubeVertArray(in uint vertexID)
+    {
+        return QuadPositions[vertexID] * 0.5;
+    }
+
     static const float2 QuadUV[4] = 
     {
         float2(0,1), 
@@ -61,8 +68,8 @@ shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
     stage override void PostTransformPosition()
     {
         uint id = streams.VertexID_VS;
-        uint vid = id % 24;
-        uint iid = id / 24;
+        uint vid = id % 12;
+        uint iid = id / 12;
         uint nid = vid / 4;
 
         Particle p = Particles[iid];
@@ -81,9 +88,12 @@ shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
         
         streams.TexCoord  = QuadUV[i % 4].xy;
         float4 posWorld = float4(p.Position, 1);
-        posWorld.xyz += QuadPositions[i].x * p.AxisX * p.Size3.x;
-        posWorld.xyz += QuadPositions[i].y * p.AxisY * p.Size3.y;
-        posWorld.xyz += QuadPositions[i].z * p.AxisZ * p.Size3.z;
+
+        float3 qPos = CubeVert(i);
+
+        posWorld.xyz += qPos.x * p.AxisX * p.Size3.x;
+        posWorld.xyz += qPos.y * p.AxisY * p.Size3.y;
+        posWorld.xyz += qPos.z * p.AxisZ * p.Size3.z;
         
         posWorld = mul(posWorld, World);
         
@@ -92,47 +102,10 @@ shader BoxGeomExtVS_ShaderFX : MaterialExtension, VertexIDStream, ParticleBuffer
 
         streams.ShadingPosition = mul(posWorld, ViewProjection);
         streams.DepthVS = streams.ShadingPosition.w;
-
-        streams.Skip = false;
     }
 
-    void SpawnQuad(uint start, inout TriangleStream<Output> triangleStream, float3 normal, Particle p)
+    stage override void GenerateNormal_VS()
     {
-       for(uint i = start; i < start + 4; i++)
-       {
-            streams.TexCoord  = QuadUV[i % 4].xy;
-            float4 posWorld = float4(p.Position, 1);
-            posWorld.xyz += QuadPositions[i].x * p.AxisX * p.Size3.x;
-            posWorld.xyz += QuadPositions[i].y * p.AxisY * p.Size3.y;
-            posWorld.xyz += QuadPositions[i].z * p.AxisZ * p.Size3.z;
-            
-            posWorld = mul(posWorld, World);
-            
-            streams.PositionWS = posWorld;
-            streams.normalWS = normal;
-
-            float4 posView = mul(posWorld, View);
-            streams.ShadingPosition = mul(posView, Projection);
-            streams.DepthVS = streams.ShadingPosition.w;
-            
-            triangleStream.Append(streams);
-        }
-
-        triangleStream.RestartStrip();
+        streams.meshNormalWS = streams.normalWS;
     }
-
-    // [maxvertexcount(24)]
-    // stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
-    // {
-    //     streams = input[0];
-    //     Particle p = Particles[streams.VertexID];
-    //     if (p.Cycle == 0 || p.Age < 0) return;
-        
-    //     SpawnQuad(0, triangleStream, p.AxisZ, p);
-    //     SpawnQuad(4, triangleStream, -p.AxisZ, p);
-    //     SpawnQuad(8, triangleStream, p.AxisY, p);
-    //     SpawnQuad(12, triangleStream, -p.AxisY, p);
-    //     SpawnQuad(16, triangleStream, p.AxisX, p);
-    //     SpawnQuad(20, triangleStream, -p.AxisX, p);
-    // }
 };
