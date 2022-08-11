@@ -1,0 +1,14 @@
+shader ApplyAO_Internal_ComputeFX : ComputeShaderBase
+{
+    rgroup PerDispatch
+    {
+        Texture2D<uint> SrcWorkingAOTerm;
+        RWTexture2D<float4> OutAOTerm;
+    }
+
+    override void Compute()
+    {
+        uint3 uv = uint3(streams.DispatchThreadId.xy, 0);
+        OutAOTerm[uv.xy] = float4(pow((SrcWorkingAOTerm.Load(uv) / 255.0).xxx * 1.5, 1.5), 1);
+    }
+};

@@ -1,0 +1,60 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2016-2021, Intel Corporation 
+// 
+// SPDX-License-Identifier: MIT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// XeGTAO is based on GTAO/GTSO "Jimenez et al. / Practical Real-Time Strategies for Accurate Indirect Occlusion", 
+// https://www.activision.com/cdn/research/Practical_Real_Time_Strategies_for_Accurate_Indirect_Occlusion_NEW%20VERSION_COLOR.pdf
+// 
+// Implementation:  Filip Strugar (filip.strugar@intel.com), Steve Mccalla <stephen.mccalla@intel.com>         (\_/)
+// Version:         (see XeGTAO_Common.sdsl)                                                                  (='.'=)
+// Details:         https://github.com/GameTechDev/XeGTAO                                                     (")_(")
+//
+// Version history: see XeGTAO.h
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+shader XeGTAO_GenerateNormals_ComputeFX : ComputeShaderBase, XeGTAO_Common
+{
+    rgroup PerDispatch
+    {
+        stage Texture2D<float>          SrcRawDepth;    // source depth buffer data (in NDC space in DirectX)
+        stage RWTexture2D<float4>       OutNormalmap;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+    }
+
+    override void Compute()
+    {
+        GTAOConstants consts = GTAOConsts[0];
+        float2 pixCoord = streams.DispatchThreadId.xy;
+        OutNormalmap[pixCoord] = float4(XeGTAO_ComputeViewspaceNormal(pixCoord, GTAOConsts[0], SrcRawDepth, PointClampSampler), 1);
+
+        // float2 normalizedScreenPos = (pixCoord + 0.5.xx) * consts.ViewportPixelSize;
+
+        // float4 valuesUL   = SrcRawDepth.GatherRed( PointClampSampler, float2( pixCoord * consts.ViewportPixelSize )               );
+        // float4 valuesBR   = SrcRawDepth.GatherRed( PointClampSampler, float2( pixCoord * consts.ViewportPixelSize ), int2( 1, 1 ) );
+
+        // // viewspace Z at the center
+        // float viewspaceZ  = valuesUL.y; //sourceViewspaceDepth.SampleLevel( depthSampler, normalizedScreenPos, 0 ).x; 
+
+        // // viewspace Zs left top right bottom
+        // const float pixLZ = valuesUL.x;
+        // const float pixTZ = valuesUL.z;
+        // const float pixRZ = valuesBR.z;
+        // const float pixBZ = valuesBR.x;
+
+        // float4 edgesLRTB  = XeGTAO_CalculateEdges( (float)viewspaceZ, (float)pixLZ, (float)pixRZ, (float)pixTZ, (float)pixBZ );
+
+        // // Generating screen space normals in-place is faster than generating normals in a separate pass but requires
+        // // use of 32bit depth buffer (16bit works but visibly degrades quality) which in turn slows everything down. So to
+        // // reduce complexity and allow for screen space normal reuse by other effects, we've pulled it out into a separate
+        // // pass.
+        // // However, we leave this code in, in case anyone has a use-case where it fits better.
+        // float3 CENTER   = XeGTAO_ComputeViewspacePosition( normalizedScreenPos, viewspaceZ, consts );
+        // float3 LEFT     = XeGTAO_ComputeViewspacePosition( normalizedScreenPos + float2(-1,  0) * consts.ViewportPixelSize, pixLZ, consts );
+        // float3 RIGHT    = XeGTAO_ComputeViewspacePosition( normalizedScreenPos + float2( 1,  0) * consts.ViewportPixelSize, pixRZ, consts );
+        // float3 TOP      = XeGTAO_ComputeViewspacePosition( normalizedScreenPos + float2( 0, -1) * consts.ViewportPixelSize, pixTZ, consts );
+        // float3 BOTTOM   = XeGTAO_ComputeViewspacePosition( normalizedScreenPos + float2( 0,  1) * consts.ViewportPixelSize, pixBZ, consts );
+        // float3 viewspaceNormal = (float3)XeGTAO_CalculateNormal( edgesLRTB, CENTER, LEFT, RIGHT, TOP, BOTTOM );
+        // OutNormalmap[pixCoord] = float4(viewspaceNormal, 1);
+    }
+};

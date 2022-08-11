@@ -1,0 +1,91 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2016-2021, Intel Corporation 
+// 
+// SPDX-License-Identifier: MIT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// XeGTAO is based on GTAO/GTSO "Jimenez et al. / Practical Real-Time Strategies for Accurate Indirect Occlusion", 
+// https://www.activision.com/cdn/research/Practical_Real_Time_Strategies_for_Accurate_Indirect_Occlusion_NEW%20VERSION_COLOR.pdf
+// 
+// Implementation:  Filip Strugar (filip.strugar@intel.com), Steve Mccalla <stephen.mccalla@intel.com>         (\_/)
+// Version:         (see XeGTAO_Common.sdsl)                                                                  (='.'=)
+// Details:         https://github.com/GameTechDev/XeGTAO                                                     (")_(")
+//
+// Version history: see XeGTAO.h
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define XE_GTAO_HILBERT_LUT_AVAILABLE
+
+shader XeGTAO_MainPass_ComputeFX : ComputeShaderBase, XeGTAO_Common
+{
+    rgroup PerDispatch
+    {
+        stage Texture2D<float>            SrcWorkingDepth;    // viewspace depth with MIPs, output by XeGTAO_PrefilterDepths16x16 and consumed by XeGTAO_MainPass
+        stage Texture2D<float4>           SrcNormalmap;       // source normal map (if used)
+        stage Texture2D<uint>             SrcHilbertLUT;      // hilbert lookup table  (if any)
+
+        stage RWTexture2D<uint>           OutWorkingAOTerm;   // output AO term (includes bent normals if enabled - packed as R11G11B10 scaled by AO)
+        stage RWTexture2D<unorm float>    OutWorkingEdges;    // output depth-based edges used by the denoiser
+        stage RWTexture2D<uint>           OutNormalmap;       // output viewspace normals if generating from depth
+    }
+
+    cbuffer PerDispatch
+    {
+        stage float4x4 ViewMatrix;
+        stage float SliceCount = 2;
+        stage float StepsPerSlice = 2;
+
+        stage int UseNormalMap;
+    }
+
+    // Engine-specific normal map loader
+    float3 LoadNormal( int2 pos )
+    {
+#if 1
+        // special decoding for external normals stored in 11_11_10 unorm - modify appropriately to support your own encoding 
+        float3 packedInput = SrcNormalmap.Load( int3(pos, 0) );
+        float bg = any(packedInput);
+        // float3 unpackedOutput = XeGTAO_R11G11B10_UNORM_to_FLOAT3( packedInput );
+        // float3 normal = normalize(unpackedOutput * 2.0.xxx - 1.0.xxx);
+        float3 normal = normalize(packedInput * 2.0.xxx - 1.0.xxx);
+#else 
+        // example of a different encoding
+        float3 encodedNormal = SrcNormalmap.Load(int3(pos, 0)).xyz;
+        // float3 normal = normalize(encodedNormal * 2.0.xxx - 1.0.xxx);
+        float3 normal = normalize(encodedNormal);
+#endif
+
+#if 1 // compute worldspace to viewspace here if your engine stores normals in worldspace; if generating normals from depth here, they're already in viewspace
+        normal = bg? mul(normal, (float3x3)ViewMatrix) * float3(1,1,-1) : -1;
+#endif
+
+        return (float3)normal;
+    }
+
+    // Engine-specific screen & temporal noise loader
+    float2 SpatioTemporalNoise( uint2 pixCoord, uint temporalIndex )    // without TAA, temporalIndex is always 0
+    {
+        float2 noise;
+#if 1   // Hilbert curve driving R2 (see https://www.shadertoy.com/view/3tB3z3)
+#ifdef XE_GTAO_HILBERT_LUT_AVAILABLE // load from lookup texture...
+        uint index = SrcHilbertLUT.Load( uint3( pixCoord % 64, 0 ) ).x;
+#else // ...or generate in-place?
+        uint index = HilbertIndex( pixCoord.x, pixCoord.y );
+#endif
+        index += 288*(temporalIndex%64); // why 288? tried out a few and that's the best so far (with XE_HILBERT_LEVEL 6U) - but there's probably better :)
+        // R2 sequence - see http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+        return float2( frac( 0.5 + index * float2(0.75487766624669276005, 0.5698402909980532659114) ) );
+#else   // Pseudo-random (fastest but looks bad - not a good choice)
+        uint baseHash = Hash32( pixCoord.x + (pixCoord.y << 15) );
+        baseHash = Hash32Combine( baseHash, temporalIndex );
+        return float2( Hash32ToFloat( baseHash ), Hash32ToFloat( Hash32( baseHash ) ) );
+#endif
+    }
+
+    override void Compute()
+    {
+        uint2 pixCoord = streams.DispatchThreadId.xy;
+        XeGTAO_MainPass(pixCoord, SliceCount, StepsPerSlice, SpatioTemporalNoise( pixCoord, GTAOConsts[0].NoiseIndex ), LoadNormal( pixCoord ), 
+                        GTAOConsts[0], SrcWorkingDepth, PointClampSampler, OutWorkingAOTerm, OutWorkingEdges, UseNormalMap, ViewMatrix );
+    }
+};

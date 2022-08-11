@@ -1,0 +1,35 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2016-2021, Intel Corporation 
+// 
+// SPDX-License-Identifier: MIT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// XeGTAO is based on GTAO/GTSO "Jimenez et al. / Practical Real-Time Strategies for Accurate Indirect Occlusion", 
+// https://www.activision.com/cdn/research/Practical_Real_Time_Strategies_for_Accurate_Indirect_Occlusion_NEW%20VERSION_COLOR.pdf
+// 
+// Implementation:  Filip Strugar (filip.strugar@intel.com), Steve Mccalla <stephen.mccalla@intel.com>         (\_/)
+// Version:         (see XeGTAO_Common.sdsl)                                                                  (='.'=)
+// Details:         https://github.com/GameTechDev/XeGTAO                                                     (")_(")
+//
+// Version history: see XeGTAO.h
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+shader XeGTAO_PrefilterDepth_ComputeFX : ComputeShaderBase, XeGTAO_Common
+{
+    rgroup PerDispatch
+    {
+        stage Texture2D<float>          SrcRawDepth        ;   // source depth buffer data (in NDC space in DirectX)
+
+        stage RWTexture2D<float>        OutWorkingDepthMIP0;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+        stage RWTexture2D<float>        OutWorkingDepthMIP1;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+        stage RWTexture2D<float>        OutWorkingDepthMIP2;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+        stage RWTexture2D<float>        OutWorkingDepthMIP3;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+        stage RWTexture2D<float>        OutWorkingDepthMIP4;   // output viewspace depth MIP (these are views into g_srcWorkingDepth MIP levels)
+    }
+
+    override void Compute()
+    {
+        XeGTAO_PrefilterDepths16x16(streams.DispatchThreadId.xy, streams.GroupThreadId.xy, GTAOConsts[0], SrcRawDepth, PointClampSampler, 
+                                    OutWorkingDepthMIP0, OutWorkingDepthMIP1, OutWorkingDepthMIP2, OutWorkingDepthMIP3, OutWorkingDepthMIP4 );
+    }
+};

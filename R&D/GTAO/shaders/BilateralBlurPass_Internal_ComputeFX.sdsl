@@ -1,0 +1,82 @@
+#define BLURRADIUS 20
+
+shader BilateralBlurPass_Internal_ComputeFX : ComputeShaderBase
+{
+    rgroup PerDispatch
+    {
+        Texture2D<uint>   SrcAOTerm;
+        Texture2D<float>  SrcDepth;
+
+        RWTexture2D<uint> OutWorkingAOTerm;
+    }
+
+    cbuffer PerDispatch
+    {
+        float  BlurSharpeness;
+        float2 DeltaUV;
+    }
+
+    void FetchAoAndDepth(uint2 uv, inout float ao, inout float depth)
+    {
+        ao = SrcAOTerm.Load(int3(uv, 0));
+        depth = SrcDepth.Load(int3(uv, 0));
+    }
+
+    float CrossBilateralWeight(float r, float d, float d0)
+    {
+        const float BlurSigma = BLURRADIUS * 0.5;
+        const float BlurFalloff = 1 / (2 * BlurSigma * BlurSigma);
+
+        float dz = (d0 - d) * .2 * BlurSharpeness;
+        return exp2(-r * r * BlurFalloff - dz * dz);
+    }
+
+    void ProcessSample(float2 aoz, float r, float d0, inout float totalAO, inout float totalW)
+    {
+        float w = CrossBilateralWeight(r, d0, aoz.y);
+        totalW += w;
+        totalAO += w * aoz.x;
+    }
+
+    void ProcessRadius(uint2 uv0, float2 deltaUV, float d0, inout float totalAO, inout float totalW)
+    {
+        float ao, z;
+        uint2 uv;
+        float r = 1;
+
+        [unroll]
+        for (r; r <= BLURRADIUS / 2; r += 1)
+        {
+            uv = uv0 + r * deltaUV;
+            FetchAoAndDepth(uv, ao, z);
+            ProcessSample(float2(ao, z), r, d0, totalAO, totalW);
+        }
+
+        [unroll]
+        for (r; r <= BLURRADIUS; r += 2)
+        {
+            uv = uv0 + (r + 0.5) * deltaUV;
+            FetchAoAndDepth(uv, ao, z);
+            ProcessSample(float2(ao, z), r, d0, totalAO, totalW);
+        }
+    }
+
+    float2 BilateralBlur(uint2 uv, float2 deltaUV)
+    {
+        float totalAO, depth;
+        FetchAoAndDepth(uv, totalAO, depth);
+        float totalW = 1;
+
+        ProcessRadius(uv, -deltaUV, depth, totalAO, totalW);
+        ProcessRadius(uv, deltaUV, depth, totalAO, totalW);
+
+        totalAO /= totalW;
+        return float2(totalAO, depth);
+    }
+
+    override void Compute()
+    {
+        uint2 uv = streams.DispatchThreadId.xy;
+        OutWorkingAOTerm[uv] = (uint)(BilateralBlur(uv, DeltaUV).x);
+    }
+};
