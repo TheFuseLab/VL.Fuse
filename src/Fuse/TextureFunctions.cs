@@ -43,13 +43,12 @@ namespace Fuse
             
         }
     }
-    public class TextureNode<T> : ShaderNode<T>
-    {
+    public class TextureFunction<T> : ShaderNode<T > {
 
         private readonly ShaderNode<Texture> _texture;
         private readonly List<AbstractShaderNode> _arguments;
         private readonly string _functionName;
-        public TextureNode(
+        public TextureFunction(
             ShaderNode<Texture> theTexture, 
             IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
@@ -66,7 +65,7 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            if (ShaderNodesUtil.HasNullValue(_arguments))
+            if (ShaderNodesUtil.HasNullValue(_arguments) || _texture == null)
             {
                 return GenerateDefaultSource();
             }
@@ -85,11 +84,10 @@ namespace Fuse
                 {"function", _functionName},
                 {"resultName", ID},
                 {"resultType", TypeName()},
-                {"arguments", ShaderNodesUtil.BuildArguments(_arguments)}
+                {"arguments", ShaderNodesUtil.BuildArguments(_arguments)},
+                {"default", Default == null ? "": Default.ID}
             };
             if (_texture != null) result["texture"] = _texture.ID;
-            
-            result.AddRange(base.CreateTemplateMap());
 
             return result;
         }

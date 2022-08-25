@@ -45,17 +45,35 @@ namespace Fuse
 
     public static class AbstractCreation
     {
-        public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theType, object[] theArguments )
+        public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theBaseType, object[] theArguments )
         {
             var nodeType = theValue.GetType();
-            while (nodeType.BaseType != typeof(AbstractShaderNode))
+
+            while (nodeType != null && nodeType.BaseType != null && nodeType.BaseType != typeof(AbstractShaderNode))
             {
                 nodeType = nodeType.BaseType;
             }
+            
             var dataType = new[] { nodeType.GetGenericArguments()[0]};
-            var getType = theType.MakeGenericType(dataType);
-            var getInstance = Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
-            return getInstance;
+            var getType = theBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
+        }
+        
+        public static AbstractShaderNode AbstractGetMember<T>(ShaderNode<T> theStruct, AbstractShaderNode theMember)
+        {
+           // return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theStruct, theMember.Name, null});
+            
+            
+            var getMemberBaseType = typeof(GetMember<,>);
+            var nodeType = theMember.GetType();
+            while (nodeType != null && nodeType.BaseType != null && nodeType.BaseType != typeof(AbstractShaderNode))
+            {
+                nodeType = nodeType.BaseType;
+            }
+            var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
+            var getType = getMemberBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theStruct, theMember.Name, null) as AbstractShaderNode;
+            
         }
         
         public static AbstractShaderNode AbstractComputeTextureGet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
@@ -65,12 +83,15 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractShaderNodePassThrough(AbstractShaderNode theValue)
         {
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{"pass", theValue});
+            /*
             var getBaseType = typeof(PassThroughNode<>);
-            var memberInfo = theValue.GetType().BaseType;
-            if (memberInfo == null) return null;
-            var dataType = new[] { memberInfo.GetGenericArguments()[0] };
+            var nodeType = theValue.GetType().BaseType;
+            if (nodeType == null) return null;
+            var dataType = new[] { nodeType.GetGenericArguments()[0] };
             var getType = getBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theValue) as AbstractShaderNode;
+            */
         }
         
         public static AbstractShaderNode AbstractDeclareValue(AbstractShaderNode theValue)
@@ -78,34 +99,20 @@ namespace Fuse
             return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{null});
         }
         
-        public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractDeclareValueAssigned(AbstractShaderNode theValue)
         {
-            var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
-            return ConstantHelper.AbstractFromFloat(dataType[0], theValue);
-        }
-        
-        public static AbstractShaderNode AbstractGetMember(ShaderNode<GpuStruct> theStruct, AbstractShaderNode theMember)
-        {
-            var getMemberBaseType = typeof(GetMember<,>);
-            var nodeType = theMember.GetType();
-            while (nodeType.BaseType != typeof(AbstractShaderNode))
-            {
-                nodeType = nodeType.BaseType;
-            }
-            var dataType = new[] {typeof(GpuStruct), nodeType.GetGenericArguments()[0]};
-            var getType = getMemberBaseType.MakeGenericType(dataType);
-            var getInstance = Activator.CreateInstance(getType, theStruct, theMember.Name, null) as AbstractShaderNode;
-            return getInstance;
-        }
-        
-        public static AbstractShaderNode AbstractDeclareValueAssigned(AbstractShaderNode theMember)
-        {
-            return CreateAbstract(theMember, typeof(DeclareValue<>), new object[] {theMember});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {theValue});
         }
         
         public static AbstractShaderNode AbstractAssignNode(AbstractShaderNode theTarget, AbstractShaderNode theSource)
         {
-            return CreateAbstract(theTarget, typeof(AssignNode<>), new object[] {theTarget, theSource});
+            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {theTarget, theSource});
+        }
+        
+        public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
+        {
+            var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
+            return ConstantHelper.AbstractFromFloat(dataType[0], theValue);
         }
     }
     
@@ -336,5 +343,7 @@ namespace Fuse
             context.Tags.Set(VarIDCounterKey, result + 1);
             return result;
         }
+
+        public static int id=0;
     }
 }

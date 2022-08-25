@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections;
 using System.Collections.Generic;
 
 namespace Fuse
@@ -58,5 +58,12 @@ namespace Fuse
         }
     }
     
-   
+    public class AddResource<T> : UtilityNode<T>
+    {
+        
+        public AddResource(ShaderNode<T> theIn, string theResourceId, IList theResources) : base(theIn, "AddResource")
+        {
+            AddResources(theResourceId, theResources);
+        }
+    }
 }

@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
-    public class Group: ShaderNode<GpuVoid> 
+    public class Group: ShaderNode<GpuVoid>, IComputeVoid
     {
         public Group(IEnumerable<AbstractShaderNode> theInputs, string name = "Group") : base(name)
         { 

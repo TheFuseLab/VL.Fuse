@@ -11,23 +11,23 @@ namespace PatchTests
         [Test]
         public static void TestBooleanOperator()
         {
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
+            var compare = new Operator<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
             Console.WriteLine(compare.BuildSourceCode());
             
-            var compareNull = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
+            var compareNull = new Operator<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             Console.WriteLine(compareNull.BuildSourceCode());
         }
         
         [Test]
         public static void TestBooleanSwitch()
         {
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
+            var compare = new Operator<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             
             var switchVal = new IfNodeDeprecated<float>(compare, gpuValue0, gpuValue1,new ConstantValue<float>(0));
             Console.WriteLine(switchVal.BuildSourceCode());
@@ -45,16 +45,16 @@ namespace PatchTests
         [Test]
         public static void TestBooleanSwitchVoid()
         {
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
 
             var val0 = new DeclareValue<float>(gpuValue0);
             var val1 = new DeclareValue<float>(gpuValue1);
 
-            var assign0 = new AssignNode<float>(val0, gpuValue0);
-            var assign1 = new AssignNode<float>(val1, gpuValue1);
+            var assign0 = new AssignValue<float>(val0, gpuValue0);
+            var assign1 = new AssignValue<float>(val1, gpuValue1);
             
-            var compare = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
+            var compare = new Operator<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             
             var switchVal = new IfNodeDeprecated<GpuVoid>(compare, assign0, assign1);
             Console.WriteLine(switchVal.BuildSourceCode());
@@ -65,20 +65,20 @@ namespace PatchTests
             var switchValNull2 = new IfNodeDeprecated<GpuVoid>(compare, null, assign1);
             Console.WriteLine(switchValNull2.BuildSourceCode());
             
-            var switchValNull3 = new IfNodeDeprecated<GpuVoid>(compare, null, null);
+            var switchValNull3 = new IfNodeDeprecated<float>(compare, null, null);
             Console.WriteLine(switchValNull3.BuildSourceCode());
         }
         
         [Test]
         public static void TestNumericSwitch()
         {    
-            var gpuValueCheck = new GpuInput<int>();
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
-            var gpuValue2 = new GpuInput<float>();
-            var gpuValue3 = new GpuInput<float>();
+            var gpuValueCheck = new ValueInput<int>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
+            var gpuValue2 = new ValueInput<float>();
+            var gpuValue3 = new ValueInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(false),">");
+            var compare = new Operator<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(false),">");
             Console.WriteLine(compare.BuildSourceCode());
             
             var switchVal = new SwitchNumeric<float>(gpuValueCheck, new List<ShaderNode<float>>(){gpuValue0, gpuValue1, gpuValue2}, gpuValue3);

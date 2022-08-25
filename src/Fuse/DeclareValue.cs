@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Fuse
 {
@@ -8,7 +7,7 @@ namespace Fuse
 
         private readonly ShaderNode<T> _value;
 
-        public DeclareValue(ShaderNode<T> theValue = null): base("output", null)
+        public DeclareValue(ShaderNode<T> theValue = null): base("output")
         {
             
             var inputList = new List<AbstractShaderNode>();

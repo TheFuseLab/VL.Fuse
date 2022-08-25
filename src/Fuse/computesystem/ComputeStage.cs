@@ -7,7 +7,7 @@ using Stride.Core.Mathematics;
 namespace Fuse.ComputeSystem
 {
 
-    public interface IComputeStage 
+    public interface IComputeStage
     {
         public void BindResources(Dictionary<string, AbstractResource> theResources);
         
@@ -98,15 +98,20 @@ namespace Fuse.ComputeSystem
 
         public override void Build()
         {
-            var nodes = new List<AbstractShaderNode> {_node};
+            var nodes = new List<ShaderNode<GpuVoid>> {_node};
             if (WriteAttributes)
             {
-                nodes.AddRange(_resourceManager.WriteAttributeNodes());
+                nodes.AddRange(_resourceManager.WriteAttributes());
             }
             _group = new Group(nodes); 
         }
 
-        public ShaderNode<GpuVoid> Node => _group;
+        public void Update()
+        {
+            _resourceManager.Update();
+        }
+
+        public Group Node => _group;
     }
 
     public class ComputeStageGroup : IComputeStage

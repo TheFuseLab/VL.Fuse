@@ -38,7 +38,7 @@ namespace Fuse
             get => _value;
             set
             {
-                if (Comparer.Equals(value, Value)) return;
+              //  if (Comparer.Equals(value, Value)) return;
                 _value = value;
 
                 if (_parameters != null)
@@ -81,7 +81,7 @@ namespace Fuse
             return false;//context.Tags.TryGetValue(GraphSubscriptions, out subscriptions);
         }
 
-        private void Track(ShaderGeneratorContext context, TKey key)
+        public void Track(ShaderGeneratorContext context, TKey key)
         {
             if (TryGetSubscriptions(context,out var s))
                 s.Add(Subscribe(context.Parameters, key));
@@ -91,11 +91,14 @@ namespace Fuse
         {
             var x = (parameters, key);
 
-            var trackedCollections = this._trackedCollections ??= new Dictionary<(ParameterCollection, TKey), RefCountDisposable>();
+            var trackedCollections = _trackedCollections ??= new Dictionary<(ParameterCollection, TKey), RefCountDisposable>();
             if (trackedCollections.TryGetValue(x, out var disposable))
                 return disposable.GetDisposable();
 
-            disposable = new RefCountDisposable(Disposable.Create(() => trackedCollections.Remove(x)));
+            disposable = new RefCountDisposable(Disposable.Create(() =>
+            {
+                trackedCollections.Remove(x);
+            }));
             trackedCollections.Add(x, disposable);
             Upload(parameters, key, ref _value);
             return disposable;

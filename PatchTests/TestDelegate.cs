@@ -14,15 +14,15 @@ namespace PatchTests
             var delegate0 = new FunctionParameter<float>(new ConstantValue<float>(0),0);
             var delegate1 = new FunctionParameter<float>(new ConstantValue<float>(0),1);
             
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
             
-            var sin2 = new IntrinsicFunctionNode<float>(
+            var sin2 = new IntrinsicFunction<float>(
                 new List< AbstractShaderNode> {delegate0},
                 "sin", new ConstantValue<float>(0));
-            var operatorNode = new OperatorNode<float, float>(new List<ShaderNode<float>> {sin2, delegate1},new ConstantValue<float>(0),"+");
+            var operatorNode = new Operator<float, float>(new List<ShaderNode<float>> {sin2, delegate1},new ConstantValue<float>(0),"+");
             
-            var delegateNode = new FunctionInvokeNode<float>(operatorNode, new List< AbstractShaderNode> {gpuValue0,gpuValue1}, "delegate");
+            var delegateNode = new Invoke<float>(operatorNode, new List< AbstractShaderNode> {gpuValue0,gpuValue1}, "delegate");
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             
@@ -40,7 +40,7 @@ namespace PatchTests
     return  sqrt(dot( offset, offset ));
 }";
             
-            var cellDistance = new CustomFunctionNode<float>(
+            var cellDistance = new CustomFunction<float>(
                 new List<AbstractShaderNode> {offset}, 
                 "cellDistance",
                 cellDistanceCode, 
@@ -54,14 +54,14 @@ namespace PatchTests
     return  sqrt(dot( offset, offset ));
 }";
             
-            var cellFunction = new CustomFunctionNode<float>(
+            var cellFunction = new CustomFunction<float>(
                 new List<AbstractShaderNode> {f1F2}, 
                 "cellFunction",
                 cellFunctionCode, 
                 new ConstantValue<float>(0)
             );
             
-            var x = new GpuInput<Vector2>();
+            var x = new ValueInput<Vector2>();
             var inputs = new List<AbstractShaderNode>
             {
                 x
@@ -98,15 +98,15 @@ float ${signature}(float2 p)
     
     return ${cellFunction}(float2(f1, f2));
 }";
-            var customFunction = new CustomFunctionNode<float>(
+            var customFunction = new CustomFunction<float>(
                 new List<AbstractShaderNode> {x}, 
                 "worley",
                 worleyCode, 
                 new ConstantValue<float>(0),  
-                new List<IFunctionInvokeNode>
+                new List<IInvoke>
                 {
-                    new FunctionInvokeNode<float>(cellDistance, new List<AbstractShaderNode> {x},"cellDistance"),
-                    new FunctionInvokeNode<float>(cellFunction, new List<AbstractShaderNode> {f1F2},"cellFunction")
+                    new Invoke<float>(cellDistance, new List<AbstractShaderNode> {x},"cellDistance"),
+                    new Invoke<float>(cellFunction, new List<AbstractShaderNode> {f1F2},"cellFunction")
                 }
             );
             Console.WriteLine(customFunction.FunctionMap());
@@ -116,7 +116,7 @@ float ${signature}(float2 p)
         public static void TestFBM()
         {
             var noiseDelegateParameter = new FunctionParameter<Vector2>(ConstantHelper.FromFloat<Vector2>(0));
-            var noiseFunction = new MixinFunctionNode<float>(
+            var noiseFunction = new MixinFunction<float>(
                 new List<AbstractShaderNode>(){noiseDelegateParameter}, 
                 "gradientNoise12",
                 new ConstantValue<float>(0),
@@ -126,14 +126,14 @@ float ${signature}(float2 p)
     return ${noise}(p);
 }";
             var fbmTypeDelegateParameter = new FunctionParameter<float>(new ConstantValue<float>(0));
-            var fbmTypeFunction = new CustomFunctionNode<float>(
+            var fbmTypeFunction = new CustomFunction<float>(
                 new List<AbstractShaderNode>(){fbmTypeDelegateParameter}, 
                 "fbmType",
                 fbmTypeCode,
                 new ConstantValue<float>(0),
-                new List<IFunctionInvokeNode>
+                new List<IInvoke>
                 {
-                    new FunctionInvokeNode<float>(noiseFunction, new List<AbstractShaderNode> {fbmTypeDelegateParameter},"noise")
+                    new Invoke<float>(noiseFunction, new List<AbstractShaderNode> {fbmTypeDelegateParameter},"noise")
                 }
             );
 
@@ -164,15 +164,15 @@ float ${signature}(float2 p)
  
     return myResult;
 }";
-            var gpuValue0 = new GpuInput<Vector2>();
-            var fbmFunction = new CustomFunctionNode<float>(
+            var gpuValue0 = new ValueInput<Vector2>();
+            var fbmFunction = new CustomFunction<float>(
                 new List<AbstractShaderNode>(){gpuValue0}, 
                 "fbm",
                 fbmCode,
                 new ConstantValue<float>(0),
-                new List<IFunctionInvokeNode>
+                new List<IInvoke>
                 {
-                    new FunctionInvokeNode<float>(fbmTypeFunction, new List<AbstractShaderNode> {gpuValue0},"fbmType")
+                    new Invoke<float>(fbmTypeFunction, new List<AbstractShaderNode> {gpuValue0},"fbmType")
                 }
             );
             

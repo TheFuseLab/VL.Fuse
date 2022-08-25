@@ -4,17 +4,17 @@ using System.Text;
 
 namespace Fuse
 {
-    public class OperatorNode<TIn, TOut> : ShaderNode<TOut> where TIn : struct where TOut : struct
+    public class Operator<TIn, TOut> : ShaderNode<TOut> where TIn : struct where TOut : struct
     {
 
         private readonly string _operator;
-        public OperatorNode(IEnumerable<ShaderNode<TIn>> theInputs, ShaderNode<TOut> theDefault, string theOperator) : base("result", theDefault)
+        public Operator(IEnumerable<ShaderNode<TIn>> theInputs, ShaderNode<TOut> theDefault, string theOperator) : base("result", theDefault)
         {
             _operator = theOperator;
             SetInputs(theInputs);
         }
 
-        public OperatorNode(ShaderNode<TIn> input0, ShaderNode<TIn> input1, ShaderNode<TOut> theDefault, string theOperator) :
+        public Operator(ShaderNode<TIn> input0, ShaderNode<TIn> input1, ShaderNode<TOut> theDefault, string theOperator) :
             this(new List<ShaderNode<TIn>> {input0, input1}, theDefault, theOperator){
         }
 

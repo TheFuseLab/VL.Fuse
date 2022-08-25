@@ -2,16 +2,14 @@
 using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
+using Stride.Shaders;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse{
 
     public interface IGpuInput : IAtomicComputeNode
     {
-        void SetParameterValue(ParameterCollection theCollection);
-
-        void AddParameters(ParameterCollection theCollection);
-
-        void UpdateParameter();
+        
     }
     
     
@@ -23,18 +21,6 @@ namespace Fuse{
             SetInputs(new List<AbstractShaderNode>());
         }
 
-        public void SetParameterValue(ParameterCollection theCollection)
-        {
-        }
-
-        public void AddParameters(ParameterCollection theCollection)
-        {
-        }
-
-        public void UpdateParameter()
-        {
-        }
-
         protected override string SourceTemplate()
         {
             return "";
@@ -43,36 +29,30 @@ namespace Fuse{
         public override string ID => Name;
     }
 
-    public abstract class AbstractInput<T, TParameterKeyType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T>
+    public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T> where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
      {
+         
          private const string DeclarationTemplate = @"
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
          
          private readonly bool _isResource;
          
+         protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
+
+         protected T _value;
          protected AbstractInput(string theName, bool theIsResource, T theValue = default): base(theName)
          {
              _isResource = theIsResource;
+             Updater = CreateUpdater();
              Value = theValue;
-             Parameters = new HashSet<ParameterCollection>();
              SetInputs( new List<AbstractShaderNode>());
              AddResource(Inputs, this);
          }
 
-         private HashSet<ParameterCollection> Parameters { get;  }
-         
-         public void AddParameters(ParameterCollection theCollection)
-         {
-             Parameters.Add(theCollection);
-         }
+         protected abstract TParameterUpdaterType CreateUpdater();
 
-         public void UpdateParameter()
-         {
-             Parameters?.ForEach(SetParameterValue);
-         }
-         
-         public abstract void SetParameterValue(ParameterCollection theCollection);
+        
 
          protected override string SourceTemplate()
          {
@@ -80,22 +60,16 @@ namespace Fuse{
          }
 
          protected TParameterKeyType ParameterKey { get; set;}
-         
-         private T _inputValue;
 
-         // ReSharper disable once MemberCanBeProtected.Global
          public T Value
-         {
-             get => _inputValue;
-             // ReSharper disable once MemberCanBePrivate.Global
-             // is accessible from VL
+         { 
+             get => Updater.Value;
              set
              {
-                 //if (_inputValue != null && _inputValue.Equals(value)) return;
-                 _inputValue = value;
-                 UpdateParameter();
+                 _value = value;
+                 Updater.Value = value;
              }
-         } 
+         }
 
          private string BuildDeclaration(string theTypeName)
          {
@@ -125,46 +99,49 @@ namespace Fuse{
          }
      }
 
-     public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>>
+     public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>, ObjectParameterUpdater<T>> where T : class
      {
          protected ObjectInput(string theName, T theValue = default) : base(theName, true, theValue)
          {
              
          }
 
-         public override void SetParameterValue(ParameterCollection theCollection)
+         protected override ObjectParameterUpdater<T> CreateUpdater()
          {
-             theCollection.Set(ParameterKey, Value);
+             return new ObjectParameterUpdater<T>();
+         }
+         
+         protected override void OnPassContext(ShaderGeneratorContext theContext)
+         {
+             Updater.Track(theContext, ParameterKey);
+             Updater.Value = _value;
          }
 
-         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         public abstract void ObjectFieldDeclaration();
+
+         protected override void OnGenerateCode(ShaderGeneratorContext theContext)
          {
-             if (HashCode >= 0) return;
-             base.SetHashCodes(theContext);
-             ParameterKey = theContext.GetParameterKey(new ObjectParameterKey<T>(ID)) as ObjectParameterKey<T>;
+             ParameterKey = new ObjectParameterKey<T>(ID);
+             ObjectFieldDeclaration();
          }
      }
 
      public class TextureInput: ObjectInput<Texture>
      {
-         private bool _useRW;
-         public TextureInput(Texture theTexture, bool theUseRW = false) : base("TextureInput", theTexture)
+         private readonly bool _useRw;
+         public TextureInput(Texture theTexture, bool theUseRw = false) : base("TextureInput", theTexture)
          {
-             _useRW = theUseRW;
+             _useRw = theUseRw;
          }
-         
-         public override void SetHashCodes(ShaderGeneratorContext theContext)
+
+         public override void ObjectFieldDeclaration()
          {
-             if (HashCode >= 0) return;
-             
-             base.SetHashCodes(theContext);
-             
              if (Value == null)
              {
-                 SetFieldDeclaration("Texture2D");
+                 SetFieldDeclaration("Texture1D");
                  return;
              }
-             SetFieldDeclaration(TypeHelpers.TextureTypeName(Value, _useRW),
+             SetFieldDeclaration(TypeHelpers.TextureTypeName(Value, _useRw),
                  Value.Dimension switch {
                      TextureDimension.Texture1D => "Texture1D",
                      TextureDimension.Texture2D => "Texture2D",
@@ -182,11 +159,8 @@ namespace Fuse{
          {
          }
 
-         public override void SetHashCodes(ShaderGeneratorContext theContext)
+         public override void ObjectFieldDeclaration()
          {
-             if (HashCode >= 0) return;
-             
-             base.SetHashCodes(theContext);
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
      }
@@ -194,21 +168,18 @@ namespace Fuse{
      public class BufferInput<T>: ObjectInput<Buffer>
      {
 
-         private readonly ShaderNode<T> _struct;
+         private readonly ShaderNode<T> _type;
          private readonly bool _append;
          
-         public BufferInput(ShaderNode<T> theStruct, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
+         public BufferInput(ShaderNode<T> theType, Buffer theBuffer = null, bool theAppend = true) : base("DynamicBufferInput",theBuffer)
          {
-             _struct = theStruct;
+             _type = theType;
              _append = theAppend;
          }
-         
-         public override void SetHashCodes(ShaderGeneratorContext theContext)
+
+         public override void ObjectFieldDeclaration()
          {
-             if (HashCode >= 0) return;
-             
-             base.SetHashCodes(theContext);
-             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,_struct == null?TypeHelpers.GetGpuTypeForType<T>():_struct.TypeName(), _append));
+             SetFieldDeclaration(TypeHelpers.BufferTypeName(Value,_type == null ? TypeHelpers.GetGpuTypeForType<T>() : _type.TypeName(), _append));
          }
      }
      
@@ -220,29 +191,32 @@ namespace Fuse{
          {
              _append = theAppend;
          }
-         
-         public override void SetHashCodes(ShaderGeneratorContext theContext)
+
+         public override void ObjectFieldDeclaration()
          {
-             if (HashCode >= 0) return;
-             
-             base.SetHashCodes(theContext);
              SetFieldDeclaration(TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), _append));
          }
      }
      
-    public class GpuInput<T> : AbstractInput<T,ValueParameterKey<T>> where T : struct 
+    public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>> where T : struct 
     {
 
-        public GpuInput(): base("input", false)
+        public ValueInput(): base("input", false)
         {
-        }
-        
-        public override void SetParameterValue(ParameterCollection theCollection)
-        {
-            theCollection.Set(ParameterKey, Value);
         }
 
-        public override void OnGenerateCode(ShaderGeneratorContext theContext)
+        protected override ValueParameterUpdater<T> CreateUpdater()
+        {
+            return new ValueParameterUpdater<T>();
+        }
+
+        protected override void OnPassContext(ShaderGeneratorContext theContext)
+        {
+            Updater.Track(theContext, ParameterKey);
+            Updater.Value = _value;
+        }
+
+        protected override void OnGenerateCode(ShaderGeneratorContext theContext)
         {
             ParameterKey = new ValueParameterKey<T>(ID);
             SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
@@ -250,4 +224,30 @@ namespace Fuse{
         
         
     }
+    /*
+    public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
+    {
+
+        public CompositionInput(SetVar<T> value): base("input", false, value)
+        {
+        }
+
+        protected override PermutationParameterUpdater<IComputeNode> CreateUpdater()
+        {
+            return new PermutationParameterUpdater<IComputeNode>();
+        }
+
+        protected override void OnPassContext(ShaderGeneratorContext theContext)
+        {
+            Updater.Track(theContext, ParameterKey);
+        }
+
+        protected override void OnGenerateCode(ShaderGeneratorContext theContext)
+        {
+            ParameterKey = new PermutationParameterKey<ShaderSource>(ID);
+            SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
+        }
+        
+        
+    }*/
 }

@@ -77,7 +77,7 @@ namespace Fuse.ShaderFX
             return AppendTemplateValues(_customTemplate);
         }
 
-        private ParameterCollection _parameters;
+       // private ParameterCollection _parameters;
         
         /// <summary>
         /// Gets the children.
@@ -192,13 +192,14 @@ namespace Fuse.ShaderFX
             ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
-            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            //ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            ShaderName = "Shader_" + ShaderNodesUtil.id++;
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
             _input.ShaderCode = ShaderCode;
             ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
-            _parameters = theContext.Parameters;
+           // _parameters = theContext.Parameters;
             
-            _input.InputList().ForEach(input => input.AddParameters(_parameters));
+           // _input.InputList().ForEach(input => input.AddParameters(_parameters));
             
             _source = new ShaderClassSource(ShaderName);
             return _source;

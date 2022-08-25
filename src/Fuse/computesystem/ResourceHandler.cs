@@ -25,9 +25,9 @@ namespace Fuse.ComputeSystem
     {
         private int _elementCount;
 
-        private Dictionary<string, AbstractResource> _resources;
+        private Dictionary<string, BufferResource> _resources;
 
-        private IBufferCreator _bufferCreator;
+        private readonly IBufferCreator _bufferCreator;
 
         public BufferResourceHandler(IBufferCreator theBufferCreator)
         {
@@ -35,14 +35,14 @@ namespace Fuse.ComputeSystem
             Ticket = 0;
             ThreadGroupSize = 128;
             _elementCount = 1000000;
-            _resources = new Dictionary<string, AbstractResource>();
+            _resources = new Dictionary<string, BufferResource>();
         }
 
         public int ThreadGroupSize { get; set; }
 
         public AbstractResource CreateResource(string theName)
         {
-            return new BufferResource(theName, _elementCount);
+            return new BufferResource(theName, _elementCount, _bufferCreator);
         }
 
         public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize)

@@ -49,30 +49,30 @@ namespace Fuse
     internal sealed class GpuValueBuilder<T> : IMonadBuilder<T, ShaderNode<T>>
         where T : struct
     {
-        private readonly GpuInput<T> _gpuInput = new GpuInput<T>();
+        private readonly ValueInput<T> _valueInput = new ValueInput<T>();
 
         public ShaderNode<T> Return(T value)
         {
-            _gpuInput.Value = value;
-            return _gpuInput;
+            _valueInput.Value = value;
+            return _valueInput;
         }
     }
 
-    internal sealed class ConstantGpuValueBuilder<T> : IMonadBuilder<T, ShaderNode<T>>
+    internal sealed class GpuConstantValueBuilder<T> : IMonadBuilder<T, ShaderNode<T>>
         where T : struct
     {
-        private static readonly EqualityComparer<T> equalityComparer = EqualityComparer<T>.Default;
+        private static readonly EqualityComparer<T> EqualityComparer = EqualityComparer<T>.Default;
 
         private ConstantValue<T> _constantValue;
-        private GpuInput<T> _gpuInput;
+        private ValueInput<T> _valueInput;
 
         public ShaderNode<T> Return(T value)
         {
-            if (_gpuInput != null)
+            if (_valueInput != null)
             {
                 // The value changed in the past. Stick with the less performant constant buffer upload
-                _gpuInput.Value = value;
-                return _gpuInput;
+                _valueInput.Value = value;
+                return _valueInput;
             }
 
             if (_constantValue is null)
@@ -82,15 +82,15 @@ namespace Fuse
                 return _constantValue;
             }
 
-            if (equalityComparer.Equals(value, _constantValue.Value))
+            if (EqualityComparer.Equals(value, _constantValue.Value))
             {
                 // Value stayed the same
                 return _constantValue;
             }
 
             // Value is changing - switch to different strategy where we upload via constant buffer
-            (_gpuInput ??= new GpuInput<T>()).Value = value;
-            return _gpuInput;
+            (_valueInput ??= new ValueInput<T>()).Value = value;
+            return _valueInput;
         }
     }
 

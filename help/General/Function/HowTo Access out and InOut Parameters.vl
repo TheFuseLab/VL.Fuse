@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="QfskgKOxPUYMkZxmEG1YHr" LanguageVersion="2021.4.6.800" Version="0.128">
+<Document xmlns:p="property" Id="QfskgKOxPUYMkZxmEG1YHr" LanguageVersion="2021.4.10.1043" Version="0.128">
   <Patch Id="N1bNpEcdwWUM2XYaw9vnlQ">
     <Canvas Id="T45cZb4e0UwQdwLmzbYd8c" DefaultCategory="Main" CanvasType="FullCategory" />
     <!--
@@ -41,6 +41,10 @@
                   <Pin Id="KbwHJKY5U0iO77lNFk5i5L" Name="Has Changed" Kind="OutputPin" />
                   <ControlPoint Id="HhHB6VIgicdQcRW1kzFZng" Bounds="484,532" Alignment="Top" />
                   <ControlPoint Id="OIxoOcoqo3hOrVPpkXYdbw" Bounds="669,532" Alignment="Top" />
+                  <ControlPoint Id="LzPEt6uOhiZPC1SXYeovIU" Bounds="449,1120" Alignment="Bottom" />
+                  <ControlPoint Id="ODqsbxT31FjPEidSdeBJbl" Bounds="514,1120" Alignment="Bottom" />
+                  <ControlPoint Id="ByqDfGqoeUYLjiB9OnLVX2" Bounds="581,1120" Alignment="Bottom" />
+                  <ControlPoint Id="VnNeglMGuGsOGpUJIH3EPh" Bounds="651,1120" Alignment="Bottom" />
                   <Patch Id="GtGI9bw8YktLL5fH40PD7E" ManuallySortedPins="true">
                     <Patch Id="Qp1MlUip9gDQPnKDr6Hdpz" Name="Create" ManuallySortedPins="true" />
                     <Patch Id="Lm3hWJsm6QXOyxkYHL4yUs" Name="Then" ManuallySortedPins="true" />
@@ -156,7 +160,7 @@
                         <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                       </p:NodeReference>
                       <Pin Id="Nfx8ysYaDKfLy5zz8PAtGp" Name="Value" Kind="InputPin" />
-                      <Pin Id="FVDYcTE7S1nMeTR6BWcBdC" Name="GpuValue" Kind="OutputPin" />
+                      <Pin Id="Gl5g5tR5jT1P6cFmiNYnxm" Name="ShaderNode" Kind="OutputPin" />
                     </Node>
                     <Pad Id="CZ9EdtyhTBJOkDiAhCT11q" Comment="Value" Bounds="448,814,35,43" ShowValueBox="true" isIOBox="true" Value="0, 0, 0">
                       <p:TypeAnnotation>
@@ -191,7 +195,7 @@
                         <CategoryReference Kind="Category" Name="Value" NeedsToBeDirectParent="true" />
                       </p:NodeReference>
                       <Pin Id="BxQv5V4Yv8jOeGEKmX7sN5" Name="Value" Kind="InputPin" />
-                      <Pin Id="I1FU9t2OnVAMSPjLCBj3MO" Name="GpuValue" Kind="OutputPin" />
+                      <Pin Id="CmbtOnzGSotOHj61TZxmgb" Name="ShaderNode" Kind="OutputPin" />
                     </Node>
                     <Pad Id="TK5llNXcp1bOsyxAYAPH3Y" Comment="Value" Bounds="489,900,35,15" ShowValueBox="true" isIOBox="true" Value="0">
                       <p:TypeAnnotation>
@@ -218,10 +222,6 @@
                       </p:ValueBoxSettings>
                     </Pad>
                   </Patch>
-                  <ControlPoint Id="LzPEt6uOhiZPC1SXYeovIU" Bounds="449,1120" Alignment="Bottom" />
-                  <ControlPoint Id="ODqsbxT31FjPEidSdeBJbl" Bounds="514,1120" Alignment="Bottom" />
-                  <ControlPoint Id="ByqDfGqoeUYLjiB9OnLVX2" Bounds="581,1120" Alignment="Bottom" />
-                  <ControlPoint Id="VnNeglMGuGsOGpUJIH3EPh" Bounds="651,1120" Alignment="Bottom" />
                 </Node>
                 <ControlPoint Id="N28JXPDmnaHPzLwDwoEDDi" Bounds="485,393" />
                 <Pad Id="LzH0wv2iWWyLHM0rLsxkJ6" Comment="" Bounds="670,132,639,354" ShowValueBox="true" isIOBox="true" Value="float SDF(float3 p)&#xD;&#xA;{&#xD;&#xA;    return ${SDF}(p);&#xD;&#xA;}&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;float3 ${signature} (out float3 n, out float3 rd, out float z)&#xD;&#xA;{&#xD;&#xA;    // Raymarcher &#xD;&#xA;    ////////////////////////////////////////////////////////////////&#xD;&#xA;&#xD;&#xA;    // Takes uv as input&#xD;&#xA;    float2 uv = streams.TexCoord.xy; &#xD;&#xA;    float3 p;&#xD;&#xA;    rayMarcher(uv, p, n, rd, z); &#xD;&#xA;    // Outputs surface pos(p) &amp; normals(n), ray direction(rd) &amp; length(z) &#xD;&#xA;    ////////////////////////////////////////////////////////////////&#xD;&#xA;&#x9;&#x9;float4 PosWVP = mul(float4(p, 1), ViewProjection);&#xD;&#xA;&#x9;&#x9;streams.Depth = PosWVP.z/PosWVP.w;&#xD;&#xA;&#x9;&#x9;streams.DepthVS = PosWVP.w;&#xD;&#xA;    return p;&#xD;&#xA;}">
@@ -287,7 +287,7 @@
               <Patch Id="VaGtMp3i5nzOIaKKgINPul" Summary="Basic raymarching of a 3D SDF" Name="Update">
                 <Pin Id="IoG1693q9LvLa1qgWBEfp1" Name="SDF~" Kind="InputPin" Bounds="1237,722" Summary="Expects a 3D SDF function.">
                   <p:TypeAnnotation>
-                    <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <Choice Kind="TypeFlag" Name="ShaderNode" />
                     <p:TypeArguments>
                       <TypeReference>
                         <Choice Kind="TypeFlag" Name="Float32" />
@@ -297,7 +297,7 @@
                 </Pin>
                 <Pin Id="V1Odcj1YVV1PUk9IVQv5ns" Name="Position" Kind="OutputPin" Bounds="962,1231">
                   <p:TypeAnnotation>
-                    <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <Choice Kind="TypeFlag" Name="ShaderNode" />
                     <p:TypeArguments>
                       <TypeReference>
                         <Choice Kind="TypeFlag" Name="Vector3" />
@@ -307,7 +307,7 @@
                 </Pin>
                 <Pin Id="I12B2TrAeGOQTgwcNQCRhM" Name="Normal" Kind="OutputPin" Bounds="1035,1232">
                   <p:TypeAnnotation>
-                    <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <Choice Kind="TypeFlag" Name="ShaderNode" />
                     <p:TypeArguments>
                       <TypeReference>
                         <Choice Kind="TypeFlag" Name="Vector3" />
@@ -317,7 +317,7 @@
                 </Pin>
                 <Pin Id="NOouGimKBIJMqRvtrQyigi" Name="Ray Direction" Kind="OutputPin" Bounds="1112,1227">
                   <p:TypeAnnotation>
-                    <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <Choice Kind="TypeFlag" Name="ShaderNode" />
                     <p:TypeArguments>
                       <TypeReference>
                         <Choice Kind="TypeFlag" Name="Vector3" />
@@ -327,7 +327,7 @@
                 </Pin>
                 <Pin Id="UlrAtFy8DWIPOyHLEjcAc6" Name="Ray Length" Kind="OutputPin" Bounds="1202,1220">
                   <p:TypeAnnotation>
-                    <Choice Kind="TypeFlag" Name="GpuValue" />
+                    <Choice Kind="TypeFlag" Name="ShaderNode" />
                     <p:TypeArguments>
                       <TypeReference>
                         <Choice Kind="TypeFlag" Name="Float32" />
@@ -340,16 +340,16 @@
               <Link Id="UU80p6W5zQDNQycYFhwuzo" Ids="UzpgJG08jYHPGYv1GsecSZ,ODqsbxT31FjPEidSdeBJbl" />
               <Link Id="D02dSXjuGFhNZFEdpdGmRR" Ids="QdHkkjVAnXrNJtkMOcUhha,LzPEt6uOhiZPC1SXYeovIU" />
               <Link Id="UkL9YZjdFfPMWXFOCqCLyq" Ids="AKOcYUwbfNFPJD0fNTdOxe,BbIdSCjqcuVMpTxpAVBFvV" />
-              <Link Id="MQb7GaXFIpyPQwQyQfHVbd" Ids="FVDYcTE7S1nMeTR6BWcBdC,JtlnN6IASMQPiirm3bgLjY" />
               <Link Id="C4BcGn5pVlRPIO41Edrlxx" Ids="CZ9EdtyhTBJOkDiAhCT11q,Nfx8ysYaDKfLy5zz8PAtGp" />
               <Link Id="LGjkEODIn7tQFKENZFSagX" Ids="QrgDZFT78kjLcgsK5dczHs,ByqDfGqoeUYLjiB9OnLVX2" />
               <Link Id="RC4nVSgTyjkPaS4nawMHz8" Ids="SvfVasRaPeGQUkcpOyfzM8,VnNeglMGuGsOGpUJIH3EPh" />
-              <Link Id="CTbZ9YXX3gwM8fOtxIJZH8" Ids="FVDYcTE7S1nMeTR6BWcBdC,C2lop28wbleL6pEo2P6i01" />
-              <Link Id="Hnu4qeIBUwnMgzWjsFkGT9" Ids="I1FU9t2OnVAMSPjLCBj3MO,KFLEDFIDRSaLUNUb5MRPy1" />
               <Link Id="Mr8kWESgU08MHYuR54Eph2" Ids="TK5llNXcp1bOsyxAYAPH3Y,BxQv5V4Yv8jOeGEKmX7sN5" />
               <Link Id="P5O1GmZoXzFMQqtPkzbOFq" Ids="Hlail8WJgDvNZ8y4PL0YdD,JnqvZ7SuPhBMkzpxMdEPFI" />
               <Link Id="NqKTyxCwVrLOLEh4QRu2DE" Ids="TTLLcpTvy3QOMPzRk0kVjl,VnfAZ2VWL1pMBCfx0U3PzA" />
               <Link Id="AVXNzcnk8JhPGlBnFf0O1C" Ids="TMVUDYuQAVTOvjsUl3GKnB,TcUGFkqlmasMDNXnmJYQDc" />
+              <Link Id="F7iJmEBukbVPlC2S2dz9Z1" Ids="Gl5g5tR5jT1P6cFmiNYnxm,JtlnN6IASMQPiirm3bgLjY" />
+              <Link Id="H3HgJ9J1x1eM6xo7vCYT4c" Ids="Gl5g5tR5jT1P6cFmiNYnxm,C2lop28wbleL6pEo2P6i01" />
+              <Link Id="NTZKwGqssx6L0O3Be3I5IF" Ids="CmbtOnzGSotOHj61TZxmgb,KFLEDFIDRSaLUNUb5MRPy1" />
             </Patch>
           </Node>
           <Pad Id="PMtO2bPyJn1M7O73vOsJJK" Bounds="448,303,500,19" ShowValueBox="true" isIOBox="true" Value="Look inside to see how to access out parameters of a function this does also work for mixin functions">
@@ -371,6 +371,6 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="NMhFyECeiEbNtueic2mCgj" Location="VL.CoreLib" Version="2021.4.6-0800-g0efdc27e48" />
+  <NugetDependency Id="NMhFyECeiEbNtueic2mCgj" Location="VL.CoreLib" Version="2021.4.10" />
   <NugetDependency Id="SYK2zp0I0HeMXxpB5hQITk" Location="VL.Fuse" Version="0.0.0.0" />
 </Document>

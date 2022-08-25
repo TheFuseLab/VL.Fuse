@@ -4,6 +4,7 @@ using Fuse.compute;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
+using VL.Core.PublicAPI;
 
 namespace Fuse.regions
 {
@@ -122,6 +123,9 @@ namespace Fuse.regions
                 var myInputs = new List<AbstractShaderNode>();
                 var myOutputs = new List<AbstractShaderNode>();
 
+                ICustomRegion region;
+                ICustomRegionPatch regionPatch;
+                
                 for (var i = 0; i < outputs.Count; i++)
                 {
                     switch (outputs[i])
@@ -133,7 +137,7 @@ namespace Fuse.regions
                             var myPassVoid = AbstractCreation.AbstractShaderNodePassThrough(shaderNode);
                             myPassVoid.AddInput(this);
                            // myPassVoid = this;
-                            OptionalOutputs.Add(myPassVoid);
+                            OptionalOutputs.Add(myInputVoid);
                             break;
                         default:
                             var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(outputs[i], 0f) : inputs[i];
@@ -146,7 +150,7 @@ namespace Fuse.regions
                             var myPass = AbstractCreation.AbstractShaderNodePassThrough(myDeclareValue);
                             myPass.AddInput(this);
                             // myPass = this;
-                            OptionalOutputs.Add(myPass);
+                            OptionalOutputs.Add(myDeclareValue);
                             break;
                     }
                 }

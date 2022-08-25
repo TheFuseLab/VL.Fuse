@@ -85,15 +85,15 @@ ${sourceCompute}
         [Test]
         public static void TestBooleanOperator()
         {
-            var gpuIndex = new GpuInput<int>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuIndex = new ValueInput<int>();
+            var gpuValue1 = new ValueInput<float>();
             
             var valVec4 = new ShaderNode<Vector4>("valFloat4");
-            var gpuStruct = new DynamicStruct(new List<AbstractShaderNode>(){valVec4},"TestStruct");
+            var gpuStruct = new DynamicStruct(new List<AbstractShaderNode>{valVec4},"TestStruct");
             var bufferInput = new BufferInput<GpuStruct>(gpuStruct);
 
-            var gpuStructInstance = new DynamicStructBufferGet(bufferInput, gpuIndex, gpuStruct, null);
-            var structValue = new DynamicStructGetAttribute<Vector4>(gpuStructInstance, valVec4);
+            var gpuStructInstance = new BufferGet<GpuStruct>(bufferInput, gpuIndex, gpuStruct);
+            var structValue = new GetMember<GpuStruct,Vector4>(gpuStructInstance, "valFloat4");
             Console.WriteLine(structValue.BuildSourceCode());
             Console.WriteLine(GetShader(structValue));
             

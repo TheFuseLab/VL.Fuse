@@ -68,7 +68,7 @@ namespace Fuse
         }
     }
     
-    public interface IFunctionInvokeNode
+    public interface IInvoke
     {
          string Name { get; }
          string FunctionName { get;  }
@@ -81,10 +81,10 @@ namespace Fuse
          public void SetHashCodes(ShaderGeneratorContext theContext);
     }
 
-    public class FunctionInvokeNode<T> : ShaderNode<T>, IFunctionInvokeNode
+    public class Invoke<T> : ShaderNode<T>, IInvoke
     {
         private readonly AbstractShaderNode _delegate;
-        public FunctionInvokeNode(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null) : base("Invoke", theDefault)
+        public Invoke(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null) : base("Invoke", theDefault)
         {
             Functions = new Dictionary<string, string>();
 
@@ -95,7 +95,7 @@ namespace Fuse
             Name = theId;
         }
 
-        public override void OnGenerateCode(ShaderGeneratorContext theContext)
+        protected override void OnGenerateCode(ShaderGeneratorContext theContext)
         {
             Functions.Clear();
             _delegate.SetHashCodes(theContext);

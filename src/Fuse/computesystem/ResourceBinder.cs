@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
-using NUnit.Framework;
 
 namespace Fuse.ComputeSystem
 {
@@ -21,6 +20,8 @@ namespace Fuse.ComputeSystem
         }
 
         public abstract ShaderNode<GpuVoid> WriteToIndex(ShaderNode<int> theIndex);
+
+        public abstract void UpdateResource(AbstractResource theResource);
     }
 
     public class BufferResourceBinder : AbstractResourceBinder
@@ -28,7 +29,7 @@ namespace Fuse.ComputeSystem
         private readonly BufferResource _resource;
 
         private readonly BufferInput<GpuStruct> _input;
-        private readonly DynamicStructBufferGet _bufferGet;
+        private readonly BufferGet<GpuStruct> _bufferGet;
         private readonly ShaderNode<int> _index;
 
         private readonly Dictionary<string, AbstractShaderNode> _bufferedAttributes;
@@ -39,7 +40,8 @@ namespace Fuse.ComputeSystem
             _index = theIndex;
             
             _input = new BufferInput<GpuStruct>(theResource.Struct, theResource.Buffer);
-            _bufferGet = new DynamicStructBufferGet(_input, theIndex, _resource.Struct, null);
+            _bufferGet = new BufferGet<GpuStruct>(_input, theIndex, _resource.Struct);
+            _bufferGet.AddInput(_resource.Struct);
 
             _bufferedAttributes = new Dictionary<string, AbstractShaderNode>();
             
@@ -62,23 +64,23 @@ namespace Fuse.ComputeSystem
         public override ShaderNode<GpuVoid> WriteToIndex(ShaderNode<int> theIndex)
         {
             var nodes = new List<ShaderNode<GpuVoid>>();
-            _bufferedAttributes.ForEach(kv =>
+            foreach (var kv in _bufferedAttributes)
             {
-                nodes.Add(new DynamicStructSetAbstractAttribute(_bufferGet, kv.Key, kv.Value));
-            });
-            nodes.Add(new DynamicStructBufferSet(_input, theIndex, _bufferGet));
+                nodes.Add(new AssignValueToMember<GpuStruct>(_bufferGet, kv.Key, kv.Value));
+            }
+            nodes.Add(new BufferSet<GpuStruct>(_input, theIndex, _bufferGet));
 
             return new Group(nodes);
         }
 
-        public void UpdateResource(BufferResource theResource)
+        public override void UpdateResource(AbstractResource theResource)
         {
-            if (_input != null) _input.Value = theResource.Buffer;
+            if (_input != null) _input.Value = (theResource as BufferResource)?.Buffer;
         }
 
-        public DynamicStructBufferGet GetElement(ShaderNode<int> theIndex)
+        public BufferGet<GpuStruct> GetElement(ShaderNode<int> theIndex)
         {
-            return new DynamicStructBufferGet(_input, theIndex, _resource.Struct, null);
+            return new BufferGet<GpuStruct>(_input, theIndex, _resource.Struct);
         }
     }
 }

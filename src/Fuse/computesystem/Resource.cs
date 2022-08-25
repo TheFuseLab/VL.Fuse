@@ -40,6 +40,16 @@ namespace Fuse.ComputeSystem
             Listeners.Add(theListener);
         }
 
+        public List<string> GetAttributeDescriptions()
+        {
+            foreach (var attribute in Attributes.Values)
+            {
+                TypeHelpers.GetDescription(attribute.ShaderNode);
+            }
+            
+            return null;
+        }
+
         public abstract void CreateResources();
     }
 
@@ -75,13 +85,11 @@ namespace Fuse.ComputeSystem
                 fields.Add(field.ShaderNode);
             });
             Struct = new DynamicStruct(fields, Name);
-            if (_bufferCreator != null)
-            {
-                Buffer = _bufferCreator.CreateBuffer(_elementCount, Struct.Stride);
-            }
-            //const BufferFlags bufferFlags = BufferFlags.ShaderResource | BufferFlags.UnorderedAccess | BufferFlags.StructuredBuffer;
-
-           //  = Buffer.New(null, _elementCount * Struct.Stride, Struct.Stride, bufferFlags);
+            
+            if (_bufferCreator == null) return;
+            
+            Buffer?.Dispose();
+            Buffer = _bufferCreator.CreateBuffer(_elementCount, Struct.Stride);
         }
 
         public Buffer Buffer { get; private set; }

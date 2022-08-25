@@ -41,7 +41,7 @@ namespace Fuse
         }
     }
     
-    public class ConstantValue<T>: ShaderNode<T>
+    public class ConstantValue<T>: ShaderNode<T> 
     {
         public ConstantValue(T theValue) : base("constant")
         {

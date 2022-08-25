@@ -7,12 +7,12 @@ using Stride.Rendering.Materials;
 
 namespace Fuse
 {
-    public abstract class AbstractFunctionNode<T> : ShaderNode<T>
+    public abstract class AbstractFunction<T> : ShaderNode<T>
     {
         private bool _isGroupable;
         public virtual string FunctionName { get;  }
 
-        protected AbstractFunctionNode(string theFunction, ShaderNode<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
+        protected AbstractFunction(string theFunction, ShaderNode<T> theDefault, bool theIsGroupable = false) : base(theFunction, theDefault)
         {
             FunctionName = theFunction;
             _isGroupable = theIsGroupable;
@@ -79,10 +79,10 @@ namespace Fuse
         
     }
     
-    public class IntrinsicFunctionNode<T> : AbstractFunctionNode<T>
+    public class IntrinsicFunction<T> : AbstractFunction<T>
     {
         
-        public IntrinsicFunctionNode(
+        public IntrinsicFunction(
             IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
             ShaderNode<T> theDefault, 
@@ -94,10 +94,10 @@ namespace Fuse
         }
     }
     
-    public class MixinFunctionNode<T> : AbstractFunctionNode<T>
+    public class MixinFunction<T> : AbstractFunction<T>
     {
 
-        public MixinFunctionNode(
+        public MixinFunction(
             IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
             ShaderNode<T> theDefault, 
@@ -111,9 +111,9 @@ namespace Fuse
         }
     }
     
-    public sealed class CustomFunctionNode<T>: AbstractFunctionNode<T>
+    public sealed class CustomFunction<T>: AbstractFunction<T>
     {
-        private readonly IEnumerable<IFunctionInvokeNode> _delegates;
+        private readonly IEnumerable<IInvoke> _delegates;
 
         private readonly IDictionary<string, string> _functionValues;
 
@@ -121,12 +121,12 @@ namespace Fuse
 
         private string _signature;
         
-        public CustomFunctionNode(
+        public CustomFunction(
             IEnumerable<AbstractShaderNode> theArguments, 
             string theFunction, 
             string theCodeTemplate, 
             ShaderNode<T> theDefault, 
-            IEnumerable<IFunctionInvokeNode> theDelegates = null, 
+            IEnumerable<IInvoke> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false,
@@ -154,7 +154,7 @@ namespace Fuse
             Setup(theArguments, theModifiers);
         }
         
-        private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IEnumerable<IInvoke> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             theDelegates?.ForEach(delegateNode =>
             {
@@ -169,7 +169,7 @@ namespace Fuse
             });
         }
 
-        public override void OnGenerateCode(ShaderGeneratorContext theContext)
+        protected override void OnGenerateCode(ShaderGeneratorContext theContext)
         {
             _delegates?.ForEach(delegateNode =>
             {

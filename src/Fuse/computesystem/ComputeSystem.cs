@@ -5,18 +5,17 @@ namespace Fuse.ComputeSystem
 {
     public class ComputeSystem
     {
-        private readonly Dictionary<string, AbstractResource> _resources;
-
-        private int _highestTicket;
 
         private readonly HashSet<string> _groups;
 
         private readonly ComputeStageGroup _stageGroup;
 
-        public ComputeSystem()
+        private readonly IResourceHandler _resourceHandler;
+
+        public ComputeSystem(IResourceHandler theResourceHandler)
         {
-            _resources = new Dictionary<string, AbstractResource>();
-            _highestTicket = -1;
+            _resourceHandler = theResourceHandler;
+            Resources = new Dictionary<string, AbstractResource>();
             _groups = new HashSet<string>();
 
             _stageGroup = new ComputeStageGroup();
@@ -27,10 +26,8 @@ namespace Fuse.ComputeSystem
 
         private bool NeedsRebuild()
         {
-            if (ResourceHandler == null) return false;
-            var ticket =  Math.Max(ResourceHandler.Ticket, _stageGroup.Ticket);
-            if (ticket <= _highestTicket) return false;
-            _highestTicket = ticket;
+            if (_resourceHandler == null) return false;
+            var ticket =  Math.Max(_resourceHandler.Ticket, _stageGroup.Ticket);
             return true;
         }
 
@@ -38,12 +35,12 @@ namespace Fuse.ComputeSystem
         {
             _groups.Add(theGroup);
 
-            if (!_resources.ContainsKey(theGroup))
+            if (!Resources.ContainsKey(theGroup))
             {
-                _resources.Add(theGroup, ResourceHandler.CreateResource(theGroup));
+                Resources.Add(theGroup, _resourceHandler.CreateResource(theGroup));
             }
             
-            _resources[theGroup].AddAttribute(theMember);
+            Resources[theGroup].AddAttribute(theMember);
         }
 
         private void AddAttributeGroups(Dictionary<string, List<IAttribute>> theAttributeGroups)
@@ -60,16 +57,16 @@ namespace Fuse.ComputeSystem
         private void CreateResources()
         {
             var groupsToRemove = new HashSet<string>();
-            _resources.ForEach(kv =>
+            Resources.ForEach(kv =>
             {
                 if (!_groups.Contains(kv.Key))
                 {
                     groupsToRemove.Add(kv.Key);
                 }
             });
-            groupsToRemove.ForEach(group => _resources.Remove(group));
+            groupsToRemove.ForEach(group => Resources.Remove(group));
                 
-            _resources.ForEach(kv =>
+            Resources.ForEach(kv =>
             {
                 kv.Value.CreateResources();
             });
@@ -79,28 +76,32 @@ namespace Fuse.ComputeSystem
 
         private void Rebuild()
         {
-            _resources.ForEach(kv => kv.Value.Reset());
+            Resources.ForEach(kv => kv.Value.Reset());
             _groups.Clear();
-            _stageGroup.ResourceHandler = ResourceHandler;
+            _stageGroup.ResourceHandler = _resourceHandler;
             AddAttributeGroups(_stageGroup.AttributeGroups);
             CreateResources();
-            _stageGroup.BindResources(_resources);
+            _stageGroup.BindResources(Resources);
             _stageGroup.Build();
         }
 
-        public IResourceHandler ResourceHandler { get; set; }
+        public Dictionary<string, AbstractResource> Resources { get; }
 
-        public void Update(
-            IResourceHandler theResourceHandler,
-            List<IComputeStage> theStages
-            )
+        public AbstractResource GetResource(string key)
         {
-            ResourceHandler = theResourceHandler;
-            _stageGroup.ComputeStages = theStages;
+            return Resources[key];
+        }
 
-            if (!NeedsRebuild()) return;
+        public List<IComputeStage> ComputeStages
+        {
+            set
+            {
+                _stageGroup.ComputeStages = value;
+
+                if (!NeedsRebuild()) return;
             
-            Rebuild();
+                Rebuild();
+            }
         }
 
         public bool Enabled { get; set; }

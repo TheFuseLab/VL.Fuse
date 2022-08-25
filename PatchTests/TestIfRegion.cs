@@ -14,13 +14,13 @@ namespace PatchTests
         [Test]
         public void TestAbstractPassThrough()
         {
-            var in0 = new GpuInput<float>();
+            var in0 = new ValueInput<float>();
             var decl = new DeclareValue<float>();
-            var assign = new AssignNode<float>(decl, in0);
+            var assign = new AssignValue<float>(decl, in0);
             AbstractCreation.AbstractShaderNodePassThrough(assign);
             var pass = new PassThroughNode<GpuVoid>("TestPass", assign);
             
-            var toShaderFx = new ToShaderFX<GpuVoid>(assign as ShaderNode<GpuVoid>);
+            var toShaderFx = new ToShaderFX<GpuVoid>(assign);
             var context = new ShaderGeneratorContext();
             toShaderFx.GenerateShaderSource(context, null);
             Console.WriteLine(toShaderFx.ShaderCode);
@@ -29,15 +29,15 @@ namespace PatchTests
         [Test]
         public void TestValueExchangeIf()
         {
-            var check = new GpuInput<bool>();
-            var in0 = new GpuInput<float>();
-            var in1 = new GpuInput<float>();
-            var in2 = new GpuInput<float>();
+            var check = new ValueInput<bool>();
+            var in0 = new ValueInput<float>();
+            var in1 = new ValueInput<float>();
+            var in2 = new ValueInput<float>();
             var inputs = new List<AbstractShaderNode> {in0, in1, in2};
 
-            var in3 = new GpuInput<float>();
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
-            var add = new OperatorNode<float, float>(sin, in0, null,"+");
+            var in3 = new ValueInput<float>();
+            var sin = new IntrinsicFunction<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new Operator<float, float>(sin, in0, null,"+");
        
             var outputs = new List<AbstractShaderNode> {add, in0, add};
 
@@ -50,7 +50,7 @@ namespace PatchTests
             var ins = new Dictionary<string, AbstractShaderNode> {{"val1", ifRegion.OptionalOutputs[0] as ShaderNode<float>}};
             Console.WriteLine(ins["val1"]);
             
-            var add2 = new OperatorNode<float, float>(ifRegion.OptionalOutputs[0] as ShaderNode<float>, ifRegion.OptionalOutputs[1] as ShaderNode<float>, null,"+");
+            var add2 = new Operator<float, float>(ifRegion.OptionalOutputs[0] as ShaderNode<float>, ifRegion.OptionalOutputs[1] as ShaderNode<float>, null,"+");
 
             var toShaderFx = new ToShaderFX<float>(add2 as ShaderNode<float>);
             var context = new ShaderGeneratorContext();
@@ -62,9 +62,9 @@ namespace PatchTests
         [Test]
         public void TestCrosslinkIf()
         {
-            var check = new GpuInput<bool>();
-            var in0 = new GpuInput<float>();
-            var in1 = new GpuInput<float>();
+            var check = new ValueInput<bool>();
+            var in0 = new ValueInput<float>();
+            var in1 = new ValueInput<float>();
             var inputs = new List<AbstractShaderNode> {in0};
 
             var outputs = new List<AbstractShaderNode> {in1};
@@ -88,13 +88,13 @@ namespace PatchTests
         [Test]
         public void TestSimpleCrossLink()
         {
-            var check = new GpuInput<bool>();
+            var check = new ValueInput<bool>();
             
             var bufferIn = new TypedBufferInput<float>();
-            var indexIn = new GpuInput<int>();
-            var in3 = new GpuInput<float>();
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
-            var add = new OperatorNode<float, float>(sin, null, null,"+");
+            var indexIn = new ValueInput<int>();
+            var in3 = new ValueInput<float>();
+            var sin = new IntrinsicFunction<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new Operator<float, float>(sin, null, null,"+");
 
             var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add);
 
@@ -118,14 +118,14 @@ namespace PatchTests
         [Test]
         public void TestSimpleVoidCrossLink()
         {
-            var check = new GpuInput<bool>();
+            var check = new ValueInput<bool>();
             
             var bufferIn = new TypedBufferInput<float>();
-            var indexIn = new GpuInput<int>();
+            var indexIn = new ValueInput<int>();
             
-            var in3 = new GpuInput<float>();
-            var sin = new IntrinsicFunctionNode<float>(new List<AbstractShaderNode>{in3}, "sin", null);
-            var add = new OperatorNode<float, float>(sin, in3, null,"+");
+            var in3 = new ValueInput<float>();
+            var sin = new IntrinsicFunction<float>(new List<AbstractShaderNode>{in3}, "sin", null);
+            var add = new Operator<float, float>(sin, in3, null,"+");
 
             var bufferSet = new TypedBufferSet<float>(bufferIn, indexIn, add);
 

@@ -9,7 +9,6 @@ using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Core;
 using VL.Lib.Collections;
-using VL.Lib.Primitive;
 using VL.Stride.Shaders.ShaderFX;
 
 
@@ -148,19 +147,21 @@ namespace Fuse
             return sourceCode.Trim() == "" ? "" : ShaderNodesUtil.Evaluate(sourceCode, CreateTemplateMap());
         }
 
-        public virtual void OnGenerateCode(ShaderGeneratorContext theContext)
+        protected virtual void OnGenerateCode(ShaderGeneratorContext theContext)
         {
             
         }
 
-        public virtual void OnPassContext(ShaderGeneratorContext theContext)
+        protected virtual void OnPassContext(ShaderGeneratorContext theContext)
         {
             
         }
+
+        private readonly HashSet<ShaderGeneratorContext> _contexts = new HashSet<ShaderGeneratorContext>();
 
         public virtual void SetHashCodes(ShaderGeneratorContext theContext)
         {
-            OnPassContext(theContext);
+            
 
             var callOnGenerate = false;
             if (HashCode < 0)
@@ -176,6 +177,9 @@ namespace Fuse
             });
 
             if(callOnGenerate) OnGenerateCode(theContext);
+
+            if (!_contexts.Add(theContext)) return;
+            OnPassContext(theContext);
         }
 
         public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<int> theHashes)
@@ -320,7 +324,8 @@ namespace Fuse
 
         public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();
 
-        protected void AddResource(string theResourceId, object theResource)
+        // ReSharper disable once MemberCanBeProtected.Global
+        public void AddResource(string theResourceId, object theResource)
         {
             if (!Resources.ContainsKey(theResourceId))
             {
@@ -330,7 +335,8 @@ namespace Fuse
             Resources[theResourceId].Add(theResource);
         }
 
-        protected void AddResources(string theResourceId, IList theResources)
+        // ReSharper disable once MemberCanBeProtected.Global
+        public void AddResources(string theResourceId, IList theResources)
         {
             if (!Resources.ContainsKey(theResourceId))
             {
@@ -452,5 +458,12 @@ namespace Fuse
         }
 
         public override string ID => Name + "_" + HashCode;
+    }
+
+    public class ComputeNode<T> : ShaderNode<T> , IComputeVoid
+    {
+        public ComputeNode(string theId, ShaderNode<T> theDefault = null) : base(theId, theDefault)
+        {
+        }
     }
 }

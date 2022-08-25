@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Fuse.compute;
 using Stride.Core.Extensions;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
@@ -122,6 +123,65 @@ ${cases}
                 {
                     {"in", _in.ID},
                 });
+        }
+    }
+    
+    public class SimpleKeyword : ShaderNode<GpuVoid>, IComputeVoid
+    {
+
+        private string _keyword;
+
+        protected SimpleKeyword(string theKeyword) : base( "void")
+        {
+            _keyword = theKeyword;
+            SetInputs(new List<AbstractShaderNode>{null});
+        }
+        
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return _keyword;
+        }
+
+        protected override string SourceTemplate()
+        {
+            return _keyword;
+        }
+    }
+    
+    public class EmptyVoid : SimpleKeyword
+    {
+    
+        public EmptyVoid() : base( "")
+        {
+        }
+    }
+    
+    public class ReturnVoid : SimpleKeyword
+    {
+    
+        public ReturnVoid() : base( "return;")
+        {
+        }
+    }
+    
+    public class BreakVoid : SimpleKeyword
+    {
+    
+        public BreakVoid() : base( "break;")
+        {
+        }
+    }
+    
+    public class ContinueVoid : SimpleKeyword
+    {
+    
+        public ContinueVoid() : base( "continue;")
+        {
         }
     }
 }

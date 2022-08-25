@@ -8,7 +8,7 @@ namespace Fuse.compute
     
     public class DynamicStruct: ShaderNode<GpuStruct>
     {
-        private string _name;
+        private readonly string _name;
         
         public DynamicStruct(IEnumerable<AbstractShaderNode> theInputs, string theName) : base("GPUAttributeStruct")
         {

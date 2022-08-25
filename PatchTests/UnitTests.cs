@@ -21,13 +21,13 @@ namespace MyTests
         [Test]
         public void TestBooleanOperator()
         {
-            var gpuValue0 = new GpuInput<float>();
-            var gpuValue1 = new GpuInput<float>();
+            var gpuValue0 = new ValueInput<float>();
+            var gpuValue1 = new ValueInput<float>();
             
-            var compare = new OperatorNode<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
+            var compare = new Operator<float, bool>(gpuValue0, gpuValue1,new ConstantValue<bool>(true),">");
             Console.WriteLine(compare.BuildSourceCode());
             
-            var compareNull = new OperatorNode<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
+            var compareNull = new Operator<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             Console.WriteLine(compareNull.BuildSourceCode());
         }
     }

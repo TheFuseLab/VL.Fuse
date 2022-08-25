@@ -14,18 +14,18 @@ namespace PatchTests
         public static void TestInputs()
         {
             
-            var ShaderNode0 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
             Console.WriteLine(ShaderNode0.DeclarationList());
-            var ShaderNode1 = new GpuInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
             Console.WriteLine(ShaderNode1.DeclarationList());
 
-            var add = new OperatorNode<float, float>(new List<ShaderNode<float>>
+            var add = new Operator<float, float>(new List<ShaderNode<float>>
                 {ShaderNode0, ShaderNode1, ShaderNode0},new ConstantValue<float>(0),"+");
 
-            var ShaderNode2 = new GpuInput<float>();
-            var add2 = new OperatorNode<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
+            var ShaderNode2 = new ValueInput<float>();
+            var add2 = new Operator<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
 
-            var sin = new IntrinsicFunctionNode<float>(
+            var sin = new IntrinsicFunction<float>(
                 new List<AbstractShaderNode> {add, ShaderNode2},
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(sin.BuildSourceCode());
@@ -36,22 +36,22 @@ namespace PatchTests
         [Test]
         public static void TestDeclarations()
         {
-            var ShaderNode0 = new GpuInput<float>();
-            var ShaderNode1 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
 
-            var add = new OperatorNode<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1},new ConstantValue<float>(0),"+");
+            var add = new Operator<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1},new ConstantValue<float>(0),"+");
 
-            var ShaderNode2 = new GpuInput<float>();
-            var add2 = new OperatorNode<float, float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
+            var ShaderNode2 = new ValueInput<float>();
+            var add2 = new Operator<float, float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
             Console.WriteLine(add2.DeclarationList());
         }
 
         [Test]
         public static void TestMixins()
         {
-            var ShaderNode0 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
             
-            var customFunction = new MixinFunctionNode<Vector2>(
+            var customFunction = new MixinFunction<Vector2>(
                 new List<AbstractShaderNode>
                 {
                     ConstantHelper.FromFloat<Vector2>(0.5f), 
@@ -69,10 +69,10 @@ namespace PatchTests
         [Test]
         public static void TestOperatorNode()
         {
-            var ShaderNode0 = new GpuInput<float>();
-            var ShaderNode1 = new GpuInput<float>();
-            var operatorNode = new OperatorNode<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1},new ConstantValue<float>(0),"+");
-            var operatorNodeWithNull = new OperatorNode<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1, null},new ConstantValue<float>(0),"+");
+            var ShaderNode0 = new ValueInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
+            var operatorNode = new Operator<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1},new ConstantValue<float>(0),"+");
+            var operatorNodeWithNull = new Operator<float, float>(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1, null},new ConstantValue<float>(0),"+");
             
             Console.WriteLine(operatorNode.BuildSourceCode());
             Console.WriteLine(operatorNodeWithNull.BuildSourceCode());
@@ -90,9 +90,9 @@ namespace PatchTests
         public static void TestCustomFunctions()
         {
             
-            var Base = new GpuInput<Vector3>();
-            var blend = new GpuInput<Vector3>();
-            var opacity = new GpuInput<Vector3>();
+            var Base = new ValueInput<Vector3>();
+            var blend = new ValueInput<Vector3>();
+            var opacity = new ValueInput<Vector3>();
             
             var inputs = new List<AbstractShaderNode>
             {
@@ -111,7 +111,7 @@ namespace PatchTests
         }
 ";
             
-            var customFunction = new CustomFunctionNode<Vector4>(inputs, "blendModeHardLight",template, ConstantHelper.FromFloat<Vector4>(0));
+            var customFunction = new CustomFunction<Vector4>(inputs, "blendModeHardLight",template, ConstantHelper.FromFloat<Vector4>(0));
             
             Console.WriteLine(customFunction.BuildSourceCode());
             Console.WriteLine(customFunction.FunctionMap().Count);
@@ -123,10 +123,10 @@ namespace PatchTests
         [Test]
         public static void TestFloatJoins()
         {
-            var ShaderNode0 = new GpuInput<float>();
-            var ShaderNode1 = new GpuInput<float>();
-            var ShaderNode2 = new GpuInput<float>();
-            var ShaderNode3 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
+            var ShaderNode2 = new ValueInput<float>();
+            var ShaderNode3 = new ValueInput<float>();
             
             var join2 = new Float2Join(ShaderNode0, ShaderNode1);
             Console.WriteLine(join2.BuildSourceCode());
@@ -159,8 +159,8 @@ namespace PatchTests
         public static void TestTraversal()
         {
             var texCoord = new Semantic<Vector2>("TexCoord");
-            var ShaderNode0 = new GpuInput<Vector2>();
-            var add = new OperatorNode<Vector2, Vector2>(texCoord, ShaderNode0,ConstantHelper.FromFloat<Vector2>(0),"*");
+            var ShaderNode0 = new ValueInput<Vector2>();
+            var add = new Operator<Vector2, Vector2>(texCoord, ShaderNode0,ConstantHelper.FromFloat<Vector2>(0),"*");
 
             var memberX = new GetMember<Vector2, float>(add,"x");
             var memberY = new GetMember<Vector2, float>(add,"y");
@@ -171,7 +171,7 @@ namespace PatchTests
             var memberY1 = new GetMember<Vector2, float>(float2Join,"y");
             
             
-            var add1 = new OperatorNode<float, float>(memberX, memberY1,new ConstantValue<float>(0),"+");
+            var add1 = new Operator<float, float>(memberX, memberY1,new ConstantValue<float>(0),"+");
             
             Console.WriteLine(add1.BuildSourceCode());
         }
@@ -179,12 +179,12 @@ namespace PatchTests
         [Test]
         public static void TestAssign()
         {
-            var ShaderNode0 = new GpuInput<Vector2>();
-            var ShaderNode1 = new GpuInput<Vector2>();
-            var add = new OperatorNode<Vector2, Vector2>(new List<ShaderNode<Vector2>> {ShaderNode0, ShaderNode1},ConstantHelper.FromFloat<Vector2>(0),"+");
-            var add2 = new OperatorNode<Vector2, Vector2>(new List<ShaderNode<Vector2>> {ShaderNode0, ShaderNode0},ConstantHelper.FromFloat<Vector2>(0),"+");
+            var ShaderNode0 = new ValueInput<Vector2>();
+            var ShaderNode1 = new ValueInput<Vector2>();
+            var add = new Operator<Vector2, Vector2>(new List<ShaderNode<Vector2>> {ShaderNode0, ShaderNode1},ConstantHelper.FromFloat<Vector2>(0),"+");
+            var add2 = new Operator<Vector2, Vector2>(new List<ShaderNode<Vector2>> {ShaderNode0, ShaderNode0},ConstantHelper.FromFloat<Vector2>(0),"+");
             
-            var assign = new AssignNode<Vector2>(add, add2);
+            var assign = new AssignValue<Vector2>(add, add2);
             
             Console.WriteLine(assign.BuildSourceCode());
         }
@@ -198,18 +198,18 @@ namespace PatchTests
         [Test]
         public static void Main()
         {
-            var ShaderNode0 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
             Console.WriteLine(ShaderNode0.DeclarationList());
-            var ShaderNode1 = new GpuInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
             Console.WriteLine(ShaderNode1.DeclarationList());
 
-            var add = new OperatorNode<float, float>(new List<ShaderNode<float>>
+            var add = new Operator<float, float>(new List<ShaderNode<float>>
                 {ShaderNode0, ShaderNode1, ShaderNode0},new ConstantValue<float>(0),"+");
 
-            var ShaderNode2 = new GpuInput<float>();
-            var add2 = new OperatorNode<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
+            var ShaderNode2 = new ValueInput<float>();
+            var add2 = new Operator<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
 
-            var sin = new IntrinsicFunctionNode<float>(
+            var sin = new IntrinsicFunction<float>(
                 new List<AbstractShaderNode> {add, ShaderNode2},
                 "sin", new ConstantValue<float>(0));
             Console.WriteLine(add2.BuildSourceCode());
@@ -219,10 +219,10 @@ namespace PatchTests
             sin.InputList().ForEach(Console.WriteLine);
 
             var texCoord = new Semantic<Vector2>("TexCoord");
-            var add3 = new OperatorNode<Vector2,Vector2>(new List<ShaderNode<Vector2>> {texCoord, texCoord},ConstantHelper.FromFloat<Vector2>(0),"+");
+            var add3 = new Operator<Vector2,Vector2>(new List<ShaderNode<Vector2>> {texCoord, texCoord},ConstantHelper.FromFloat<Vector2>(0),"+");
             Console.WriteLine(add3.BuildSourceCode());
 
-            var customFunction = new MixinFunctionNode<Vector2>(
+            var customFunction = new MixinFunction<Vector2>(
                 new List<AbstractShaderNode>
                 {
                     ConstantHelper.FromFloat<Vector2>(0.5f), 
@@ -242,18 +242,18 @@ namespace PatchTests
         [Test]
         public static void TestToShaderFX()
         {
-            var ShaderNode0 = new GpuInput<float>();
+            var ShaderNode0 = new ValueInput<float>();
             Console.WriteLine(ShaderNode0.DeclarationList());
-            var ShaderNode1 = new GpuInput<float>();
+            var ShaderNode1 = new ValueInput<float>();
             Console.WriteLine(ShaderNode1.DeclarationList());
 
-            var add = new OperatorNode<float, float>(new List<ShaderNode<float>>
+            var add = new Operator<float, float>(new List<ShaderNode<float>>
                 {ShaderNode0, ShaderNode1, ShaderNode0},new ConstantValue<float>(0),"+");
 
-            var ShaderNode2 = new GpuInput<float>();
-            var add2 = new OperatorNode<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
+            var ShaderNode2 = new ValueInput<float>();
+            var add2 = new Operator<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
 
-            var sin = new IntrinsicFunctionNode<float>(
+            var sin = new IntrinsicFunction<float>(
                 new List<AbstractShaderNode> {add, ShaderNode2},
                 "sin", new ConstantValue<float>(0));
 

@@ -37,17 +37,17 @@ namespace Fuse.regions
             }
         }
     
-    public sealed class RegionFunctionNode<T>: AbstractFunctionNode<T>
+    public sealed class RegionFunction<T>: AbstractFunction<T>
     {
 
         private string _signature;
         
-        public RegionFunctionNode(
+        public RegionFunction(
             IEnumerable<AbstractShaderNode> theArguments, 
             AbstractShaderNode theFunction,
             string theName,
             ShaderNode<T> theDefault, 
-            IEnumerable<IFunctionInvokeNode> theDelegates = null, 
+            IEnumerable<IInvoke> theDelegates = null, 
             IEnumerable<string> theMixins = null, 
             IDictionary<string,string> theFunctionValues = null,
             bool theIsGroupable = false,
@@ -96,7 +96,7 @@ ${functionImplementation}
             return result;
         }
         
-        private void HandleDelegates(IEnumerable<IFunctionInvokeNode> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IEnumerable<IInvoke> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             theDelegates?.ForEach(delegateNode =>
             {
