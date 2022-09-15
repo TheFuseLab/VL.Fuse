@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Stride.Core.Extensions;
 using Stride.Graphics;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.compute
@@ -12,9 +13,9 @@ namespace Fuse.compute
     {
         
 
-        protected AbstractTypedFunction(string theName, ShaderNode<TOut> theDefault = null) : base( theName, theDefault)
+        protected AbstractTypedFunction(NodeContext nodeContext, string theName, ShaderNode<TOut> theDefault = null) : base(nodeContext,  theName, theDefault)
         {
-            AddResource(Structs, BuildStructs());
+            AddProperty(Structs, BuildStructs());
         }
 
         private static string BuildStructs()
@@ -42,7 +43,7 @@ ${structMembers}
     public class DeclareStructVariable<T>: AbstractTypedFunction<T,T> where T : struct
     {
         
-        public DeclareStructVariable(ConstantValue<T> theDefault) : base( "getBuffer")
+        public DeclareStructVariable(NodeContext nodeContext, ConstantValue<T> theDefault) : base( nodeContext, "getBuffer")
         {
             SetInputs(new List<AbstractShaderNode>(){});
         }
@@ -56,10 +57,15 @@ ${structMembers}
     
     public class TypedBufferGet<T> : AbstractTypedFunction<T,T> where T : struct
     {
-        private readonly ShaderNode<Buffer<T>> _buffer;
-        private readonly ShaderNode<int> _index;
+        private ShaderNode<Buffer<T>> _buffer;
+        private ShaderNode<int> _index;
         
-        public TypedBufferGet(ShaderNode<Buffer<T>> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault) : base( "getBuffer", theDefault)
+        public TypedBufferGet(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext, "getBuffer", theDefault)
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<Buffer<T>> theBuffer, ShaderNode<int> theIndex)
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -79,11 +85,16 @@ ${structMembers}
     
     public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid>, IComputeVoid where TIn : struct
     {
-        private readonly ShaderNode<Buffer<TIn>> _buffer;
-        private readonly ShaderNode<int> _index;
-        private readonly ShaderNode<TIn> _value;
+        private ShaderNode<Buffer<TIn>> _buffer;
+        private ShaderNode<int> _index;
+        private ShaderNode<TIn> _value;
     
-        public TypedBufferSet(ShaderNode<Buffer<TIn>> theBuffer, ShaderNode<int> theIndex, ShaderNode<TIn> theValue) : base( "setBuffer")
+        public TypedBufferSet(NodeContext nodeContext) : base( nodeContext, "setBuffer")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<Buffer<TIn>> theBuffer, ShaderNode<int> theIndex, ShaderNode<TIn> theValue)
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -116,10 +127,15 @@ ${structMembers}
     
     public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : struct
     {
-        private readonly ShaderNode<Buffer<T>> _buffer;
-        private readonly ShaderNode<T> _value;
+        private ShaderNode<Buffer<T>> _buffer;
+        private ShaderNode<T> _value;
     
-        public TypedBufferAppend(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theValue) : base( "appendBuffer")
+        public TypedBufferAppend(NodeContext nodeContext) : base( nodeContext, "appendBuffer")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theValue)
         {
             _buffer = theBuffer;
             _value = theValue;
@@ -150,12 +166,17 @@ ${structMembers}
     
     public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : struct
     {
-        private readonly ShaderNode<Buffer<T>> _buffer;
+        private ShaderNode<Buffer<T>> _buffer;
         
-        public TypedBufferConsume(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theDefault) : base( "consumeBuffer", theDefault)
+        public TypedBufferConsume(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<Buffer<T>> theBuffer)
         {
             _buffer = theBuffer;
-            SetInputs(new List<AbstractShaderNode>(){theBuffer});
+            SetInputs(new List<AbstractShaderNode>{theBuffer});
         }
 
         protected override string SourceTemplate()

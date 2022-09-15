@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Stride.Core.Extensions;
+using VL.Core;
 
 namespace Fuse.compute
 {
@@ -10,7 +11,7 @@ namespace Fuse.compute
     {
         private readonly string _name;
         
-        public DynamicStruct(IEnumerable<AbstractShaderNode> theInputs, string theName) : base("GPUAttributeStruct")
+        public DynamicStruct(NodeContext nodeContext, IEnumerable<AbstractShaderNode> theInputs, string theName) : base(nodeContext, "GPUAttributeStruct")
         {
             SetInputs(theInputs);
 
@@ -36,7 +37,7 @@ ${structMembers}
                 {"structMembers", call.ToString()}
             });
             
-            AddResource(Structs, _struct);
+            AddProperty(Structs, _struct);
             Stride = myStride;
 
             TypeOverride = theName;

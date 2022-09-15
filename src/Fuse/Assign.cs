@@ -1,24 +1,29 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
     public class AssignValue<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
-        private readonly ShaderNode<T> _target;
-        private readonly ShaderNode<T> _source;
+        private ShaderNode<T> _target;
+        private ShaderNode<T> _source;
         
-        public AssignValue(ShaderNode<T> theTarget, ShaderNode<T> theSource) : base("Assign")
+        public AssignValue(NodeContext nodeContext) : base(nodeContext, "Assign")
+        {
+        }
+        
+        public AssignValue(NodeContext nodeContext, ShaderNode<T> theTarget, ShaderNode<T> theSource) : base(nodeContext, "Assign")
+        {
+            SetInputs(theTarget, theSource);
+        }
+
+        public void SetInputs(ShaderNode<T> theTarget, ShaderNode<T> theSource)
         {
             _target = theTarget;
             _source = theSource;
             SetInputs(new List<AbstractShaderNode>{theTarget,theSource});
-        }
-
-        public void SetInputs()
-        {
-            
         }
         
         protected override string GenerateDefaultSource()
@@ -44,11 +49,16 @@ namespace Fuse
     public class AssignValueToMember<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
 
-        private readonly ShaderNode<T> _object;
-        private readonly AbstractShaderNode _value;
-        private readonly string _member;
+        private ShaderNode<T> _object;
+        private AbstractShaderNode _value;
+        private string _member;
         
-        public AssignValueToMember(ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base("StructAttribute")
+        public AssignValueToMember(NodeContext nodeContext) : base(nodeContext, "StructAttribute")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue)
         {
             _object = theObject;
             _member = theMember;

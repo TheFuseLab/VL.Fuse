@@ -137,10 +137,9 @@ namespace Fuse.ShaderFX
             if(!_functionMap.ContainsKey(theKeyFunction.Key))_functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
         }
         
-        private void HandleShader(ShaderGeneratorContext theContext,bool theIsComputeShader, AbstractShaderNode theShaderInput, out string theSource, out string theStreams, out string theDefinedStreams)
+        private void HandleShader(bool theIsComputeShader, AbstractShaderNode theShaderInput, out string theSource, out string theStreams, out string theDefinedStreams)
         {
             
-            theShaderInput.SetHashCodes(theContext);
             
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
@@ -164,15 +163,15 @@ namespace Fuse.ShaderFX
             return _isCompute ? theCode : theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
 
-        private ShaderSource _source = null;
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
-            if (_source != null) return _source;
+            _input.CheckContext(theContext);
+            
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();
             
-            HandleShader(theContext, _isComputeShader, _input, out var source, out var stream, out var streamDefines);
+            HandleShader(_isComputeShader, _input, out var source, out var stream, out var streamDefines);
             sourceStream.Add("FX",(source,stream));
             streamDefinesBuilder.AppendLine(streamDefines);
 
@@ -192,8 +191,8 @@ namespace Fuse.ShaderFX
             ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
-            //ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
-            ShaderName = "Shader_" + ShaderNodesUtil.id++;
+            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            //ShaderName = "Shader_" + ShaderNodesUtil.GetHashCode(_input.NodeContext);
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
             _input.ShaderCode = ShaderCode;
             ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
@@ -201,8 +200,7 @@ namespace Fuse.ShaderFX
             
            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
             
-            _source = new ShaderClassSource(ShaderName);
-            return _source;
+            return new ShaderClassSource(ShaderName);
         }
     }
 }

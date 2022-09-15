@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using NuGet;
 using Stride.Rendering.Materials;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
@@ -11,10 +12,10 @@ namespace Fuse.ShaderFX
         protected const string DeclarationTemplate = @"
         compose Compute${compositionType} ${compositionName};";
         
-        public CompositionInput(string theId, IComputeValue<T> theComposition) : base(theId, null)
+        public CompositionInput(NodeContext nodeContext, string theId, IComputeValue<T> theComposition) : base(nodeContext, theId, null)
         {
             
-            AddResource(Compositions, this);
+            AddProperty(Compositions, this);
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -35,9 +36,9 @@ namespace Fuse.ShaderFX
             return "${resultType} ${resultName} = ${compositionName}.Compute();";
         }
         
-        public override void SetHashCodes(ShaderGeneratorContext theContext)
+        public override void CheckContext(ShaderGeneratorContext theContext)
         {
-            base.SetHashCodes(theContext);
+            base.CheckContext(theContext);
             ShaderNodesUtil.Evaluate(DeclarationTemplate,CreateTemplateMap());
         }
     }

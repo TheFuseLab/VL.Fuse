@@ -416,9 +416,20 @@ namespace Fuse
                 return textureType + "<" + textureDataType + ">";
             }
             
-            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend)
+            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend, bool theReadWrite = false)
             {
-                if(theBuffer == null)return "StructuredBuffer<" + theBufferType + ">";
+                Console.WriteLine("");
+                if (theBuffer == null)
+                {
+                    if (theReadWrite)
+                    {
+                        return "RWStructuredBuffer<" + theBufferType + ">";
+                    }
+                    else
+                    {
+                        return "StructuredBuffer<" + theBufferType + ">";
+                    }
+                }
 
                 if ((theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
                 {

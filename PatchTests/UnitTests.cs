@@ -5,6 +5,7 @@ using NUnit.Framework.Internal;
 
 namespace MyTests
 {
+    /*
     public class UnitTests
     {
         [SetUp]
@@ -30,5 +31,5 @@ namespace MyTests
             var compareNull = new Operator<float, bool>(gpuValue0, null,new ConstantValue<bool>(true),">");
             Console.WriteLine(compareNull.BuildSourceCode());
         }
-    }
+    }*/
 }

@@ -1,17 +1,30 @@
 ﻿using System.Collections.Generic;
 using Stride.Core.Mathematics;
+using VL.Core;
 
 namespace Fuse
 {
     public class Int2Join : ShaderNode<Int2>
     {
-        private readonly ShaderNode<int> _x;
-        private readonly ShaderNode<int> _y;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
+        
+        private readonly ShaderNode<int> _default;
 
-        public Int2Join(ShaderNode<int> x, ShaderNode<int> y) : base("int2Join")
+        public Int2Join(NodeContext nodeContext) : base(nodeContext, "int2Join")
         {
-            _x = x ?? new ConstantValue<int>(0);
-            _y = y ?? new ConstantValue<int>(0);
+            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            
+            _x = _default;
+            _y = _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y});
+        }
+
+        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
@@ -30,16 +43,28 @@ namespace Fuse
     public class Int3Join : ShaderNode<Int3>
     {
         
-        private readonly ShaderNode<int> _x;
-        private readonly ShaderNode<int> _y;
-        private readonly ShaderNode<int> _z;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
+        private ShaderNode<int> _z;
+        
+        private readonly ShaderNode<int> _default;
 
-        public Int3Join(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z) : base("Int3Join")
+        public Int3Join(NodeContext nodeContext) : base(nodeContext, "Int3Join")
         {
+            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
             
-            _x = x ?? new ConstantValue<int>(0);
-            _y = y ?? new ConstantValue<int>(0);
-            _z = z ?? new ConstantValue<int>(0);
+            _x = _default;
+            _y = _default;
+            _z = _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
+        }
+
+        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
+            _z = z ?? _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
@@ -58,18 +83,31 @@ namespace Fuse
     
     public class Int4Join : ShaderNode<Int4>
     {
-        private readonly ShaderNode<int> _x;
-        private readonly ShaderNode<int> _y;
-        private readonly ShaderNode<int> _z;
-        private readonly ShaderNode<int> _w;
+        private ShaderNode<int> _x;
+        private ShaderNode<int> _y;
+        private ShaderNode<int> _z;
+        private ShaderNode<int> _w;
+        
+        private readonly ShaderNode<int> _default;
 
-        public Int4Join(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z, ShaderNode<int> w) : base("Int4Join")
+        public Int4Join(NodeContext nodeContext) : base(nodeContext, "Int4Join")
         {
+            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
 
-            _x = x ?? new ConstantValue<int>(0);
-            _y = y ?? new ConstantValue<int>(0);
-            _z = z ?? new ConstantValue<int>(0);
-            _w = w ?? new ConstantValue<int>(1);
+            _x = _default;
+            _y = _default;
+            _z = _default;
+            _w = _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
+        }
+
+        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z, ShaderNode<int> w)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
+            _z = z ?? _default;
+            _w = w ?? _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
@@ -91,11 +129,22 @@ namespace Fuse
     public class FromInt<T> : ShaderNode<T> where T : struct
     {
         
-        private readonly ShaderNode<int> _x;
+        private ShaderNode<int> _x;
+        
+        private readonly ShaderNode<int> _default;
 
-        public FromInt(ShaderNode<int> x) : base("fromInt")
+        public FromInt(NodeContext nodeContext) : base(nodeContext, "fromInt")
         {
-            _x = x ?? new ConstantValue<int>(0);
+            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            
+            _x = _default;
+            
+            SetInputs(new List<AbstractShaderNode>{_x});
+        }
+
+        public void SetInput(ShaderNode<int> x)
+        {
+            _x = x ?? _default;
             
             SetInputs(new List<AbstractShaderNode>{x});
         }

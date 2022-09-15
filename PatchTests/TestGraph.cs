@@ -10,6 +10,7 @@ namespace PatchTests
 {
     public static class TestGraph
     {
+        /*
         [Test]
         public static void TestInputs()
         {
@@ -271,6 +272,6 @@ namespace PatchTests
             var getDeclareType = getDeclareBaseType.MakeGenericType(dataType);
             var getDeclareInstance = Activator.CreateInstance(getDeclareType, new object[]{null} ) as AbstractShaderNode;
             Console.WriteLine(getDeclareInstance.GetType().Name);
-        }
+        }*/
     }
 }

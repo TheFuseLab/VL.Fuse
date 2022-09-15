@@ -1,23 +1,26 @@
 ﻿using System.Collections.Generic;
+using VL.Core;
 
 namespace Fuse
 {
     public class DeclareValue<T> : ShaderNode<T>
     {
 
-        private readonly ShaderNode<T> _value;
+        private ShaderNode<T> _value;
 
-        public DeclareValue(ShaderNode<T> theValue = null): base("output")
+        public DeclareValue(NodeContext nodeContext): base(nodeContext, "output")
         {
-            
-            var inputList = new List<AbstractShaderNode>();
-            theValue ??= ConstantHelper.FromFloat<T>(0);
-          
-            inputList.Add(theValue);
-            
-            Ins = inputList;
-            SetInputs(Ins);
-            _value = theValue;
+        }
+        
+        public DeclareValue(NodeContext nodeContext, ShaderNode<T> theValue = null): this(nodeContext)
+        {
+            SetInput(theValue);
+        }
+
+        public void SetInput(ShaderNode<T> theValue = null)
+        {
+            _value = theValue ?? Default;
+            SetInputs(new List<AbstractShaderNode>{_value});
         }
 
         protected override string SourceTemplate()

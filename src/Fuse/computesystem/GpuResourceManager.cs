@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
+using VL.Core;
 
 namespace Fuse.ComputeSystem
 {
@@ -11,14 +12,19 @@ namespace Fuse.ComputeSystem
         private readonly Dictionary<string, AbstractResourceBinder> _resourceBinders;
         private readonly Dictionary<string, AbstractResource> _resources;
         
-        //private 
+        private int _subContextId;
+
+        private NodeContext _context;
 
         public GpuResourceManager(
+            NodeContext nodeContext,
             IComputeStage theComputeStage,
             Dictionary<string, AbstractResource> theResources,
             CreateResourceBinding theBindingCreator
             )
         {
+            _context = nodeContext;
+            _subContextId = 1;
             _resources = theResources;
             _resourceBinders = new Dictionary<string, AbstractResourceBinder>();
             foreach (var kv in theResources)
@@ -36,14 +42,21 @@ namespace Fuse.ComputeSystem
             }
         }
 
+        public Dictionary<string, AbstractResourceBinder> ResourceBinder()
+        {
+            return _resourceBinders;
+        }
+
         private static void BindResource(IAttribute theAttribute, AbstractResourceBinder theAbstractResourceBinder)
         {
             theAttribute.SetInput(theAbstractResourceBinder.GetAttribute(theAttribute.Name));
         }
 
-        public List<ShaderNode<GpuVoid>> WriteAttributes()
+        public IEnumerable<ShaderNode<GpuVoid>> WriteAttributes()
         {
-            var result = new List<ShaderNode<GpuVoid>>{new Comment<GpuVoid>(new EmptyVoid(), "WriteBuffer")};
+            var comment = new Comment<GpuVoid>(ShaderNodesUtil.GetContext(_context, _subContextId++));
+            comment.SetInput("WriteBuffer", new EmptyVoid(ShaderNodesUtil.GetContext(_context, _subContextId++)));
+            var result = new List<ShaderNode<GpuVoid>>{comment};
 
             foreach (var resource in _resourceBinders)
             {
@@ -64,7 +77,9 @@ namespace Fuse.ComputeSystem
         
         public List<AbstractShaderNode> WriteToIndexNodes(ShaderNode<int> theIndex)
         {
-            var result = new List<AbstractShaderNode>{new Comment<GpuVoid>(new EmptyVoid(), "WriteBuffer")};
+            var comment = new Comment<GpuVoid>(ShaderNodesUtil.GetContext(_context, _subContextId++));
+            comment.SetInput("WriteBuffer", new EmptyVoid(ShaderNodesUtil.GetContext(_context, _subContextId++)));
+            var result = new List<AbstractShaderNode>{comment};
 
             _resourceBinders.ForEach(resource =>
             {

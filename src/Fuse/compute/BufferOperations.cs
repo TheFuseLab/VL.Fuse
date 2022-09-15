@@ -1,22 +1,28 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.compute
 {
     public class BufferGet<T> : ShaderNode<T> 
     {
-        private readonly BufferInput<T> _buffer;
-        private readonly ShaderNode<int> _index;
+        private BufferInput<T> _buffer;
+        private ShaderNode<int> _index;
         
-        public BufferGet(BufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault) : base( "getBuffer", theDefault)
+        public BufferGet(NodeContext nodeContext) : base( nodeContext, "getBuffer")
+        {
+            
+        }
+
+        public void SetInputs(BufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
             
-            SetInputs(new List<AbstractShaderNode>{theBuffer,theIndex});
-
             TypeOverride = theDefault == null ? TypeHelpers.GetGpuTypeForType<T>() : theDefault.TypeName();
+            
+            SetInputs(new List<AbstractShaderNode>{theBuffer,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -33,11 +39,16 @@ namespace Fuse.compute
     
     public class BufferSet<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
-        private readonly BufferInput<T> _buffer;
-        private readonly ShaderNode<int> _index;
-        private readonly ShaderNode<T> _value;
+        private BufferInput<T> _buffer;
+        private ShaderNode<int> _index;
+        private ShaderNode<T> _value;
     
-        public BufferSet(BufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theValue) : base( "setBuffer")
+        public BufferSet(NodeContext nodeContext) : base( nodeContext, "setBuffer")
+        {
+            
+        }
+
+        public void SetInputs(BufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theValue)
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -70,10 +81,15 @@ namespace Fuse.compute
     
     public class BufferAppend<T> : ShaderNode<GpuVoid>
     {
-        private readonly BufferInput<T> _buffer;
-        private readonly ShaderNode<T> _value;
+        private BufferInput<T> _buffer;
+        private ShaderNode<T> _value;
     
-        public BufferAppend(BufferInput<T> theBuffer, ShaderNode<T> theValue) : base( "appendBuffer")
+        public BufferAppend(NodeContext nodeContext) : base( nodeContext, "appendBuffer")
+        {
+            
+        }
+
+        public void SetInputs(BufferInput<T> theBuffer, ShaderNode<T> theValue)
         {
             _buffer = theBuffer;
             _value = theValue;
@@ -104,14 +120,19 @@ namespace Fuse.compute
     
     public class BufferConsume<T> : ShaderNode<T> 
     {
-        private readonly BufferInput<T> _buffer;
+        private BufferInput<T> _buffer;
         
-        public BufferConsume(BufferInput<T> theBuffer, ShaderNode<T> theDefault) : base( "consumeBuffer", theDefault)
+        public BufferConsume(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
+        {
+            
+
+        }
+
+        public void SetInput(BufferInput<T> theBuffer)
         {
             _buffer = theBuffer;
             
             SetInputs(new List<AbstractShaderNode>{theBuffer});
-
         }
 
         protected override string SourceTemplate()

@@ -3,18 +3,25 @@ using System.Collections.Generic;
 using System.Text;
 using Fuse.compute;
 using Stride.Core.Extensions;
+using VL.Core;
 
 namespace Fuse
 {
     public class IfNodeDeprecated<T> : ShaderNode<T>
     {
-        private readonly ShaderNode<bool> _inCheck;
-        private readonly ShaderNode<T> _inFalse;
-        private readonly ShaderNode<T> _inTrue;
-        public IfNodeDeprecated(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "bool_switch_result", theDefault)
+        private ShaderNode<bool> _inCheck;
+        private ShaderNode<T> _inFalse;
+        private ShaderNode<T> _inTrue;
+
+        public IfNodeDeprecated(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base(nodeContext, "bool_switch_result", theDefault)
         {
 
-            var ins = new List<AbstractShaderNode>(){inCheck};
+
+        }
+
+        public void SetInputs(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue)
+        {
+            var ins = new List<AbstractShaderNode>{inCheck};
             _inCheck = inCheck;
             _inFalse = inFalse;
             _inTrue = inTrue;
@@ -26,7 +33,7 @@ namespace Fuse
             SetInputs(ins);
         }
 
-        private string BuildCaseSource(AbstractShaderNode theCase,StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        private string BuildCaseSource(AbstractShaderNode theCase,StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
             if (theCase == null) return "";
             if (_inTrue != null && !_inTrue.SourceCode.IsNullOrEmpty())
@@ -48,7 +55,7 @@ namespace Fuse
             return childrenString.ToString();
         }
         
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
             if (typeof(T) != typeof(GpuVoid))base.BuildSource(theSourceBuilder, theHashes);
 

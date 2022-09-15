@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Fuse.compute;
 using Stride.Core.Mathematics;
+using VL.Core;
+using VL.Stride.Shaders.ShaderFX;
 
 
 namespace Fuse.ComputeSystem
@@ -11,11 +13,7 @@ namespace Fuse.ComputeSystem
     {
         public void BindResources(Dictionary<string, AbstractResource> theResources);
         
-        public ComputeSystem ComputeSystem { get; set; }
-        
         public IResourceHandler ResourceHandler { get; set; }
-        
-        public int Ticket { get; }
         
         public Dictionary<string, List<IAttribute>> AttributeGroups { get;  }
 
@@ -23,50 +21,67 @@ namespace Fuse.ComputeSystem
 
     }
     
-    public abstract class AbstractComputeStage : IComputeStage
+    public abstract class AbstractComputeStage : Group, IComputeStage
     {
-
-        protected ShaderNode<GpuVoid> _node;
         
-        public AbstractComputeStage(ShaderNode<GpuVoid> theNode)
+        protected AbstractComputeStage(NodeContext nodeContext) : base(nodeContext, "ComputeStage")
         {
-            _node = theNode;
         }
+        
+        public abstract void SetComputeInput(ShaderNode<GpuVoid> theNode);
         
         public abstract void BindResources(Dictionary<string, AbstractResource> theResources);
 
         public bool Enabled { get; set; }
-        public IResourceHandler ResourceHandler { get; set; }
-
-        public ComputeSystem ComputeSystem { get; set; }
-
-        public string Name { get; set; }
-
+        public virtual IResourceHandler ResourceHandler { get; set; }
         public Dictionary<string, List<IAttribute>> AttributeGroups { get; protected set; }
 
-        public int Ticket { get; protected set; }
-
         public abstract void Build();
+
+        
     }
 
     public class ComputeStage : AbstractComputeStage
     {
         private GpuResourceManager _resourceManager;
 
-        public bool WriteAttributes { get; set; } = false;
+        private ShaderNode<GpuVoid> _node;
 
-        private Group _group;
+        private int _subContextId;
 
-        public ComputeStage(ShaderNode<GpuVoid> theNode) : base(theNode)
-        {
-            AttributeGroups = new Dictionary<string, List<IAttribute>>();
+        private bool _writeAttributes = false;
+        public bool WriteAttributes { 
+            get => _writeAttributes;
             
-            if (theNode == null)
+            set
             {
+                if (value == _writeAttributes) return;
+                _writeAttributes = value;
+                CallChangeEvent();
+            }
+        } 
+
+        public ComputeStage(NodeContext nodeContext) : base(nodeContext)
+        {
+            _subContextId = 1;
+            AttributeGroups = new Dictionary<string, List<IAttribute>>();
+        }
+
+        public override void SetComputeInput(ShaderNode<GpuVoid> theNode)
+        {
+            if (theNode != null && theNode.Equals(_node)) return;
+
+            _node = theNode;
+            
+            AttributeGroups.Clear();
+
+            if (_node == null)
+            {
+                CallChangeEvent();
                 return;
             }
             
-            foreach (var attributeGroup in  theNode.ResourcesForTree<IAttribute>())
+            foreach (var attributeGroup in _node.PropertiesForTree<IAttribute>())
             {
                 if (!AttributeGroups.ContainsKey(attributeGroup.Key))
                 {
@@ -82,18 +97,23 @@ namespace Fuse.ComputeSystem
                     }
                 }
             }
-
-            Ticket = ComputeUtil.GenerateTicket();
+           
+            CallChangeEvent();
         }
 
         private AbstractResourceBinder CreateBinder(AbstractResource theResource)
         {
-            return ResourceHandler.CreateBinder(theResource, new Semantic<Int3>("DispatchThreadID"));
+            return ResourceHandler.CreateBinder(theResource, new Semantic<Int3>(ShaderNodesUtil.GetContext(NodeContext, _subContextId++),"DispatchThreadId"));
         }
 
         public override void BindResources(Dictionary<string, AbstractResource> theResources)
         {
-            _resourceManager = new GpuResourceManager(this,theResources, CreateBinder);
+            _resourceManager = new GpuResourceManager(NodeContext, this, theResources, CreateBinder);
+        }
+
+        public GpuResourceManager ResourceManager()
+        {
+            return _resourceManager;
         }
 
         public override void Build()
@@ -103,7 +123,8 @@ namespace Fuse.ComputeSystem
             {
                 nodes.AddRange(_resourceManager.WriteAttributes());
             }
-            _group = new Group(nodes); 
+            
+            SetInput(nodes, false);
         }
 
         public void Update()
@@ -111,31 +132,30 @@ namespace Fuse.ComputeSystem
             _resourceManager.Update();
         }
 
-        public Group Node => _group;
     }
 
-    public class ComputeStageGroup : IComputeStage
+    public class ComputeStageGroup : Group, IComputeStage
     {
-        private readonly List<IComputeStage> _computeStages;
+        private readonly List<AbstractComputeStage> _computeStages;
 
-        public ComputeStageGroup()
+        public ComputeStageGroup(NodeContext nodeContext) : base(nodeContext)
         {
-            _computeStages = new List<IComputeStage>();
+            _computeStages = new List<AbstractComputeStage>();
         }
         
-        public List<IComputeStage> ComputeStages
+        public List<AbstractComputeStage> ComputeStages
         {
             get => _computeStages;
             set
             {
                 _computeStages.Clear();
-                value.ForEach(v =>
+
+                foreach (var v in value)
                 {
                     if (v == null) return;
                     
-                    v.ComputeSystem = ComputeSystem;
                     _computeStages.Add(v);
-                });
+                }
             }
         }
 
@@ -147,9 +167,7 @@ namespace Fuse.ComputeSystem
             }
         }
 
-        public ComputeSystem ComputeSystem { get; set; }
-
-        private IResourceHandler _resourceHandler;
+        protected IResourceHandler _resourceHandler;
         
         public IResourceHandler ResourceHandler { get => _resourceHandler;
             set
@@ -161,14 +179,7 @@ namespace Fuse.ComputeSystem
                 }
             }
         }
-        public int Ticket {
-            get
-            {
-                var ticket = 0;
-                _computeStages.ForEach(stage => ticket = Math.Max(ticket, stage.Ticket));
-                return ticket;
-            }
-        }
+        
         public Dictionary<string, List<IAttribute>> AttributeGroups {
             get
             {

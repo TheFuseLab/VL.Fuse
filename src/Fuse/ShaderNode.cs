@@ -19,36 +19,7 @@ namespace Fuse
 
     }
 
-    public class FieldDeclaration
-    {
-        private readonly string _computeShaderDeclaration;
-        private readonly string _declaration;
-
-        public FieldDeclaration(bool isResource, string computeShaderDeclaration, string declaration)
-        {
-            IsResource = isResource;
-            _computeShaderDeclaration = computeShaderDeclaration;
-            _declaration = declaration;
-        }
-
-        public FieldDeclaration(string declaration)
-        {
-            _computeShaderDeclaration = declaration;
-            _declaration = declaration;
-        }
-
-        public string GetDeclaration(bool theIsComputeShader)
-        {
-            return theIsComputeShader && _computeShaderDeclaration != null ? _computeShaderDeclaration : _declaration;
-        }
-
-        public override string ToString()
-        {
-            return _declaration;
-        }
-
-        public bool IsResource { get; }
-    }
+    
 
     public class ShaderTree : Trees.IReadOnlyTreeNode
     {
@@ -73,14 +44,61 @@ namespace Fuse
             }
         }
     }
+
+
+
+    public interface IChangeGraph
+    {
+        public void ChangeGraph(AbstractShaderNode theNode);
+    }
+
+    public interface IPrepareGraph
+    {
+        public void PrepareGraph(AbstractShaderNode theNode);
+    }
+    
+    
+    
+    
+    //RD3C7*^PTT-&
+
     
     public abstract class AbstractShaderNode : IComputeNode
     {
         public List<AbstractShaderNode> Ins = new List<AbstractShaderNode>();
+        // Used for out parameters to trigger code generation
+
+        public readonly List<AbstractShaderNode> Outs = new List<AbstractShaderNode>();
+        
+        public readonly List<IChangeGraph> ChangeGraphListener = new List<IChangeGraph>();
+        public readonly List<IPrepareGraph> PrepareGraphListener = new List<IPrepareGraph>();
+
+        public readonly NodeContext NodeContext;
+
+        public void AddChangeGraph(IChangeGraph theDelegate)
+        {
+            ChangeGraphListener.Add(theDelegate);
+        }
+        
+        public void RemoveChangeGraph(IChangeGraph theDelegate)
+        {
+            ChangeGraphListener.Remove(theDelegate);
+        }
+        
+        public void AddPrepareGraph(IPrepareGraph theDelegate)
+        {
+            PrepareGraphListener.Add(theDelegate);
+        }
+        
+        public void RemovePrepareGraph(IPrepareGraph theDelegate)
+        {
+            PrepareGraphListener.Remove(theDelegate);
+        }
+        
         
         public  string Name{ get;  set; }
 
-        public int HashCode;
+        public readonly uint HashCode;
         
         public abstract string ID { get; }
 
@@ -92,28 +110,74 @@ namespace Fuse
 
         public readonly ShaderTree Tree;
 
-        protected AbstractShaderNode(string theId)
+        protected AbstractShaderNode(NodeContext nodeContext, string theId)
         {
+            NodeContext = nodeContext;
             Name = theId;
-            HashCode = -1;
+            HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
 
             Tree = new ShaderTree(this);
         }
         
-        public virtual IDictionary<string,string> Functions => new Dictionary<string, string>();
+        public virtual IDictionary<string,string> Functions
+        {
+            get => new Dictionary<string, string>();
+            protected set => throw new NotImplementedException();
+        }
 
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children => Tree.Children;
 
         private const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
+
         
-        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
+        public void CallChangeEvent()
         {
+            foreach (var listener in new List<IChangeGraph>(ChangeGraphListener))
+            {
+                listener.ChangeGraph(this);
+            }
+            
+            foreach (var output in new List<AbstractShaderNode>(Outs))
+            {
+                output.CallChangeEvent();
+            }
+        }
+
+        public void CallPrepareGraph()
+        {
+            foreach (var listener in PrepareGraphListener)
+            {
+                listener.PrepareGraph(this);
+            }
+            
+            foreach (var input in Ins)
+            {
+                input.CallPrepareGraph();
+            }
+        }
+
+        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns, bool theCallChangeEvent = true)
+        {
+            Console.WriteLine(Name);
+            if (Ins.SequenceEqual(theIns)) return;
+
+            foreach (var input in Ins)
+            {
+                input.Outs.Remove(this);
+            }
+            
             Ins = new List<AbstractShaderNode>();
-                
             theIns.ForEach(input =>
             {
                 if(input != null)Ins.Add(input);
             });
+            
+            foreach (var input in Ins)
+            {
+                input.Outs.Add(this);
+            }
+            
+            if(theCallChangeEvent)CallChangeEvent();
         }
 
         public void AddInput(AbstractShaderNode theInput)
@@ -147,44 +211,30 @@ namespace Fuse
             return sourceCode.Trim() == "" ? "" : ShaderNodesUtil.Evaluate(sourceCode, CreateTemplateMap());
         }
 
-        protected virtual void OnGenerateCode(ShaderGeneratorContext theContext)
-        {
-            
-        }
-
-        protected virtual void OnPassContext(ShaderGeneratorContext theContext)
+        protected virtual void OnPassContext(ShaderGeneratorContext nodeContext)
         {
             
         }
 
         private readonly HashSet<ShaderGeneratorContext> _contexts = new HashSet<ShaderGeneratorContext>();
 
-        public virtual void SetHashCodes(ShaderGeneratorContext theContext)
+        public virtual void CheckContext(ShaderGeneratorContext nodeContext)
         {
-            
-
-            var callOnGenerate = false;
-            if (HashCode < 0)
-            {
-                HashCode = theContext.GetAndIncIDCount();
-                callOnGenerate = true;
-            }
             
             Ins.ForEach(input =>
             {
                 if (input == null) return;
-                input.SetHashCodes(theContext);
+                input.CheckContext(nodeContext);
             });
 
-            if(callOnGenerate) OnGenerateCode(theContext);
-
-            if (!_contexts.Add(theContext)) return;
-            OnPassContext(theContext);
+            if (!_contexts.Add(nodeContext)) return;
+            OnPassContext(nodeContext);
         }
 
-        public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
-            Children.ForEach(child =>
+            Console.WriteLine(Name);
+            foreach (var child in Children)
             {
                 if (!(child is ShaderTree input))
                 {
@@ -192,11 +242,12 @@ namespace Fuse
                 }
                
                 input.Node.BuildSource( theSourceBuilder, theHashes);
-            });
+            }
         }
 
-        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<int> theHashes)
+        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
+            Console.WriteLine(Name);
             BuildChildrenSource(theSourceBuilder, theHashes);
 
             var source = SourceCode;
@@ -221,7 +272,7 @@ namespace Fuse
         public string BuildSourceCode()
         {
             var myStringBuilder = new StringBuilder();
-            var myHashes = new HashSet<int>();
+            var myHashes = new HashSet<uint>();
 
             BuildSource( myStringBuilder, myHashes);
             
@@ -258,25 +309,25 @@ namespace Fuse
             return result.ToList();
         }
         
-        public List<TResourceType> ResourceForTree<TResourceType>(string theResourceId)
+        public List<TPropertyType> PropertyForTree<TPropertyType>(string theThePropertyId)
         {
-            var result = new HashSet<TResourceType>();
+            var result = new HashSet<TPropertyType>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is ShaderTree tree) || !tree.Node.Resources.ContainsKey(theResourceId)) return;
-                Stride.Core.Extensions.EnumerableExtensions.ForEach<TResourceType>(tree.Node.Resources[theResourceId], i => result.Add(i));
+                if (!(n is ShaderTree tree) || !tree.Node.Property.ContainsKey(theThePropertyId)) return;
+                Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(tree.Node.Property[theThePropertyId], i => result.Add(i));
 
             });
             return result.ToList();
         }
 
-        public List<string> ResourceIdsForTree()
+        public List<string> PropertyIdsForTree()
         {
             var result = new HashSet<string>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
                 if (!(n is ShaderTree tree)) return;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
                     if (result.Add(kv.Key)) return;
                 });
@@ -284,66 +335,66 @@ namespace Fuse
             return result.ToList();
         }
         
-        public Dictionary<string, IList> ResourcesForTree()
+        public Dictionary<string, IList> PropertiesForTree()
         {
             var result = new Dictionary<string, IList>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
                 if (!(n is ShaderTree tree)) return;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
                     if (result.ContainsKey(kv.Key)) return;
                     
                     var list = new ArrayList();
-                    ResourceForTree<object>(kv.Key).ForEach(i => list.Add(i));
+                    PropertyForTree<object>(kv.Key).ForEach(i => list.Add(i));
                     result[kv.Key] = list;
                 });
             });
             return result;
         }
         
-        public Dictionary<string, List<TResource>> ResourcesForTree<TResource>(Dictionary<string, List<TResource>> theResources = null)
+        public Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(Dictionary<string, List<TProperty>> theProperties = null)
         {
-            theResources ??= new Dictionary<string, List<TResource>>();
+            theProperties ??= new Dictionary<string, List<TProperty>>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
                 if (!(n is ShaderTree tree)) return;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TResource>();
+                    var values = kv.Value.OfType<TProperty>();
                     if (values.IsEmpty()) return;
-                    if (!theResources.ContainsKey(kv.Key))
+                    if (!theProperties.ContainsKey(kv.Key))
                     {
-                        theResources[kv.Key] = new List<TResource>();
+                        theProperties[kv.Key] = new List<TProperty>();
                     }
-                    values.ForEach(v => theResources[kv.Key].Add(v));
+                    values.ForEach(v => theProperties[kv.Key].Add(v));
                 });
             });
-            return theResources;
+            return theProperties;
         }
 
-        public Dictionary<string, IList> Resources { get; } = new Dictionary<string, IList>();
+        public Dictionary<string, IList> Property { get; } = new Dictionary<string, IList>();
 
         // ReSharper disable once MemberCanBeProtected.Global
-        public void AddResource(string theResourceId, object theResource)
+        public void AddProperty(string thePropertyId, object theProperty)
         {
-            if (!Resources.ContainsKey(theResourceId))
+            if (!Property.ContainsKey(thePropertyId))
             {
-                Resources[theResourceId] = new ArrayList();
+                Property[thePropertyId] = new ArrayList();
             }
 
-            Resources[theResourceId].Add(theResource);
+            Property[thePropertyId].Add(theProperty);
         }
 
         // ReSharper disable once MemberCanBeProtected.Global
-        public void AddResources(string theResourceId, IList theResources)
+        public void AddProperties(string thePropertyId, IList theProperties)
         {
-            if (!Resources.ContainsKey(theResourceId))
+            if (!Property.ContainsKey(thePropertyId))
             {
-                Resources[theResourceId] = new ArrayList();
+                Property[thePropertyId] = new ArrayList();
             }
 
-            Stride.Core.Extensions.EnumerableExtensions.ForEach<object>(theResources, r => Resources[theResourceId].Add(r));
+            Stride.Core.Extensions.EnumerableExtensions.ForEach<object>(theProperties, r => Property[thePropertyId].Add(r));
 
         }
 
@@ -355,27 +406,27 @@ namespace Fuse
 
         public List<string> MixinList()
         {
-            return ResourceForTree<string>(Mixins);
+            return PropertyForTree<string>(Mixins);
         }
         
         public List<IGpuInput> InputList()
         {
-            return ResourceForTree<IGpuInput>(Inputs);
+            return PropertyForTree<IGpuInput>(Inputs);
         }
         
         public List<string> CompositionList()
         {
-            return ResourceForTree<string>(Compositions);
+            return PropertyForTree<string>(Compositions);
         }
         
         public List<FieldDeclaration> DeclarationList()
         {
-            return ResourceForTree<FieldDeclaration>(Declarations);
+            return PropertyForTree<FieldDeclaration>(Declarations);
         }
         
         public List<string> StructList()
         {
-            return ResourceForTree<string>(Structs);
+            return PropertyForTree<string>(Structs);
         }
         
         public Dictionary<string,string> FunctionMap(){
@@ -404,12 +455,11 @@ namespace Fuse
         // ReSharper disable once MemberCanBeProtected.Global
         public List<AbstractShaderNode> OptionalOutputs { get; protected set; }
 
-        private readonly ShaderNode<T> _default;
-        public  ShaderNode<T> Default => _default ?? ConstantHelper.FromFloat<T>(0);
+        public  ShaderNode<T> Default { get; set; }
 
-        public ShaderNode(string theId, ShaderNode<T> theDefault = null) : base(theId)
+        public ShaderNode(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null, bool theCreateDefault = true) : base(nodeContext, theId)
         {
-            _default = theDefault;
+            Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>(ShaderNodesUtil.GetContext(nodeContext, 0), 0) : null);
         }
 
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -462,7 +512,8 @@ namespace Fuse
 
     public class ComputeNode<T> : ShaderNode<T> , IComputeVoid
     {
-        public ComputeNode(string theId, ShaderNode<T> theDefault = null) : base(theId, theDefault)
+        public ComputeNode(NodeContext nodeContext, string theId, 
+            ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
         }
     }

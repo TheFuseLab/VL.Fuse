@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
 using Stride.Graphics;
+using VL.Core;
 
 namespace Fuse.ComputeSystem
 {
@@ -60,10 +61,16 @@ namespace Fuse.ComputeSystem
 
         private readonly IBufferCreator _bufferCreator;
 
-        public BufferResource(string theName, int theElementCount, IBufferCreator theBufferCreator = null) : base(theName)
+        private readonly NodeContext _context;
+
+        private int _subcontextIds;
+
+        public BufferResource(NodeContext nodeContext, string theName, int theElementCount, IBufferCreator theBufferCreator = null) : base(theName)
         {
             _elementCount = theElementCount;
             _bufferCreator = theBufferCreator;
+            _context = nodeContext;
+            _subcontextIds = 0;
         }
 
         private bool _changedAttributes = false;
@@ -84,7 +91,7 @@ namespace Fuse.ComputeSystem
 
                 fields.Add(field.ShaderNode);
             });
-            Struct = new DynamicStruct(fields, Name);
+            Struct = new DynamicStruct(ShaderNodesUtil.GetContext(_context,_subcontextIds++), fields, Name);
             
             if (_bufferCreator == null) return;
             

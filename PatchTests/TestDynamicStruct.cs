@@ -81,7 +81,7 @@ ${sourceCompute}
             
             return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>{{"shaderID",shaderName}});
         }
-        
+        /*
         [Test]
         public static void TestBooleanOperator()
         {
@@ -97,6 +97,6 @@ ${sourceCompute}
             Console.WriteLine(structValue.BuildSourceCode());
             Console.WriteLine(GetShader(structValue));
             
-        }
+        }*/
     }
 }

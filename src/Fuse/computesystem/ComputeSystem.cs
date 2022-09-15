@@ -1,34 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
+using VL.Core;
 
 namespace Fuse.ComputeSystem
 {
-    public class ComputeSystem
+    
+    public class ComputeSystemChangeListener : IChangeGraph
+    {
+
+        private readonly ComputeSystem _system;
+
+        public ComputeSystemChangeListener(ComputeSystem theSystem)
+        {
+            _system = theSystem;
+        }
+        public void ChangeGraph(AbstractShaderNode theNode)
+        {
+            _system.Rebuild();
+        }
+    }
+    
+    public class ComputeSystem : ComputeStageGroup
     {
 
         private readonly HashSet<string> _groups;
 
-        private readonly ComputeStageGroup _stageGroup;
-
-        private readonly IResourceHandler _resourceHandler;
-
-        public ComputeSystem(IResourceHandler theResourceHandler)
+        public ComputeSystem(NodeContext nodeContext) : base(nodeContext)
         {
-            _resourceHandler = theResourceHandler;
             Resources = new Dictionary<string, AbstractResource>();
             _groups = new HashSet<string>();
 
-            _stageGroup = new ComputeStageGroup();
-
             Enabled = true;
             Name = "MySystem";
-        }
-
-        private bool NeedsRebuild()
-        {
-            if (_resourceHandler == null) return false;
-            var ticket =  Math.Max(_resourceHandler.Ticket, _stageGroup.Ticket);
-            return true;
+            
+            ChangeGraphListener.Add(new ComputeSystemChangeListener(this));
         }
 
         private void AddAttribute(string theGroup, IAttribute theMember)
@@ -72,17 +77,14 @@ namespace Fuse.ComputeSystem
             });
         }
         
-        
-
-        private void Rebuild()
+        public void Rebuild()
         {
             Resources.ForEach(kv => kv.Value.Reset());
             _groups.Clear();
-            _stageGroup.ResourceHandler = _resourceHandler;
-            AddAttributeGroups(_stageGroup.AttributeGroups);
+            AddAttributeGroups(AttributeGroups);
             CreateResources();
-            _stageGroup.BindResources(Resources);
-            _stageGroup.Build();
+            BindResources(Resources);
+            Build();
         }
 
         public Dictionary<string, AbstractResource> Resources { get; }
@@ -92,20 +94,13 @@ namespace Fuse.ComputeSystem
             return Resources[key];
         }
 
-        public List<IComputeStage> ComputeStages
-        {
-            set
-            {
-                _stageGroup.ComputeStages = value;
-
-                if (!NeedsRebuild()) return;
-            
-                Rebuild();
-            }
-        }
-
         public bool Enabled { get; set; }
 
-        public string Name { get; set; }
+        public void SetInput(IResourceHandler theResourceHandler, List<AbstractComputeStage> theComputeStages)
+        {
+            ComputeStages = theComputeStages;
+            ResourceHandler = theResourceHandler;
+            SetInputs(theComputeStages);
+        }
     }
 }

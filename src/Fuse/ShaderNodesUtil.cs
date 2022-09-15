@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using Fuse.Common.Noise;
 using Fuse.compute;
 using Fuse.ShaderFX;
 using Stride.Core;
@@ -59,7 +60,7 @@ namespace Fuse
             return Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
         }
         
-        public static AbstractShaderNode AbstractGetMember<T>(ShaderNode<T> theStruct, AbstractShaderNode theMember)
+        public static AbstractShaderNode AbstractGetMember<T>(NodeContext nodeContext, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
            // return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theStruct, theMember.Name, null});
             
@@ -72,18 +73,18 @@ namespace Fuse
             }
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
             var getType = getMemberBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, theStruct, theMember.Name, null) as AbstractShaderNode;
+            return Activator.CreateInstance(getType, nodeContext, theStruct, theMember.Name, null) as AbstractShaderNode;
             
         }
         
-        public static AbstractShaderNode AbstractComputeTextureGet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractComputeTextureGet(NodeContext nodeContext, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theTexture, theIndex, null});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{nodeContext, theTexture, theIndex, null});
         }
         
-        public static AbstractShaderNode AbstractShaderNodePassThrough(AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractShaderNodePassThrough(NodeContext nodeContext, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{"pass", theValue});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{nodeContext, "pass", theValue});
             /*
             var getBaseType = typeof(PassThroughNode<>);
             var nodeType = theValue.GetType().BaseType;
@@ -94,25 +95,34 @@ namespace Fuse
             */
         }
         
-        public static AbstractShaderNode AbstractDeclareValue(AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValue(NodeContext nodeContext, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{null});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{nodeContext});
         }
         
-        public static AbstractShaderNode AbstractDeclareValueAssigned(AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValueAssigned(NodeContext nodeContext, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {theValue});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {nodeContext, theValue});
         }
         
-        public static AbstractShaderNode AbstractAssignNode(AbstractShaderNode theTarget, AbstractShaderNode theSource)
+        public static AbstractShaderNode AbstractOutput(NodeContext nodeContext, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
         {
-            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {theTarget, theSource});
+            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {nodeContext, null});
+            var resultType = result.GetType();
+            var method = resultType.GetMethod("SetInputsAbstract");
+            method.Invoke(result, new object[]{ theComputation, theOutput});
+            return result;
         }
         
-        public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractAssignNode(NodeContext nodeContext, AbstractShaderNode theTarget, AbstractShaderNode theSource)
+        {
+            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {nodeContext, theTarget, theSource});
+        }
+        
+        public static AbstractShaderNode AbstractConstant(NodeContext nodeContext, AbstractShaderNode theGpuValue, float theValue)
         {
             var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
-            return ConstantHelper.AbstractFromFloat(dataType[0], theValue);
+            return ConstantHelper.AbstractFromFloat(nodeContext, dataType[0], theValue);
         }
     }
     
@@ -250,22 +260,22 @@ namespace Fuse
             theInputs.AddRange(theGpuValue.InputList());
         }
         
-        public static Dictionary<string, List<TResource>> ResourcesForTreeBreadthFirst<TResource>(AbstractShaderNode theNode)
+        public static Dictionary<string, List<TProperty>> PropertiesForTreeBreadthFirst<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new Dictionary<string, List<TResource>>();
+            var result = new Dictionary<string, List<TProperty>>();
             Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
             {
                 if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TResource>();
-                    var tResources = values.ToList();
-                    if (tResources.IsEmpty()) return;
+                    var values = kv.Value.OfType<TProperty>();
+                    var tProperties = values.ToList();
+                    if (tProperties.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
-                        result[kv.Key] = new List<TResource>();
+                        result[kv.Key] = new List<TProperty>();
                     }
-                    tResources.ForEach(v => result[kv.Key].Add(v));
+                    tProperties.ForEach(v => result[kv.Key].Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _);
@@ -274,40 +284,40 @@ namespace Fuse
         
         
         
-        public static List<TResource> ResourcesForTreeBreadthFirstList<TResource>(AbstractShaderNode theNode)
+        public static List<TProperty> PropertiesForTreeBreadthFirstList<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new List<TResource>();
+            var result = new List<TProperty>();
             Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
             {
                 if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TResource>();
-                    var tResources = values as TResource[] ?? values.ToArray();
-                    if (tResources.IsEmpty()) return;
-                    tResources.ForEach(v => result.Add(v));
+                    var values = kv.Value.OfType<TProperty>();
+                    var tProperties = values as TProperty[] ?? values.ToArray();
+                    if (tProperties.IsEmpty()) return;
+                    tProperties.ForEach(v => result.Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _);
             return result;
         }
         
-        public static Dictionary<string, List<TResource>> ResourcesForTree<TResource>(AbstractShaderNode theNode)
+        public static Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new Dictionary<string, List<TResource>>();
+            var result = new Dictionary<string, List<TProperty>>();
             Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
             {
                 if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TResource>();
-                    var tResources = values as TResource[] ?? values.ToArray();
-                    if (tResources.IsEmpty()) return;
+                    var values = kv.Value.OfType<TProperty>();
+                    var tProperties = values as TProperty[] ?? values.ToArray();
+                    if (tProperties.IsEmpty()) return;
                     if (!result.ContainsKey(kv.Key))
                     {
-                        result[kv.Key] = new List<TResource>();
+                        result[kv.Key] = new List<TProperty>();
                     }
-                    tResources.ForEach(v => result[kv.Key].Add(v));
+                    tProperties.ForEach(v => result[kv.Key].Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);
@@ -316,18 +326,18 @@ namespace Fuse
         
         
         
-        public static List<TResource> ResourcesForTreeList<TResource>(AbstractShaderNode theNode)
+        public static List<TProperty> PropertiesForTreeList<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new List<TResource>();
+            var result = new List<TProperty>();
             Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
             {
                 if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Resources.ForEach(kv =>
+                tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TResource>();
-                    var tResources = values as TResource[] ?? values.ToArray();
-                    if (tResources.IsEmpty()) return;
-                    tResources.ForEach(v => result.Add(v));
+                    var values = kv.Value.OfType<TProperty>();
+                    var tProperties = values as TProperty[] ?? values.ToArray();
+                    if (tProperties.IsEmpty()) return;
+                    tProperties.ForEach(v => result.Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);
@@ -344,6 +354,29 @@ namespace Fuse
             return result;
         }
 
-        public static int id=0;
+        public static int Id2=0;
+
+        public static int GetAndIncIDCount3()
+        {
+            return Id2++;
+        }
+        
+        public static uint GetHashCode(NodeContext nodeContext)
+        {
+            var myHashCode = new HashCode();
+            foreach (var p in nodeContext.Path.Stack)
+            {
+                myHashCode.Add(p.ElementId);
+            }
+
+            unchecked{
+                return (uint)myHashCode.ToHashCode();
+            }
+        }
+
+        public static NodeContext GetContext(NodeContext nodeContext, int theID)
+        {
+            return nodeContext.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, theID.ToString()));
+        }
     }
 }

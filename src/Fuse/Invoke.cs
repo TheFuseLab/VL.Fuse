@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Stride.Rendering.Materials;
+using VL.Core;
 
 namespace Fuse
 {
@@ -11,8 +12,6 @@ namespace Fuse
     public interface IFunctionParameter : IAtomicComputeNode
     {
         string TypeName();
-
-        string Namer();
 
         void Remap(List<AbstractShaderNode> theParameters);
 
@@ -31,7 +30,7 @@ namespace Fuse
         private readonly string _name;
         private readonly int _id;
 
-        public FunctionParameter(ShaderNode<T> theType, int theId = 0): base("delegate", null)
+        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate",  null)
         {
             
             _name = "arg_" + theId;
@@ -57,11 +56,6 @@ namespace Fuse
             return TypeHelpers.GetGpuTypeForType<T>();
         }
 
-        public string Namer()
-        {
-            return ID;
-        }
-
         protected override string SourceTemplate()
         {
             return "";
@@ -76,30 +70,56 @@ namespace Fuse
          IDictionary<string, string> Functions { get; }
 
 
-         Dictionary<string, IList> ResourcesForTree();
+         Dictionary<string, IList> PropertiesForTree();
 
-         public void SetHashCodes(ShaderGeneratorContext theContext);
+         public void CheckContext(ShaderGeneratorContext theContext);
+    }
+
+    public class InvokeChangeLister<T> : IChangeGraph
+    {
+
+        private Invoke<T> _invoke;
+
+        public InvokeChangeLister(Invoke<T> theInvoke)
+        {
+            _invoke = theInvoke;
+        }
+        public void ChangeGraph(AbstractShaderNode theNode)
+        {
+            _invoke.UpdateInvoke();
+        }
     }
 
     public class Invoke<T> : ShaderNode<T>, IInvoke
     {
-        private readonly AbstractShaderNode _delegate;
-        public Invoke(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId, ShaderNode<T> theDefault = null) : base("Invoke", theDefault)
+        private AbstractShaderNode _delegate;
+        public Invoke(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null) : base(nodeContext, "Invoke", theDefault)
         {
             Functions = new Dictionary<string, string>();
-
-            _delegate = theDelegate;
-
-            SetInputs(theParameters);
             
             Name = theId;
+            
+            ChangeGraphListener.Add(new InvokeChangeLister<T>(this));
         }
 
-        protected override void OnGenerateCode(ShaderGeneratorContext theContext)
+        public void SetInputs(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters)
         {
-            Functions.Clear();
-            _delegate.SetHashCodes(theContext);
+            _delegate?.Outs.Remove(this);
+            _delegate = theDelegate;
+            _delegate?.Outs.Add(this);
+
+            SetInputs(theParameters, false);
+            
+            
             AddFunctionInvoke(FunctionName,_delegate, Ins);
+            
+            CallChangeEvent();
+        }
+
+        public override void CheckContext(ShaderGeneratorContext theContext)
+        {
+            _delegate.CheckContext(theContext);
+            base.CheckContext(theContext);
         }
 
         protected override Dictionary<string,string> CreateTemplateMap ()
@@ -109,9 +129,16 @@ namespace Fuse
             return result;
         }
 
+        public void UpdateInvoke()
+        {
+            AddFunctionInvoke(FunctionName,_delegate, Ins);
+        }
+
         private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate, List<AbstractShaderNode> theParameters)
         {
             if (theDelegate == null) return;
+            Functions.Clear();
+            Property.Clear();
             var delegates = theDelegate.Delegates();
             delegates.ForEach(input => input.Remap(theParameters));
             
@@ -130,9 +157,9 @@ ${functionImplementation}
     }";
             Functions.Add(theFunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             theDelegate.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
-            theDelegate.ResourcesForTree().ForEach(kv =>
+            theDelegate.PropertiesForTree().ForEach(kv =>
             {
-                AddResources(kv.Key, kv.Value );
+                AddProperties(kv.Key, kv.Value );
             });
             
             delegates.ForEach(input => input.DeleteRemap());
@@ -167,8 +194,8 @@ ${functionImplementation}
                 });
         }
 
-        public sealed override IDictionary<string, string> Functions { get; }
-        public string FunctionName => Name + HashCode;
+        public sealed override IDictionary<string, string> Functions { get; protected set; }
+        public string FunctionName => Name + "_" + HashCode;
 
     }
 }

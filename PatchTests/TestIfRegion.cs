@@ -9,6 +9,7 @@ using Stride.Rendering.Materials;
 
 namespace PatchTests
 {
+    /*
     public class TestIfRegion
     {
         [Test]
@@ -144,5 +145,5 @@ namespace PatchTests
             
             Console.WriteLine(ifRegion.BuildSourceCode());
         }
-    }
+    }*/
 }

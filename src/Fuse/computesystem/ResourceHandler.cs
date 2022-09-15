@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Stride.Core.Mathematics;
+using VL.Core;
 using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse.ComputeSystem
@@ -12,8 +13,6 @@ namespace Fuse.ComputeSystem
         public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize);
 
         public AbstractResourceBinder CreateBinder(AbstractResource resource, ShaderNode<Int3> index);
-
-        public int Ticket { get; }
     }
 
     public interface IBufferCreator
@@ -23,26 +22,30 @@ namespace Fuse.ComputeSystem
     
     public class BufferResourceHandler : IResourceHandler
     {
-        private int _elementCount;
-
         private Dictionary<string, BufferResource> _resources;
 
         private readonly IBufferCreator _bufferCreator;
 
-        public BufferResourceHandler(IBufferCreator theBufferCreator)
+        public int ThreadGroupSize { get; set; }
+
+        public int ElementCount { get; set; }
+
+        private NodeContext _context;
+
+        private int _subContextId;
+
+        public BufferResourceHandler(NodeContext nodeContext, IBufferCreator theBufferCreator)
         {
+            _context = nodeContext;
             _bufferCreator = theBufferCreator;
-            Ticket = 0;
             ThreadGroupSize = 128;
-            _elementCount = 1000000;
+            ElementCount = 1000000;
             _resources = new Dictionary<string, BufferResource>();
         }
 
-        public int ThreadGroupSize { get; set; }
-
         public AbstractResource CreateResource(string theName)
         {
-            return new BufferResource(theName, _elementCount, _bufferCreator);
+            return new BufferResource(_context, theName, ElementCount, _bufferCreator);
         }
 
         public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize)
@@ -55,23 +58,9 @@ namespace Fuse.ComputeSystem
 
         public AbstractResourceBinder CreateBinder(AbstractResource theResource, ShaderNode<Int3> theIndex)
         {
-            return new BufferResourceBinder((BufferResource)theResource, new GetMember<Int3,int>(theIndex, "x") );
+            var getMember = new GetMember<Int3, int>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            getMember.SetInput("x", theIndex);
+            return new BufferResourceBinder(_context,(BufferResource)theResource, getMember );
         }
-
-        public int ElementCount
-        {
-            get => _elementCount;
-            set
-            {
-                if (value != _elementCount)
-                {
-                    Ticket = ComputeUtil.GenerateTicket();
-                }
-
-                _elementCount = value;
-            }
-        }
-
-        public int Ticket { get; private set; }
     }
 }

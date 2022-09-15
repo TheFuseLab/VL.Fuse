@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
+using VL.Core;
 
 namespace Fuse.compute
 {
@@ -9,7 +10,12 @@ namespace Fuse.compute
         private readonly ShaderNode<Texture> _texture;
         private readonly AbstractShaderNode _index;
         
-        public ComputeTextureGet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, ShaderNode<T> theDefault) : base( "getTextureValue", theDefault)
+        public ComputeTextureGet(
+            NodeContext nodeContext, 
+            ShaderNode<Texture> theTexture, 
+            AbstractShaderNode theIndex, 
+            ShaderNode<T> theDefault
+            ) : base( nodeContext,"getTextureValue",  theDefault)
         {
             _texture = theTexture;
             _index = theIndex;
@@ -33,7 +39,12 @@ namespace Fuse.compute
         private readonly AbstractShaderNode _index;
         private readonly ShaderNode<TIn> _value;
     
-        public ComputeTextureSet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, ShaderNode<TIn> theValue) : base( "setTextureValue")
+        public ComputeTextureSet(
+            NodeContext nodeContext, 
+            ShaderNode<Texture> theTexture, 
+            AbstractShaderNode theIndex, 
+            ShaderNode<TIn> theValue
+            ) : base( nodeContext, "setTextureValue")
         {
             _texture = theTexture;
             _index = theIndex;
@@ -70,7 +81,11 @@ namespace Fuse.compute
         private readonly AbstractShaderNode _index;
         private readonly AbstractShaderNode _value;
     
-        public ComputeTextureAbstractSet(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue) : base( "setTextureValue")
+        public ComputeTextureAbstractSet(
+            NodeContext nodeContext, 
+            ShaderNode<Texture> theTexture, 
+            AbstractShaderNode theIndex,
+            AbstractShaderNode theValue) : base( nodeContext, "setTextureValue")
         {
             _texture = theTexture;
             _index = theIndex;

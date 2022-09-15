@@ -1,18 +1,25 @@
 ﻿using System.Collections.Generic;
+using VL.Core;
 
 namespace Fuse
 {
     public class Negate<T> : ShaderNode<T>
     {
-        private readonly ShaderNode<T> _in;
+        private ShaderNode<T> _in;
 
-        public Negate(ShaderNode<T> theIn) : base("negate")
+        public Negate(NodeContext nodeContext) : base(nodeContext, "negate")
         {
-            _in = theIn ??  ConstantHelper.FromFloat<T>(0);
+            _in = Default;
             
             SetInputs( new List<AbstractShaderNode>{_in});
         }
-        
+
+        public void SetInput(ShaderNode<T> theIn)
+        {
+            _in = theIn ??  Default;
+            
+            SetInputs( new List<AbstractShaderNode>{_in});
+        }
         protected override string SourceTemplate()
         {
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = -${in};", 

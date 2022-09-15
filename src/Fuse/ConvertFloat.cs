@@ -1,17 +1,30 @@
 ﻿using System.Collections.Generic;
 using Stride.Core.Mathematics;
+using VL.Core;
 
 namespace Fuse
 {
     public class Float2Join : ShaderNode<Vector2>
     {
-        private readonly ShaderNode<float> _x;
-        private readonly ShaderNode<float> _y;
+        private ShaderNode<float> _x;
+        private ShaderNode<float> _y;
+        
+        private readonly ShaderNode<float> _default;
 
-        public Float2Join(ShaderNode<float> x, ShaderNode<float> y) : base("float2Join")
+        public Float2Join(NodeContext nodeContext) : base(nodeContext, "float2Join")
         {
-            _x = x ?? new ConstantValue<float>(0);
-            _y = y ?? new ConstantValue<float>(0);
+            _default = new ConstantValue<float>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            
+            _x = _default;
+            _y = _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y});
+        }
+
+        public void SetInputs(ShaderNode<float> x, ShaderNode<float> y)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
@@ -30,16 +43,28 @@ namespace Fuse
     public class Float3Join : ShaderNode<Vector3>
     {
         
-        private readonly ShaderNode<float> _x;
-        private readonly ShaderNode<float> _y;
-        private readonly ShaderNode<float> _z;
+        private ShaderNode<float> _x;
+        private ShaderNode<float> _y;
+        private ShaderNode<float> _z;
+        
+        private readonly ShaderNode<float> _default;
 
-        public Float3Join(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z) : base("Float3Join")
+        public Float3Join(NodeContext nodeContext) : base(nodeContext, "Float3Join")
         {
+            _default = new ConstantValue<float>(ShaderNodesUtil.GetContext(nodeContext,0),0);
             
-            _x = x ?? new ConstantValue<float>(0);
-            _y = y ?? new ConstantValue<float>(0);
-            _z = z ?? new ConstantValue<float>(0);
+            _x = _default;
+            _y = _default;
+            _z = _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
+        }
+
+        public void SetInputs(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
+            _z = z ?? _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
@@ -58,22 +83,34 @@ namespace Fuse
     
     public class Float4Join : ShaderNode<Vector4>
     {
-        private readonly ShaderNode<float> _x;
-        private readonly ShaderNode<float> _y;
-        private readonly ShaderNode<float> _z;
-        private readonly ShaderNode<float> _w;
+        private ShaderNode<float> _x;
+        private ShaderNode<float> _y;
+        private ShaderNode<float> _z;
+        private ShaderNode<float> _w;
+        
+        private readonly ShaderNode<float> _default;
 
-        public Float4Join(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z, ShaderNode<float> w) : base("Float4Join")
+        public Float4Join(NodeContext nodeContext) : base(nodeContext, "Float4Join")
         {
+            _default = new ConstantValue<float>(ShaderNodesUtil.GetContext(nodeContext,0),0);
 
-            _x = x ?? new ConstantValue<float>(0);
-            _y = y ?? new ConstantValue<float>(0);
-            _z = z ?? new ConstantValue<float>(0);
-            _w = w ?? new ConstantValue<float>(1);
+            _x = _default;
+            _y = _default;
+            _z = _default;
+            _w = _default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
 
+        public void SetInputs(ShaderNode<float> x, ShaderNode<float> y, ShaderNode<float> z, ShaderNode<float> w)
+        {
+            _x = x ?? _default;
+            _y = y ?? _default;
+            _z = z ?? _default;
+            _w = w ?? _default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
+        }
 
         protected override string SourceTemplate()
         {
@@ -88,14 +125,25 @@ namespace Fuse
         }
     }
     
-    public class FromFloat<T> : ShaderNode<T> where T : struct
+    public class FromFloat<T> : ShaderNode<T> 
     {
 
-        private readonly ShaderNode<float> _x;
+        private ShaderNode<float> _x;
         
-        public FromFloat(ShaderNode<float> x) : base("fromFloat")
+        private readonly ShaderNode<float> _default;
+        
+        public FromFloat(NodeContext nodeContext, ShaderNode<float> x) : base(nodeContext, "fromFloat")
         {
-            _x = x ?? new ConstantValue<float>(0);
+            _default = new ConstantValue<float>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            
+            _x =_default;
+            
+            SetInputs(new List<AbstractShaderNode>{x});
+        }
+
+        public void SetInput(ShaderNode<float> x)
+        {
+            _x = x ?? _default;
             
             SetInputs(new List<AbstractShaderNode>{x});
         }
@@ -119,14 +167,69 @@ namespace Fuse
         }
     }
     
+    public class FloatJoinAdaptive<TIn, TExtension, TOut> : ShaderNode<TOut> where TOut : struct
+    {
+
+        private ShaderNode<TIn> _input;
+        private ShaderNode<TExtension> _extension;
+
+        private readonly ShaderNode<TIn> _defaultIn;
+        private readonly ShaderNode<TExtension> _defaultExtension;
+        
+        public FloatJoinAdaptive(NodeContext nodeContext) : base(nodeContext, "join")
+        {
+            _input = _defaultIn = ConstantHelper.FromFloat<TIn>(ShaderNodesUtil.GetContext(nodeContext, 0), 0);
+            _extension = _defaultExtension = ConstantHelper.FromFloat<TExtension>(ShaderNodesUtil.GetContext(nodeContext, 1), 0);
+
+            SetInputs(new List<AbstractShaderNode>{_input, _extension});
+        }
+
+        public void SetInput(ShaderNode<TIn> theInput,ShaderNode<TExtension> theExtension)
+        {
+            _input = theInput ?? _defaultIn;
+            _extension = theExtension ?? _defaultExtension;
+            
+            SetInputs(new List<AbstractShaderNode>{_input, _extension});
+        }
+
+        protected override string SourceTemplate()
+        {
+            var shader = TypeHelpers.GetDimension(typeof(TOut)) switch
+            {
+                2 => "float2 ${resultName} = float2(${input},${extension});",
+                3 => "float3 ${resultName} = float3(${input},${extension});",
+                4 => "float4 ${resultName} = float4(${input},${extension});",
+                _ => ""
+            };
+           
+
+            return ShaderNodesUtil.Evaluate(shader, 
+                new Dictionary<string, string>
+                {
+                    {"input", _input.ID},
+                    {"extension", _extension.ID}
+                });
+        }
+    }
+    
     public class ToFloat4 : ShaderNode<Vector4>
     {
 
-        private readonly AbstractShaderNode _x;
+        private AbstractShaderNode _x;
 
-        public ToFloat4(AbstractShaderNode x) : base("ToFloat")
+        private readonly ShaderNode<float> _default;
+
+        public ToFloat4(NodeContext nodeContext, AbstractShaderNode x) : base(nodeContext, "ToFloat")
         {
-            _x = x ?? new ConstantValue<float>(0);
+            _default = new ConstantValue<float>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            _x = x ?? _default;
+            
+            SetInputs(new List<AbstractShaderNode>{x});
+        }
+
+        public void SetInput(AbstractShaderNode x)
+        {
+            _x = x ?? _default;
             
             SetInputs(new List<AbstractShaderNode>{x});
         }

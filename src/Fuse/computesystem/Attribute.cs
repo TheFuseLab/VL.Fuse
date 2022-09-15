@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using VL.Core;
 
 namespace Fuse.ComputeSystem
 {
@@ -40,13 +41,21 @@ namespace Fuse.ComputeSystem
                 return result;
         } }
 
-        public Attribute(string theGroup, string theName, bool theIsBuffered, bool theIsDoubleBuffered) : base(theName)
+        public Attribute(NodeContext nodeContext, string theGroup, string theName, bool theIsBuffered, bool theIsDoubleBuffered) : base(nodeContext, theName)
         {
             IsBuffered = theIsBuffered;
             IsDoubleBuffered = theIsDoubleBuffered;
-            ShaderNode = new ShaderNode<T>(theName);
+            ShaderNode = new ShaderNode<T>(ShaderNodesUtil.GetContext(nodeContext,1),theName);
             
-            AddResource(theGroup, this);
+            AddProperty(theGroup, this);
+        }
+
+        public override ShaderNode<T> Input { get => _input;
+            set
+            {
+                _input = value ?? Default;
+                SetInputs(new List<AbstractShaderNode>{Input}, false);
+            }
         }
 
         public void SetAbstractInput(AbstractShaderNode theNode)

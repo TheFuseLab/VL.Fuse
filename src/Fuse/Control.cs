@@ -4,18 +4,23 @@ using System.Linq;
 using System.Text;
 using Fuse.compute;
 using Stride.Core.Extensions;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
     public class SwitchBoolean<T> : ShaderNode<T>
     {
-        private readonly ShaderNode<bool> _inCheck;
-        private readonly ShaderNode<T> _inFalse;
-        private readonly ShaderNode<T> _inTrue;
-        public SwitchBoolean(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base( "expression", theDefault)
+        private ShaderNode<bool> _inCheck;
+        private ShaderNode<T> _inFalse;
+        private ShaderNode<T> _inTrue;
+        public SwitchBoolean(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base(nodeContext, "expression", theDefault)
         {
+            
+        }
 
+        public void SetInputs(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue)
+        {
             var ins = new List<AbstractShaderNode>(){inCheck};
             _inCheck = inCheck;
             _inFalse = inFalse;
@@ -49,10 +54,16 @@ ${cases}
     }
         ";
 
-        private readonly ShaderNode<T> _default;
-        private readonly List<ShaderNode<T>> _cases;
-        private readonly ShaderNode<int> _check;
-        public SwitchNumeric(ShaderNode<int> theCheck, IEnumerable<ShaderNode<T>> inputs, ShaderNode<T> theDefault) : base("numericSwitch")
+        private ShaderNode<T> _default;
+        private List<ShaderNode<T>> _cases;
+        private ShaderNode<int> _check;
+        public SwitchNumeric(NodeContext nodeContext) : base(nodeContext, "numericSwitch")
+        {
+            
+            
+        }
+
+        public void SetInputs(ShaderNode<int> theCheck, IEnumerable<ShaderNode<T>> inputs, ShaderNode<T> theDefault)
         {
             _check = theCheck;
             _cases = inputs.ToList();
@@ -68,7 +79,6 @@ ${cases}
                 {"check", theCheck.ID}
             };
             SetInputs(myIns);
-            
         }
         
         private static string BuildCases(IEnumerable<AbstractShaderNode> inputs, ShaderNode<T> theDefault)
@@ -107,11 +117,20 @@ ${cases}
     
     public class Not: ShaderNode<bool>
     {
-        private readonly ShaderNode<bool> _in;
+        private ShaderNode<bool> _in;
 
-        public Not(ShaderNode<bool> theIn) : base("not")
+        public Not(NodeContext nodeContext) : base(nodeContext, "not")
         {
-            _in = theIn ??  new ConstantValue<bool>(false);
+            nodeContext.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, "foo"));
+            
+            _in = Default;
+            
+            SetInputs( new List<AbstractShaderNode>{_in});
+        }
+
+        public void SetInput(ShaderNode<bool> theIn)
+        {
+            _in = theIn ?? Default;
             
             SetInputs( new List<AbstractShaderNode>{_in});
         }
@@ -131,7 +150,7 @@ ${cases}
 
         private string _keyword;
 
-        protected SimpleKeyword(string theKeyword) : base( "void")
+        protected SimpleKeyword(NodeContext nodeContext, string theKeyword) : base( nodeContext, "void")
         {
             _keyword = theKeyword;
             SetInputs(new List<AbstractShaderNode>{null});
@@ -156,7 +175,7 @@ ${cases}
     public class EmptyVoid : SimpleKeyword
     {
     
-        public EmptyVoid() : base( "")
+        public EmptyVoid(NodeContext nodeContext) : base( nodeContext, "")
         {
         }
     }
@@ -164,7 +183,7 @@ ${cases}
     public class ReturnVoid : SimpleKeyword
     {
     
-        public ReturnVoid() : base( "return;")
+        public ReturnVoid(NodeContext nodeContext) : base( nodeContext, "return;")
         {
         }
     }
@@ -172,7 +191,7 @@ ${cases}
     public class BreakVoid : SimpleKeyword
     {
     
-        public BreakVoid() : base( "break;")
+        public BreakVoid(NodeContext nodeContext) : base( nodeContext, "break;")
         {
         }
     }
@@ -180,7 +199,7 @@ ${cases}
     public class ContinueVoid : SimpleKeyword
     {
     
-        public ContinueVoid() : base( "continue;")
+        public ContinueVoid(NodeContext nodeContext) : base( nodeContext, "continue;")
         {
         }
     }

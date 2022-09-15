@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VL.Core;
 
 namespace Fuse
 {
@@ -8,14 +9,15 @@ namespace Fuse
     {
 
         private readonly string _operator;
-        public Operator(IEnumerable<ShaderNode<TIn>> theInputs, ShaderNode<TOut> theDefault, string theOperator) : base("result", theDefault)
+        public Operator(NodeContext nodeContext, ShaderNode<TOut> theDefault, string theOperator) : base(nodeContext,"result",  theDefault)
         {
             _operator = theOperator;
-            SetInputs(theInputs);
         }
 
-        public Operator(ShaderNode<TIn> input0, ShaderNode<TIn> input1, ShaderNode<TOut> theDefault, string theOperator) :
-            this(new List<ShaderNode<TIn>> {input0, input1}, theDefault, theOperator){
+        public void SetInput(IEnumerable<ShaderNode<TIn>> theInputs)
+        {
+            
+            SetInputs(theInputs);
         }
 
         protected override string SourceTemplate()

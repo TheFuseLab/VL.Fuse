@@ -8,6 +8,7 @@ namespace PatchTests
 {
     public static class TestDelegate
     {
+        /*
         [Test]
         public static void TestDelegateFunction()
         {
@@ -178,6 +179,6 @@ float ${signature}(float2 p)
             
             Console.WriteLine(fbmFunction.FunctionMap());
             Console.WriteLine(fbmFunction.BuildSourceCode());
-        }
+        }*/
     }
 }

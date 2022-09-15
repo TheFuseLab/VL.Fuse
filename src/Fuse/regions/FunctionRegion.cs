@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Linq;
+using VL.Core;
 
 namespace Fuse.regions
 {
@@ -10,7 +11,7 @@ namespace Fuse.regions
     { 
         public sealed class RegionFunctionParameter<T> : ShaderNode<T> {
 
-            public RegionFunctionParameter(ShaderNode<T> theType, int theId = 0): base("argument", null)
+            public RegionFunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "argument", null)
             {
                 /*
                 Output = new FunctionParameterValue<T>("val" + GetHashCode())
@@ -39,30 +40,32 @@ namespace Fuse.regions
     
     public sealed class RegionFunction<T>: AbstractFunction<T>
     {
-
+        private string _name;
         private string _signature;
         
-        public RegionFunction(
-            IEnumerable<AbstractShaderNode> theArguments, 
-            AbstractShaderNode theFunction,
+        public RegionFunction(NodeContext nodeContext,
             string theName,
-            ShaderNode<T> theDefault, 
-            IEnumerable<IInvoke> theDelegates = null, 
-            IEnumerable<string> theMixins = null, 
-            IDictionary<string,string> theFunctionValues = null,
+            ShaderNode<T> theDefault,
+            IEnumerable<string> theMixins = null,
+            IDictionary<string, string> theFunctionValues = null,
             bool theIsGroupable = false,
-            IEnumerable<InputModifier> theModifiers = null
-        ) : base("patchedFunction", theDefault, theIsGroupable)
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext,"patchedFunction", theModifiers, theDefault,  theIsGroupable)
         {
-            if (theMixins != null)
-            {
-                var mixinList = new ArrayList();
-                theMixins.ForEach(m => mixinList.Add(m));
-                AddResources(Mixins, mixinList);
-            }
+            _name = theName;
+            if (theMixins == null) return;
+            var mixinList = new ArrayList();
+            theMixins.ForEach(m => mixinList.Add(m));
+            AddProperties(Mixins, mixinList);
+
+
+        }
+
+        public void SetArguments(AbstractShaderNode theFunction, IEnumerable<AbstractShaderNode> theArguments,
+            IEnumerable<IInvoke> theDelegates = null)
+        {
             Functions = new Dictionary<string, string>();
             
-            _signature = theName + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
+            _signature = _name + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
 
             
             
@@ -86,9 +89,8 @@ ${functionImplementation}
 
             Functions.Add(_signature, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             SetInputs(inputs);
-            
         }
-        
+
         protected override Dictionary<string,string> CreateTemplateMap ()
         {
             var result = base.CreateTemplateMap();
@@ -104,9 +106,9 @@ ${functionImplementation}
                 
                 theFunctionValueMap.Add(delegateNode.Name, delegateNode.FunctionName);
                 delegateNode.Functions.ForEach(kv => Functions[kv.Key] = kv.Value);
-                delegateNode.ResourcesForTree().ForEach(kv =>
+                delegateNode.PropertiesForTree().ForEach(kv =>
                 {
-                    AddResources(kv.Key, kv.Value);
+                    AddProperties(kv.Key, kv.Value);
                 });
             });
         }
@@ -134,7 +136,7 @@ ${functionImplementation}
             return stringBuilder.ToString();
         }
         
-        public override IDictionary<string, string> Functions { get; }
+        public override IDictionary<string, string> Functions { get; protected set; }
     }
     }
 }

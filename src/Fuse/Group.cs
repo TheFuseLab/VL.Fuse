@@ -1,22 +1,19 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
+using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
     public class Group: ShaderNode<GpuVoid>, IComputeVoid
     {
-        public Group(IEnumerable<AbstractShaderNode> theInputs, string name = "Group") : base(name)
-        { 
-            
-            var abstractGpuValues = new List<AbstractShaderNode>();
-            theInputs.ForEach(input =>
-            {
-                if (input == null) return;
-                abstractGpuValues.Add(input);
-            });
-            
-            SetInputs(abstractGpuValues);
+        public Group(NodeContext nodeContext, string name = "Group2") : base(nodeContext, name)
+        {
+        }
+
+        public void SetInput(IEnumerable<AbstractShaderNode> theInputs, bool theCallChangeEvent = true)
+        {
+            SetInputs(theInputs, theCallChangeEvent);
         }
 
         protected override string SourceTemplate()
