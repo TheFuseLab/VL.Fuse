@@ -5,35 +5,42 @@ using Fuse.ShaderFX;
 using NUnit.Framework;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
+using VL.Core;
 
 namespace PatchTests
 {
     public static class TestGraph
     {
-        /*
+        
         [Test]
         public static void TestInputs()
         {
             
-            var ShaderNode0 = new ValueInput<float>();
+            var ShaderNode0 = new ValueInput<float>(null);
             Console.WriteLine(ShaderNode0.DeclarationList());
-            var ShaderNode1 = new ValueInput<float>();
+            var ShaderNode0b = new ValueInput<float>(null);
+            Console.WriteLine(ShaderNode0.DeclarationList());
+            var ShaderNode1 = new ValueInput<float>(null);
             Console.WriteLine(ShaderNode1.DeclarationList());
 
-            var add = new Operator<float, float>(new List<ShaderNode<float>>
-                {ShaderNode0, ShaderNode1, ShaderNode0},new ConstantValue<float>(0),"+");
-
-            var ShaderNode2 = new ValueInput<float>();
-            var add2 = new Operator<float,float>(new List<ShaderNode<float>> {add, ShaderNode2},new ConstantValue<float>(0),"+");
-
-            var sin = new IntrinsicFunction<float>(
-                new List<AbstractShaderNode> {add, ShaderNode2},
-                "sin", new ConstantValue<float>(0));
+            var add = new Operator<float, float>(null,new ConstantValue<float>(null, 0),"+");
+            add.SetInput(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1, ShaderNode0});
+            var ShaderNode2 = new ValueInput<float>(null);
+            var add2 = new Operator<float,float>(null, new ConstantValue<float>(null, 0),"+");
+            add2.SetInput(new List<ShaderNode<float>> {add, ShaderNode2});
+            var sin = new IntrinsicFunction<float>(null,"sin", new ConstantValue<float>(null, 0f));
+            sin.SetArguments(new List<AbstractShaderNode> {add, ShaderNode2});
+            
+            var myDeclareValue = (DeclareValue<float>)AbstractCreation.AbstractDeclareValue(null, 0, ShaderNode0);
+            ShaderNodesUtil.ReplaceNode(ShaderNode0, myDeclareValue);
+            myDeclareValue.SetInput(ShaderNode0);
+            
             Console.WriteLine(sin.BuildSourceCode());
+            Console.WriteLine(sin.SourceCode);
             Console.WriteLine(sin.InputList().Count);
             sin.InputList().ForEach(Console.WriteLine);
         }
-
+/*
         [Test]
         public static void TestDeclarations()
         {

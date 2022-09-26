@@ -16,8 +16,8 @@ namespace PatchTests
         [Test]
         public static void TestCompute01()
         {
-            var position = new Attribute<Vector3>(_context,"particle", "position", true, false);
-            var velocity = new Attribute<Vector3>(_context,"particle", "velocity", true, false);
+            var position = new Attribute<Vector3>(_context,"particle", "position", AttributeType.StructuredBuffer);
+            var velocity = new Attribute<Vector3>(_context,"particle", "velocity", AttributeType.StructuredBuffer);
 
             var add = new Operator<Vector3, Vector3>(_context,null, "+");
             add.SetInput(new List<ShaderNode<Vector3>>{position, velocity});

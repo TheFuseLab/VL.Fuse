@@ -34,11 +34,9 @@ namespace Fuse.ComputeSystem
 
         public bool Enabled { get; set; }
         public virtual IResourceHandler ResourceHandler { get; set; }
-        public Dictionary<string, List<IAttribute>> AttributeGroups { get; protected set; }
+        public abstract Dictionary<string, List<IAttribute>> AttributeGroups { get;  }
 
         public abstract void Build();
-
-        
     }
 
     public class ComputeStage : AbstractComputeStage
@@ -64,40 +62,41 @@ namespace Fuse.ComputeSystem
         public ComputeStage(NodeContext nodeContext) : base(nodeContext)
         {
             _subContextId = 1;
-            AttributeGroups = new Dictionary<string, List<IAttribute>>();
         }
 
+        public override Dictionary<string, List<IAttribute>> AttributeGroups
+        {
+            get
+            {
+                var result = new Dictionary<string, List<IAttribute>>();
+
+                foreach (var attributeGroup in _node.PropertiesForTree<IAttribute>())
+                {
+                    if (!result.ContainsKey(attributeGroup.Key))
+                    {
+                        result[attributeGroup.Key] = new List<IAttribute>();
+                    }
+
+                    var referenceList = result[attributeGroup.Key];
+                    foreach (var attribute in attributeGroup.Value)
+                    {
+                        if (!referenceList.Contains(attribute))
+                        {
+                            referenceList.Add(attribute);
+                        }
+                    }
+                }
+
+                return result;
+            }
+        }
+        
         public override void SetComputeInput(ShaderNode<GpuVoid> theNode)
         {
             if (theNode != null && theNode.Equals(_node)) return;
 
             _node = theNode;
             
-            AttributeGroups.Clear();
-
-            if (_node == null)
-            {
-                CallChangeEvent();
-                return;
-            }
-            
-            foreach (var attributeGroup in _node.PropertiesForTree<IAttribute>())
-            {
-                if (!AttributeGroups.ContainsKey(attributeGroup.Key))
-                {
-                    AttributeGroups[attributeGroup.Key] = new List<IAttribute>();
-                }
-
-                var referenceList = AttributeGroups[attributeGroup.Key];
-                foreach (var attribute in attributeGroup.Value)
-                {
-                    if (!referenceList.Contains(attribute))
-                    {
-                        referenceList.Add(attribute);
-                    }
-                }
-            }
-           
             CallChangeEvent();
         }
 

@@ -33,6 +33,7 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
+            if(_target == null || _source == null)return "";
             return ShaderNodesUtil.Evaluate("${target} = ${source};", new Dictionary<string, string>()
             {
                 {"target", _target.ID}, 

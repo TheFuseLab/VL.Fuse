@@ -60,7 +60,7 @@ namespace Fuse.ComputeSystem
         {
             var getMember = new GetMember<Int3, int>(ShaderNodesUtil.GetContext(_context,_subContextId++));
             getMember.SetInput("x", theIndex);
-            return new BufferResourceBinder(_context,(BufferResource)theResource, getMember );
+            return new BufferResourceBinder(ShaderNodesUtil.GetContext(_context,_subContextId++),(BufferResource)theResource, getMember );
         }
     }
 }

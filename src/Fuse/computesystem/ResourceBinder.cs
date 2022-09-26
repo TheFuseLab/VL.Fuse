@@ -55,13 +55,19 @@ namespace Fuse.ComputeSystem
             
             theResource.Attributes.Values.ForEach(attribute =>
             {
-                var declareValue = AbstractCreation.AbstractDeclareValue(ShaderNodesUtil.GetContext(_context,_subContextId++), attribute.ShaderNode);
-                var getMember = AbstractCreation.AbstractGetMember(ShaderNodesUtil.GetContext(_context,_subContextId++), _bufferGet, attribute.ShaderNode);
+                var declareValue = AbstractCreation.AbstractDeclareValue(_context,_subContextId++, attribute.ShaderNode);
+                var getMember = AbstractCreation.AbstractGetMember(_context,_subContextId++, _bufferGet, attribute.ShaderNode);
 
-                Attributes[attribute.Name] = attribute.IsBuffered ? getMember : declareValue;
+                var isBuffered = attribute.AttributeType == AttributeType.StructuredBuffer;
+                Attributes[attribute.Name] = isBuffered ? getMember : declareValue;
 
-                if (attribute.IsBuffered) _bufferedAttributes[attribute.Name] = getMember;
+                if (isBuffered) _bufferedAttributes[attribute.Name] = getMember;
             });
+        }
+
+        public void Update()
+        {
+            
         }
 
         public DynamicStruct Struct()

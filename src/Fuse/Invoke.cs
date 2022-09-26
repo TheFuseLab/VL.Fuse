@@ -93,7 +93,7 @@ namespace Fuse
     public class Invoke<T> : ShaderNode<T>, IInvoke
     {
         private AbstractShaderNode _delegate;
-        public Invoke(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null) : base(nodeContext, "Invoke", theDefault)
+        public Invoke(NodeContext nodeContext, string theId = "Invoke", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
             
@@ -118,7 +118,7 @@ namespace Fuse
 
         public override void CheckContext(ShaderGeneratorContext theContext)
         {
-            _delegate.CheckContext(theContext);
+            _delegate?.CheckContext(theContext);
             base.CheckContext(theContext);
         }
 

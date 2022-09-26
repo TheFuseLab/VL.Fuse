@@ -14,7 +14,7 @@ namespace Fuse.ComputeSystem
         
         private int _subContextId;
 
-        private NodeContext _context;
+        private readonly NodeContext _context;
 
         public GpuResourceManager(
             NodeContext nodeContext,

@@ -9,40 +9,44 @@ namespace Fuse.compute
     
     public class DynamicStruct: ShaderNode<GpuStruct>
     {
-        private readonly string _name;
+        private string _name;
         
-        public DynamicStruct(NodeContext nodeContext, IEnumerable<AbstractShaderNode> theInputs, string theName) : base(nodeContext, "GPUAttributeStruct")
+        public DynamicStruct(NodeContext nodeContext) : base(nodeContext, "GPUAttributeStruct")
         {
-            SetInputs(theInputs);
+            
+        }
 
+        public void SetInput(IEnumerable<AbstractShaderNode> theInputs, string theName)
+        {
             _name = theName;
             
             const string shaderCode = 
-@"    struct ${structName}{
+                @"    struct ${structName}{
 ${structMembers}
     };" ;
             
             var myStride = 0;
             var call = new StringBuilder();
-            Ins.ForEach(input =>
+            theInputs.ForEach(input =>
             {
                 call.Append("        "+TypeHelpers.GetGpuTypeByValue(input) + " " + input.Name+";"+Environment.NewLine);
                 myStride += TypeHelpers.GetSizeInBytes(input);
 
                 
             });
-            var _struct = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            var structString = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"structName", theName},
                 {"structMembers", call.ToString()}
             });
             
-            AddProperty(Structs, _struct);
+            AddProperty(Structs, structString);
             Stride = myStride;
 
             TypeOverride = theName;
+            
+            SetInputs(theInputs);
         }
-        
 
         protected override string SourceTemplate()
         {
@@ -58,6 +62,6 @@ ${structMembers}
             }
         }
 
-        public int Stride { get; }
+        public int Stride { get; private set; }
     }
 }

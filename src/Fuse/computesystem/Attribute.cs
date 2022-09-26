@@ -7,8 +7,7 @@ namespace Fuse.ComputeSystem
     {
         public string Name { get; }
         
-        public bool IsBuffered { get; }
-        public bool IsDoubleBuffered { get; }
+        public AttributeType AttributeType { get; }
         
         public AbstractShaderNode ShaderNode { get; }
         
@@ -16,12 +15,20 @@ namespace Fuse.ComputeSystem
 
         public List<string> Description { get; }
     }
+
+    public enum AttributeType
+    {
+        Temporary,
+        StructuredBuffer,
+        PrimitiveBuffer,
+        Texture,
+        DoubleBufferedTexture
+    }
     
     public class Attribute<T> : PassThroughNode<T>, IAttribute
     {
         
-        public bool IsBuffered { get; }
-        public bool IsDoubleBuffered { get; }
+        public AttributeType AttributeType { get; }
         
         public AbstractShaderNode ShaderNode { get; }
         public List<string> Description {
@@ -41,10 +48,9 @@ namespace Fuse.ComputeSystem
                 return result;
         } }
 
-        public Attribute(NodeContext nodeContext, string theGroup, string theName, bool theIsBuffered, bool theIsDoubleBuffered) : base(nodeContext, theName)
+        public Attribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theName)
         {
-            IsBuffered = theIsBuffered;
-            IsDoubleBuffered = theIsDoubleBuffered;
+            AttributeType = theType;
             ShaderNode = new ShaderNode<T>(ShaderNodesUtil.GetContext(nodeContext,1),theName);
             
             AddProperty(theGroup, this);

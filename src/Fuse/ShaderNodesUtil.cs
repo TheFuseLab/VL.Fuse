@@ -4,14 +4,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using Fuse.Common.Noise;
-using Fuse.compute;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
-using Stride.Engine;
 using Stride.Graphics;
-using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
@@ -19,7 +15,6 @@ using VL.Core;
 using VL.Lib.Collections;
 using VL.Stride;
 using VL.Stride.Rendering.ComputeEffect;
-using VL.Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
 using ServiceRegistry = VL.Core.ServiceRegistry;
 
@@ -60,7 +55,7 @@ namespace Fuse
             return Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
         }
         
-        public static AbstractShaderNode AbstractGetMember<T>(NodeContext nodeContext, ShaderNode<T> theStruct, AbstractShaderNode theMember)
+        public static AbstractShaderNode AbstractGetMember<T>(NodeContext nodeContext, int theContextId, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
            // return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theStruct, theMember.Name, null});
             
@@ -73,18 +68,18 @@ namespace Fuse
             }
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
             var getType = getMemberBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, nodeContext, theStruct, theMember.Name, null) as AbstractShaderNode;
+            return Activator.CreateInstance(getType, ShaderNodesUtil.GetContext(nodeContext, theContextId), theStruct, theMember.Name, null) as AbstractShaderNode;
             
         }
         
-        public static AbstractShaderNode AbstractComputeTextureGet(NodeContext nodeContext, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractComputeTextureGet(NodeContext nodeContext, int theContextId, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{nodeContext, theTexture, theIndex, null});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId), theTexture, theIndex, null});
         }
         
-        public static AbstractShaderNode AbstractShaderNodePassThrough(NodeContext nodeContext, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractShaderNodePassThrough(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{nodeContext, "pass", theValue});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId), "pass", theValue});
             /*
             var getBaseType = typeof(PassThroughNode<>);
             var nodeType = theValue.GetType().BaseType;
@@ -95,34 +90,39 @@ namespace Fuse
             */
         }
         
-        public static AbstractShaderNode AbstractDeclareValue(NodeContext nodeContext, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValue(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{nodeContext});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId)});
         }
         
-        public static AbstractShaderNode AbstractDeclareValueAssigned(NodeContext nodeContext, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValueAssigned(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {nodeContext, theValue});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), theValue});
+        }
+
+        public static void CallFunction(AbstractShaderNode theNode, string theFunctionName, object[] theArgs)
+        {
+            var resultType = theNode.GetType();
+            var method = resultType.GetMethod(theFunctionName);
+            method?.Invoke(theNode, theArgs);
         }
         
-        public static AbstractShaderNode AbstractOutput(NodeContext nodeContext, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
+        public static AbstractShaderNode AbstractOutput(NodeContext nodeContext, int theContextId, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
         {
-            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {nodeContext, null});
-            var resultType = result.GetType();
-            var method = resultType.GetMethod("SetInputsAbstract");
-            method.Invoke(result, new object[]{ theComputation, theOutput});
+            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), null});
+            CallFunction(result,"SetInputsAbstract",new object[]{ theComputation, theOutput});
             return result;
         }
         
-        public static AbstractShaderNode AbstractAssignNode(NodeContext nodeContext, AbstractShaderNode theTarget, AbstractShaderNode theSource)
+        public static AbstractShaderNode AbstractAssignNode(NodeContext nodeContext, int theContextId, AbstractShaderNode theTarget, AbstractShaderNode theSource)
         {
-            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {nodeContext, theTarget, theSource});
+            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), theTarget, theSource});
         }
         
-        public static AbstractShaderNode AbstractConstant(NodeContext nodeContext, AbstractShaderNode theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractConstant(NodeContext nodeContext, int theContextId, AbstractShaderNode theGpuValue, float theValue)
         {
             var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
-            return ConstantHelper.AbstractFromFloat(nodeContext, dataType[0], theValue);
+            return ConstantHelper.AbstractFromFloat(ShaderNodesUtil.GetContext(nodeContext, theContextId), dataType[0], theValue);
         }
     }
     
@@ -216,8 +216,6 @@ namespace Fuse
             {
                 // ignored
             }
-
-            ;
         }
 
         // ReSharper disable once UnusedMember.Global
@@ -364,11 +362,13 @@ namespace Fuse
         public static uint GetHashCode(NodeContext nodeContext)
         {
             var myHashCode = new HashCode();
+
+            if (nodeContext == null) return (uint) myHashCode.ToHashCode();
+            
             foreach (var p in nodeContext.Path.Stack)
             {
                 myHashCode.Add(p.ElementId);
             }
-
             unchecked{
                 return (uint)myHashCode.ToHashCode();
             }
@@ -376,7 +376,24 @@ namespace Fuse
 
         public static NodeContext GetContext(NodeContext nodeContext, int theID)
         {
-            return nodeContext.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, theID.ToString()));
+            return nodeContext?.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, theID.ToString()));
+        }
+
+        public static void ReplaceNode(AbstractShaderNode theOrigin, AbstractShaderNode theReplacement)
+        {
+            var myConnectedNodes = new List<AbstractShaderNode>(theOrigin.Outs);
+
+            foreach (var myConnectedNode in myConnectedNodes)
+            {
+                for (var i = 0; i < myConnectedNode.Ins.Count; i++)
+                {
+                    if (myConnectedNode.Ins[i] != theOrigin) continue;
+                    
+                    theOrigin.Outs.Remove(myConnectedNode);
+                    myConnectedNode.Ins[i] = theReplacement;
+                    theReplacement.Outs.Add(myConnectedNode);
+                }
+            }
         }
     }
 }

@@ -22,6 +22,12 @@ namespace Fuse
             _value = theValue ?? Default;
             SetInputs(new List<AbstractShaderNode>{_value});
         }
+        
+        public void SetInputAbstract(AbstractShaderNode theValue)
+        {
+            _value = theValue as ShaderNode<T>;
+            SetInputs(new List<AbstractShaderNode>{theValue});
+        }
 
         protected override string SourceTemplate()
         {

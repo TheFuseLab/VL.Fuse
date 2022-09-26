@@ -70,10 +70,10 @@ namespace Fuse
                     continue;
                 }
 
-                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(ShaderNodesUtil.GetContext(NodeContext,i * 2 + 1),abstractGpuValues[i]);
+                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(NodeContext,i * 2 + 1,abstractGpuValues[i]);
                 myInputs.Add(myDeclareValue);
 
-                var output = AbstractCreation.AbstractOutput(ShaderNodesUtil.GetContext(NodeContext,i * 2 + 2), this, myDeclareValue);
+                var output = AbstractCreation.AbstractOutput(NodeContext,i * 2 + 2, this, myDeclareValue);
                 OptionalOutputs.Add(output);
                 _isGroupable = false;
             }

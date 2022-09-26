@@ -158,7 +158,6 @@ namespace Fuse
 
         protected void SetInputs(IEnumerable<AbstractShaderNode> theIns, bool theCallChangeEvent = true)
         {
-            Console.WriteLine(Name);
             if (Ins.SequenceEqual(theIns)) return;
 
             foreach (var input in Ins)
@@ -233,7 +232,7 @@ namespace Fuse
 
         public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
-            Console.WriteLine(Name);
+            //Console.WriteLine(Name);
             foreach (var child in Children)
             {
                 if (!(child is ShaderTree input))
@@ -247,13 +246,26 @@ namespace Fuse
 
         protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
-            Console.WriteLine(Name);
             BuildChildrenSource(theSourceBuilder, theHashes);
 
-            var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(HashCode))
+            if (!theHashes.Add(HashCode))
             {
+                //Console.Out.WriteLine(">>Skip:" + Name + " : " + HashCode);
+                return;
+            }
+            
+            var source = SourceCode;
+            //Console.Out.WriteLine(Name + " : " + HashCode);
+            if (!string.IsNullOrWhiteSpace(source))
+            {
+                //Console.Out.WriteLine(">>Write:" + Name + " : " + HashCode);
+                //Console.Out.WriteLine("   " + source);
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
+            }
+            else
+            {
+                //Console.Out.WriteLine(">>Null string:" + Name + " : " + HashCode);
+                //Console.Out.WriteLine("   x" + source+"x");
             }
         }
         
@@ -275,7 +287,6 @@ namespace Fuse
             var myHashes = new HashSet<uint>();
 
             BuildSource( myStringBuilder, myHashes);
-            
             return myStringBuilder.ToString();
         }
 

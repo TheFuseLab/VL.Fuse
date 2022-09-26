@@ -59,7 +59,7 @@ namespace Fuse.ComputeSystem
             }
         }
 
-        private void CreateResources()
+        private void UpdateResources()
         {
             var groupsToRemove = new HashSet<string>();
             Resources.ForEach(kv =>
@@ -73,7 +73,7 @@ namespace Fuse.ComputeSystem
                 
             Resources.ForEach(kv =>
             {
-                kv.Value.CreateResources();
+                kv.Value.Update();
             });
         }
         
@@ -82,7 +82,7 @@ namespace Fuse.ComputeSystem
             Resources.ForEach(kv => kv.Value.Reset());
             _groups.Clear();
             AddAttributeGroups(AttributeGroups);
-            CreateResources();
+            UpdateResources();
             BindResources(Resources);
             Build();
         }

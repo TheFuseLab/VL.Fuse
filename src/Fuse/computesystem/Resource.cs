@@ -51,7 +51,7 @@ namespace Fuse.ComputeSystem
             return null;
         }
 
-        public abstract void CreateResources();
+        public abstract void Update();
     }
 
     public class BufferResource : AbstractResource
@@ -80,7 +80,7 @@ namespace Fuse.ComputeSystem
             _changedAttributes = true;
         }
 
-        public override void CreateResources()
+        public override void Update()
         {
             if (!_changedAttributes && Struct != null) return;
 
@@ -91,8 +91,8 @@ namespace Fuse.ComputeSystem
 
                 fields.Add(field.ShaderNode);
             });
-            Struct = new DynamicStruct(ShaderNodesUtil.GetContext(_context,_subcontextIds++), fields, Name);
-            
+            Struct = new DynamicStruct(ShaderNodesUtil.GetContext(_context,_subcontextIds++));
+            Struct.SetInput(fields, Name);
             if (_bufferCreator == null) return;
             
             Buffer?.Dispose();
