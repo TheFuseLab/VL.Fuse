@@ -1,25 +1,26 @@
 ﻿using System.Collections.Generic;
 using Stride.Graphics;
 using VL.Core;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.compute
 {
 
     public class ComputeTextureGet<T> : ShaderNode<T> where T : struct
     {
-        private readonly ShaderNode<Texture> _texture;
-        private readonly AbstractShaderNode _index;
+        private ShaderNode<Texture> _texture;
+        private AbstractShaderNode _index;
         
-        public ComputeTextureGet(
-            NodeContext nodeContext, 
-            ShaderNode<Texture> theTexture, 
-            AbstractShaderNode theIndex, 
-            ShaderNode<T> theDefault
-            ) : base( nodeContext,"getTextureValue",  theDefault)
+        public ComputeTextureGet(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext,"getTextureValue",  theDefault)
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex)
         {
             _texture = theTexture;
             _index = theIndex;
-            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex});
+            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -33,18 +34,21 @@ namespace Fuse.compute
         }
     }
 
-    public class ComputeTextureSet<TIn> : ShaderNode<GpuVoid> where TIn : struct
+    public class ComputeTextureSet<T> : ShaderNode<GpuVoid>, IComputeVoid where T : struct
     {
-        private readonly ShaderNode<Texture> _texture;
-        private readonly AbstractShaderNode _index;
-        private readonly ShaderNode<TIn> _value;
+        private ShaderNode<Texture> _texture;
+        private AbstractShaderNode _index;
+        private ShaderNode<T> _value;
     
-        public ComputeTextureSet(
-            NodeContext nodeContext, 
+        public ComputeTextureSet(NodeContext nodeContext) : base( nodeContext, "setTextureValue")
+        {
+            
+        }
+
+        public void SetInputs(
             ShaderNode<Texture> theTexture, 
             AbstractShaderNode theIndex, 
-            ShaderNode<TIn> theValue
-            ) : base( nodeContext, "setTextureValue")
+            ShaderNode<T> theValue)
         {
             _texture = theTexture;
             _index = theIndex;
@@ -77,21 +81,24 @@ namespace Fuse.compute
     
     public class ComputeTextureAbstractSet : ShaderNode<GpuVoid> 
     {
-        private readonly ShaderNode<Texture> _texture;
-        private readonly AbstractShaderNode _index;
-        private readonly AbstractShaderNode _value;
+        private ShaderNode<Texture> _texture;
+        private AbstractShaderNode _index;
+        private AbstractShaderNode _value;
     
-        public ComputeTextureAbstractSet(
-            NodeContext nodeContext, 
-            ShaderNode<Texture> theTexture, 
+        public ComputeTextureAbstractSet(NodeContext nodeContext) : base( nodeContext, "setTextureValue")
+        {
+           
+        }
+
+        public void SetInputs(ShaderNode<Texture> theTexture, 
             AbstractShaderNode theIndex,
-            AbstractShaderNode theValue) : base( nodeContext, "setTextureValue")
+            AbstractShaderNode theValue)
         {
             _texture = theTexture;
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()

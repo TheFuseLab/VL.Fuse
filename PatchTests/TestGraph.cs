@@ -23,10 +23,10 @@ namespace PatchTests
             var ShaderNode1 = new ValueInput<float>(null);
             Console.WriteLine(ShaderNode1.DeclarationList());
 
-            var add = new Operator<float, float>(null,new ConstantValue<float>(null, 0),"+");
+            var add = new Operator<float>(null,new ConstantValue<float>(null, 0),"+");
             add.SetInput(new List<ShaderNode<float>> {ShaderNode0, ShaderNode1, ShaderNode0});
             var ShaderNode2 = new ValueInput<float>(null);
-            var add2 = new Operator<float,float>(null, new ConstantValue<float>(null, 0),"+");
+            var add2 = new Operator<float>(null, new ConstantValue<float>(null, 0),"+");
             add2.SetInput(new List<ShaderNode<float>> {add, ShaderNode2});
             var sin = new IntrinsicFunction<float>(null,"sin", new ConstantValue<float>(null, 0f));
             sin.SetArguments(new List<AbstractShaderNode> {add, ShaderNode2});

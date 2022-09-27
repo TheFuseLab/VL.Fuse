@@ -17,11 +17,11 @@ namespace PatchTests
             var gpuValue0 = new ValueInput<float>(_context);
             var gpuValue1 = new ValueInput<float>(_context);
             
-            var compare = new Operator<float, bool>(_context,new ConstantValue<bool>(_context,true),">");
+            var compare = new Operator< bool>(_context,new ConstantValue<bool>(_context,true),">");
             compare.SetInput(new List<ShaderNode<float>>{gpuValue0, gpuValue1});
             Console.WriteLine(compare.BuildSourceCode());
             
-            var compareNull = new Operator<float, bool>(_context, new ConstantValue<bool>(_context,true),">");
+            var compareNull = new Operator<bool>(_context, new ConstantValue<bool>(_context,true),">");
             compareNull.SetInput(new List<ShaderNode<float>>{gpuValue0,null});
             Console.WriteLine(compareNull.BuildSourceCode());
         }

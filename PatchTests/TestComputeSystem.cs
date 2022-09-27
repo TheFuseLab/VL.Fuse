@@ -19,7 +19,7 @@ namespace PatchTests
             var position = new Attribute<Vector3>(_context,"particle", "position", AttributeType.StructuredBuffer);
             var velocity = new Attribute<Vector3>(_context,"particle", "velocity", AttributeType.StructuredBuffer);
 
-            var add = new Operator<Vector3, Vector3>(_context,null, "+");
+            var add = new Operator<Vector3>(_context,null, "+");
             add.SetInput(new List<ShaderNode<Vector3>>{position, velocity});
             var assign = new AssignValue<Vector3>(_context);
             assign.SetInputs(position, velocity);

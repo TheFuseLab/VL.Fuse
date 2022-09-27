@@ -5,16 +5,16 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class Operator<TIn, TOut> : ShaderNode<TOut> where TIn : struct where TOut : struct
+    public class Operator<T> : ShaderNode<T> where T : struct 
     {
 
         private readonly string _operator;
-        public Operator(NodeContext nodeContext, ShaderNode<TOut> theDefault, string theOperator) : base(nodeContext,"result",  theDefault)
+        public Operator(NodeContext nodeContext, ShaderNode<T> theDefault, string theOperator) : base(nodeContext,"result",  theDefault)
         {
             _operator = theOperator;
         }
 
-        public void SetInput(IEnumerable<ShaderNode<TIn>> theInputs)
+        public void SetInput(IEnumerable<AbstractShaderNode> theInputs)
         {
             
             SetInputs(theInputs);
