@@ -121,8 +121,6 @@ ${cases}
 
         public Not(NodeContext nodeContext) : base(nodeContext, "not")
         {
-            nodeContext.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, "foo"));
-            
             _in = Default;
             
             SetInputs( new List<AbstractShaderNode>{_in});

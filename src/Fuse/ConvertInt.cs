@@ -13,7 +13,7 @@ namespace Fuse
 
         public Int2Join(NodeContext nodeContext) : base(nodeContext, "int2Join")
         {
-            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            _default = new ConstantValue<int>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
             
             _x = _default;
             _y = _default;
@@ -51,7 +51,7 @@ namespace Fuse
 
         public Int3Join(NodeContext nodeContext) : base(nodeContext, "Int3Join")
         {
-            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            _default = new ConstantValue<int>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
             
             _x = _default;
             _y = _default;
@@ -92,7 +92,7 @@ namespace Fuse
 
         public Int4Join(NodeContext nodeContext) : base(nodeContext, "Int4Join")
         {
-            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            _default = new ConstantValue<int>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
 
             _x = _default;
             _y = _default;
@@ -135,7 +135,7 @@ namespace Fuse
 
         public FromInt(NodeContext nodeContext) : base(nodeContext, "fromInt")
         {
-            _default = new ConstantValue<int>(ShaderNodesUtil.GetContext(nodeContext,0),0);
+            _default = new ConstantValue<int>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
             
             _x = _default;
             

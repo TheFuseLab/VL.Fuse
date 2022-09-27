@@ -30,22 +30,21 @@ namespace Fuse.ComputeSystem
 
         public int ElementCount { get; set; }
 
-        private NodeContext _context;
-
-        private int _subContextId;
+        
+        private NodeSubContextFactory _subContextFactory;
 
         public BufferResourceHandler(NodeContext nodeContext, IBufferCreator theBufferCreator)
         {
-            _context = nodeContext;
             _bufferCreator = theBufferCreator;
             ThreadGroupSize = 128;
             ElementCount = 1000000;
             _resources = new Dictionary<string, BufferResource>();
+            _subContextFactory = new NodeSubContextFactory(nodeContext);
         }
 
         public AbstractResource CreateResource(string theName)
         {
-            return new BufferResource(_context, theName, ElementCount, _bufferCreator);
+            return new BufferResource(_subContextFactory.NextSubContext(), theName, ElementCount, _bufferCreator);
         }
 
         public void GetThreadGroupInfo(out Int3 threadGroupCount, out Int3 threadGroupSize)
@@ -58,9 +57,9 @@ namespace Fuse.ComputeSystem
 
         public AbstractResourceBinder CreateBinder(AbstractResource theResource, ShaderNode<Int3> theIndex)
         {
-            var getMember = new GetMember<Int3, int>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            var getMember = new GetMember<Int3, int>(_subContextFactory.NextSubContext());
             getMember.SetInput("x", theIndex);
-            return new BufferResourceBinder(ShaderNodesUtil.GetContext(_context,_subContextId++),(BufferResource)theResource, getMember );
+            return new BufferResourceBinder(_subContextFactory.NextSubContext(),(BufferResource)theResource, getMember );
         }
     }
 }

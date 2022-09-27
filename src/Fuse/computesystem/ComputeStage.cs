@@ -45,7 +45,7 @@ namespace Fuse.ComputeSystem
 
         private ShaderNode<GpuVoid> _node;
 
-        private int _subContextId;
+        private NodeSubContextFactory _subContextFactory;
 
         private bool _writeAttributes = false;
         public bool WriteAttributes { 
@@ -61,7 +61,8 @@ namespace Fuse.ComputeSystem
 
         public ComputeStage(NodeContext nodeContext) : base(nodeContext)
         {
-            _subContextId = 1;
+            _subContextFactory = new NodeSubContextFactory(nodeContext);
+
         }
 
         public override Dictionary<string, List<IAttribute>> AttributeGroups
@@ -102,7 +103,7 @@ namespace Fuse.ComputeSystem
 
         private AbstractResourceBinder CreateBinder(AbstractResource theResource)
         {
-            return ResourceHandler.CreateBinder(theResource, new Semantic<Int3>(ShaderNodesUtil.GetContext(NodeContext, _subContextId++),"DispatchThreadId"));
+            return ResourceHandler.CreateBinder(theResource, new Semantic<Int3>(_subContextFactory.NextSubContext(),"DispatchThreadId"));
         }
 
         public override void BindResources(Dictionary<string, AbstractResource> theResources)

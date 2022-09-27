@@ -51,7 +51,7 @@ namespace Fuse.ComputeSystem
         public Attribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theName)
         {
             AttributeType = theType;
-            ShaderNode = new ShaderNode<T>(ShaderNodesUtil.GetContext(nodeContext,1),theName);
+            ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             
             AddProperty(theGroup, this);
         }

@@ -55,7 +55,7 @@ namespace Fuse
             return Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
         }
         
-        public static AbstractShaderNode AbstractGetMember<T>(NodeContext nodeContext, int theContextId, ShaderNode<T> theStruct, AbstractShaderNode theMember)
+        public static AbstractShaderNode AbstractGetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
            // return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theStruct, theMember.Name, null});
             
@@ -68,18 +68,18 @@ namespace Fuse
             }
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
             var getType = getMemberBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, ShaderNodesUtil.GetContext(nodeContext, theContextId), theStruct, theMember.Name, null) as AbstractShaderNode;
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null) as AbstractShaderNode;
             
         }
         
-        public static AbstractShaderNode AbstractComputeTextureGet(NodeContext nodeContext, int theContextId, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractComputeTextureGet(NodeSubContextFactory theSubContextFactory, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId), theTexture, theIndex, null});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theSubContextFactory.NextSubContext(), theTexture, theIndex, null});
         }
         
-        public static AbstractShaderNode AbstractShaderNodePassThrough(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractShaderNodePassThrough(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId), "pass", theValue});
+            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theSubContextFactory.NextSubContext(), "pass", theValue});
             /*
             var getBaseType = typeof(PassThroughNode<>);
             var nodeType = theValue.GetType().BaseType;
@@ -90,14 +90,14 @@ namespace Fuse
             */
         }
         
-        public static AbstractShaderNode AbstractDeclareValue(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValue(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{ShaderNodesUtil.GetContext(nodeContext, theContextId)});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{theSubContextFactory.NextSubContext()});
         }
         
-        public static AbstractShaderNode AbstractDeclareValueAssigned(NodeContext nodeContext, int theContextId, AbstractShaderNode theValue)
+        public static AbstractShaderNode AbstractDeclareValueAssigned(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), theValue});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {theSubContextFactory.NextSubContext(), theValue});
         }
 
         public static void CallFunction(AbstractShaderNode theNode, string theFunctionName, object[] theArgs)
@@ -107,22 +107,22 @@ namespace Fuse
             method?.Invoke(theNode, theArgs);
         }
         
-        public static AbstractShaderNode AbstractOutput(NodeContext nodeContext, int theContextId, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
+        public static AbstractShaderNode AbstractOutput(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
         {
-            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), null});
+            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {theSubContextFactory.NextSubContext(), null});
             CallFunction(result,"SetInputsAbstract",new object[]{ theComputation, theOutput});
             return result;
         }
         
-        public static AbstractShaderNode AbstractAssignNode(NodeContext nodeContext, int theContextId, AbstractShaderNode theTarget, AbstractShaderNode theSource)
+        public static AbstractShaderNode AbstractAssignNode(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theTarget, AbstractShaderNode theSource)
         {
-            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {ShaderNodesUtil.GetContext(nodeContext, theContextId), theTarget, theSource});
+            return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {theSubContextFactory.NextSubContext(), theTarget, theSource});
         }
         
-        public static AbstractShaderNode AbstractConstant(NodeContext nodeContext, int theContextId, AbstractShaderNode theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractConstant(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theGpuValue, float theValue)
         {
             var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
-            return ConstantHelper.AbstractFromFloat(ShaderNodesUtil.GetContext(nodeContext, theContextId), dataType[0], theValue);
+            return ConstantHelper.AbstractFromFloat(theSubContextFactory.NextSubContext(), dataType[0], theValue);
         }
     }
     
@@ -374,11 +374,6 @@ namespace Fuse
             }
         }
 
-        public static NodeContext GetContext(NodeContext nodeContext, int theID)
-        {
-            return nodeContext?.CreateSubContext(new UniqueId(nodeContext.AppContext.DocumentId, theID.ToString()));
-        }
-
         public static void ReplaceNode(AbstractShaderNode theOrigin, AbstractShaderNode theReplacement)
         {
             var myConnectedNodes = new List<AbstractShaderNode>(theOrigin.Outs);
@@ -394,6 +389,36 @@ namespace Fuse
                     theReplacement.Outs.Add(myConnectedNode);
                 }
             }
+        }
+    }
+
+    public class NodeSubContextFactory
+    {
+        
+        private int _subContextId = 0;
+
+        private int _startIndex = 0;
+
+        private readonly NodeContext _context;
+
+        public NodeSubContextFactory(NodeContext nodeContext, int theStartIndex = 0)
+        {
+            _context = nodeContext;
+            _startIndex = theStartIndex;
+        }
+
+        public void Reset()
+        {
+            _subContextId = _startIndex;
+        }
+        
+        public NodeContext NextSubContext()
+        {
+            if(_context == null)return NodeContext.Default;
+            
+            var result = _context.CreateSubContext(new UniqueId("Fuse", _subContextId.ToString()));
+            _subContextId++;
+            return result;
         }
     }
 }

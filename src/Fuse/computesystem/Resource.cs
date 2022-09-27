@@ -60,17 +60,14 @@ namespace Fuse.ComputeSystem
         private readonly int _elementCount;
 
         private readonly IBufferCreator _bufferCreator;
-
-        private readonly NodeContext _context;
-
-        private int _subcontextIds;
+        
+        private NodeSubContextFactory _subContextFactory;
 
         public BufferResource(NodeContext nodeContext, string theName, int theElementCount, IBufferCreator theBufferCreator = null) : base(theName)
         {
             _elementCount = theElementCount;
             _bufferCreator = theBufferCreator;
-            _context = nodeContext;
-            _subcontextIds = 0;
+            _subContextFactory = new NodeSubContextFactory(nodeContext);
         }
 
         private bool _changedAttributes = false;
@@ -91,7 +88,7 @@ namespace Fuse.ComputeSystem
 
                 fields.Add(field.ShaderNode);
             });
-            Struct = new DynamicStruct(ShaderNodesUtil.GetContext(_context,_subcontextIds++));
+            Struct = new DynamicStruct(_subContextFactory.NextSubContext());
             Struct.SetInput(fields, Name);
             if (_bufferCreator == null) return;
             

@@ -58,6 +58,8 @@ namespace Fuse
                 return;
             }
             
+            var subContextFactory = new NodeSubContextFactory(NodeContext);
+            
             var myInputs = new List<AbstractShaderNode>();
             var myModifiers = _modifiers.ToList();
 
@@ -70,10 +72,10 @@ namespace Fuse
                     continue;
                 }
 
-                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(NodeContext,i * 2 + 1,abstractGpuValues[i]);
+                var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory,abstractGpuValues[i]);
                 myInputs.Add(myDeclareValue);
 
-                var output = AbstractCreation.AbstractOutput(NodeContext,i * 2 + 2, this, myDeclareValue);
+                var output = AbstractCreation.AbstractOutput(subContextFactory, this, myDeclareValue);
                 OptionalOutputs.Add(output);
                 _isGroupable = false;
             }

@@ -9,20 +9,24 @@ namespace Fuse
 {
     public sealed class ShaderNodeMonadicFactory<T> : IMonadicFactory<T, ShaderNode<T>>
     {
-        private static int id;
         // This field is accessed by the target code
         public static readonly ShaderNodeMonadicFactory<T> Default = new ShaderNodeMonadicFactory<T>();
 
-        // Will be called once for each data source. The patch editor will also create instances as needed during interaction.
         public IMonadBuilder<T, ShaderNode<T>> GetMonadBuilder(bool isConstant)
         {
-            var nodeContext = NodeContext.Create(new UniqueId("monadic", id++ +""));
+            // Not called anymore in 2022.5
+            throw new NotSupportedException();
+        }
+
+        // Will be called once for each data source. The patch editor will also create instances as needed during interaction.
+        public IMonadBuilder<T, ShaderNode<T>> GetMonadBuilder(bool isConstant, NodeContext nodeContext)
+        {
             // Can't call the constructor directly due to value type constraint
             if (typeof(T).IsValueType)
             {
                 // Shader constants disabled for now
                 var builderType = /*isConstant ? typeof(ConstantGpuValueBuilder<>) :*/ typeof(GpuValueBuilder<>);
-                return Activator.CreateInstance(builderType.MakeGenericType( typeof(T)), new object[]{nodeContext}) as IMonadBuilder<T, ShaderNode<T>>;
+                return Activator.CreateInstance(builderType.MakeGenericType( typeof(T)), nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
             }
             
             // Read: if (T is Buffer)
@@ -30,7 +34,7 @@ namespace Fuse
             {
                 // Can't call the constructor directly due to value type constraint
                 var builderType = typeof(BufferGpuValueBuilder<>);
-                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T)), new object[]{nodeContext}) as IMonadBuilder<T, ShaderNode<T>>;
+                return Activator.CreateInstance(builderType.MakeGenericType(typeof(T)), nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
             }
             
             if (typeof(T) == typeof(Texture))
@@ -72,7 +76,7 @@ namespace Fuse
         private ConstantValue<T> _constantValue;
         private ValueInput<T> _valueInput;
 
-        private NodeContext _context;
+        private readonly NodeContext _context;
 
         public GpuConstantValueBuilder(NodeContext nodeContext)
         {

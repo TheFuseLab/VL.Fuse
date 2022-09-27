@@ -55,13 +55,6 @@ namespace Fuse.regions
 
     public class IfRegion : ShaderNode<GpuVoid>
     {
-        private ShaderNode<bool> _inCheck;
-        private ShaderNode<GpuVoid> _ifGroup;
-        
-        protected Group InCall;
-        protected Group CrossLinkCall;
-
-        protected int SubContextIds;
 
         public IfRegion(NodeContext nodeContext) : base(nodeContext, "ifRegion")
         {
@@ -74,7 +67,7 @@ namespace Fuse.regions
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks)
         {
-            SubContextIds = 0;
+            var subContextFactory = new NodeSubContextFactory(NodeContext);
             OptionalOutputs.Clear();
 
             var inputs = theInputs.ToList();
@@ -108,25 +101,25 @@ namespace Fuse.regions
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(NodeContext, SubContextIds++, outputs[i], 0f) : inputs[i];
-                        var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(NodeContext, SubContextIds++, myInput);
+                        var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) : inputs[i];
+                        var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
                         myInputs.Add(myDeclareValue);
 
                         var myOutput = i >= outputs.Count
-                            ? AbstractCreation.AbstractConstant(NodeContext, SubContextIds++, inputs[i], 0f)
+                            ? AbstractCreation.AbstractConstant(subContextFactory, inputs[i], 0f)
                             : outputs[i];
-                        var myAssign = AbstractCreation.AbstractAssignNode(NodeContext, SubContextIds++, myDeclareValue, myOutput);
+                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myDeclareValue, myOutput);
                         myOutputs.Add(myAssign);
 
                         break;
                 }
             }
 
-            InCall = new Group(ShaderNodesUtil.GetContext(NodeContext, SubContextIds++));
-            InCall.SetInput(myInputs);
+            var inCall = new Group(subContextFactory.NextSubContext());
+            inCall.SetInput(myInputs);
 
-            CrossLinkCall = new Group(ShaderNodesUtil.GetContext(NodeContext, SubContextIds++));
-            CrossLinkCall.SetInput(myCrossLinks);
+            var crossLinkCall = new Group(subContextFactory.NextSubContext());
+            crossLinkCall.SetInput(myCrossLinks);
 
             for (var i = 0; i < outputs.Count; i++)
             {
@@ -134,29 +127,27 @@ namespace Fuse.regions
                 {
                     case ShaderNode<GpuVoid> shaderNode:
                         var myInputVoid = myInputs[i];
-                        var outputVoid = AbstractCreation.AbstractOutput(NodeContext, SubContextIds++, this, myInputVoid);
+                        var outputVoid = AbstractCreation.AbstractOutput(subContextFactory, this, myInputVoid);
                         OptionalOutputs.Add(outputVoid);
 
                         break;
                     default:
                         var myInput = myInputs[i];
-                        var output = AbstractCreation.AbstractOutput(NodeContext, SubContextIds++, this, myInput);
+                        var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
                         OptionalOutputs.Add(output);
 
                         break;
                 }
             }
-            
-            _inCheck = inCheck;
 
-            _ifGroup = new IfGroup(ShaderNodesUtil.GetContext(NodeContext, SubContextIds++), _inCheck, myOutputs);
+            ShaderNode<GpuVoid> ifGroup = new IfGroup(subContextFactory.NextSubContext(), inCheck, myOutputs);
 
             var inputList = new List<AbstractShaderNode>
             {
-                CrossLinkCall,
-                _inCheck,
-                InCall,
-                _ifGroup
+                crossLinkCall,
+                inCheck,
+                inCall,
+                ifGroup
             };
             SetInputs(inputList);
         }

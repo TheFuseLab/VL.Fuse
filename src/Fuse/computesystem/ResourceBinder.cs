@@ -35,19 +35,17 @@ namespace Fuse.ComputeSystem
 
         private readonly Dictionary<string, AbstractShaderNode> _bufferedAttributes;
 
-        private NodeContext _context;
-        private int _subContextId;
+        private NodeSubContextFactory _subContextFactory;
         
         public BufferResourceBinder(NodeContext nodeContext, BufferResource theResource, ShaderNode<int> theIndex)
         {
-            _context = nodeContext;
-            _subContextId = 0;
+            _subContextFactory = new NodeSubContextFactory(nodeContext);
             _resource = theResource;
             _index = theIndex;
             var hash = theResource.Buffer.GetHashCode();
-            _input = new BufferInput<GpuStruct>(ShaderNodesUtil.GetContext(_context,_subContextId++),theResource.Struct);
+            _input = new BufferInput<GpuStruct>(_subContextFactory.NextSubContext(),theResource.Struct);
             _input.SetInput(theResource.Buffer,true, theResource.Struct);
-            _bufferGet = new BufferGet<GpuStruct>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            _bufferGet = new BufferGet<GpuStruct>(_subContextFactory.NextSubContext());
             _bufferGet.SetInputs(_input, theIndex,_resource.Struct);
             _bufferGet.AddInput(_resource.Struct);
 
@@ -55,8 +53,8 @@ namespace Fuse.ComputeSystem
             
             theResource.Attributes.Values.ForEach(attribute =>
             {
-                var declareValue = AbstractCreation.AbstractDeclareValue(_context,_subContextId++, attribute.ShaderNode);
-                var getMember = AbstractCreation.AbstractGetMember(_context,_subContextId++, _bufferGet, attribute.ShaderNode);
+                var declareValue = AbstractCreation.AbstractDeclareValue(_subContextFactory, attribute.ShaderNode);
+                var getMember = AbstractCreation.AbstractGetMember(_subContextFactory, _bufferGet, attribute.ShaderNode);
 
                 var isBuffered = attribute.AttributeType == AttributeType.StructuredBuffer;
                 Attributes[attribute.Name] = isBuffered ? getMember : declareValue;
@@ -100,16 +98,16 @@ namespace Fuse.ComputeSystem
             var nodes = new List<ShaderNode<GpuVoid>>();
             foreach (var kv in _bufferedAttributes)
             {
-                var assign = new AssignValueToMember<GpuStruct>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+                var assign = new AssignValueToMember<GpuStruct>(_subContextFactory.NextSubContext());
                 assign.SetInputs(_bufferGet, kv.Key, kv.Value);
                 nodes.Add(assign);
             }
 
-            var bufferSet = new BufferSet<GpuStruct>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            var bufferSet = new BufferSet<GpuStruct>(_subContextFactory.NextSubContext());
             bufferSet.SetInputs(_input, theIndex, _bufferGet);
             nodes.Add(bufferSet);
 
-            var group = new Group(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            var group = new Group(_subContextFactory.NextSubContext());
             group.SetInput(nodes);
             return group;
         }
@@ -121,7 +119,7 @@ namespace Fuse.ComputeSystem
 
         public BufferGet<GpuStruct> GetElement(ShaderNode<int> theIndex)
         {
-            var bufferGet = new BufferGet<GpuStruct>(ShaderNodesUtil.GetContext(_context,_subContextId++));
+            var bufferGet = new BufferGet<GpuStruct>(_subContextFactory.NextSubContext());
             bufferGet.SetInputs(_input, theIndex, _resource.Struct);
             return bufferGet;
         }

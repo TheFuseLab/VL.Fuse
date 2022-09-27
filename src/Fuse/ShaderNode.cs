@@ -470,7 +470,7 @@ namespace Fuse
 
         public ShaderNode(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null, bool theCreateDefault = true) : base(nodeContext, theId)
         {
-            Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>(ShaderNodesUtil.GetContext(nodeContext, 0), 0) : null);
+            Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>(new NodeSubContextFactory(NodeContext).NextSubContext(), 0) : null);
         }
 
         protected override Dictionary<string, string> CreateTemplateMap()

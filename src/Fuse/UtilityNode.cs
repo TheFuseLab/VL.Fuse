@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.ServiceModel.Configuration;
 using Fuse.compute;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
@@ -20,7 +19,7 @@ namespace Fuse
         
         public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough") : base(nodeContext, theName)
         {
-            Default = new ShaderNode<T>(ShaderNodesUtil.GetContext(nodeContext,0),"");
+            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"");
             Input = Default;
         }
         

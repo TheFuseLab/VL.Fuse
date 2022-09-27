@@ -25,8 +25,11 @@ namespace Fuse.ShaderFX
                 {"compositionType", TypeHelpers.GetSignatureTypeForType<T>()},
                 {"compositionName", ID}
             };
-            
-            result.AddRange(base.CreateTemplateMap());
+
+            foreach (var template in base.CreateTemplateMap())
+            {
+                result.Add(template.Key, template.Value);
+            }
 
             return result;
         }

@@ -12,9 +12,7 @@ namespace Fuse.ComputeSystem
         private readonly Dictionary<string, AbstractResourceBinder> _resourceBinders;
         private readonly Dictionary<string, AbstractResource> _resources;
         
-        private int _subContextId;
-
-        private readonly NodeContext _context;
+        private NodeSubContextFactory _subContextFactory;
 
         public GpuResourceManager(
             NodeContext nodeContext,
@@ -23,8 +21,7 @@ namespace Fuse.ComputeSystem
             CreateResourceBinding theBindingCreator
             )
         {
-            _context = nodeContext;
-            _subContextId = 1;
+            _subContextFactory = new NodeSubContextFactory(nodeContext);
             _resources = theResources;
             _resourceBinders = new Dictionary<string, AbstractResourceBinder>();
             foreach (var kv in theResources)
@@ -54,8 +51,8 @@ namespace Fuse.ComputeSystem
 
         public IEnumerable<ShaderNode<GpuVoid>> WriteAttributes()
         {
-            var comment = new Comment<GpuVoid>(ShaderNodesUtil.GetContext(_context, _subContextId++));
-            comment.SetInput("WriteBuffer", new EmptyVoid(ShaderNodesUtil.GetContext(_context, _subContextId++)));
+            var comment = new Comment<GpuVoid>(_subContextFactory.NextSubContext());
+            comment.SetInput("WriteBuffer", new EmptyVoid(_subContextFactory.NextSubContext()));
             var result = new List<ShaderNode<GpuVoid>>{comment};
 
             foreach (var resource in _resourceBinders)
@@ -77,8 +74,8 @@ namespace Fuse.ComputeSystem
         
         public List<AbstractShaderNode> WriteToIndexNodes(ShaderNode<int> theIndex)
         {
-            var comment = new Comment<GpuVoid>(ShaderNodesUtil.GetContext(_context, _subContextId++));
-            comment.SetInput("WriteBuffer", new EmptyVoid(ShaderNodesUtil.GetContext(_context, _subContextId++)));
+            var comment = new Comment<GpuVoid>(_subContextFactory.NextSubContext());
+            comment.SetInput("WriteBuffer", new EmptyVoid(_subContextFactory.NextSubContext()));
             var result = new List<AbstractShaderNode>{comment};
 
             _resourceBinders.ForEach(resource =>

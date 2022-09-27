@@ -100,18 +100,13 @@ namespace Fuse.regions
 
     public class ForRegion : ShaderNode<GpuVoid>
     {
-
-        private int _subContextIds;
-        
-        private readonly string _indexName;
-
-        public string IndexName => _indexName;
+        public string IndexName { get; }
 
         public ForRegion(NodeContext nodeContext) : base(nodeContext, "forRegion")
         {
             OptionalOutputs = new List<AbstractShaderNode>();
 
-            _indexName = "index_" + HashCode;
+            IndexName = "index_" + HashCode;
         }
 
         public void Setup(
@@ -121,7 +116,6 @@ namespace Fuse.regions
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks)
         {
-            _subContextIds = 0;
             OptionalOutputs.Clear();
 
             var inputs = theInputs.ToList();
@@ -142,12 +136,14 @@ namespace Fuse.regions
             var myInputs = new List<AbstractShaderNode>();
             var myOutputs = new List<AbstractShaderNode>();
             var myAssigns = new List<AbstractShaderNode>();
+            
+            var subContextFactory = new NodeSubContextFactory(NodeContext);
 
             for (var i = 0; i < outputs.Count; i++)
             {
                 if (inputs[i] == null && outputs[i] == null)
                 {
-                    OptionalOutputs.Add(new EmptyVoid(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++)));
+                    OptionalOutputs.Add(new EmptyVoid(subContextFactory.NextSubContext()));
                     continue;
                 }
                 
@@ -158,32 +154,32 @@ namespace Fuse.regions
                         myInputs.Add(myInputVoid);
                         myOutputs.Add(shaderNode);
                         
-                        var outputVoid = AbstractCreation.AbstractOutput(NodeContext, _subContextIds++, this, myInputVoid);
+                        var outputVoid = AbstractCreation.AbstractOutput(subContextFactory, this, myInputVoid);
                         OptionalOutputs.Add(outputVoid);
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(NodeContext, _subContextIds++, outputs[i], 0f) : inputs[i];
+                        var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) : inputs[i];
                         myInputs.Add(myInput);
 
                         var myOutput = i >= outputs.Count
-                            ? AbstractCreation.AbstractConstant(NodeContext, _subContextIds++, inputs[i], 0f)
+                            ? AbstractCreation.AbstractConstant(subContextFactory, inputs[i], 0f)
                             : outputs[i];
                         myOutputs.Add(myOutput);
-                        var myAssign = AbstractCreation.AbstractAssignNode(NodeContext, _subContextIds++, myInput, myOutput);
+                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myInput, myOutput);
                         myAssigns.Add(myAssign);
                         
-                        var output = AbstractCreation.AbstractOutput(NodeContext, _subContextIds++, this, myInput);
+                        var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
                         OptionalOutputs.Add(output);
 
                         break;
                 }
             }
 
-            var inCall = new Group(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++));
+            var inCall = new Group(subContextFactory.NextSubContext());
             inCall.SetInput(myInputs);
 
-            var crossLinkCall = new Group(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++));
+            var crossLinkCall = new Group(subContextFactory.NextSubContext());
             crossLinkCall.SetInput(myCrossLinks);
 
             /*
@@ -193,13 +189,13 @@ namespace Fuse.regions
                 {
                     case ShaderNode<GpuVoid> shaderNode:
                         var myInputVoid = myInputs[i];
-                        var outputVoid = AbstractCreation.AbstractOutput(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++), this, myInputVoid);
+                        var outputVoid = AbstractCreation.AbstractOutput(subContextFactory.NextSubContext(), this, myInputVoid);
                         OptionalOutputs.Add(outputVoid);
 
                         break;
                     default:
                         var myInput = myInputs[i];
-                        var output = AbstractCreation.AbstractOutput(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++), this, myInput);
+                        var output = AbstractCreation.AbstractOutput(subContextFactory.NextSubContext(), this, myInput);
                         OptionalOutputs.Add(output);
 
                         break;
@@ -207,7 +203,7 @@ namespace Fuse.regions
             }*/
             myOutputs.AddRange(myAssigns);
 
-            var forGroup = new ForGroup(ShaderNodesUtil.GetContext(NodeContext, _subContextIds++), this, inStart, inEnd, myOutputs);
+            var forGroup = new ForGroup(subContextFactory.NextSubContext(), this, inStart, inEnd, myOutputs);
 
             var inputList = new List<AbstractShaderNode>
             {

@@ -31,7 +31,7 @@ namespace Fuse
 
             for (var i = 0; i < _dimension + 1; i++)
             {
-                var myDeclareValue = new DeclareValue<float>(ShaderNodesUtil.GetContext(NodeContext, i));
+                var myDeclareValue = new DeclareValue<float>(new NodeSubContextFactory(NodeContext).NextSubContext());
                 myInputs.Add(myDeclareValue);
                 OptionalOutputs.Add(myDeclareValue);
             }
