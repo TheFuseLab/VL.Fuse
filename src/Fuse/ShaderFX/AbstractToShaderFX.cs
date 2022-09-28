@@ -191,7 +191,7 @@ namespace Fuse.ShaderFX
             ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
-            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetHashCode());
+            ShaderName = "Shader_" + Math.Abs(ShaderNodesUtil.GetStableHashCode(ShaderCode));
             //ShaderName = "Shader_" + ShaderNodesUtil.GetHashCode(_input.NodeContext);
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
             _input.ShaderCode = ShaderCode;
