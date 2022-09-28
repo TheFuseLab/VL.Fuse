@@ -12,6 +12,8 @@ namespace Fuse
     {
         private bool _isGroupable;
 
+        private int _groupOptions;
+
         private readonly IEnumerable<InputModifier> _modifiers;
 
         private string _functionName;
@@ -27,13 +29,20 @@ namespace Fuse
             string theFunction, 
             IEnumerable<InputModifier> theModifiers,
             ShaderNode<T> theDefault, 
-            bool theIsGroupable = false
+            bool theIsGroupable = false,
+            int theGroupOptions = 0
             ) : base(nodeContext, theFunction, theDefault)
         {
             _functionName = theFunction;
             _modifiers = theModifiers;
             _isGroupable = theIsGroupable;
+            _groupOptions = theGroupOptions;
             OptionalOutputs = new List<AbstractShaderNode>();
+        }
+
+        public void SetGroupOptions(int theGroupOptions)
+        {
+            _groupOptions = theGroupOptions;
         }
         
         public virtual void SetArguments(IEnumerable<AbstractShaderNode> theArguments)
@@ -95,13 +104,29 @@ namespace Fuse
             if(!_isGroupable || Ins.Count <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
 
             var inputList = new List<AbstractShaderNode>(Ins);
-            var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID + ")");
+            var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID);
 
-            for (var i = 2; i < inputList.Count;i++)
+            var optionIndex = inputList.Count - _groupOptions;
+            for (var index = optionIndex; index < inputList.Count ; index++)
+            {
+                call.Append(", ");
+                call.Append(inputList[index].ID);
+            }
+
+            call.Append(")");
+
+            for (var i = 2; i < optionIndex;i++)
             {
                 call.Insert(0, "${function}(");
                 call.Append(", ");
                 call.Append(inputList[i].ID);
+                
+                for (var index = optionIndex; index < inputList.Count ; index++)
+                {
+                    call.Append(", ");
+                    call.Append(inputList[index].ID);
+                }
+                
                 call.Append(")");
             }
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
@@ -135,7 +160,8 @@ namespace Fuse
             ShaderNode<T> theDefault,
             string theMixin,
             bool theIsGroupable = false,
-            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theModifiers, theDefault, theIsGroupable)
+            int theGroupOptions = 0,
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theModifiers, theDefault, theIsGroupable, theGroupOptions)
         {
             AddProperty(Mixins, theMixin);
         }
