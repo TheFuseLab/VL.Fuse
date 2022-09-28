@@ -12,7 +12,7 @@ namespace Fuse
         // This field is accessed by the target code
         public static readonly ShaderNodeMonadicFactory<T> Default = new ShaderNodeMonadicFactory<T>();
 
-        public IMonadBuilder<T, ShaderNode<T>> GetMonadBuilder(bool isConstant)
+        IMonadBuilder<T, ShaderNode<T>> IMonadicFactory<T, ShaderNode<T>>.GetMonadBuilder(bool isConstant)
         {
             // Not called anymore in 2022.5
             throw new NotSupportedException();
