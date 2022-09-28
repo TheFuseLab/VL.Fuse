@@ -37,15 +37,15 @@ namespace Fuse.Common.SDF
 
     public enum ExtrudeSDF
     {
-        Extrude, 
-        ExtrudeChamfer, 
+        Extrude,
+        ExtrudeChamfer,
         ExtrudeRound
     }
 
     public enum GridSDF
     {
-        Box, 
-        Triangle, 
+        Box,
+        Triangle,
         Hexagon
     }
 
@@ -58,27 +58,26 @@ namespace Fuse.Common.SDF
 
     public enum TPMSSDF
     {
-        Gyroid, 
-        SchwartzP, 
-        Diamond, 
-        FischerKoch, 
-        Lidinoid, 
-        Neovius, 
+        Gyroid,
+        SchwartzP,
+        Diamond,
+        FischerKoch,
+        Lidinoid,
+        Neovius,
         Octo,
         Kd,
         iWP,
         Dd
-
     }
 
     public enum StrutSDF
     {
-        CubeCenteredLattice, 
-        BodyCenteredLattice, 
-        FaceCenteredLattice, 
-        CubeAndBodyCenteredLattice, 
-        CubeAndFaceCenteredLattice, 
-        BodyAndFaceCenteredLattice, 
+        CubeCenteredLattice,
+        BodyCenteredLattice,
+        FaceCenteredLattice,
+        CubeAndBodyCenteredLattice,
+        CubeAndFaceCenteredLattice,
+        BodyAndFaceCenteredLattice,
         CubeAndBodyAndFaceCenteredLattice
     }
 
