@@ -1,0 +1,70 @@
+shader LineFromToMesh_ComputeFX: ComputeShaderBase, Transformation, Camera, FuseCommonBuffer, LineAttributeStream, LineCommon
+{
+    cbuffer PerDispatch
+    {
+        stage StructuredBuffer<float3> FromBuffer;
+        stage StructuredBuffer<float3> ToBuffer;
+        stage RWStructuredBuffer<Pos3Norm3Col4Tex2Tan4Id2> outputBuffer;
+
+        stage float Radius = .15;
+        stage int ThicknessSpace = 0;
+        stage int MeshType = 0;
+        stage float4x4 Transform;
+        stage int Resolution;
+
+        stage bool ViewAlign;
+        stage bool NormalBend;
+    }
+
+    compose ComputeFloat Width;
+    compose ComputeFloat4 Color;
+
+    compose ComputeFloat3 RibbonUp;
+    compose ComputeFloat3 TubeUp;
+
+    override void Compute()
+    {
+        uint dtid = streams.DispatchThreadId.x;
+
+        uint n = min(sbSize3(FromBuffer), sbSize3(ToBuffer));
+        if(dtid >= n) return;
+
+        float3 from = mul(float4(FromBuffer[dtid], 1), Transform).xyz;
+        float3 to = mul(float4(ToBuffer[dtid], 1), Transform).xyz;
+        float3 t = to - from;
+        streams.LinePosition = (from + to) * .5;
+        streams.LineId = dtid;
+
+        float3 viewFront = ViewInverse[2].xyz;
+
+        float3 fromViewDir = ViewInverse[3].xyz - from;
+        float3 toViewDir   = ViewInverse[3].xyz - to;
+
+        float width = Width.Compute();
+        float4 color = Color.Compute();
+
+        float fromScale = ThicknessSpace == 1 ? mul(float4(dot(viewFront, fromViewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
+        float toScale   = ThicknessSpace == 1 ? mul(float4(dot(viewFront, toViewDir).xxx,1.0),ProjectionInverse).y*.2 : 1;
+        fromScale *= width;
+        toScale   *= width;
+
+        fromViewDir = normalize(fromViewDir);
+        toViewDir = normalize(toViewDir);
+        float3 fromDir = normalize(cross(t, fromViewDir));
+        float3 toDir = normalize(cross(t, toViewDir));
+
+        if(MeshType == 0) // Ribbon
+        {
+            FlatMeshLine(outputBuffer, dtid, from, t, fromScale, color,
+                        to, t, toScale, color, Radius, 2, NormalBend,
+                        ViewAlign? normalize(fromViewDir) : RibbonUp.Compute(),
+                        ViewAlign? normalize(toViewDir)   : RibbonUp.Compute());
+        }
+        else // Tube
+        {
+            TubeMeshLine(outputBuffer, dtid, from, t, fromScale, color,
+                        to, t, toScale, color,
+                        Radius, 2, Resolution, TubeUp.Compute());
+        }
+    }
+};
