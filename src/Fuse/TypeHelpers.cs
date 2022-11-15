@@ -43,15 +43,60 @@ namespace Fuse
             
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
-            public static void ConstrainType<T>(T value, ShaderNode<T> ShaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
+            public static void ConstrainType<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
             {
             }
             
-            public static void ConstrainBuffer<T>(T value, ShaderNode<T> ShaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
+            public static void ConstrainBuffer<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
             {
             }
 
+            private static readonly Dictionary<Type, string> StructTypes = new()
+            {
+                {typeof(Fuse.sdf.Ray), "Ray"},
+            };
+            
+            public static bool IsStructType<T>()
+            {
+                return IsStructType(typeof(T));        
+            }
 
+            public static bool IsStructType(Type t)
+            {
+                return StructTypes.ContainsKey(t);
+            }
+            
+            public static bool IsVoidNode(AbstractShaderNode theValue)
+            {
+                return theValue switch
+                {
+                    ShaderNode<GpuVoid> _ => true,
+                    _ => false
+                };
+            }
+            
+            // USED BY VL
+            // ReSharper disable once UnusedMember.Global
+            
+            #region GetTypeDefault
+            
+            private static readonly Dictionary<Type, string> TypeDefaults = new()
+            {
+                {typeof(float), "0.0"},
+                {typeof(Vector2), "float2(0.0, 0.0)"},
+                {typeof(Vector3), "float3(0.0, 0.0, 0.0)"},
+                {typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)"},
+                {typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)"},
+                {typeof(Matrix), "float4x4()"},
+                
+                {typeof(int), "0"},
+                {typeof(Int2), "int2(0, 0)"},
+                {typeof(Int3), "int3(0, 0, 0)"},
+                {typeof(Int4), "int4(0, 0, 0, 0)"},
+                {typeof(uint), "0"},
+                {typeof(bool), "true"},
+            };
+            
             public static string GetDefaultForType<T>(T theValue)
             {
                 if (typeof(T) == typeof(float)) return theValue.ToString();
@@ -94,50 +139,11 @@ namespace Fuse
                 throw new NotImplementedException("No name defined for type: " + t.Name);
             }
             
-            private static readonly Dictionary<Type, string> TypeDefaults = new Dictionary<Type, string>
-            {
-                {typeof(float), "0.0"},
-                {typeof(Vector2), "float2(0.0, 0.0)"},
-                {typeof(Vector3), "float3(0.0, 0.0, 0.0)"},
-                {typeof(Vector4), "float4(0.0, 0.0, 0.0, 0.0)"},
-                {typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)"},
-                {typeof(Matrix), "float4x4()"},
-                
-                {typeof(int), "0"},
-                {typeof(Int2), "int2(0, 0)"},
-                {typeof(Int3), "int3(0, 0, 0)"},
-                {typeof(Int4), "int4(0, 0, 0, 0)"},
-                {typeof(uint), "0"},
-                {typeof(bool), "true"},
-            };
-
-            private static readonly Dictionary<Type, string> KnownGpuTypes = new Dictionary<Type, string>
-            {
-                {typeof(float), "float"},
-                {typeof(Vector2), "float2"},
-                {typeof(Vector3), "float3"},
-                {typeof(Vector4), "float4"},
-                {typeof(Color4), "float4"},
-                {typeof(Matrix), "float4x4"},
-                
-                {typeof(int), "int"},
-                {typeof(Int2), "int2"},
-                {typeof(Int3), "int3"},
-                {typeof(Int4), "int4"},
-                {typeof(uint), "uint"},
-                {typeof(bool), "bool"},
-                
-                
-                {typeof(GpuStruct), "struct"},
-              
-                {typeof(Texture), "Texture"},
-                {typeof(SamplerState), "Sampler"},
-                
-                {typeof(GpuVoid), "void"},
-                {typeof(Fuse.sdf.Ray), "Ray"},
-            };
+            #endregion
             
-            private static readonly Dictionary<Type, string> KnownSignatureTypes = new Dictionary<Type, string>
+            #region GetSignature
+            
+            private static readonly Dictionary<Type, string> KnownSignatureTypes = new()
             {
                 {typeof(float), "Float"},
                 {typeof(Vector2), "Float2"},
@@ -162,126 +168,7 @@ namespace Fuse
                 {typeof(Fuse.sdf.Ray), "Ray"},
             };
             
-            private static readonly Dictionary<Type, string> StructTypes = new Dictionary<Type, string>
-            {
-                {typeof(Fuse.sdf.Ray), "Ray"},
-            };
-            
-            private static readonly Dictionary<Type, int> KnownTypeSize = new Dictionary<Type, int>
-            {
-                {typeof(float), 4},
-                {typeof(Vector2), 2 * 4},
-                {typeof(Vector3), 3 * 4},
-                {typeof(Vector4), 4 * 4},
-                {typeof(Color4), 4 * 4},
-                {typeof(Matrix), 16 * 4},
-                
-                {typeof(int), 4},
-                {typeof(Int2), 2 * 4},
-                {typeof(Int3), 3 * 4},
-                {typeof(Int4), 4 * 4},
-                {typeof(uint), 4},
-                {typeof(bool), 1},
-                
-                {typeof(GpuStruct), 0},
-               
-                {typeof(Texture), 0},
-                {typeof(SamplerState), 0},
-                
-                {typeof(GpuVoid), 0},
-                {typeof(Fuse.sdf.Ray), 0},
-            };
-            
-            public static string GetGpuTypeForType<T>()
-            {
-                return GetGpuTypeForType(typeof(T));        
-            }
-
-            public static string GetGpuTypeForType(Type t)
-            {
-                return KnownGpuTypes.TryGetValue(t, out var result) ? result : t.Name;
-            }
-            
-            public static string GetSignatureTypeForType<T>()
-            {
-                return GetSignatureTypeForType(typeof(T));        
-            }
-
-            public static string GetSignatureTypeForType(Type t)
-            {
-                if (KnownSignatureTypes.TryGetValue(t, out var result))
-                    return result;
-                
-                throw new NotImplementedException("No name defined for type: " + t.Name + " : " + t.FullName);
-            }
-            
-            public static bool IsStructType<T>()
-            {
-                return IsStructType(typeof(T));        
-            }
-
-            public static bool IsStructType(Type t)
-            {
-                return StructTypes.ContainsKey(t);
-            }
-            
-            
-            public static int GetGpuTypeSizeForType<T>()
-            {
-                return GetGpuTypeSizeForType(typeof(T));        
-            }
-
-            public static int GetGpuTypeSizeForType(Type t)
-            {
-                if (KnownTypeSize.TryGetValue(t, out var result))
-                    return result;
-                
-                throw new NotImplementedException("No size defined for type: " + t.Name + " : " + t.FullName);
-            }
-
-            public static string GetGpuTypeByValue(AbstractShaderNode theValue)
-            {
-                return theValue switch
-                {
-                    ShaderNode<float> _ => "float",
-                    ShaderNode<Vector2> _ => "float2",
-                    ShaderNode<Vector3> _ => "float3",
-                    ShaderNode<Vector4> _ => "float4",
-                    ShaderNode<Color4> _ => "float4",
-                    ShaderNode<Matrix> _ => "float4x4",
-                    ShaderNode<bool> _ => "bool",
-                    ShaderNode<int> _ => "int",
-                    ShaderNode<Int2> _ => "int2",
-                    ShaderNode<Int3> _ => "int3",
-                    ShaderNode<Int4> _ => "int4",
-                    ShaderNode<GpuVoid> _ => "void",
-                    ShaderNode<Fuse.sdf.Ray> _ => "Ray",
-                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
-                };
-            }
-            
-            public static int GetSizeInBytes(AbstractShaderNode theValue)
-            {
-                return theValue switch
-                {
-                    ShaderNode<float> _ => 4,
-                    ShaderNode<Vector2> _ => 2 * 4,
-                    ShaderNode<Vector3> _ => 3 * 4,
-                    ShaderNode<Vector4> _ => 4 * 4,
-                    ShaderNode<Color4> _ => 4 * 4,
-                    ShaderNode<Matrix> _ => 4 * 4 * 4,
-                    ShaderNode<bool> _ => 1,
-                    ShaderNode<int> _ => 4,
-                    ShaderNode<Int2> _ => 2 * 4,
-                    ShaderNode<Int3> _ => 3 * 4,
-                    ShaderNode<Int4> _ => 4 * 4,
-                    ShaderNode<GpuVoid> _ => 0,
-                    ShaderNode<Fuse.sdf.Ray> _ => 4,
-                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
-                };
-            }
-            
-            public static string GetSignatureTypeByValue(AbstractShaderNode theValue)
+            public static string GetSignature(AbstractShaderNode theValue)
             {
                 return theValue switch
                 {
@@ -300,10 +187,121 @@ namespace Fuse
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
             }
-            
-            public static int GetDimensionByValue(AbstractShaderNode theValue)
+
+            public static string GetSignature(Type type)
             {
-                return theValue switch
+                if (KnownSignatureTypes.TryGetValue(type, out var result))
+                    return result;
+                
+                throw new NotImplementedException("No name defined for type: " + type.Name + " : " + type.FullName);
+            }
+            public static string GetSignature<T>()
+            {
+                return GetSignature(typeof(T));        
+            }
+            
+            public static string GetSignature<T>(ShaderNode<T> shaderNode)
+            {
+                return GetSignature(typeof(T));        
+            }
+            
+            #endregion
+            
+            #region GetGpuType
+            
+            private static readonly Dictionary<Type, string> KnownGpuTypes = new()
+            {
+                {typeof(float), "float"},
+                {typeof(Vector2), "float2"},
+                {typeof(Vector3), "float3"},
+                {typeof(Vector4), "float4"},
+                {typeof(Color4), "float4"},
+                {typeof(Matrix), "float4x4"},
+                
+                {typeof(int), "int"},
+                {typeof(Int2), "int2"},
+                {typeof(Int3), "int3"},
+                {typeof(Int4), "int4"},
+                {typeof(uint), "uint"},
+                {typeof(bool), "bool"},
+                
+                {typeof(GpuStruct), "struct"},
+              
+                {typeof(Texture), "Texture"},
+                {typeof(SamplerState), "Sampler"},
+                
+                {typeof(GpuVoid), "void"},
+                {typeof(Fuse.sdf.Ray), "Ray"},
+            };
+            
+            public static string GetGpuType(AbstractShaderNode abstractShaderNode)
+            {
+                return abstractShaderNode switch
+                {
+                    ShaderNode<float> _ => "float",
+                    ShaderNode<Vector2> _ => "float2",
+                    ShaderNode<Vector3> _ => "float3",
+                    ShaderNode<Vector4> _ => "float4",
+                    ShaderNode<Color4> _ => "float4",
+                    ShaderNode<Matrix> _ => "float4x4",
+                    ShaderNode<bool> _ => "bool",
+                    ShaderNode<int> _ => "int",
+                    ShaderNode<Int2> _ => "int2",
+                    ShaderNode<Int3> _ => "int3",
+                    ShaderNode<Int4> _ => "int4",
+                    ShaderNode<GpuVoid> _ => "void",
+                    ShaderNode<Fuse.sdf.Ray> _ => "Ray",
+                    _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
+                };
+            }
+
+            public static string GetGpuType(Type type)
+            {
+                return KnownGpuTypes.TryGetValue(type, out var result) ? result : type.Name;
+            }
+            
+            public static string GetGpuType<T>()
+            {
+                return GetGpuType(typeof(T));        
+            }
+            
+            public static string GetGpuType<T>(ShaderNode<T> shaderNode)
+            {
+                return GetGpuType<T>();
+            }
+            
+            #endregion
+            
+            #region GetDimension
+            
+            private static readonly Dictionary<Type, int> KnownDimensions = new()
+            {
+                {typeof(float), 1},
+                {typeof(Vector2), 2},
+                {typeof(Vector3), 3},
+                {typeof(Vector4), 4},
+                {typeof(Color4), 4},
+                {typeof(Matrix), 16},
+                
+                {typeof(int), 1},
+                {typeof(Int2), 2},
+                {typeof(Int3), 3},
+                {typeof(Int4), 4},
+                {typeof(uint), 1},
+                {typeof(bool), 1},
+                
+                {typeof(GpuStruct), 1},
+              
+                {typeof(Texture), 1},
+                {typeof(SamplerState), 1},
+                
+                {typeof(GpuVoid), 0},
+                {typeof(Fuse.sdf.Ray), 1},
+            };
+            
+            public static int GetDimension(AbstractShaderNode abstractShaderNode)
+            {
+                return abstractShaderNode switch
                 {
                     ShaderNode<float> _ => 1,
                     ShaderNode<Vector2> _ => 2,
@@ -317,20 +315,18 @@ namespace Fuse
                     ShaderNode<Int4> _ => 4,
                     ShaderNode<GpuVoid> _ => 0,
                     ShaderNode<Fuse.sdf.Ray> _ => 1,
-                    _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
+                    _ => 0
                 };
             }
             
             // USED BY VL
             // ReSharper disable once UnusedMember.Global
-            public static string GetTypeByGeneric<T>(ShaderNode<T> theValue)
+            public static int GetDimension(Type type)
             {
-                return GetGpuTypeForType<T>();
+                return KnownDimensions.TryGetValue(type, out var result) ? result : 0;
             }
             
-            // USED BY VL
-            // ReSharper disable once UnusedMember.Global
-            public static int GetDimension<T>(ShaderNode<T> theValue)
+            public static int GetDimension<T>(ShaderNode<T> shaderNode)
             {
                 return GetDimension(typeof(T));
             }
@@ -340,26 +336,127 @@ namespace Fuse
                 return GetDimension(typeof(T));
             }
             
-            public static int GetDimension(Type theType)
+            #endregion
+            
+            #region GetSizeInBytes
+            
+            private static readonly Dictionary<Type, int> KnownByteSizes = new()
             {
-                if (theType == typeof(float)) return 1;
-                if (theType == typeof(Vector2)) return 2;
-                if (theType == typeof(Vector3)) return 3;
-                if (theType == typeof(Vector4)) return 4;
-                if (theType == typeof(Color4)) return 4;
-                if (theType == typeof(int)) return 1;
-                if (theType == typeof(Int2)) return 2;
-                if (theType == typeof(Int3)) return 3;
-                if (theType == typeof(Int4)) return 4;
-                if (theType == typeof(bool)) return 1;
-
-                return 0;
+                {typeof(float), 1 * 4},
+                {typeof(Vector2), 2 * 4},
+                {typeof(Vector3), 3 * 4},
+                {typeof(Vector4), 4 * 4},
+                {typeof(Color4), 4 * 4},
+                {typeof(Matrix), 16 * 4},
+                
+                {typeof(int), 1 * 4},
+                {typeof(Int2), 2 * 4},
+                {typeof(Int3), 3 * 4},
+                {typeof(Int4), 4 * 4},
+                {typeof(uint), 1 * 4},
+                {typeof(bool), 1},
+                
+                {typeof(GpuVoid), 0}
+            };
+            
+            public static int GetSizeInBytes(AbstractShaderNode abstractShaderNode)
+            {
+                return abstractShaderNode switch
+                {
+                    ShaderNode<float> _ => 4,
+                    ShaderNode<Vector2> _ => 2 * 4,
+                    ShaderNode<Vector3> _ => 3 * 4,
+                    ShaderNode<Vector4> _ => 4 * 4,
+                    ShaderNode<Color4> _ => 4 * 4,
+                    ShaderNode<Matrix> _ => 4 * 4 * 4,
+                    ShaderNode<bool> _ => 1,
+                    ShaderNode<int> _ => 4,
+                    ShaderNode<Int2> _ => 2 * 4,
+                    ShaderNode<Int3> _ => 3 * 4,
+                    ShaderNode<Int4> _ => 4 * 4,
+                    ShaderNode<GpuVoid> _ => 0,
+                    ShaderNode<Fuse.sdf.Ray> _ => 4,
+                    _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
+                };
             }
+
+            public static int GetSizeInBytes(Type type)
+            {
+                return KnownByteSizes.TryGetValue(type, out var result) ? result : 0;
+            }
+            
+            public static int GetSizeInBytes<T>(ShaderNode<T> shaderNode)
+            {
+                return GetSizeInBytes(typeof(T));
+            }
+            
+            public static int GetSizeInBytes<T>()
+            {
+                return GetSizeInBytes(typeof(T));
+            }
+            
+            #endregion
+            
+            #region GetPixelFormat
+            
+            private static readonly Dictionary<Type, PixelFormat> KnownPixelFormats = new()
+            {
+                {typeof(float), PixelFormat.R32_Float},
+                {typeof(Vector2), PixelFormat.R32G32_Float},
+                {typeof(Vector3), PixelFormat.R32G32B32_Float},
+                {typeof(Vector4), PixelFormat.R32G32B32A32_Float},
+                {typeof(Color4), PixelFormat.R32G32B32A32_Float},
+                
+                {typeof(int), PixelFormat.R32_SInt},
+                {typeof(Int2), PixelFormat.R32G32_SInt},
+                {typeof(Int3), PixelFormat.R32G32B32_SInt},
+                {typeof(Int4), PixelFormat.R32G32B32A32_SInt},
+                {typeof(uint), PixelFormat.R32_UInt},
+                {typeof(bool), PixelFormat.R1_UNorm},
+                
+                {typeof(GpuVoid), 0}
+            };
+            
+            public static PixelFormat GetPixelFormat(AbstractShaderNode abstractShaderNode)
+            {
+                return abstractShaderNode switch
+                {
+                    ShaderNode<float> _ => PixelFormat.R32_Float,
+                    ShaderNode<Vector2> _ => PixelFormat.R32G32_Float,
+                    ShaderNode<Vector3> _ => PixelFormat.R32G32B32_Float,
+                    ShaderNode<Vector4> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<Color4> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<bool> _ => PixelFormat.R1_UNorm,
+                    ShaderNode<int> _ => PixelFormat.R32_SInt,
+                    ShaderNode<Int2> _ => PixelFormat.R32G32_SInt,
+                    ShaderNode<Int3> _ => PixelFormat.R32G32B32_SInt,
+                    ShaderNode<Int4> _ => PixelFormat.R32G32B32A32_SInt,
+                    ShaderNode<uint> _ => PixelFormat.R32G32B32A32_SInt,
+                    _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
+                };
+            }
+
+            public static PixelFormat GetPixelFormat(Type type)
+            {
+                return KnownPixelFormats.TryGetValue(type, out var result) ? result : 0;
+            }
+            
+            public static PixelFormat GetPixelFormat<T>(ShaderNode<T> shaderNode)
+            {
+                return GetPixelFormat(typeof(T));
+            }
+            
+            public static PixelFormat GetPixelFormat<T>()
+            {
+                return GetPixelFormat(typeof(T));
+            }
+            
+            #endregion
 
             public static List<string> GetDescription(AbstractShaderNode theValue)
             {
                 var keys = new List<string>() { "x", "y", "z", "w"};
-                var dimension = GetDimensionByValue(theValue);
+                var dimension = GetDimension(theValue);
                 var result = new List<string>();
                 if (dimension == 1)
                 {
