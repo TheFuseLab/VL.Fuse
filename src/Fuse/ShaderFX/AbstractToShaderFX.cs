@@ -101,6 +101,9 @@ namespace Fuse.ShaderFX
             var structBuilder = new StringBuilder();
             _structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
+            var streamBuilder = new StringBuilder();
+            _streams.ForEach(stream => streamBuilder.AppendLine(stream));
+            
             var mixinBuilder = new StringBuilder();
             _mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
 
@@ -110,7 +113,6 @@ namespace Fuse.ShaderFX
             var functionBuilder = new StringBuilder();
             _functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
 
-            var streamBuilder = new StringBuilder();
 
             return new Dictionary<string, string>
             {
@@ -150,6 +152,7 @@ namespace Fuse.ShaderFX
             
             theShaderInput.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
             theShaderInput.StructList().ForEach(value => _structs.Add(value));
+            theShaderInput.StreamList().ForEach(value => _streams.Add(value));
             theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
             theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
             theShaderInput.FunctionMap().ForEach(HandleFunction);

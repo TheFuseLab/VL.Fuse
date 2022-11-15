@@ -487,6 +487,11 @@ namespace Fuse
             return PropertyForTree<string>(Structs);
         }
         
+        public List<string> StreamList()
+        {
+            return PropertyForTree<string>(Streams);
+        }
+        
         public Dictionary<string,string> FunctionMap(){
        
             var result = new Dictionary<string,string>();
