@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Fuse.compute;
 using VL.Core;
 
 namespace Fuse.ComputeSystem
@@ -6,7 +7,9 @@ namespace Fuse.ComputeSystem
     public interface IAttribute
     {
         public string Name { get; }
-        
+
+        public string Group { get; }
+
         public AttributeType AttributeType { get; }
         
         public AbstractShaderNode ShaderNode { get; }
@@ -14,6 +17,10 @@ namespace Fuse.ComputeSystem
         public void SetInput(AbstractShaderNode theNode);
 
         public List<string> Description { get; }
+
+        public ShaderNode<GpuVoid> WriteCall { get; set; }
+
+        public AbstractShaderNode ReadCall { get; set; }
     }
 
     public enum AttributeType
@@ -27,9 +34,19 @@ namespace Fuse.ComputeSystem
     
     public class Attribute<T> : PassThroughNode<T>, IAttribute
     {
+        public Attribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theName, false)
+        {
+            AttributeType = theType;
+            Group = theGroup;
+            WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
+            ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
+            
+            AddProperty(Group, this);
+        }
         
+        public string Group { get; }
         public AttributeType AttributeType { get; }
-        
+
         public AbstractShaderNode ShaderNode { get; }
         public List<string> Description {
             get { 
@@ -46,23 +63,11 @@ namespace Fuse.ComputeSystem
                     }
                 }
                 return result;
-        } }
+            } }
 
-        public Attribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theName)
-        {
-            AttributeType = theType;
-            ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
-            
-            AddProperty(theGroup, this);
-        }
-
-        public override ShaderNode<T> Input { get => _input;
-            set
-            {
-                _input = value ?? Default;
-                SetInputs(new List<AbstractShaderNode>{Input}, false);
-            }
-        }
+        public ShaderNode<GpuVoid> WriteCall { get; set; }
+        
+        public AbstractShaderNode ReadCall { get; set; }
 
         public void SetAbstractInput(AbstractShaderNode theNode)
         {
