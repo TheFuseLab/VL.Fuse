@@ -57,9 +57,9 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractGetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
-           // return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theStruct, theMember.Name, null});
+           //return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null});
             
-            
+           
             var getMemberBaseType = typeof(GetMember<,>);
             var nodeType = theMember.GetType();
             while (nodeType != null && nodeType.BaseType != null && nodeType.BaseType != typeof(AbstractShaderNode))
@@ -69,7 +69,19 @@ namespace Fuse
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
             var getType = getMemberBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null) as AbstractShaderNode;
+          
+        }
+        
+        public static AbstractShaderNode AbstractSetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMember, AbstractShaderNode theValue)
+        {
+            //return CreateAbstract(theMember, typeof(AssignValueToMember<>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, theValue});
             
+            
+            var setMemberBaseType = typeof(AssignValueToMember<>);
+            var dataType = new[] {typeof(T)};
+            var getType = setMemberBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember, theValue) as AbstractShaderNode;
+           
         }
         
         public static AbstractShaderNode AbstractComputeTextureGet(NodeSubContextFactory theSubContextFactory, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)

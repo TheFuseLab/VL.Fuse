@@ -27,12 +27,13 @@ namespace Fuse.ShaderFX
 
         private readonly AbstractShaderNode _input;
 
-        private readonly HashSet<string>_declarations = new HashSet<string>();
-        private readonly HashSet<string>_groupDeclarations = new HashSet<string>();
-        private readonly HashSet<string>_structs = new HashSet<string>();
-        private readonly HashSet<string>_mixins = new HashSet<string>();
-        private readonly HashSet<string>_compositions = new HashSet<string>();
-        private readonly Dictionary<string, string> _functionMap = new Dictionary<string, string>();
+        private readonly HashSet<string>_declarations = new();
+        private readonly HashSet<string>_groupDeclarations = new();
+        private readonly HashSet<string>_structs = new();
+        private readonly HashSet<string>_streams = new();
+        private readonly HashSet<string>_mixins = new();
+        private readonly HashSet<string>_compositions = new();
+        private readonly Dictionary<string, string> _functionMap = new();
 
         private readonly bool _isComputeShader;
         private readonly string _sourceTemplate;
@@ -57,10 +58,10 @@ namespace Fuse.ShaderFX
 
         private Dictionary<string, string> AppendTemplateValues(Dictionary<string, string> theTemplateMap) {
             
-            theTemplateMap["shaderType"] = TypeHelpers.GetSignatureTypeForType<T>();
-            theTemplateMap["resultType"] = TypeHelpers.GetGpuTypeForType<T>();
+            theTemplateMap["shaderType"] = TypeHelpers.GetSignature<T>();
+            theTemplateMap["resultType"] = TypeHelpers.GetGpuType<T>();
             
-            if (TypeHelpers.GetGpuTypeForType<T>().Equals("void"))
+            if (TypeHelpers.GetGpuType<T>().Equals("void"))
             {
                 theTemplateMap["resultFX"] = "";
             }
@@ -109,12 +110,15 @@ namespace Fuse.ShaderFX
             var functionBuilder = new StringBuilder();
             _functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
 
+            var streamBuilder = new StringBuilder();
+
             return new Dictionary<string, string>
             {
                 {"mixins", mixinBuilder.ToString()},
                 {"declarations", declarationBuilder.ToString()},
                 {"compositions", compositionBuilder.ToString()},
                 {"structs", structBuilder.ToString()},
+                {"streams", streamBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},
                 {"groupDeclarations", groupDeclarationBuilder.ToString()}
             };
@@ -151,7 +155,7 @@ namespace Fuse.ShaderFX
             theShaderInput.FunctionMap().ForEach(HandleFunction);
 
             streamBuilder.AppendLine("        streams.FX = " + theShaderInput.ID+";");
-            streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuTypeByValue(theShaderInput) + " FX;");
+            streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuType(theShaderInput) + " FX;");
             
             theSource = theShaderInput.BuildSourceCode();
             theStreams = streamBuilder.ToString();
@@ -166,7 +170,10 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
+            if (_input == null) return null;
+            
             _input.CheckContext(theContext);
+            _input.CallCompileGraph();
             
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();

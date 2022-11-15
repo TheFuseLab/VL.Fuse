@@ -53,7 +53,7 @@ namespace Fuse
 
         public override string TypeName()
         {
-            return TypeHelpers.GetGpuTypeForType<T>();
+            return TypeHelpers.GetGpuType<T>();
         }
 
         protected override string SourceTemplate()
@@ -144,7 +144,7 @@ namespace Fuse
             
             var functionValueMap = new Dictionary<string, string>
             {
-                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
+                {"resultType", TypeHelpers.GetGpuType<T>()},
                 {"functionName", theFunctionName},
                 {"arguments", BuildArguments(theParameters)},
                 {"functionImplementation", theDelegate.BuildSourceCode()},

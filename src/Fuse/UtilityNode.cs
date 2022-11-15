@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using Fuse.compute;
 using VL.Core;
@@ -9,22 +10,27 @@ namespace Fuse
     public class PassThroughNode<T> : ShaderNode<T>
     {
         protected ShaderNode<T> _input;
+
+        private readonly bool _triggerChange;
         public virtual ShaderNode<T> Input { get => _input;
             set
             {
                 _input = value ?? Default;
-                SetInputs(new List<AbstractShaderNode>{Input});
+                SetInputs(new List<AbstractShaderNode>{Input}, _triggerChange);
             }
         }
         
-        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough") : base(nodeContext, theName)
+        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough", Boolean triggerChange = true) : base(nodeContext, theName)
         {
             Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"");
+            _triggerChange = triggerChange;
+            // ReSharper disable once VirtualMemberCallInConstructor
             Input = Default;
         }
         
-        public PassThroughNode(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : this(nodeContext, theName)
+        public PassThroughNode(NodeContext nodeContext, string theName, AbstractShaderNode theValue, bool triggerChange = true) : this(nodeContext, theName, triggerChange)
         {
+            // ReSharper disable once VirtualMemberCallInConstructor
             SetInput(theValue);
         }
         

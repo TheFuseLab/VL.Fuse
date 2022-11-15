@@ -22,7 +22,7 @@ namespace Fuse.ShaderFX
         {
             var result =  new Dictionary<string, string>
             {
-                {"compositionType", TypeHelpers.GetSignatureTypeForType<T>()},
+                {"compositionType", TypeHelpers.GetSignature<T>()},
                 {"compositionName", ID}
             };
 

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Stride.Core.Mathematics;
 using VL.Core;
 
 namespace Fuse
@@ -38,5 +39,32 @@ namespace Fuse
         }
         
         
+    }
+
+    public enum Reorder3DMode
+    {
+        XYZ,
+        XZY,
+        YXZ,
+        YZX,
+        ZXY,
+        ZYX
+    }
+
+    public class Reorder3D : GetMember<Vector3, Vector3>
+    {
+        public Reorder3D(NodeContext nodeContext, ShaderNode<Vector3> theDefault = null) : base(nodeContext, theDefault)
+        {
+        }
+
+        public Reorder3D(NodeContext nodeContext, ShaderNode<Vector3> theInput, string theMember, ShaderNode<Vector3> theDefault = null) : base(nodeContext, theInput, theMember, theDefault)
+        {
+        }
+
+        public void SetInput(Reorder3DMode theMember, ShaderNode<Vector3> theInput)
+        {
+            base.SetInput(theMember.ToString().ToLower(), theInput);
+            CallChangeEvent();
+        }
     }
 }

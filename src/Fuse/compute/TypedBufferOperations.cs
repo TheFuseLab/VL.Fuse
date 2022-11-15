@@ -30,7 +30,7 @@ ${structMembers}
             var call = new StringBuilder();
             typeof(TIn).GetProperties().ForEach(property =>
             {
-                call.Append("        "+TypeHelpers.GetGpuTypeForType(property.PropertyType) + " " + property.Name+";"+Environment.NewLine);
+                call.Append("        "+TypeHelpers.GetGpuType(property.PropertyType) + " " + property.Name+";"+Environment.NewLine);
             });
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {

@@ -6,17 +6,17 @@ using VL.Stride.Shaders.ShaderFX;
 namespace Fuse.compute
 {
 
-    public class ComputeTextureGet<T> : ShaderNode<T> where T : struct
+    public class ComputeTextureGet<TIndex,T> : ShaderNode<T> where T : struct
     {
         private ShaderNode<Texture> _texture;
-        private AbstractShaderNode _index;
+        private ShaderNode<TIndex> _index;
         
         public ComputeTextureGet(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext,"getTextureValue",  theDefault)
         {
             
         }
 
-        public void SetInputs(ShaderNode<Texture> theTexture, AbstractShaderNode theIndex)
+        public void SetInputs(ShaderNode<Texture> theTexture, ShaderNode<TIndex> theIndex)
         {
             _texture = theTexture;
             _index = theIndex;
@@ -34,7 +34,7 @@ namespace Fuse.compute
         }
     }
 
-    public class ComputeTextureSet<T> : ShaderNode<GpuVoid>, IComputeVoid where T : struct
+    public class ComputeTextureSet<TIndex, T> : ShaderNode<GpuVoid>, IComputeVoid where T : struct
     {
         private ShaderNode<Texture> _texture;
         private AbstractShaderNode _index;
@@ -47,14 +47,14 @@ namespace Fuse.compute
 
         public void SetInputs(
             ShaderNode<Texture> theTexture, 
-            AbstractShaderNode theIndex, 
+            ShaderNode<TIndex> theIndex, 
             ShaderNode<T> theValue)
         {
             _texture = theTexture;
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>(){theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -69,6 +69,11 @@ namespace Fuse.compute
 
         protected override string SourceTemplate()
         {
+            if (_texture == null)
+            {
+                return GenerateDefaultSource();
+            }
+            
             const string shaderCode = "${textureName}[${index}] = ${value};";
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {

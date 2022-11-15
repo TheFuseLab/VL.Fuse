@@ -220,12 +220,9 @@ namespace Fuse
 
         private readonly ShaderNode<float> _default;
 
-        public ToFloat4(NodeContext nodeContext, AbstractShaderNode x) : base(nodeContext, "ToFloat")
+        public ToFloat4(NodeContext nodeContext) : base(nodeContext, "ToFloat")
         {
             _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
-            _x = x ?? _default;
-            
-            SetInputs(new List<AbstractShaderNode>{x});
         }
 
         public void SetInput(AbstractShaderNode x)
@@ -243,7 +240,7 @@ namespace Fuse
                 2 => "float4 ${resultName} = float4(${x}.xy,0.0,1.0);",
                 3 => "float4 ${resultName} = float4(${x}.xyz,1.0);",
                 4 => "float4 ${resultName} = ${x};",
-                _ => ""
+                _ => "float4 ${resultName} = float4(1.0,1.0,0.0,1.0);",
             };
 
             return ShaderNodesUtil.Evaluate(shader, 

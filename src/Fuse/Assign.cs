@@ -58,6 +58,11 @@ namespace Fuse
         {
             
         }
+        
+        public AssignValueToMember(NodeContext nodeContext,ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base(nodeContext, "StructAttribute")
+        {
+            SetInputs(theObject,theMember,theValue);
+        }
 
         public void SetInputs(ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue)
         {

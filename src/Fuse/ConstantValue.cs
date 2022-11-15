@@ -69,7 +69,7 @@ namespace Fuse
         public override string ID => TypeHelpers.GetDefaultForType<T>(Value);
         public override string TypeName()
         {
-            return TypeHelpers.GetGpuTypeForType<T>();
+            return TypeHelpers.GetGpuType<T>();
         }
 
         protected override string SourceTemplate()

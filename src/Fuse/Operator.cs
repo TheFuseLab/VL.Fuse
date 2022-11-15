@@ -16,8 +16,12 @@ namespace Fuse
 
         public void SetInput(IEnumerable<AbstractShaderNode> theInputs)
         {
-            
-            SetInputs(theInputs);
+            var myCheckedInputs = new List<AbstractShaderNode>();
+            foreach (var myInput in theInputs)
+            {
+                myCheckedInputs.Add(myInput ?? Default);
+            }
+            SetInputs(myCheckedInputs);
         }
 
         protected override string SourceTemplate()

@@ -20,7 +20,7 @@ namespace Fuse.compute
             _buffer = theBuffer;
             _index = theIndex;
             
-            TypeOverride = theDefault == null ? TypeHelpers.GetGpuTypeForType<T>() : theDefault.TypeName();
+            TypeOverride = theDefault == null ? TypeHelpers.GetGpuType<T>() : theDefault.TypeName();
             
             SetInputs(new List<AbstractShaderNode>{theBuffer,theIndex});
         }
@@ -28,6 +28,7 @@ namespace Fuse.compute
         protected override string SourceTemplate()
         {
             const string shaderCode = "${bufferType} ${resultName} = ${bufferName}[${index}];";
+            
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
                 {"bufferType", TypeName()},

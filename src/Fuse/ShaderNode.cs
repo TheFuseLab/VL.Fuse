@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Fuse.ShaderFX;
@@ -52,26 +53,34 @@ namespace Fuse
         public void ChangeGraph(AbstractShaderNode theNode);
     }
 
+    public interface ICompileGraph
+    {
+        public void CompileGraph(AbstractShaderNode theNode);
+    }
+
     public interface IPrepareGraph
     {
         public void PrepareGraph(AbstractShaderNode theNode);
     }
-    
-    
-    
-    
-    //RD3C7*^PTT-&
+
+    public enum HandleNullInputMode
+    {
+        ReplaceWithDefault,
+        Remove,
+        SetOff
+    }
 
     
     public abstract class AbstractShaderNode : IComputeNode
     {
-        public List<AbstractShaderNode> Ins = new List<AbstractShaderNode>();
+        public List<AbstractShaderNode> Ins = new();
         // Used for out parameters to trigger code generation
 
-        public readonly List<AbstractShaderNode> Outs = new List<AbstractShaderNode>();
+        public readonly List<AbstractShaderNode> Outs = new();
         
-        public readonly List<IChangeGraph> ChangeGraphListener = new List<IChangeGraph>();
-        public readonly List<IPrepareGraph> PrepareGraphListener = new List<IPrepareGraph>();
+        public readonly List<IChangeGraph> ChangeGraphListener = new();
+        public readonly List<IPrepareGraph> PrepareGraphListener = new();
+        public readonly List<ICompileGraph> CompileGraphListener = new();
 
         public readonly NodeContext NodeContext;
 
@@ -95,8 +104,20 @@ namespace Fuse
             PrepareGraphListener.Remove(theDelegate);
         }
         
+        public void AddCompileGraph(ICompileGraph theDelegate)
+        {
+            CompileGraphListener.Add(theDelegate);
+        }
+        
+        public void RemoveCompileGraph(ICompileGraph theDelegate)
+        {
+            CompileGraphListener.Remove(theDelegate);
+        }
+        
         
         public  string Name{ get;  set; }
+
+        public abstract AbstractShaderNode AbstractDefault { get; }
 
         public readonly uint HashCode;
         
@@ -143,6 +164,19 @@ namespace Fuse
             }
         }
 
+        public void CallCompileGraph()
+        {
+            foreach (var listener in new List<ICompileGraph>(CompileGraphListener))
+            {
+                listener.CompileGraph(this);
+            }
+            
+            foreach (var input in Ins)
+            {
+                input.CallCompileGraph();
+            }
+        }
+
         public void CallPrepareGraph()
         {
             foreach (var listener in PrepareGraphListener)
@@ -156,6 +190,10 @@ namespace Fuse
             }
         }
 
+        protected HandleNullInputMode NullInputMode = HandleNullInputMode.SetOff;
+        
+        private bool _hasNullInput;
+
         protected void SetInputs(IEnumerable<AbstractShaderNode> theIns, bool theCallChangeEvent = true)
         {
             if (Ins.SequenceEqual(theIns)) return;
@@ -164,11 +202,25 @@ namespace Fuse
             {
                 input.Outs.Remove(this);
             }
-            
+
+            _hasNullInput = false;
             Ins = new List<AbstractShaderNode>();
             theIns.ForEach(input =>
             {
-                if(input != null)Ins.Add(input);
+                switch (NullInputMode)
+                {
+                    case HandleNullInputMode.SetOff:
+                        if (input != null) Ins.Add(input);
+                        else _hasNullInput = true;
+                        break;
+                    case HandleNullInputMode.ReplaceWithDefault:
+                        if (input == null) Ins.Add(AbstractDefault);
+                        break;
+                    case HandleNullInputMode.Remove:
+                        if (input != null) Ins.Add(input);
+                        break;
+                }
+                
             });
             
             foreach (var input in Ins)
@@ -201,7 +253,7 @@ namespace Fuse
         private string GenerateSource(IEnumerable<AbstractShaderNode> theIns)
         {
             
-            if (ShaderNodesUtil.HasNullValue(theIns))
+            if (_hasNullInput)
             {
                 return GenerateDefaultSource();
             }
@@ -230,12 +282,12 @@ namespace Fuse
             OnPassContext(nodeContext);
         }
 
-        public void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                if (!(child is ShaderTree input))
+                if (child is not ShaderTree input)
                 {
                     return;
                 }
@@ -248,24 +300,13 @@ namespace Fuse
         {
             BuildChildrenSource(theSourceBuilder, theHashes);
 
-            if (!theHashes.Add(HashCode))
-            {
-                //Console.Out.WriteLine(">>Skip:" + Name + " : " + HashCode);
-                return;
-            }
+            if (!theHashes.Add(HashCode))return;
             
             var source = SourceCode;
             //Console.Out.WriteLine(Name + " : " + HashCode);
             if (!string.IsNullOrWhiteSpace(source))
             {
-                //Console.Out.WriteLine(">>Write:" + Name + " : " + HashCode);
-                //Console.Out.WriteLine("   " + source);
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
-            else
-            {
-                //Console.Out.WriteLine(">>Null string:" + Name + " : " + HashCode);
-                //Console.Out.WriteLine("   x" + source+"x");
             }
         }
         
@@ -397,6 +438,11 @@ namespace Fuse
             Property[thePropertyId].Add(theProperty);
         }
 
+        public void SetProperty(string thePropertyId, object theProperty)
+        {
+            Property[thePropertyId] = new ArrayList{theProperty};
+        }
+
         // ReSharper disable once MemberCanBeProtected.Global
         public void AddProperties(string thePropertyId, IList theProperties)
         {
@@ -414,6 +460,7 @@ namespace Fuse
         protected const string Compositions = "Compositions";
         protected const string Declarations = "Declarations";
         protected const string Structs = "Structs";
+        protected const string Streams = "Streams";
 
         public List<string> MixinList()
         {
@@ -468,6 +515,8 @@ namespace Fuse
 
         public  ShaderNode<T> Default { get; set; }
 
+        public override AbstractShaderNode AbstractDefault => Default;
+
         public ShaderNode(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null, bool theCreateDefault = true) : base(nodeContext, theId)
         {
             Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>(new NodeSubContextFactory(NodeContext).NextSubContext(), 0) : null);
@@ -505,7 +554,7 @@ namespace Fuse
         
         public override string TypeName()
         {
-            return typeof(T) == typeof(GpuStruct) ? TypeOverride : TypeHelpers.GetGpuTypeForType<T>();
+            return typeof(T) == typeof(GpuStruct) ? TypeOverride : TypeHelpers.GetGpuType<T>();
         }
 
         protected override string SourceTemplate()
@@ -517,7 +566,6 @@ namespace Fuse
         {
             return TypeHelpers.GetDimension<T>();
         }
-
         public override string ID => Name + "_" + HashCode;
     }
 

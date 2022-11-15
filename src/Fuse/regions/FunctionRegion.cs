@@ -24,7 +24,7 @@ namespace Fuse.regions
 
             public override string TypeName()
             {
-                return TypeHelpers.GetGpuTypeForType<T>();
+                return TypeHelpers.GetGpuType<T>();
             }
 
             public string Namer()
@@ -65,13 +65,13 @@ namespace Fuse.regions
         {
             Functions = new Dictionary<string, string>();
             
-            _signature = _name + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignatureTypeForType<T>();
+            _signature = _name + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignature<T>();
 
             
             
             var functionValueMap = new Dictionary<string, string>
             {
-                {"resultType", TypeHelpers.GetGpuTypeForType<T>()},
+                {"resultType", TypeHelpers.GetGpuType<T>()},
                 {"functionName", _signature},
                 {"arguments", BuildArguments(theArguments)},
                 {"functionImplementation", theFunction.BuildSourceCode()},
@@ -116,7 +116,7 @@ ${functionImplementation}
         private static string BuildSignature(IEnumerable<AbstractShaderNode> inputs)
         {
             var stringBuilder = new StringBuilder();
-            inputs.ForEach(input => stringBuilder.Append(TypeHelpers.GetSignatureTypeForType(input.GetType().GetGenericArguments()[0])));
+            inputs.ForEach(input => stringBuilder.Append(TypeHelpers.GetSignature(input.GetType().GetGenericArguments()[0])));
             return stringBuilder.ToString();
         }
         

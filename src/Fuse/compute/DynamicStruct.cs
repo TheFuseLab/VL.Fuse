@@ -29,7 +29,7 @@ ${structMembers}
             var call = new StringBuilder();
             theInputs.ForEach(input =>
             {
-                call.Append("        "+TypeHelpers.GetGpuTypeByValue(input) + " " + input.Name+";"+Environment.NewLine);
+                call.Append("        "+TypeHelpers.GetGpuType(input) + " " + input.Name+";"+Environment.NewLine);
                 myStride += TypeHelpers.GetSizeInBytes(input);
 
                 
@@ -40,7 +40,7 @@ ${structMembers}
                 {"structMembers", call.ToString()}
             });
             
-            AddProperty(Structs, structString);
+            SetProperty(Structs, structString);
             Stride = myStride;
 
             TypeOverride = theName;

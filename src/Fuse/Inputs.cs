@@ -260,7 +260,7 @@ namespace Fuse{
 
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuTypeForType<T>() : _type.TypeName(), _append);
+             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), _append);
          }
 
          public override string ComputeDeclaration()
@@ -288,7 +288,7 @@ namespace Fuse{
          
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuTypeForType<T>(), _append);
+             return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuType<T>(), _append);
          }
 
          public override string ComputeDeclaration()
@@ -303,7 +303,7 @@ namespace Fuse{
         public ValueInput(NodeContext nodeContext): base(nodeContext, "input", false)
         {
             ParameterKey = new ValueParameterKey<T>(ID);
-            SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
+            SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
 
         protected override ValueParameterUpdater<T> CreateUpdater()

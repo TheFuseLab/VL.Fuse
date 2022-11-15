@@ -21,6 +21,8 @@ ${declarations}
 
 ${structs}
 
+${streams}
+
 ${functions}
 
 ${compositions}
