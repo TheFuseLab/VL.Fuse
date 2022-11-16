@@ -317,17 +317,18 @@ namespace Fuse
             var result = new Dictionary<string, List<TProperty>>();
             Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
             {
-                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
+                if (node is not ShaderTree tree) return Trees.SkipAllChilds;
                 tree.Node.Property.ForEach(kv =>
                 {
-                    var values = kv.Value.OfType<TProperty>();
+                    var (key, value) = kv;
+                    var values = value.OfType<TProperty>();
                     var tProperties = values as TProperty[] ?? values.ToArray();
                     if (tProperties.IsEmpty()) return;
-                    if (!result.ContainsKey(kv.Key))
+                    if (!result.ContainsKey(key))
                     {
-                        result[kv.Key] = new List<TProperty>();
+                        result[key] = new List<TProperty>();
                     }
-                    tProperties.ForEach(v => result[kv.Key].Add(v));
+                    tProperties.ForEach(v => result[key].Add(v));
                 });
                 return Trees.TraverseAllChilds;
             }, out _, out _);

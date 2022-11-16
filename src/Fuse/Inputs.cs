@@ -246,13 +246,20 @@ namespace Fuse{
          
          public BufferInput(NodeContext nodeContext, ShaderNode<T> theType) : base(nodeContext, "DynamicBufferInput")
          {
-             SetInput(null,  true, theType);
+             SetInput(null,   theType);
          }
 
-         public void SetInput(Buffer theBuffer, bool theAppend, ShaderNode<T> theType)
+         public bool Append { 
+             get => _append;
+             set
+             {
+                 _append = value; CheckDeclaration();
+             }
+         }
+
+         public void SetInput(Buffer theBuffer, ShaderNode<T> theType)
          {
              Value = theBuffer;
-             _append = theAppend;
              _type = theType;
              if(theType != null)SetInputs(new List<AbstractShaderNode>{theType}, false);
              CheckDeclaration();
@@ -260,7 +267,7 @@ namespace Fuse{
 
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), _append);
+             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append);
          }
 
          public override string ComputeDeclaration()
