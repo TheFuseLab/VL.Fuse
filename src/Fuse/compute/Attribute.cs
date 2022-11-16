@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
+using Stride.Graphics;
 using VL.Core;
 
 namespace Fuse.ComputeSystem
@@ -94,8 +95,18 @@ namespace Fuse.ComputeSystem
 
     public class AppendBufferAttribute : Attribute<BufferInput<int>>
     {
+
+        public Buffer<int> AppendBuffer { get; set; }
+
+        public Buffer<int> DispatchArgsBuffer { get; set; }
+        
+        public BufferInput<int> AppendBufferGPU { get; set; }
+
+        public BufferInput<int> DispatchArgsBufferGPU { get; set; }
+
         public AppendBufferAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "", theName, AttributeType.IdAppendBuffer)
         {
+            
         }
     }
 }
