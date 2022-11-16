@@ -93,6 +93,7 @@ namespace Fuse.compute
         public void SetInputs(BufferInput<T> theBuffer, ShaderNode<T> theValue)
         {
             _buffer = theBuffer;
+            _buffer.Append = true;
             _value = theValue;
             
             SetInputs(new List<AbstractShaderNode>(){theBuffer, theValue});
