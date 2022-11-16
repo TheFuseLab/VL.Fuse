@@ -243,9 +243,19 @@ namespace Fuse{
 
          private ShaderNode<T> _type;
          private bool _append;
+
+         private bool _forceAppendConsume = false;
+         public bool ForceAppendConsume { get=>_forceAppendConsume;
+             set
+             {
+                 _forceAppendConsume = value; 
+                 CheckDeclaration();
+             }
+         }
          
          public BufferInput(NodeContext nodeContext, ShaderNode<T> theType) : base(nodeContext, "DynamicBufferInput")
          {
+             ForceAppendConsume = false;
              SetInput(null,   theType);
          }
 
@@ -253,7 +263,8 @@ namespace Fuse{
              get => _append;
              set
              {
-                 _append = value; CheckDeclaration();
+                 _append = value; 
+                 CheckDeclaration();
              }
          }
 
@@ -267,7 +278,7 @@ namespace Fuse{
 
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append);
+             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append, false, ForceAppendConsume);
          }
 
          public override string ComputeDeclaration()
@@ -280,8 +291,11 @@ namespace Fuse{
      {
          private bool _append;
 
+         public bool ForceAppendConsume { get; set; }
+
          public TypedBufferInput(NodeContext nodeContext) : base(nodeContext, "BufferInput")
          {
+             ForceAppendConsume = false;
              SetInput(null, true);
          }
 
@@ -295,7 +309,7 @@ namespace Fuse{
          
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuType<T>(), _append);
+             return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuType<T>(), _append, false, ForceAppendConsume);
          }
 
          public override string ComputeDeclaration()

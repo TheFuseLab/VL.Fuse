@@ -513,9 +513,18 @@ namespace Fuse
                 return textureType + "<" + textureDataType + ">";
             }
             
-            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend, bool theReadWrite = false)
+            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend, bool theReadWrite, bool theForceAppendConsume)
             {
-                Console.WriteLine("");
+                if (theForceAppendConsume || theBuffer != null && (theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
+                {
+                    if (theAppend)
+                    {
+                        return "AppendStructuredBuffer<" + theBufferType + ">";
+                    }
+
+                    return "ConsumeStructuredBuffer<" + theBufferType + ">";
+                }
+                
                 if (theBuffer == null)
                 {
                     if (theReadWrite)
@@ -528,16 +537,6 @@ namespace Fuse
                     }
                 }
 
-                if ((theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
-                {
-                    if (theAppend)
-                    {
-                        return "AppendStructuredBuffer<" + theBufferType + ">";
-                    }
-
-                    return "ConsumeStructuredBuffer<" + theBufferType + ">";
-                }
-             
                 if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
                 {
                     return "RWStructuredBuffer<" + theBufferType + ">";

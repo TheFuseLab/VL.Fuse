@@ -38,7 +38,6 @@ namespace Fuse.ComputeSystem
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             
-            AddProperty("ComputeSystemAttribute", this);
         }
         public AttributeType AttributeType { get; }
 
@@ -64,6 +63,7 @@ namespace Fuse.ComputeSystem
         public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName) : base(nodeContext, "", theName, AttributeType.StructuredBuffer)
         {
             Group = theGroup;
+            AddProperty("ComputeSystemAttribute", this);
         }
         
         public string Group { get; }
@@ -90,23 +90,48 @@ namespace Fuse.ComputeSystem
     {
         public TempoaryAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "", theName, AttributeType.Temporary)
         {
+            AddProperty("ComputeSystemAttribute", this);
         }
     }
 
     public class AppendBufferAttribute : Attribute<BufferInput<int>>
     {
 
-        public Buffer<int> AppendBuffer { get; set; }
-
-        public Buffer<int> DispatchArgsBuffer { get; set; }
+        private Buffer<int> _appendBuffer;
+        public Buffer<int> AppendBuffer
+        {
+            get => _appendBuffer;
+            set
+            {
+                _appendBuffer = value;
+                AppendBufferGpu.SetInput(value,null);
+            }
+        }
         
-        public BufferInput<int> AppendBufferGPU { get; set; }
+        private Buffer<int> _dispatchArgsBuffer;
 
-        public BufferInput<int> DispatchArgsBufferGPU { get; set; }
+        public Buffer<int> DispatchArgsBuffer { get=>_dispatchArgsBuffer;
+            set
+            {
+                _dispatchArgsBuffer = value;
+                DispatchArgsBufferGpu.SetInput(value,null);
+            }
+        }
+        
+        public BufferInput<int> AppendBufferGpu { get; set; }
+
+        public BufferInput<int> DispatchArgsBufferGpu { get; set; }
 
         public AppendBufferAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "", theName, AttributeType.IdAppendBuffer)
         {
-            
+            var nodeSubContextFactory = new NodeSubContextFactory(nodeContext);
+            AppendBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(nodeSubContextFactory.NextSubContext(),0))
+                {
+                    ForceAppendConsume = true
+                };
+            AppendBufferGpu.AddProperty("ComputeSystemAttribute", this);
+            DispatchArgsBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(nodeSubContextFactory.NextSubContext(),0));
+            DispatchArgsBufferGpu.AddProperty("ComputeSystemAttribute", this);
         }
     }
 }
