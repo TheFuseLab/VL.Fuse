@@ -8,15 +8,11 @@ namespace Fuse.ComputeSystem
     {
         public string Name { get; }
 
-        public string Group { get; }
-
         public AttributeType AttributeType { get; }
         
         public AbstractShaderNode ShaderNode { get; }
         
         public void SetInput(AbstractShaderNode theNode);
-
-        public List<string> Description { get; }
 
         public ShaderNode<GpuVoid> WriteCall { get; set; }
 
@@ -29,7 +25,8 @@ namespace Fuse.ComputeSystem
         StructuredBuffer,
         PrimitiveBuffer,
         Texture,
-        DoubleBufferedTexture
+        DoubleBufferedTexture,
+        IdAppendBuffer
     }
     
     public class Attribute<T> : PassThroughNode<T>, IAttribute
@@ -37,17 +34,39 @@ namespace Fuse.ComputeSystem
         public Attribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theName, false)
         {
             AttributeType = theType;
-            Group = theGroup;
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             
-            AddProperty(Group, this);
+            AddProperty("ComputeSystemAttribute", this);
         }
-        
-        public string Group { get; }
         public AttributeType AttributeType { get; }
 
         public AbstractShaderNode ShaderNode { get; }
+
+        public ShaderNode<GpuVoid> WriteCall { get; set; }
+        
+        public AbstractShaderNode ReadCall { get; set; }
+
+        public void SetAbstractInput(AbstractShaderNode theNode)
+        {
+            SetInput(theNode);
+        }
+    }
+
+    public interface IStructureBufferAttribute : IAttribute
+    {
+        public string Group { get; }
+    }
+
+    public class StructuredBufferAttribute<T> : Attribute<T>, IStructureBufferAttribute
+    {
+        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName) : base(nodeContext, "", theName, AttributeType.StructuredBuffer)
+        {
+            Group = theGroup;
+        }
+        
+        public string Group { get; }
+        
         public List<string> Description {
             get { 
                 var keys = new List<string> { "x", "y", "z", "w"};
@@ -64,14 +83,19 @@ namespace Fuse.ComputeSystem
                 }
                 return result;
             } }
+    }
 
-        public ShaderNode<GpuVoid> WriteCall { get; set; }
-        
-        public AbstractShaderNode ReadCall { get; set; }
-
-        public void SetAbstractInput(AbstractShaderNode theNode)
+    public class TempoaryAttribute<T> : Attribute<T>
+    {
+        public TempoaryAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "", theName, AttributeType.Temporary)
         {
-            SetInput(theNode);
+        }
+    }
+
+    public class AppendBufferAttribute : Attribute<BufferInput<int>>
+    {
+        public AppendBufferAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "", theName, AttributeType.IdAppendBuffer)
+        {
         }
     }
 }
