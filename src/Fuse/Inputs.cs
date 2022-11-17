@@ -240,11 +240,12 @@ namespace Fuse{
 
      public class BufferInput<T>: ChangibleObjectInput<Buffer>
      {
-
-         private ShaderNode<T> _type;
          private bool _append;
 
          private bool _forceAppendConsume = false;
+         
+         public ShaderNode<T> Type { get; private set; }
+
          public bool ForceAppendConsume { get=>_forceAppendConsume;
              set
              {
@@ -271,14 +272,14 @@ namespace Fuse{
          public void SetInput(Buffer theBuffer, ShaderNode<T> theType)
          {
              Value = theBuffer;
-             _type = theType;
+             Type = theType;
              if(theType != null)SetInputs(new List<AbstractShaderNode>{theType}, false);
              CheckDeclaration();
          }
 
          public override string Declaration()
          {
-             return TypeHelpers.BufferTypeName(Value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append, false, ForceAppendConsume);
+             return TypeHelpers.BufferTypeName(Value, Type == null ? TypeHelpers.GetGpuType<T>() : Type.TypeName(), Append, false, ForceAppendConsume);
          }
 
          public override string ComputeDeclaration()

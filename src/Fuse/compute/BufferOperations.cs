@@ -20,7 +20,7 @@ namespace Fuse.compute
             _buffer = theBuffer;
             _index = theIndex;
             
-            TypeOverride = theDefault == null ? TypeHelpers.GetGpuType<T>() : theDefault.TypeName();
+            TypeOverride = theBuffer?.Type == null ? TypeHelpers.GetGpuType<T>() : theBuffer.Type.TypeName();
             
             SetInputs(new List<AbstractShaderNode>{theBuffer,theIndex});
         }
