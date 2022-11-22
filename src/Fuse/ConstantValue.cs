@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Stride.Core.Mathematics;
 using VL.Core;
 
@@ -15,6 +16,7 @@ namespace Fuse
             if (typeof(T) == typeof(Vector2)) return new ConstantValue<T>(nodeContext,(T)Convert.ChangeType(new Vector2(theValue,theValue), typeof(Vector2)));
             if (typeof(T) == typeof(Vector3)) return new ConstantValue<T>(nodeContext,(T)Convert.ChangeType(new Vector3(theValue,theValue,theValue), typeof(Vector3)));
             if (typeof(T) == typeof(Vector4)) return new ConstantValue<T>(nodeContext,(T)Convert.ChangeType(new Vector4(theValue,theValue,theValue,theValue), typeof(Vector4)));
+            if (typeof(T) == typeof(Color4)) return new ConstantValue<T>(nodeContext,(T)Convert.ChangeType(new Color4(theValue,theValue,theValue,theValue), typeof(Color4)));
 
             var intValue = (int) theValue;
             if (typeof(T) == typeof(int)) return new ConstantValue<T>(nodeContext,(T)Convert.ChangeType(intValue, typeof(int)));
@@ -66,7 +68,7 @@ namespace Fuse
             }
         }
 
-        public override string ID => TypeHelpers.GetDefaultForType<T>(Value);
+        public override string ID => TypeHelpers.GetDefaultForType(Value);
         public override string TypeName()
         {
             return TypeHelpers.GetGpuType<T>();
@@ -77,4 +79,6 @@ namespace Fuse
             return "";//TypeHelpers.GetDefaultForType(Value);
         }
     }
+
+    
 }
