@@ -443,6 +443,11 @@ namespace Fuse
             Property[thePropertyId] = new ArrayList{theProperty};
         }
 
+        public void RemoveProperty(string thePropertyId)
+        {
+            Property.Remove(thePropertyId);
+        }
+
         // ReSharper disable once MemberCanBeProtected.Global
         public void AddProperties(string thePropertyId, IList theProperties)
         {
@@ -460,6 +465,7 @@ namespace Fuse
         protected const string Compositions = "Compositions";
         protected const string Declarations = "Declarations";
         protected const string Structs = "Structs";
+        protected const string ConstantArrays = "ConstantArrays";
         protected const string Streams = "Streams";
 
         public List<string> MixinList()
@@ -485,6 +491,11 @@ namespace Fuse
         public List<string> StructList()
         {
             return PropertyForTree<string>(Structs);
+        }
+        
+        public List<string> ConstantArrayList()
+        {
+            return PropertyForTree<string>(ConstantArrays);
         }
         
         public List<string> StreamList()
