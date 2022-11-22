@@ -100,8 +100,6 @@ namespace Fuse
             public static string GetDefaultForType<T>(T theValue)
             {
                 if (typeof(T) == typeof(float)) return theValue.ToString();
-                if (typeof(T) == typeof(bool)) return theValue.ToString().ToLower();
-                if (typeof(T) == typeof(int)) return theValue.ToString();
                 
                 if (typeof(T) == typeof(Vector2))
                 {
@@ -118,6 +116,32 @@ namespace Fuse
                     var vec4 = (Vector4) Convert.ChangeType(theValue, typeof(Vector4));
                     return $"float4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
                 }
+                
+                if (typeof(T) == typeof(Color4))
+                {
+                    var color4 = (Color4) Convert.ChangeType(theValue, typeof(Color4));
+                    return $"float4({color4.R},{color4.G},{color4.B},{color4.A})";
+                }
+                
+                if (typeof(T) == typeof(int)) return theValue.ToString();
+                
+                if (typeof(T) == typeof(Int2))
+                {
+                    var vec2 = (Int2) Convert.ChangeType(theValue, typeof(Int2));
+                    return $"int2({vec2.X},{vec2.Y})";
+                }
+                if (typeof(T) == typeof(Int3))
+                {
+                    var vec3 = (Int3) Convert.ChangeType(theValue, typeof(Int3));
+                    return $"int3({vec3.X},{vec3.Y},{vec3.Z})";
+                }
+                if (typeof(T) == typeof(Int4))
+                {
+                    var vec4 = (Int4) Convert.ChangeType(theValue, typeof(Int4));
+                    return $"int4({vec4.X},{vec4.Y},{vec4.Z},{vec4.W})";
+                }
+                
+                if (typeof(T) == typeof(bool)) return theValue.ToString()?.ToLower();
          
                 if (typeof(T) == typeof(SamplerState))
                 {
