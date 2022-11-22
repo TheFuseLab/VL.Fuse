@@ -20,6 +20,8 @@ ${groupDeclarations}
 ${declarations}
     }
 
+${constantArrays}
+
 ${structs}
 
 ${functions}

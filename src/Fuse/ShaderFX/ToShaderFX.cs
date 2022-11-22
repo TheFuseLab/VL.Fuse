@@ -19,6 +19,8 @@ ${groupDeclarations}
 ${declarations}
     }
 
+${constantArrays}
+
 ${structs}
 
 ${streams}

@@ -2,12 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
-using VL.Core;
-using VL.Stride;
 using VL.Stride.Shaders.ShaderFX;
 
 
@@ -30,6 +27,7 @@ namespace Fuse.ShaderFX
         private readonly HashSet<string>_declarations = new();
         private readonly HashSet<string>_groupDeclarations = new();
         private readonly HashSet<string>_structs = new();
+        private readonly HashSet<string>_constantArrays = new();
         private readonly HashSet<string>_streams = new();
         private readonly HashSet<string>_mixins = new();
         private readonly HashSet<string>_compositions = new();
@@ -101,6 +99,9 @@ namespace Fuse.ShaderFX
             var structBuilder = new StringBuilder();
             _structs.ForEach(gpuStruct => structBuilder.AppendLine(gpuStruct));
             
+            var constantArrayBuilder = new StringBuilder();
+            _constantArrays.ForEach(array => constantArrayBuilder.AppendLine(array));
+            
             var streamBuilder = new StringBuilder();
             _streams.ForEach(stream => streamBuilder.AppendLine(stream));
             
@@ -120,6 +121,7 @@ namespace Fuse.ShaderFX
                 {"declarations", declarationBuilder.ToString()},
                 {"compositions", compositionBuilder.ToString()},
                 {"structs", structBuilder.ToString()},
+                {"constantArrays", constantArrayBuilder.ToString()},
                 {"streams", streamBuilder.ToString()},
                 {"functions", functionBuilder.ToString()},
                 {"groupDeclarations", groupDeclarationBuilder.ToString()}
@@ -145,13 +147,12 @@ namespace Fuse.ShaderFX
         
         private void HandleShader(bool theIsComputeShader, AbstractShaderNode theShaderInput, out string theSource, out string theStreams, out string theDefinedStreams)
         {
-            
-            
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
             
             theShaderInput.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
             theShaderInput.StructList().ForEach(value => _structs.Add(value));
+            theShaderInput.ConstantArrayList().ForEach(value => _constantArrays.Add(value));
             theShaderInput.StreamList().ForEach(value => _streams.Add(value));
             theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
             theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
