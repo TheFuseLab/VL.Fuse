@@ -101,7 +101,7 @@ namespace Fuse.regions
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) : inputs[i];
+                        var myInput = i >= inputs.Count || inputs[i] == null ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) : inputs[i];
                         var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
                         myInputs.Add(myDeclareValue);
 
@@ -126,13 +126,13 @@ namespace Fuse.regions
                 switch (outputs[i])
                 {
                     case ShaderNode<GpuVoid> shaderNode:
-                        var myInputVoid = myInputs[i];
+                        var myInputVoid = myInputs[i] ?? new EmptyVoid(subContextFactory.NextSubContext());
                         var outputVoid = AbstractCreation.AbstractOutput(subContextFactory, this, myInputVoid);
                         OptionalOutputs.Add(outputVoid);
 
                         break;
                     default:
-                        var myInput = myInputs[i];
+                        var myInput = myInputs[i] ?? AbstractCreation.AbstractConstant(subContextFactory, outputs[i],0);
                         var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
                         OptionalOutputs.Add(output);
 
