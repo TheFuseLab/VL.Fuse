@@ -132,6 +132,22 @@ namespace Fuse
         }
     }
     
+    public class Do<T> : PassThroughNode<T>
+    {
+
+        
+        public Do(NodeContext nodeContext) : base(nodeContext, "Do")
+        {
+        }
+
+        public void SetInput(ShaderNode<T> theIn, ShaderNode<GpuVoid> theCommand)
+        {
+            base.SetInput(theIn);
+            
+            SetInputs(new List<AbstractShaderNode>{Input,theCommand});
+        }
+    }
+    
     public class AddProperty<T> : PassThroughNode<T>
     {
         private readonly string _propertyId;
