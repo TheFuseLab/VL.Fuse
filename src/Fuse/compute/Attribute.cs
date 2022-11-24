@@ -73,13 +73,27 @@ namespace Fuse.ComputeSystem
             var myFactory = new NodeSubContextFactory(nodeContext);
             Group = theGroup;
             SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, true, theName.ToUpper()));
-            AddProperty("ComputeSystemAttribute", this);
+            SetProperty("ComputeSystemAttribute", this);
         }
         
         public string Group { get; }
         public StructuredBufferAttributeType StructuredBufferAttributeType()
         {
             return ComputeSystem.StructuredBufferAttributeType.Attribute;
+        }
+
+        public void OverRideByInstance(ShaderNode<GpuStruct> theInstance)
+        {
+            if (theInstance == null)
+            {
+                SetProperty("ComputeSystemAttribute", this);
+            }else{
+                var myFactory = new NodeSubContextFactory(NodeContext,1);
+                var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext());
+                getMember.SetInput(Name, theInstance);
+                SetInput(getMember);
+                RemoveProperty("ComputeSystemAttribute");
+            }
         }
 
         public List<string> Description {
@@ -100,21 +114,10 @@ namespace Fuse.ComputeSystem
             } }
     }
     
-    public class StructuredBufferResource : Attribute<BufferInput<GpuStruct>>, IStructureBufferAttribute
+    public class StructuredBufferResource : Attribute<GpuStruct>, IStructureBufferAttribute
     {
 
-        private Buffer _buffer;
-        public Buffer Buffer
-        {
-            get => _buffer;
-            set
-            {
-                _buffer = value;
-                BufferGpu.SetInput(value,null);
-            }
-        }
 
-        public BufferInput<GpuStruct> BufferGpu { get; set; }
 
         public StructuredBufferResource(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
@@ -123,13 +126,7 @@ namespace Fuse.ComputeSystem
             {
                 TypeOverride = theName
             };
-            BufferGpu = new BufferInput<GpuStruct>(nodeSubContextFactory.NextSubContext(), dynamicStruct);
-            BufferGpu.AddProperty("ComputeSystemAttribute", this);
-        }
-
-        public void SetInput(Buffer theBuffer, DynamicStruct theStruct)
-        {
-            BufferGpu.SetInput(theBuffer, theStruct);
+            AddProperty("ComputeSystemAttribute", this);
         }
 
         public string Group => Name;
@@ -137,6 +134,24 @@ namespace Fuse.ComputeSystem
         public StructuredBufferAttributeType StructuredBufferAttributeType()
         {
             return ComputeSystem.StructuredBufferAttributeType.Resource;
+        }
+    }
+    
+    public class StructuredBufferInstance : Attribute<GpuStruct>, IStructureBufferAttribute
+    {
+
+
+
+        public StructuredBufferInstance(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.StructuredBuffer)
+        {
+            AddProperty("ComputeSystemAttribute", this);
+        }
+
+        public string Group => Name;
+
+        public StructuredBufferAttributeType StructuredBufferAttributeType()
+        {
+            return ComputeSystem.StructuredBufferAttributeType.Instance;
         }
     }
 
