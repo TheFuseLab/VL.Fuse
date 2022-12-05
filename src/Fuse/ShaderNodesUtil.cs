@@ -252,16 +252,6 @@ namespace Fuse
             AddShaderSource( toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
             return toShaderFx;
         }
-        
-        public static ToComputeMatrix RegisterComputeMatrix(ShaderNode<Matrix> theGpuValue) 
-        {
-            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
-            if (game == null) return null;
-            
-            var toComputeMatrix = new ToComputeMatrix(game,theGpuValue);
-            AddShaderSource( toComputeMatrix.ShaderName, toComputeMatrix.ShaderCode, "shaders\\" + toComputeMatrix.ShaderName + ".sdsl");
-            return toComputeMatrix;
-        }
 
         public static void ListInputs(List<IGpuInput> theInputs, AbstractShaderNode theGpuValue)
         {
