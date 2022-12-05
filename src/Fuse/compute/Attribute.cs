@@ -68,10 +68,14 @@ namespace Fuse.ComputeSystem
 
     public class StructuredBufferAttribute<T> : Attribute<T>, IStructureBufferAttribute
     {
-        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName) : base(nodeContext, theName, AttributeType.StructuredBuffer)
+       // public ShaderNode<T> Default;
+        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
             Group = theGroup;
+
+            Default = theDefault ?? ConstantHelper.FromFloat<T>(myFactory.NextSubContext(), 0f);
+            
             SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, true, theName.ToUpper()));
             SetProperty("ComputeSystemAttribute", this);
         }
@@ -94,6 +98,7 @@ namespace Fuse.ComputeSystem
                 SetInput(getMember);
                 RemoveProperty("ComputeSystemAttribute");
             }
+            CallChangeEvent();
         }
 
         public List<string> Description {
@@ -114,18 +119,13 @@ namespace Fuse.ComputeSystem
             } }
     }
     
-    public class StructuredBufferResource : Attribute<GpuStruct>, IStructureBufferAttribute
+    public class StructuredBufferResource : Attribute<Buffer>, IStructureBufferAttribute, IBufferInput<GpuStruct>
     {
 
 
 
         public StructuredBufferResource(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
-            var nodeSubContextFactory = new NodeSubContextFactory(nodeContext);
-            var dynamicStruct = new DynamicStruct(nodeSubContextFactory.NextSubContext())
-            {
-                TypeOverride = theName
-            };
             AddProperty("ComputeSystemAttribute", this);
         }
 
@@ -134,6 +134,10 @@ namespace Fuse.ComputeSystem
         public StructuredBufferAttributeType StructuredBufferAttributeType()
         {
             return ComputeSystem.StructuredBufferAttributeType.Resource;
+        }
+
+        public bool Append {
+            set { }
         }
     }
     
