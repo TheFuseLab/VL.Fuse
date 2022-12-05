@@ -40,7 +40,7 @@ ${sourceFX}
         
         
         public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base( 
-            theCompute, 
+            new Dictionary<string, AbstractShaderNode>{{"FX", theCompute}}, 
             new List<string>(),
             new Dictionary<string, string>(),
             theIsCompute,
@@ -48,6 +48,17 @@ ${sourceFX}
         {
         }
 
-       
+
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+            if (TypeHelpers.GetGpuType<T>().Equals("void"))
+            {
+                theTemplateMap["resultFX"] = "";
+            }
+            else
+            {
+                theTemplateMap["resultFX"] = "return " + Inputs["FX"].ID +";";
+            }
+        }
     }
 }

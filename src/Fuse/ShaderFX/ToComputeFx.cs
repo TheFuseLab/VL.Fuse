@@ -35,11 +35,15 @@ ${sourceFX}
 };";
 
         public ToComputeFx(ShaderNode<T> theCompute) : base(
-            theCompute, 
+            new Dictionary<string, AbstractShaderNode>{{"FX", theCompute}}, 
             new List<string>(),
             new Dictionary<string, string>(),
             true,
             ShaderSource)
+        {
+        }
+
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
         }
     }
