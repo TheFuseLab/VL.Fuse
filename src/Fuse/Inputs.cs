@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fuse.compute;
 using Microsoft.CodeAnalysis.Editing;
 using Stride.Graphics;
 using Stride.Rendering;
@@ -238,7 +239,7 @@ namespace Fuse{
          }
      }
 
-     public class BufferInput<T>: ChangibleObjectInput<Buffer>
+     public class BufferInput<T>: ChangibleObjectInput<Buffer>, IBufferInput<T>
      {
          private bool _append;
 
@@ -253,7 +254,12 @@ namespace Fuse{
                  CheckDeclaration();
              }
          }
-         
+
+         public override string TypeName()
+         {
+             return Type == null ? TypeHelpers.GetGpuType<T>() : Type.TypeName();
+         }
+
          public BufferInput(NodeContext nodeContext, ShaderNode<T> theType) : base(nodeContext, "DynamicBufferInput")
          {
              ForceAppendConsume = false;
