@@ -11,6 +11,7 @@ using Stride.Shaders;
 using VL.Core;
 using VL.Lib.Collections;
 using VL.Stride.Shaders.ShaderFX;
+using Buffer = Stride.Graphics.Buffer;
 
 
 namespace Fuse
@@ -70,7 +71,6 @@ namespace Fuse
         SetOff
     }
 
-    
     public abstract class AbstractShaderNode : IComputeNode
     {
         public List<AbstractShaderNode> Ins = new();
@@ -570,7 +570,7 @@ namespace Fuse
         
         public override string TypeName()
         {
-            return typeof(T) == typeof(GpuStruct) ? TypeOverride : TypeHelpers.GetGpuType<T>();
+            return typeof(T) == typeof(GpuStruct) ||typeof(T)  == typeof(Buffer) ? TypeOverride : TypeHelpers.GetGpuType<T>();
         }
 
         protected override string SourceTemplate()
