@@ -49,6 +49,11 @@ namespace Fuse
             Input = theValue as ShaderNode<T>;
         }
         public override string ID => _input.ID;
+        
+        public override string TypeName()
+        {
+            return Input != null ? Input.TypeName() : base.TypeName();
+        }
     }
 
     public class PassVoid : PassThroughNode<GpuVoid>, IComputeVoid
