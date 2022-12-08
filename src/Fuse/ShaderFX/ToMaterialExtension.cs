@@ -1,30 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Fuse.compute;
 using Stride.Core.Mathematics;
 using Stride.Engine;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
+using Vortice.Vulkan;
 
 namespace Fuse.ShaderFX
 {
-    public enum InputPrimitiveType
-    {
-        Point, //point,1
-        Line, //line,2
-        Triangle, //triangle,3
-        LineAdjacency, // lineadj,4
-        TriangleAdjacency //triangleadj,6
-    }
-
-    public enum OutputPrimitiveType
-    {
-        Point, //PointStream
-        Line, //LineStream
-        Triangle //TriangleStream
-    }
     
-    public class ToMaterialExtension<T> : AbstractToShaderFX<T> 
+    
+    public class ToMaterialExtension : AbstractToShaderFX<GpuVoid> 
     {
 
         private const string ShaderSource = @"
@@ -38,6 +26,8 @@ ${groupDeclarations}
 ${declarations}
     }
 
+${constantArrays}
+
 ${structs}
 
 ${streams}
@@ -47,51 +37,90 @@ ${functions}
 ${compositions}
 
     [maxvertexcount(${numVertex})]
-	stage void GSMain(${intputType} Input input[${numElements}], inout ${outputType}<Output> outputStream)
+	stage void GSMain(${inputType} Input input[${numElements}], inout ${outputType}<Output> outputStream)
 	{
-		    
         ${sourceGS}
-        ${resultGS}
 	}
 
     //override shading, create sphere impostor in this case
 	stage override float4 Shading()
 	{
-		
-
-        ${sourceN}
-		float3 normal = ${resultN};
-		 
-        ${sourceWP}
-		float4 worldPos = ${resultWP};
-
-		return StrideShadingWorldNormal(worldPos, normal);
+        ${sourceSWN}
+		return ${resultSWN};
 	}
 };";
 
+
+        private readonly int _myMaximumVertexCount;
+        private readonly InputPrimitiveType _myInputPrimitiveType;
+        private readonly OutputPrimitiveType _myOutputPrimitiveType;
         
-        
-        
-        public ToMaterialExtension(ShaderNode<GpuVoid> theGeometryNode, ShaderNode<Vector3> theNormalNode, ShaderNode<Vector4> theWorldPosNode, bool theIsCompute = false, string theShaderSource = ShaderSource) : base( 
+        public ToMaterialExtension(
+            ShaderNode<GpuVoid> theGeometryNode,
+            ShaderNode<Vector4> theShading, 
+            int theMaximumVertexCount, 
+            InputPrimitiveType theInputPrimitiveType,
+            OutputPrimitiveType theOutputPrimitive
+            ) : base( 
             new Dictionary<string, AbstractShaderNode>
             {
                 {"GS", theGeometryNode},
-                {"N", theNormalNode},
-                {"WP", theWorldPosNode}
+                {"SWN", theShading}
             }, 
             new List<string>(),
             new Dictionary<string, string>(),
-            theIsCompute,
-            theShaderSource)
+            false,
+            ShaderSource)
         {
+            _myMaximumVertexCount = theMaximumVertexCount;
+            _myInputPrimitiveType = theInputPrimitiveType;
+            _myOutputPrimitiveType = theOutputPrimitive;
         }
 
+        private string InputPrimitiveTypeString()
+        {
+            return _myInputPrimitiveType switch
+            {
+                InputPrimitiveType.Point => "point",
+                InputPrimitiveType.Line => "line",
+                InputPrimitiveType.Triangle => "triangle",
+                InputPrimitiveType.LineAdjacency => "lineadj",
+                InputPrimitiveType.TriangleAdjacency => "triangleadj",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+        
+        private string InputPrimitiveTypeNumElements()
+        {
+            return _myInputPrimitiveType switch
+            {
+                InputPrimitiveType.Point => "1",
+                InputPrimitiveType.Line => "2",
+                InputPrimitiveType.Triangle => "3",
+                InputPrimitiveType.LineAdjacency => "4",
+                InputPrimitiveType.TriangleAdjacency => "6",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+        
+        private string OutputPrimitiveTypeString()
+        {
+            return _myOutputPrimitiveType switch
+            {
+                OutputPrimitiveType.Point => "PointStream",
+                OutputPrimitiveType.Line => "LineStream",
+                OutputPrimitiveType.Triangle => "TriangleStream",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
 
         public override void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
-            theTemplateMap["resultGS"] = "";
-            theTemplateMap["resultN"] = Inputs["N"].ID +";";
-            theTemplateMap["resultWP"] = Inputs["WP"].ID +";";
+            theTemplateMap["numVertex"] = _myMaximumVertexCount.ToString();
+            theTemplateMap["inputType"] = InputPrimitiveTypeString();
+            theTemplateMap["numElements"] = InputPrimitiveTypeNumElements();
+            theTemplateMap["outputType"] = OutputPrimitiveTypeString();
+            theTemplateMap["resultSWN"] = Inputs["SWN"].ID +";";
         }
     }
     
