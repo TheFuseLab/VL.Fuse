@@ -75,6 +75,11 @@ namespace Fuse
                 };
             }
             
+            public static bool IsVoid(Type t)
+            {
+                return t == typeof(GpuVoid);
+            }
+            
             // USED BY VL
             // ReSharper disable once UnusedMember.Global
             
