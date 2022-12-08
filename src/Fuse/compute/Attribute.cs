@@ -69,14 +69,14 @@ namespace Fuse.ComputeSystem
     public class StructuredBufferAttribute<T> : Attribute<T>, IStructureBufferAttribute
     {
        // public ShaderNode<T> Default;
-        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.StructuredBuffer)
+        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, bool theDefineSemantic = true, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
             Group = theGroup;
 
             Default = theDefault ?? ConstantHelper.FromFloat<T>(myFactory.NextSubContext(), 0f);
             
-            SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, true, theName.ToUpper()));
+            SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, theDefineSemantic, theName.ToUpper()));
             SetProperty("ComputeSystemAttribute", this);
         }
         
