@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
+using Stride.Engine;
 using Stride.Graphics;
+using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
@@ -242,6 +245,37 @@ namespace Fuse
             AddShaderSource( theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
             
             return computeShader;
+        }
+
+        class DynamicDrawEffectInstance : DynamicEffectInstance
+        {
+            public readonly CompositeDisposable Subscriptions = new();
+
+            public DynamicDrawEffectInstance(string effectName, ParameterCollection parameters = null) : base(effectName, parameters)
+            {
+            }
+
+            protected override void Destroy()
+            {
+                Subscriptions.Dispose();
+                base.Destroy();
+            }
+        }
+        
+        
+        public static DynamicEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
+        {
+            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            if (game == null) return null;
+            
+            var effectImageShader = new DynamicDrawEffectInstance("ShaderFXGraphEffect");
+            var context = typeof(ShaderGraph).GetMethod("NewShaderGeneratorContext",BindingFlags.Static)?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
+          //  var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
+            var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Color.White);
+            theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
+            AddShaderSource( theDrawShader.ShaderName, theDrawShader.ShaderCode, "shaders\\" + theDrawShader.ShaderName + ".sdsl");
+            effectImageShader.EffectName = theDrawShader.ShaderName;
+            return effectImageShader;
         }
 
         // ReSharper disable once UnusedMember.Global
