@@ -14,7 +14,7 @@ namespace Fuse{
 
     public interface IGpuInput : IAtomicComputeNode
     {
-        
+        void SetParameterValue(ParameterCollection theCollection);
     }
     
     
@@ -26,6 +26,10 @@ namespace Fuse{
             SetInputs(new List<AbstractShaderNode>());
         }
 
+        public void SetParameterValue(ParameterCollection theCollection)
+        {
+        }
+        
         protected override string SourceTemplate()
         {
             return "";
@@ -138,6 +142,8 @@ namespace Fuse{
          {
              SetFieldDeclaration(theTypeName,theTypeName);
          }
+         
+         public abstract void SetParameterValue(ParameterCollection theCollection);
      }
 
      public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>, ObjectParameterUpdater<T>> where T : class
@@ -156,6 +162,11 @@ namespace Fuse{
          {
              Updater.Track(nodeContext, ParameterKey);
              Updater.Value = _value;
+         }
+         
+         public override void SetParameterValue(ParameterCollection theCollection)
+         {
+             theCollection.Set(ParameterKey, _value);
          }
 
      }
@@ -341,8 +352,21 @@ namespace Fuse{
 
         protected override void OnPassContext(ShaderGeneratorContext nodeContext)
         {
-            Updater.Track(nodeContext, ParameterKey);
-            Updater.Value = _value;
+            try
+            {
+                Updater.Track(nodeContext, ParameterKey);
+                Updater.Value = _value;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            
+        }
+        
+        public override void SetParameterValue(ParameterCollection theCollection)
+        {
+            theCollection.Set(ParameterKey, Value);
         }
         
     }
