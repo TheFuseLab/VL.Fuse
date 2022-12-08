@@ -73,12 +73,6 @@ namespace Fuse.regions
             var inputs = theInputs.ToList();
             var outputs = theOutputs.ToList();
             var crossLinks = theCrossLinks.ToList();
-            
-            if (inputs.Count != outputs.Count)
-            {
-                SetInputs(inputs);
-                return;
-            }
 
             var myCrossLinks = new List<AbstractShaderNode>();
             crossLinks.ForEach(c =>
@@ -101,7 +95,9 @@ namespace Fuse.regions
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count || inputs[i] == null ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) : inputs[i];
+                        var myInput = i >= inputs.Count || inputs[i] == null 
+                            ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) 
+                            : inputs[i];
                         var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
                         myInputs.Add(myDeclareValue);
 
@@ -140,7 +136,7 @@ namespace Fuse.regions
                 }
             }
 
-            ShaderNode<GpuVoid> ifGroup = new IfGroup(subContextFactory.NextSubContext(), inCheck, myOutputs);
+            var ifGroup = new IfGroup(subContextFactory.NextSubContext(), inCheck, myOutputs);
 
             var inputList = new List<AbstractShaderNode>
             {
