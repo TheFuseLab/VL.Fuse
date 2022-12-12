@@ -1,0 +1,126 @@
+shader BoxGeomExt2_ShaderFX : MaterialExtension
+{
+    cbuffer PerMaterial
+    {
+        
+
+
+    }  
+
+    static const float3 QuadPositions[24] = 
+    {
+        // +Z
+        float3(-1, 1, 1),
+        float3( 1, 1, 1),
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+
+        // -Z
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+        float3( 1,-1,-1),
+        float3(-1,-1,-1),
+
+        // +Y
+        float3( 1, 1, 1),
+        float3(-1, 1, 1),
+        float3( 1, 1,-1),
+        float3(-1, 1,-1),
+
+        // -Y
+        float3(-1,-1, 1),
+        float3( 1,-1, 1),
+        float3(-1,-1,-1),
+        float3( 1,-1,-1),
+
+        // +X
+        float3( 1,-1, 1),
+        float3( 1, 1, 1),
+        float3( 1,-1,-1),
+        float3( 1, 1,-1),
+
+        // -X
+        float3(-1, 1, 1),
+        float3(-1,-1, 1),
+        float3(-1, 1,-1),
+        float3(-1,-1,-1),
+    };
+
+    static const float3 QuadNormals[6] = 
+    {
+        // +Z
+        float3(0, 0, 1),
+        // -Z
+        float3(0, 0,-1),
+        // +Y
+        float3(0, 1, 0),
+        // -Y
+        float3(0,-1, 0),
+        // +X
+        float3(1, 0, 0),
+        // -X
+        float3(-1, 0, 0),
+    };
+
+    static const float2 QuadUV[4] = 
+    {
+        float2(0,1), 
+        float2(1,1),
+        float2(0,0),
+        float2(1,0)
+    };
+
+    
+
+    stage stream int Cycle : CYCLE;
+    stage stream float Age : AGE;
+    stage stream float3 AxisX : AXISX;
+    stage stream float3 Size3 : SIZE3;
+    stage stream float3 PPosition : PPOSITION;
+    stage stream float3 AxisY : AXISY;
+    stage stream float3 AxisZ : AXISZ;
+
+    [maxvertexcount(24)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        if (streams.Cycle == 0 || streams.Age < 0) return;
+
+        float3 viewDir = Eye.xyz - streams.PPosition;
+
+        float3x3 transform = float3x3(streams.AxisX, streams.AxisY, streams.AxisZ);
+       
+
+        //[unroll]
+        for(int i = 0; i < 6; i++)
+        {
+            streams.normalWS = mul(QuadNormals[i], transform);
+            
+            for(int j = i * 4; j < i* 4 + 4; j++){
+                
+                if (dot(viewDir, streams.normalWS) > 0){
+                    streams.TexCoord  = QuadUV[i % 4].xy;
+                    float4 posWorld = float4(streams.PPosition, 1);
+                    posWorld.xyz += mul(QuadPositions[j] * streams.Size3, transform);
+                    posWorld = mul(posWorld, World);
+                
+                    streams.PositionWS = posWorld;
+
+                    float4 posView = mul(posWorld, View);
+                    streams.ShadingPosition = mul(posView, Projection);
+                    streams.DepthVS = streams.ShadingPosition.w;
+                    triangleStream.Append(streams);
+                }
+            }
+            triangleStream.RestartStrip();
+        }
+    }
+
+    stage override float4 Shading()
+	{
+                float4 StrideShadingWorldNormal_135131478 = StrideShadingWorldNormal(streams.PositionWS, streams.normalWS);
+
+		return StrideShadingWorldNormal_135131478;;
+	}
+};
