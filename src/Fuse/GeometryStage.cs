@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
+using Fuse.ShaderFX;
 using Stride.Core.Mathematics;
 
 namespace Fuse
@@ -21,8 +22,15 @@ namespace Fuse
         Triangle //TriangleStream
     }
     
-    public class GeometryStage
+    public class GeometryStage : AbstractStage
     {
+        private const string ShaderSource = @"
+    [maxvertexcount(${numVertex})]
+	stage void GSMain(${inputType} Input input[${numElements}], inout ${outputType}<Output> outputStream)
+	{
+        ${sourceGS}
+	}";
+        
         private readonly int _myMaximumVertexCount;
         private readonly InputPrimitiveType _myInputPrimitiveType;
         private readonly OutputPrimitiveType _myOutputPrimitiveType;
@@ -33,9 +41,8 @@ namespace Fuse
             ShaderNode<GpuVoid> theGeometryNode,
             int theMaximumVertexCount, 
             InputPrimitiveType theInputPrimitiveType,
-            OutputPrimitiveType theOutputPrimitive)
+            OutputPrimitiveType theOutputPrimitive) : base ("GS", theGeometryNode)
         {
-            GeometryNode = theGeometryNode;
             _myMaximumVertexCount = theMaximumVertexCount;
             _myInputPrimitiveType = theInputPrimitiveType;
             _myOutputPrimitiveType = theOutputPrimitive;
@@ -78,12 +85,17 @@ namespace Fuse
             };
         }
         
-        public void AppendInputs(Dictionary<string, string> theTemplateMap)
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
             theTemplateMap["numVertex"] = _myMaximumVertexCount.ToString();
             theTemplateMap["inputType"] = InputPrimitiveTypeString();
             theTemplateMap["numElements"] = InputPrimitiveTypeNumElements();
             theTemplateMap["outputType"] = OutputPrimitiveTypeString();
+        }
+
+        public override string Source()
+        {
+            return ShaderSource;
         }
     }
 }
