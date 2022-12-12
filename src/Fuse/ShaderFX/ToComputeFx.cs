@@ -1,10 +1,26 @@
 ﻿using System.Collections.Generic;
 using Fuse.compute;
-using Stride.Engine;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
 {
+    public class ComputeStage<T> : AbstractStage
+    {
+        private const string ShaderSource = @"
+    override void Compute()
+    {
+${sourceFX}
+    }";
+        public ComputeStage(ShaderNode<T> theShaderNode) : base("FX", theShaderNode)
+        {
+        }
+
+        public override string Source()
+        {
+            return ShaderSource;
+        }
+    }
+    
     public class ToComputeFx<T> : AbstractToShaderFX<T>, IComputeVoid
     {
         
@@ -28,22 +44,15 @@ ${functions}
 
 ${compositions}
 
-    override void Compute()
-    {
-${sourceFX}
-    }
+${stageFX}
 };";
 
         public ToComputeFx(ShaderNode<T> theCompute) : base(
-            new Dictionary<string, AbstractShaderNode>{{"FX", theCompute}}, 
+            new List<AbstractStage>{new ComputeStage<T>(theCompute)}, 
             new List<string>(),
             new Dictionary<string, string>(),
             true,
             ShaderSource)
-        {
-        }
-
-        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
         }
     }

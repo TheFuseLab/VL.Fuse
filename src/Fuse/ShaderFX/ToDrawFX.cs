@@ -1,15 +1,51 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using Fuse.compute;
-using Stride.Core.Mathematics;
-using Stride.Engine;
-using VL.Core;
-using VL.Stride.Shaders.ShaderFX;
-using Vortice.Vulkan;
 
 namespace Fuse.ShaderFX
 {
+    public class VertexStage : AbstractStage
+    {
+        private const string ShaderSource = @"
+    stage override void VSMain()
+    {
+${sourceVS}
+    }";
+        public VertexStage(ShaderNode<GpuVoid> theShaderNode) : base("VS", theShaderNode)
+        {
+        }
+
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+          
+        }
+
+        public override string Source()
+        {
+            return ShaderSource;
+        }
+    }
+    
+    public class PixelStage : AbstractStage
+    {
+        private const string ShaderSource = @"
+    stage override void PSMain()
+    {
+${sourcePS}
+    }";
+        public PixelStage(ShaderNode<GpuVoid> theShaderNode) : base("PS", theShaderNode)
+        {
+        }
+
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+          
+        }
+
+        public override string Source()
+        {
+            return ShaderSource;
+        }
+    }
 
     public class ToDrawFX : AbstractToShaderFX<GpuVoid> 
     {
@@ -61,38 +97,33 @@ ${functions}
 
 ${compositions}
 
-    stage override void VSMain()
-    {
-${sourceVS}
-    }
-    stage override void PSMain()
-    {
-${sourcePS}
-    }
+${stageVS}
+
+${stageGS}
+
+${stagePS}
+
 };";
         
         
         public ToDrawFX(
             ShaderNode<GpuVoid> theVertexNode,
+            GeometryStage theGeometryStage,
             ShaderNode<GpuVoid> thePixelNode, 
             List<string> theDefinedStreams = null, 
             string theTemplate = ShaderSource
             ) : base( 
-            new Dictionary<string, AbstractShaderNode>
+            new List<AbstractStage>()
             {
-                {"VS", theVertexNode},
-                {"PS", thePixelNode}
+                new VertexStage(theVertexNode),
+                theGeometryStage,
+                new PixelStage(thePixelNode)
             }, 
             GetDefinedStreams(theDefinedStreams),
             new Dictionary<string, string>(),
             false,
             theTemplate)
         {
-        }
-
-        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
-        {
-            
         }
         
         private static List<string> GetDefinedStreams(List<string> theDefinedStreams)

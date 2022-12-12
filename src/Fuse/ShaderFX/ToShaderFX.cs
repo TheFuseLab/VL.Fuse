@@ -1,10 +1,36 @@
 ﻿using System.Collections.Generic;
-using System.Text;
-using Stride.Engine;
-using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
 {
+    public class ShaderFXStage<T> : AbstractStage
+    {
+        private const string ShaderSource = @"
+    override ${resultType} Compute()
+    {
+${sourceFX}
+        ${resultFX}
+    }";
+        public ShaderFXStage(ShaderNode<T> theShaderNode) : base("FX", theShaderNode)
+        {
+        }
+
+        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+            if (TypeHelpers.GetGpuType<T>().Equals("void"))
+            {
+                theTemplateMap["resultFX"] = "";
+            }
+            else
+            {
+                theTemplateMap["resultFX"] = "return " + StageNode.ID +";";
+            }
+        }
+
+        public override string Source()
+        {
+            return ShaderSource;
+        }
+    }
     public class ToShaderFX<T> : AbstractToShaderFX<T> 
     {
 
@@ -29,36 +55,17 @@ ${functions}
 
 ${compositions}
 
-    override ${resultType} Compute()
-    {
-${sourceFX}
-        ${resultFX}
-    }
+${stageFX}
+
 };";
 
-        
-        
-        
-        public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false, string theShaderSource = ShaderSource) : base( 
-            new Dictionary<string, AbstractShaderNode>{{"FX", theCompute}}, 
+        public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false) : base( 
+            new List<AbstractStage>{new ShaderFXStage<T>(theCompute)}, 
             new List<string>(),
             new Dictionary<string, string>(),
             theIsCompute,
-            theShaderSource)
+            ShaderSource)
         {
-        }
-
-
-        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
-        {
-            if (TypeHelpers.GetGpuType<T>().Equals("void"))
-            {
-                theTemplateMap["resultFX"] = "";
-            }
-            else
-            {
-                theTemplateMap["resultFX"] = "return " + Inputs["FX"].ID +";";
-            }
         }
     }
 }
