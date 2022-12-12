@@ -11,6 +11,25 @@ using VL.Stride.Shaders.ShaderFX;
 namespace Fuse.ShaderFX
 {
 
+    public abstract class AbstractStage
+    {
+        public readonly string Key;
+
+        public readonly AbstractShaderNode StageNode;
+
+        public AbstractStage(string theKey, AbstractShaderNode theShaderNode)
+        {
+            Key = theKey;
+            StageNode = theShaderNode;
+        }
+
+        public virtual void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+        }
+
+        public abstract string Source();
+    }
+
     public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     {
 
@@ -22,7 +41,7 @@ namespace Fuse.ShaderFX
 
         private readonly List<string> _definedStreams;
 
-        private readonly Dictionary<string,AbstractShaderNode> _inputs;
+        private readonly List<AbstractStage> _stages;
 
         private readonly HashSet<string>_declarations = new();
         private readonly HashSet<string>_groupDeclarations = new();
@@ -39,7 +58,7 @@ namespace Fuse.ShaderFX
         private readonly bool _isCompute;
         
         protected AbstractToShaderFX(
-            Dictionary<string,AbstractShaderNode> theInputs, 
+            List<AbstractStage> theStages, 
             List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
             bool theIsCompute,
@@ -48,15 +67,33 @@ namespace Fuse.ShaderFX
             _customTemplate = theCustomTemplate;
             _isCompute = theIsCompute;
             
-            _inputs = theInputs;
+            _stages = theStages;
             _definedStreams = theDefinedStreams;
             _isComputeShader = false;
             _sourceTemplate = theSource;
+
+            _stages = theStages;
+            Inputs = new Dictionary<string, AbstractShaderNode>();
+            var stageCodeMap = new Dictionary<string, string>();
+            foreach (var stage in _stages)
+            {
+                if (stage?.StageNode == null) continue;
+                Inputs.Add(stage.Key, stage.StageNode);
+                stageCodeMap.Add("stage" + stage.Key, stage.Source());
+            }
+
+            _sourceTemplate = ShaderNodesUtil.Evaluate(_sourceTemplate, stageCodeMap);
         }
 
-        public Dictionary<string, AbstractShaderNode> Inputs => _inputs;
+        public Dictionary<string, AbstractShaderNode> Inputs { get; }
 
-        public abstract void AppendInputs(Dictionary<string, string> theTemplateMap);
+        public void AppendInputs(Dictionary<string, string> theTemplateMap)
+        {
+            foreach (var stage in _stages)
+            {
+                stage?.AppendInputs(theTemplateMap);
+            }
+        }
 
         public Dictionary<string, string> AppendTemplateValues(Dictionary<string, string> theTemplateMap) {
             
@@ -171,16 +208,15 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
-            if (_inputs == null) return null;
             
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();
             
 
-            foreach (var kv in _inputs)
+            foreach (var kv in Inputs)
             {
-                kv.Value.CheckContext(theContext);
                 kv.Value.CallCompileGraph();
+                kv.Value.CheckContext(theContext);
                 
                 HandleShader(_isComputeShader, kv.Value, kv.Key, out var source, out var stream, out var streamDefines);
                 sourceStream.Add(kv.Key,(source,stream));
@@ -206,8 +242,10 @@ namespace Fuse.ShaderFX
             ShaderName = "Shader_" + Math.Abs(ShaderNodesUtil.GetStableHashCode(ShaderCode));
             //ShaderName = "Shader_" + ShaderNodesUtil.GetHashCode(_input.NodeContext);
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
+            
+            ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, m => m.Groups["key"].Value.StartsWith("stage") ? "" : m.Value);
 
-            foreach (var kv in _inputs)
+            foreach (var kv in Inputs)
             {
                 kv.Value.ShaderCode = ShaderCode;
             }
