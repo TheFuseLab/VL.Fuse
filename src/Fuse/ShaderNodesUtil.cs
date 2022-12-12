@@ -183,6 +183,15 @@ namespace Fuse
             );
         }
 
+        public static string Evaluate(string theShaderTemplate, MatchEvaluator theEvaluator)
+        {
+            return Regex.Replace(
+                theShaderTemplate, 
+                @"\$\{(?<key>[^}]+)\}", 
+                theEvaluator
+            );
+        }
+
         public static string EvaluateIDs(string theShaderTemplate)
         {
             var id = 0;
