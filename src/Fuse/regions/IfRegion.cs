@@ -47,8 +47,8 @@ namespace Fuse.regions
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }
 
-            theSourceBuilder.Append(@"
-        }");
+            theSourceBuilder.Append(@"        }
+");
             //   theSourceBuilder.AppendLine();
         }
     }
