@@ -228,9 +228,9 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		);
 	}
 
-	float3 rotateVector( float4 quat, float4 vec ) {
+	float4 rotateVector( float4 quat, float4 vec ) {
 		float4 qv = mulQuat( quat, vec );
-		return mulQuat( qv, float4(-quat.x, -quat.y, -quat.z, quat.w) ).xyz;
+		return mulQuat( qv, float4(-quat.x, -quat.y, -quat.z, quat.w) );
 	}
 
 	float3x3 qRot3x3(float4 q)
@@ -355,6 +355,33 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		float cosHalf = cos(halfAngle);
 
 		return float4(normalized * sinHalf, cosHalf);
+	}
+
+	/// <summary>
+	/// This function calculates the unit quaternion that represents the rotation from the start orientation (start) to the end orientation (end).
+	/// </summary>
+	/// <param name="start">The start orientation.</param>
+	/// <param name="end">The end orientation.</param>
+	float4 CreateQuatFromVectors(float3 start, float3 end)
+	{
+		start = normalize(start);
+		end = normalize(end);
+		
+		float d = dot(start, end);
+		if (d > 1.0)
+			d = 1.0;
+		else if (d < -1.0)
+			d = -1.0;
+		
+		float angle = acos(d);
+
+		float3 axis = cross(start, end);
+		axis = normalize(axis);
+		
+		float s = sin(angle / 2.0);
+		float qw = cos(angle / 2.0);
+		float3 q = axis * s;
+		return float4(qw, q.x, q.y, q.z);
 	}
 
 	/// <summary>
