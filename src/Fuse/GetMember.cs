@@ -37,8 +37,36 @@ namespace Fuse
                 {"member", _member}
             });
         }
+    }
+    
+    public class GetItem<TIn, TOut> : ShaderNode<TOut> 
+    {
+        private ShaderNode<TIn> _input;
+        private ShaderNode<int> _index;
         
-        
+        public GetItem(NodeContext nodeContext) : base( nodeContext, "GetItem")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<TIn> theInput, ShaderNode<int> theIndex, ShaderNode<TOut> theDefault)
+        {
+            _input = theInput;
+            _index = theIndex;
+
+            SetInputs(new List<AbstractShaderNode>{theInput as AbstractShaderNode,theIndex});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${resultType} ${resultName} = ${inputName}[${index}];";
+            
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"inputName", _input.ID},
+                {"index", _index.ID}
+            });
+        }
     }
 
     public enum Reorder3DMode
