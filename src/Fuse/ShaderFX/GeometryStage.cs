@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Fuse.compute;
 using Fuse.ShaderFX;
 using Stride.Core.Mathematics;
+using VL.Core;
+using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
@@ -96,6 +98,81 @@ namespace Fuse
         public override string Source()
         {
             return ShaderSource;
+        }
+    }
+    
+    
+    
+    public class AppendStreams : SimpleKeyword
+    {
+    
+        public AppendStreams(NodeContext nodeContext) : base( nodeContext, "outputStream.Append(streams);")
+        {
+        }
+    }
+    
+    public class RestartStrip : SimpleKeyword
+    {
+    
+        public RestartStrip(NodeContext nodeContext) : base( nodeContext, "outputStream.RestartStrip();")
+        {
+        }
+    }
+    
+    public class SetStreams : ShaderNode<GpuVoid> , IComputeVoid
+    {
+        private ShaderNode<int> _index;
+        
+        public SetStreams(NodeContext nodeContext) : base( nodeContext, "getStream")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<int> theIndex)
+        {
+            _index = theIndex;
+            
+            SetInputs(new List<AbstractShaderNode>{theIndex});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "streams = input[${index}];";
+            
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"index", _index.ID}
+            });
+        }
+    }
+    
+    public class GetStreamMember<T> : ShaderNode<T>
+    {
+        private ShaderNode<int> _index;
+        private string _member;
+        
+        public GetStreamMember(NodeContext nodeContext) : base( nodeContext, "getStream")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<int> theIndex, string theMember)
+        {
+            _index = theIndex;
+            _member = theMember;
+            
+            SetInputs(new List<AbstractShaderNode>{theIndex});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${resultType} ${resultName} = input[${index}].${member};";
+            
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"index", _index.ID},
+                {"member", _member}
+            });
         }
     }
 }
