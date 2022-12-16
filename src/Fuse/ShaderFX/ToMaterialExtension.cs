@@ -36,6 +36,8 @@ ${functions}
 
 ${compositions}
 
+${stagePTP}
+
 ${stageGS}
 
 ${stageShading}
@@ -44,11 +46,13 @@ ${stageShading}
 
 
         public ToMaterialExtension(
+            ShaderNode<GpuVoid> thePreTransform,
             GeometryStage theGeometryStage,
             ShaderNode<Vector4> theShading
         ) : base(
             new List<AbstractStage>
             {
+                thePreTransform == null ? null : new PreTransformPositionStage(thePreTransform),
                 theGeometryStage,
                 theShading == null ? null : new ShadingStage(theShading)
             },
@@ -59,48 +63,5 @@ ${stageShading}
         {
         }
 
-    }
-    
-    public class AppendStreams : SimpleKeyword
-    {
-    
-        public AppendStreams(NodeContext nodeContext) : base( nodeContext, "outputStream.Append(streams);")
-        {
-        }
-    }
-    
-    public class RestartStrip : SimpleKeyword
-    {
-    
-        public RestartStrip(NodeContext nodeContext) : base( nodeContext, "outputStream.RestartStrip();")
-        {
-        }
-    }
-    
-    public class SetStreams : ShaderNode<GpuVoid> , IComputeVoid
-    {
-        private ShaderNode<int> _index;
-        
-        public SetStreams(NodeContext nodeContext) : base( nodeContext, "getStream")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<int> theIndex)
-        {
-            _index = theIndex;
-            
-            SetInputs(new List<AbstractShaderNode>{theIndex});
-        }
-
-        protected override string SourceTemplate()
-        {
-            const string shaderCode = "streams = input[${index}];";
-            
-            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
-            {
-                {"index", _index.ID}
-            });
-        }
     }
 }
