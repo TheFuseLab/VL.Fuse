@@ -185,7 +185,7 @@ namespace Fuse{
 
          public abstract string ComputeDeclaration();
 
-         public void CheckDeclaration()
+         public void CheckDeclaration(bool callChangeEvent = true)
          {
              var declaration = Declaration();
              var computeDeclaration = ComputeDeclaration();
@@ -197,7 +197,7 @@ namespace Fuse{
              _lastDeclaration = declaration;
              SetFieldDeclaration(computeDeclaration, declaration);
 
-             CallChangeEvent();
+             if(callChangeEvent)CallChangeEvent();
          }
      }
 
@@ -209,12 +209,12 @@ namespace Fuse{
              _useRw = false;
          }
 
-         public void SetInput(Texture theTexture, bool theUseRw)
+         public void SetInput(Texture theTexture, bool theUseRw, bool theCallChangeEvent = true)
          {
              Value = theTexture;
              _useRw = theUseRw;
 
-             CheckDeclaration();
+             CheckDeclaration(theCallChangeEvent);
          }
 
          public override string Declaration()
