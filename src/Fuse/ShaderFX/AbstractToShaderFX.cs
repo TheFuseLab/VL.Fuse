@@ -11,16 +11,19 @@ using VL.Stride.Shaders.ShaderFX;
 namespace Fuse.ShaderFX
 {
 
-    public abstract class AbstractStage
+    public abstract class AbstractStage : IChangeGraph
     {
         public readonly string Key;
 
         public readonly AbstractShaderNode StageNode;
 
+        public int Ticket { get; private set; }
+
         public AbstractStage(string theKey, AbstractShaderNode theShaderNode)
         {
             Key = theKey;
             StageNode = theShaderNode;
+            Ticket = 0;
         }
 
         public virtual void AppendInputs(Dictionary<string, string> theTemplateMap)
@@ -28,6 +31,10 @@ namespace Fuse.ShaderFX
         }
 
         public abstract string Source();
+        public void ChangeGraph(AbstractShaderNode theNode)
+        {
+            Ticket++;
+        }
     }
 
     public abstract class AbstractToShaderFX<T> : IComputeValue<T>
