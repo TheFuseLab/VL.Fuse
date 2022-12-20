@@ -5,6 +5,7 @@ using System.Reactive.Disposables;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using Fuse.compute;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
@@ -57,6 +58,17 @@ namespace Fuse
             var getType = theBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theArguments) as AbstractShaderNode;
         }
+
+        private static Type GetBaseType(AbstractShaderNode theNode)
+        {
+            var nodeType = theNode.GetType();
+            while (nodeType is {BaseType: { }} && nodeType.BaseType != typeof(AbstractShaderNode))
+            {
+                nodeType = nodeType.BaseType;
+            }
+
+            return nodeType;
+        }
         
         public static AbstractShaderNode AbstractGetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
@@ -64,11 +76,7 @@ namespace Fuse
             
            
             var getMemberBaseType = typeof(GetMember<,>);
-            var nodeType = theMember.GetType();
-            while (nodeType != null && nodeType.BaseType != null && nodeType.BaseType != typeof(AbstractShaderNode))
-            {
-                nodeType = nodeType.BaseType;
-            }
+            var nodeType = GetBaseType(theMember);
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
             var getType = getMemberBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null) as AbstractShaderNode;
@@ -89,7 +97,26 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractComputeTextureGet(NodeSubContextFactory theSubContextFactory, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theSubContextFactory.NextSubContext(), theTexture, theIndex, null});
+            
+            var indexType = GetBaseType(theIndex);
+            var valueType = GetBaseType(theValue);
+            
+            var baseType = typeof(ComputeTextureGet<,>);
+            var dataType = new[] {indexType.GetGenericArguments()[0], valueType.GetGenericArguments()[0]};
+            var getType = baseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theTexture, theIndex, null) as AbstractShaderNode;
+        }
+        
+        public static AbstractShaderNode AbstractComputeTextureSet(NodeSubContextFactory theSubContextFactory, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
+        {
+            
+            var indexType = GetBaseType(theIndex);
+            var valueType = GetBaseType(theValue);
+            
+            var baseType = typeof(ComputeTextureSet<,>);
+            var dataType = new[] {indexType.GetGenericArguments()[0], valueType.GetGenericArguments()[0]};
+            var getType = baseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theTexture, theIndex, theValue) as AbstractShaderNode;
         }
         
         public static AbstractShaderNode AbstractShaderNodePassThrough(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
