@@ -11,9 +11,16 @@ namespace Fuse.compute
         private ShaderNode<Texture> _texture;
         private ShaderNode<TIndex> _index;
         
-        public ComputeTextureGet(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext,"getTextureValue",  theDefault)
+        public ComputeTextureGet(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
         {
             
+        }
+        
+        public ComputeTextureGet(NodeContext nodeContext, ShaderNode<Texture> theTexture, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
+        {
+            _texture = theTexture;
+            _index = theIndex;
+            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex});
         }
 
         public void SetInputs(ShaderNode<Texture> theTexture, ShaderNode<TIndex> theIndex)
@@ -43,6 +50,15 @@ namespace Fuse.compute
         public ComputeTextureSet(NodeContext nodeContext) : base( nodeContext, "setTextureValue")
         {
             
+        }
+        
+        public ComputeTextureSet(
+            NodeContext nodeContext,
+            ShaderNode<Texture> theTexture, 
+            ShaderNode<TIndex> theIndex, 
+            ShaderNode<T> theValue) : base( nodeContext, "setTextureValue")
+        {
+            SetInputs(theTexture, theIndex, theValue);
         }
 
         public void SetInputs(
