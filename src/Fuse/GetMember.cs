@@ -4,7 +4,7 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class GetMember<TIn, TOut> : ShaderNode<TOut>
+    public class GetMember<TIn, TOut> : ResultNode<TOut>
     {
 
         private ShaderNode<TIn> _input;
@@ -30,16 +30,17 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{theInput});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${input}.${member};",new Dictionary<string, string> {
-                {"input", _input == null? "" : _input.ID},
+            return ShaderNodesUtil.Evaluate("${input}.${member}", new Dictionary<string, string>
+            {
+                {"input", _input == null ? "" : _input.ID},
                 {"member", _member}
             });
         }
     }
     
-    public class GetItem<TIn, TOut> : ShaderNode<TOut> 
+    public class GetItem<TIn, TOut> : ResultNode<TOut> 
     {
         private ShaderNode<TIn> _input;
         private ShaderNode<int> _index;
@@ -57,9 +58,9 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{theInput as AbstractShaderNode,theIndex});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            const string shaderCode = "${resultType} ${resultName} = ${inputName}[${index}];";
+            const string shaderCode = "${inputName}[${index}]";
             
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {

@@ -84,6 +84,10 @@ namespace Fuse
 
         public readonly NodeContext NodeContext;
 
+        public int WriteCounter { get; set; }
+
+        public int ReadCounter => Outs.Count;
+
         public void AddChangeGraph(IChangeGraph theDelegate)
         {
             ChangeGraphListener.Add(theDelegate);
@@ -138,6 +142,7 @@ namespace Fuse
             HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
 
             Tree = new ShaderTree(this);
+            WriteCounter = 0;
         }
         
         public virtual IDictionary<string,string> Functions
@@ -583,6 +588,29 @@ namespace Fuse
             return TypeHelpers.GetDimension<T>();
         }
         public override string ID => Name + "_" + HashCode;
+    }
+
+    public abstract class ResultNode<T> : ShaderNode<T>
+    {
+        protected ResultNode(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null, bool theCreateDefault = true) : base(nodeContext, theId, theDefault, theCreateDefault)
+        {
+        }
+        
+        protected override string SourceTemplate()
+        {
+            if (Outs.Count <= 1)
+            {
+                return "";
+            }
+                
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${implementation};",new Dictionary<string, string> {
+                {"implementation", ImplementationTemplate()}
+            });
+        }
+
+        protected abstract string ImplementationTemplate();
+        
+        public override string ID => Outs.Count <= 1 ? ImplementationTemplate() : base.ID;
     }
 
     public class ComputeNode<T> : ShaderNode<T> , IComputeVoid

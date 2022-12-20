@@ -5,7 +5,7 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class Operator<T> : ShaderNode<T> where T : struct 
+    public class Operator<T> : ResultNode<T> where T : struct 
     {
 
         private readonly string _operator;
@@ -24,7 +24,7 @@ namespace Fuse
             SetInputs(myCheckedInputs);
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
             var call = new StringBuilder();
             Ins.ForEach(input =>
@@ -34,7 +34,7 @@ namespace Fuse
             });
             
             if(call.Length > 3)call.Remove(call.Length - 3, 3);
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
+            return ShaderNodesUtil.Evaluate("(${Call})",new Dictionary<string,string>
             {
                 {"Call",call.ToString()}
             });

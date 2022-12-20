@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Fuse.compute;
-using Stride.Core.Extensions;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
-    public class SwitchBoolean<T> : ShaderNode<T>
+    public class SwitchBoolean<T> : ResultNode<T>
     {
         private ShaderNode<bool> _inCheck;
         private ShaderNode<T> _inFalse;
@@ -33,9 +32,9 @@ namespace Fuse
             SetInputs(ins);
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${check} ? ${inTrue} : ${inFalse};", 
+            return ShaderNodesUtil.Evaluate("${check} ? ${inTrue} : ${inFalse}", 
                 new Dictionary<string, string>
                 {
                     {"check", _inCheck.ID},
@@ -115,7 +114,7 @@ ${cases}
         }
     }
     
-    public class Not: ShaderNode<bool>
+    public class Not: ResultNode<bool>
     {
         private ShaderNode<bool> _in;
 
@@ -133,9 +132,9 @@ ${cases}
             SetInputs( new List<AbstractShaderNode>{_in});
         }
         
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = !${in};", 
+            return ShaderNodesUtil.Evaluate("!${in}", 
                 new Dictionary<string, string>
                 {
                     {"in", _in.ID},

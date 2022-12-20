@@ -4,7 +4,7 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class Float2Join : ShaderNode<Vector2>
+    public class Float2Join : ResultNode<Vector2>
     {
         private ShaderNode<float> _x;
         private ShaderNode<float> _y;
@@ -29,9 +29,9 @@ namespace Fuse
             SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
         
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("float2 ${resultName} = float2(${x},${y});", 
+            return ShaderNodesUtil.Evaluate("float2(${x},${y})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -40,7 +40,7 @@ namespace Fuse
         }
     }
     
-    public class Float3Join : ShaderNode<Vector3>
+    public class Float3Join : ResultNode<Vector3>
     {
         
         private ShaderNode<float> _x;
@@ -69,9 +69,9 @@ namespace Fuse
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
         
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("float3 ${resultName} = float3(${x},${y},${z});", 
+            return ShaderNodesUtil.Evaluate("float3(${x},${y},${z})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -81,7 +81,7 @@ namespace Fuse
         }
     }
     
-    public class Float4Join : ShaderNode<Vector4>
+    public class Float4Join : ResultNode<Vector4>
     {
         private ShaderNode<float> _x;
         private ShaderNode<float> _y;
@@ -112,9 +112,9 @@ namespace Fuse
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("float4 ${resultName} = float4(${x},${y},${z},${w});", 
+            return ShaderNodesUtil.Evaluate("float4(${x},${y},${z},${w})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -125,7 +125,7 @@ namespace Fuse
         }
     }
     
-    public class FromFloat<T> : ShaderNode<T> 
+    public class FromFloat<T> : ResultNode<T> 
     {
 
         private ShaderNode<float> _x;
@@ -148,14 +148,14 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{x});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
             var shader = TypeHelpers.GetDimension(typeof(T)) switch
             {
-                1 => "float ${resultName} = ${x};",
-                2 => "float2 ${resultName} = float2(${x},${x});",
-                3 => "float3 ${resultName} = float3(${x},${x},${x});",
-                4 => "float4 ${resultName} = float4(${x},${x},${x},${x});",
+                1 => "${x}",
+                2 => "float2(${x},${x})",
+                3 => "float3(${x},${x},${x})",
+                4 => "float4(${x},${x},${x},${x})",
                 _ => ""
             };
 
@@ -167,7 +167,7 @@ namespace Fuse
         }
     }
     
-    public class FloatJoinAdaptive<TIn, TExtension, TOut> : ShaderNode<TOut> where TOut : struct
+    public class FloatJoinAdaptive<TIn, TExtension, TOut> : ResultNode<TOut> where TOut : struct
     {
 
         private ShaderNode<TIn> _input;
@@ -193,13 +193,13 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{_input, _extension});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
             var shader = TypeHelpers.GetDimension(typeof(TOut)) switch
             {
-                2 => "float2 ${resultName} = float2(${input},${extension});",
-                3 => "float3 ${resultName} = float3(${input},${extension});",
-                4 => "float4 ${resultName} = float4(${input},${extension});",
+                2 => "float2(${input},${extension})",
+                3 => "float3(${input},${extension})",
+                4 => "float4(${input},${extension})",
                 _ => ""
             };
            
@@ -213,7 +213,7 @@ namespace Fuse
         }
     }
     
-    public class ToFloat4 : ShaderNode<Vector4>
+    public class ToFloat4 : ResultNode<Vector4>
     {
 
         private AbstractShaderNode _x;
@@ -232,15 +232,15 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{x});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
             var shader = _x.Dimension() switch
             {
-                1 => "float4 ${resultName} = float4(${x},${x},${x},1.0);",
-                2 => "float4 ${resultName} = float4(${x}.xy,0.0,1.0);",
-                3 => "float4 ${resultName} = float4(${x}.xyz,1.0);",
-                4 => "float4 ${resultName} = ${x};",
-                _ => "float4 ${resultName} = float4(1.0,1.0,0.0,1.0);",
+                1 => "float4(${x},${x},${x},1.0)",
+                2 => "float4(${x}.xy,0.0,1.0)",
+                3 => "float4(${x}.xyz,1.0)",
+                4 => "${x}",
+                _ => "float4(1.0,1.0,0.0,1.0)",
             };
 
             return ShaderNodesUtil.Evaluate(shader, 

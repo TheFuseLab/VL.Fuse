@@ -4,7 +4,7 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class Int2Join : ShaderNode<Int2>
+    public class Int2Join : ResultNode<Int2>
     {
         private ShaderNode<int> _x;
         private ShaderNode<int> _y;
@@ -29,9 +29,9 @@ namespace Fuse
             SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
         
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("int2 ${resultName} = int2(${x},${y});", 
+            return ShaderNodesUtil.Evaluate("int2(${x},${y})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -40,7 +40,7 @@ namespace Fuse
         }
     }
     
-    public class Int3Join : ShaderNode<Int3>
+    public class Int3Join : ResultNode<Int3>
     {
         
         private ShaderNode<int> _x;
@@ -69,9 +69,9 @@ namespace Fuse
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
         
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("int3 ${resultName} = int3(${x},${y},${z});", 
+            return ShaderNodesUtil.Evaluate("int3(${x},${y},${z})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -81,7 +81,7 @@ namespace Fuse
         }
     }
     
-    public class Int4Join : ShaderNode<Int4>
+    public class Int4Join : ResultNode<Int4>
     {
         private ShaderNode<int> _x;
         private ShaderNode<int> _y;
@@ -113,9 +113,9 @@ namespace Fuse
         }
 
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
-            return ShaderNodesUtil.Evaluate("int4 ${resultName} = int4(${x},${y},${z},${w});", 
+            return ShaderNodesUtil.Evaluate("int4(${x},${y},${z},${w})", 
                 new Dictionary<string, string>
                 {
                     {"x", _x.ID},
@@ -126,7 +126,7 @@ namespace Fuse
         }
     }
     
-    public class FromInt<T> : ShaderNode<T> where T : struct
+    public class FromInt<T> : ResultNode<T> where T : struct
     {
         
         private ShaderNode<int> _x;
@@ -149,14 +149,14 @@ namespace Fuse
             SetInputs(new List<AbstractShaderNode>{x});
         }
 
-        protected override string SourceTemplate()
+        protected override string ImplementationTemplate()
         {
             var shader = TypeHelpers.GetDimension(typeof(T)) switch
             {
-                1 => "int ${resultName} = ${x};",
-                2 => "int2 ${resultName} = int2(${x},${x});",
-                3 => "int3 ${resultName} = int3(${x},${x},${x});",
-                4 => "int4 ${resultName} = int4(${x},${x},${x},${x});",
+                1 => "${x}",
+                2 => "int2(${x},${x})",
+                3 => "int3(${x},${x},${x})",
+                4 => "int4(${x},${x},${x},${x})",
                 _ => ""
             };
 
