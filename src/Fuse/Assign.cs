@@ -21,7 +21,9 @@ namespace Fuse
 
         public void SetInputs(ShaderNode<T> theTarget, ShaderNode<T> theSource)
         {
+            if(_target != null)_target.WriteCounter--;
             _target = theTarget;
+            _target.WriteCounter++;
             _source = theSource;
             SetInputs(new List<AbstractShaderNode>{theTarget,theSource});
         }
