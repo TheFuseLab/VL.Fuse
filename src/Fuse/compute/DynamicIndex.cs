@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Stride.Core.Mathematics;
 using VL.Core;
 
@@ -8,30 +9,30 @@ namespace Fuse.compute
     public interface IIndexProvider
     {
 
-        public ShaderNode<Int3> Index(NodeContext nodeContext);
+        public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex);
     }
     
     public class DefaultIndexProvider : IIndexProvider{
-        public ShaderNode<Int3> Index(NodeContext nodeContext)
+        public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
-            return new ConstantValue<Int3>(nodeContext, new Int3(0, 0, 0));
+            theReadIndex = theWriteIndex = new ConstantValue<Int3>(nodeContext, new Int3(0, 0, 0));
         }
     }
     
     public class DispatchIdIndexProvider : IIndexProvider{
-        public ShaderNode<Int3> Index(NodeContext nodeContext)
+        public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
-            return new Semantic<Int3>(nodeContext, "DispatchThreadId");
+            theReadIndex = theWriteIndex = new Semantic<Int3>(nodeContext, "DispatchThreadId");
         }
     }
     
     public class VertexIdIndexProvider : IIndexProvider{
-        public ShaderNode<Int3> Index(NodeContext nodeContext)
+        public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
             var vertexId =  new Semantic<int>(NodeContext.Default, "VertexId");
             var join = new Int3Join(nodeContext);
             join.SetInputs(vertexId, new ConstantValue<int>(NodeContext.Default,0), new ConstantValue<int>(NodeContext.Default,0));
-            return join;
+            theReadIndex = theWriteIndex = join;
         }
     }
     
@@ -39,20 +40,23 @@ namespace Fuse.compute
     {
 
         private  IIndexProvider _indexProvider;
+        private bool _useReadIndex;
         public IIndexProvider IndexProvider
         {
             get => _indexProvider;
             set
             {
                 _indexProvider = value;
-                SetInput(_indexProvider.Index(NodeContext));
+                _indexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
+                
+                SetInput(_useReadIndex? readIndex:writeIndex);
             }
         }
 
-        public DynamicIndex(NodeContext nodeContext) : base(nodeContext, "Index", false)
+        public DynamicIndex(NodeContext nodeContext, bool useReadIndex = false) : base(nodeContext, "Index", false)
         {
             IndexProvider = new DefaultIndexProvider();
-            
+            _useReadIndex = useReadIndex;
             AddProperty("DynamicIndex", this);
         }
     }
