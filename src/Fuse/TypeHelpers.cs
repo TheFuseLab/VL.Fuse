@@ -168,6 +168,14 @@ namespace Fuse
                 throw new NotImplementedException("No name defined for type: " + t.Name);
             }
             
+            public static string GetDefaultForType<T>()
+            {
+                if (TypeDefaults.TryGetValue(typeof(T), out var result))
+                    return result;
+
+                throw new NotImplementedException("No name defined for type: " + typeof(T).Name);
+            }
+            
             #endregion
             
             #region GetSignature

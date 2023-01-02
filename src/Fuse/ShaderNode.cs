@@ -153,7 +153,7 @@ namespace Fuse
 
         public IReadOnlyList<Trees.IReadOnlyTreeNode> Children => Tree.Children;
 
-        private const string DefaultShaderCode = "${resultType} ${resultName} = ${default};";
+        private const string DefaultShaderCode = "${resultType} ${resultName};";
 
         
         public void CallChangeEvent()
@@ -252,7 +252,12 @@ namespace Fuse
         
         protected virtual string GenerateDefaultSource()
         {
-            return ShaderNodesUtil.Evaluate(DefaultShaderCode, CreateTemplateMap());
+            return ShaderNodesUtil.Evaluate(DefaultShaderCode, new Dictionary<string, string>
+            {
+                {"resultName", ID},
+                {"resultType", TypeName()},
+                {"default", ""}
+            });
         }
 
         private string GenerateSource(IEnumerable<AbstractShaderNode> theIns)
@@ -609,8 +614,26 @@ namespace Fuse
         }
 
         protected abstract string ImplementationTemplate();
-        
-        public override string ID => Outs.Count <= 1 ? ImplementationTemplate() : base.ID;
+
+        public override string ID
+        {
+            get
+            {
+                if (Outs.Count > 1) return base.ID;
+
+                var result = base.ID;
+                try
+                {
+                    result = ImplementationTemplate();
+                }
+                catch (Exception)
+                {
+                }
+
+                return result;
+
+            }
+        }
     }
 
     public class ComputeNode<T> : ShaderNode<T> , IComputeVoid

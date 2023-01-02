@@ -19,6 +19,11 @@ namespace Fuse.compute
         public bool DoubleBuffered { get; }
 
         public TextureAttributeType TextureAttributeType();
+
+        public TextureInput TextureInput{
+            get;
+            set;
+        }
     }
 
     public class TextureAttribute<TIndex,T> : Attribute<T>, ITextureAttribute where T : struct
@@ -32,6 +37,11 @@ namespace Fuse.compute
             Default = theDefault ?? ConstantHelper.FromFloat<T>(myFactory.NextSubContext(), 0f);
             
             SetProperty("ComputeSystemAttribute", this);
+        }
+        
+        public TextureInput TextureInput{
+            get;
+            set;
         }
 
         public bool DoubleBuffered { get; }
@@ -59,9 +69,6 @@ namespace Fuse.compute
     
     public class TextureResource : Attribute<Texture>, ITextureAttribute
     {
-
-
-
         public TextureResource(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.Texture)
         {
             AddProperty("ComputeSystemAttribute", this);
@@ -75,6 +82,11 @@ namespace Fuse.compute
         }
 
         public bool DoubleBuffered => true;
+        
+        public TextureInput TextureInput{
+            get;
+            set;
+        }
     }
     
     public class TextureInstance<T> : Attribute<T>, ITextureAttribute
@@ -95,5 +107,10 @@ namespace Fuse.compute
         }
         
         public bool DoubleBuffered => true;
+        
+        public TextureInput TextureInput{
+            get;
+            set;
+        }
     }
 }
