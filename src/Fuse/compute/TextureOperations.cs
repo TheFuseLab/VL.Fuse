@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Stride.Graphics;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
@@ -33,11 +34,59 @@ namespace Fuse.compute
         protected override string SourceTemplate()
         {
             const string shaderCode = "${resultType} ${resultName} = ${textureName}[${index}];";
-            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
             {
                 {"textureName", _texture.ID},
                 {"index", _index.ID}
             });
+        }
+    }
+    
+    public class ComputeTextureAttributeGet<TIndex,T> : ShaderNode<T> where T : struct
+    {
+        private ShaderNode<T> _textureAttribute;
+        private ShaderNode<TIndex> _index;
+        
+        public ComputeTextureAttributeGet(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
+        {
+            
+        }
+        
+        public ComputeTextureAttributeGet(NodeContext nodeContext, ShaderNode<T> theTextureAttribute, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
+        {
+            _textureAttribute = theTextureAttribute;
+            _index = theIndex;
+            SetInputs(new List<AbstractShaderNode>{theTextureAttribute,theIndex});
+        }
+
+        public void SetInputs(ShaderNode<T> theTextureAttribute, ShaderNode<TIndex> theIndex)
+        {
+            _textureAttribute = theTextureAttribute;
+            _index = theIndex;
+            SetInputs(new List<AbstractShaderNode>{theTextureAttribute,theIndex});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${resultType} ${resultName} = ${textureName}[${index}];";
+
+            try
+            {
+                var textureAttribute = _textureAttribute as ITextureAttribute;
+
+                return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+                {
+                    {"textureName", textureAttribute.TextureInput.ID},
+                    {"index", _index.ID}
+                });
+            }
+            catch (Exception)
+            {
+                return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = " + TypeHelpers.GetDefaultForType<T>()+";", new Dictionary<string, string>
+                {
+                    
+                });
+            }
         }
     }
 
