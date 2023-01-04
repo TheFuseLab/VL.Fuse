@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Fuse.compute;
+using Stride.Core.Mathematics;
 using Stride.Graphics;
 using VL.Core;
 
@@ -18,6 +20,10 @@ namespace Fuse.ComputeSystem
         public ShaderNode<GpuVoid> WriteCall { get; set; }
 
         public AbstractShaderNode ReadCall { get; set; }
+        
+        public Int3 Resolution { get; }
+
+        public bool IsOverridden { get; }
     }
 
     public enum AttributeType
@@ -30,14 +36,14 @@ namespace Fuse.ComputeSystem
         IdAppendBuffer
     }
     
-    public class Attribute<T> : PassThroughNode<T>, IAttribute
+    public abstract class Attribute<T> : PassThroughNode<T>, IAttribute
     {
         public Attribute(NodeContext nodeContext, string theName, AttributeType theType) : base(nodeContext, theName, false)
         {
             AttributeType = theType;
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
-            
+            IsOverridden = false;
         }
         public AttributeType AttributeType { get; }
         public AbstractShaderNode ShaderNode { get; }
@@ -45,14 +51,16 @@ namespace Fuse.ComputeSystem
         public ShaderNode<GpuVoid> WriteCall { get; set; }
         
         public AbstractShaderNode ReadCall { get; set; }
+        
+        public abstract Int3 Resolution { get; }
+
+        public bool IsOverridden { get; protected set; }
 
         public void SetAbstractInput(AbstractShaderNode theNode)
         {
             SetInput(theNode);
         }
     }
-    
-    
 
     public class TemporaryAttribute<T> : Attribute<T>
     {
@@ -60,6 +68,8 @@ namespace Fuse.ComputeSystem
         {
             AddProperty("ComputeSystemAttribute", this);
         }
+
+        public override Int3 Resolution => new(1);
     }
 
     public class AppendBufferAttribute : Attribute<BufferInput<int>>
@@ -89,16 +99,18 @@ namespace Fuse.ComputeSystem
         public BufferInput<int> AppendBufferGpu { get; set; }
 
         public BufferInput<int> DispatchArgsBufferGpu { get; set; }
+        
+        public override Int3 Resolution => new Int3(_appendBuffer.ElementCount,1,1);
 
         public AppendBufferAttribute(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.IdAppendBuffer)
         {
             var nodeSubContextFactory = new NodeSubContextFactory(nodeContext);
-            AppendBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(nodeSubContextFactory.NextSubContext(),0))
+            AppendBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(0))
                 {
                     ForceAppendConsume = true
                 };
             AppendBufferGpu.AddProperty("ComputeSystemAttribute", this);
-            DispatchArgsBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(nodeSubContextFactory.NextSubContext(),0));
+            DispatchArgsBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(0));
             DispatchArgsBufferGpu.AddProperty("ComputeSystemAttribute", this);
         }
     }
