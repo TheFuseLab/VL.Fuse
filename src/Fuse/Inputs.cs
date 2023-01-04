@@ -81,9 +81,7 @@ namespace Fuse{
          private const string DeclarationTemplate = @"
         [Link(""${inputName}"")]
         stage ${inputType} ${inputName};";
-         
-         private readonly bool _isResource;
-         
+
          protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
 
          protected T _value;
@@ -92,12 +90,11 @@ namespace Fuse{
          
          protected AbstractInput(NodeContext nodeContext, string theName, bool theIsResource): base(nodeContext, theName)
          {
-             _isResource = theIsResource;
              Updater = CreateUpdater();
              SetInputs( new List<AbstractShaderNode>());
              AddProperty(Inputs, this);
 
-             _fieldDeclaration = new FieldDeclaration(_isResource, "", "");
+             _fieldDeclaration = new FieldDeclaration(theIsResource, "", "");
              AddProperty(Declarations,_fieldDeclaration);
          }
 
@@ -171,11 +168,11 @@ namespace Fuse{
 
      }
 
-     public abstract class ChangibleObjectInput<T> : ObjectInput<T> where T : class
+     public abstract class ChangeableObjectInput<T> : ObjectInput<T> where T : class
      {
          private string _lastComputeDeclaration;
          private string _lastDeclaration;
-         protected ChangibleObjectInput(NodeContext nodeContext, string theName) : base(nodeContext, theName)
+         protected ChangeableObjectInput(NodeContext nodeContext, string theName) : base(nodeContext, theName)
          {
              _lastComputeDeclaration = "";
              _lastDeclaration = "";
@@ -201,7 +198,7 @@ namespace Fuse{
          }
      }
 
-     public class TextureInput : ChangibleObjectInput<Texture>
+     public class TextureInput : ChangeableObjectInput<Texture>
      {
          private bool _useRw;
          public TextureInput(NodeContext nodeContext) : base(nodeContext, "TextureInput")
@@ -250,7 +247,7 @@ namespace Fuse{
          }
      }
 
-     public class BufferInput<T>: ChangibleObjectInput<Buffer>, IBufferInput<T>
+     public class BufferInput<T>: ChangeableObjectInput<Buffer>, IBufferInput<T>
      {
          private bool _append;
 
@@ -305,7 +302,7 @@ namespace Fuse{
          }
      }
      
-     public class TypedBufferInput<T>: ChangibleObjectInput<Buffer<T>> where T : struct
+     public class TypedBufferInput<T>: ChangeableObjectInput<Buffer<T>> where T : struct
      {
          private bool _append;
 
@@ -357,9 +354,9 @@ namespace Fuse{
                 Updater.Track(nodeContext, ParameterKey);
                 Updater.Value = _value;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Console.WriteLine(e);
+               // Console.WriteLine(e);
             }
             
         }
