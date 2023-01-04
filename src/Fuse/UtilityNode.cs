@@ -9,10 +9,10 @@ namespace Fuse
 {
     public class PassThroughNode<T> : ShaderNode<T>
     {
-        protected ShaderNode<T> _input;
+        private ShaderNode<T> _input;
 
         private readonly bool _triggerChange;
-        public virtual ShaderNode<T> Input { get => _input;
+        public ShaderNode<T> Input { get => _input;
             set
             {
                 _input = value ?? Default;
@@ -20,9 +20,9 @@ namespace Fuse
             }
         }
         
-        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough", Boolean triggerChange = true) : base(nodeContext, theName)
+        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough", bool triggerChange = true) : base(nodeContext, theName)
         {
-            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"");
+            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"PassThroughDefault");
             _triggerChange = triggerChange;
             // ReSharper disable once VirtualMemberCallInConstructor
             Input = Default;

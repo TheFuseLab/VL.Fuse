@@ -95,7 +95,7 @@ namespace Fuse
             if (_constantValue is null)
             {
                 // First time
-                _constantValue = new ConstantValue<T>(_context, value);
+                _constantValue = new ConstantValue<T>(value);
                 return _constantValue;
             }
 

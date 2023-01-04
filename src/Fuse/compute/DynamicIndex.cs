@@ -15,7 +15,7 @@ namespace Fuse.compute
     public class DefaultIndexProvider : IIndexProvider{
         public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
-            theReadIndex = theWriteIndex = new ConstantValue<Int3>(nodeContext, new Int3(0, 0, 0));
+            theReadIndex = theWriteIndex = new ConstantValue<Int3>(new Int3(0, 0, 0));
         }
     }
     
@@ -31,7 +31,7 @@ namespace Fuse.compute
         {
             var vertexId =  new Semantic<int>(NodeContext.Default, "VertexId");
             var join = new Int3Join(nodeContext);
-            join.SetInputs(vertexId, new ConstantValue<int>(NodeContext.Default,0), new ConstantValue<int>(NodeContext.Default,0));
+            join.SetInputs(vertexId, new ConstantValue<int>(0), new ConstantValue<int>(0));
             theReadIndex = theWriteIndex = join;
         }
     }
