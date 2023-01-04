@@ -46,6 +46,8 @@ namespace Fuse
 
         public override string ID => "streams." + Name;
 
+        public override string DelegateID => base.ID;
+
         protected override string SourceTemplate()
         {
             return "";
