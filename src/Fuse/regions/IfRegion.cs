@@ -4,6 +4,7 @@ using Fuse.compute;
 using System.Linq;
 using System.Text;
 using VL.Core;
+using VL.Core.PublicAPI;
 
 namespace Fuse.regions
 {
@@ -65,7 +66,8 @@ namespace Fuse.regions
             ShaderNode<bool> inCheck,
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
-            IEnumerable<AbstractShaderNode> theCrossLinks)
+            IEnumerable<AbstractShaderNode> theCrossLinks,
+            IEnumerable<BorderControlPointDescription> theDescriptions)
         {
             var subContextFactory = new NodeSubContextFactory(NodeContext);
             OptionalOutputs.Clear();
@@ -73,6 +75,7 @@ namespace Fuse.regions
             var inputs = theInputs.ToList();
             var outputs = theOutputs.ToList();
             var crossLinks = theCrossLinks.ToList();
+            var descriptions = theDescriptions.ToList();
 
             var myCrossLinks = new List<AbstractShaderNode>();
             crossLinks.ForEach(c =>
@@ -95,14 +98,14 @@ namespace Fuse.regions
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count || inputs[i] == null 
-                            ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) 
+                        var myInput = inputs[i] == null 
+                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f) 
                             : inputs[i];
                         var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
                         myInputs.Add(myDeclareValue);
 
-                        var myOutput = i >= outputs.Count
-                            ? AbstractCreation.AbstractConstant(subContextFactory, inputs[i], 0f)
+                        var myOutput = outputs[i] == null
+                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f)
                             : outputs[i];
                         var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myDeclareValue, myOutput);
                         myOutputs.Add(myAssign);
