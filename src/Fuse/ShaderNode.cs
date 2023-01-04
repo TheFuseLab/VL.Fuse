@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Fuse.ShaderFX;
@@ -126,6 +125,8 @@ namespace Fuse
         public readonly uint HashCode;
         
         public abstract string ID { get; }
+
+        public virtual string DelegateID => ID;
 
         public abstract string TypeName(); 
 
@@ -354,7 +355,7 @@ namespace Fuse
             return result.ToList();
         }
         
-        public List<IFunctionParameter> Delegates()
+        public List<IFunctionParameter> FunctionParameters()
         {
             return ChildrenOfType<IFunctionParameter>();
         }
@@ -545,7 +546,7 @@ namespace Fuse
 
         public ShaderNode(NodeContext nodeContext, string theId, ShaderNode<T> theDefault = null, bool theCreateDefault = true) : base(nodeContext, theId)
         {
-            Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>(new NodeSubContextFactory(NodeContext).NextSubContext(), 0) : null);
+            Default = theDefault ?? (theCreateDefault ? ConstantHelper.FromFloat<T>( 0) : null);
         }
 
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -603,22 +604,24 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
+            /*
             if (Outs.Count <= 1)
             {
                 return "";
             }
-                
+            */
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${implementation};",new Dictionary<string, string> {
                 {"implementation", ImplementationTemplate()}
             });
         }
 
         protected abstract string ImplementationTemplate();
-
+/* TODO check this with delegates
         public override string ID
         {
             get
             {
+                
                 if (Outs.Count > 1) return base.ID;
 
                 var result = base.ID;
@@ -634,6 +637,7 @@ namespace Fuse
 
             }
         }
+        */
     }
 
     public class ComputeNode<T> : ShaderNode<T> , IComputeVoid
