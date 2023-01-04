@@ -30,7 +30,7 @@ namespace Fuse
         private readonly string _name;
         private readonly int _id;
 
-        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate",  null)
+        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate")
         {
             
             _name = "arg_" + theId;
@@ -41,7 +41,7 @@ namespace Fuse
         public void Remap(List<AbstractShaderNode> theParameters)
         {
             if (_id >= theParameters.Count()) return;
-            Name = "arg_"+theParameters[_id].ID;
+            Name = "arg_"+theParameters[_id].DelegateID;
         }
 
         public override string ID => Name;
@@ -78,7 +78,7 @@ namespace Fuse
     public class InvokeChangeLister<T> : IChangeGraph
     {
 
-        private Invoke<T> _invoke;
+        private readonly Invoke<T> _invoke;
 
         public InvokeChangeLister(Invoke<T> theInvoke)
         {
@@ -131,7 +131,7 @@ namespace Fuse
 
         public void UpdateInvoke()
         {
-            AddFunctionInvoke(FunctionName,_delegate, Ins);
+            AddFunctionInvoke(FunctionName, _delegate, Ins);
         }
 
         private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate, List<AbstractShaderNode> theParameters)
@@ -139,8 +139,8 @@ namespace Fuse
             if (theDelegate == null) return;
             Functions.Clear();
             Property.Clear();
-            var delegates = theDelegate.Delegates();
-            delegates.ForEach(input => input.Remap(theParameters));
+            var functionParameters = theDelegate.FunctionParameters();
+            functionParameters.ForEach(input => input.Remap(theParameters));
             
             var functionValueMap = new Dictionary<string, string>
             {
@@ -162,7 +162,7 @@ ${functionImplementation}
                 AddProperties(kv.Key, kv.Value );
             });
             
-            delegates.ForEach(input => input.DeleteRemap());
+            functionParameters.ForEach(input => input.DeleteRemap());
         }
         
         private static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
@@ -172,7 +172,7 @@ ${functionImplementation}
             {
                 stringBuilder.Append(input.TypeName());
                 stringBuilder.Append(" ");
-                stringBuilder.Append("arg_"+input.ID);
+                stringBuilder.Append("arg_"+input.DelegateID);
                 stringBuilder.Append(", ");
             });
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
@@ -195,7 +195,7 @@ ${functionImplementation}
         }
 
         public sealed override IDictionary<string, string> Functions { get; protected set; }
-        public string FunctionName => Name + "_" + HashCode;
+        public string FunctionName => Name + "_" + _delegate.HashCode;
 
     }
 }
