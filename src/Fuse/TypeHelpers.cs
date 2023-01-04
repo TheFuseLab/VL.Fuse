@@ -53,7 +53,7 @@ namespace Fuse
 
             private static readonly Dictionary<Type, string> StructTypes = new()
             {
-                {typeof(Fuse.sdf.Ray), "Ray"},
+                {typeof(MarchRay), "Ray"},
             };
             
             public static bool IsStructType<T>()
@@ -202,7 +202,7 @@ namespace Fuse
                 {typeof(SamplerState), "Sampler"},
                 
                 {typeof(GpuVoid), "Void"},
-                {typeof(Fuse.sdf.Ray), "Ray"},
+                {typeof(MarchRay), "Ray"},
             };
             
             public static string GetSignature(AbstractShaderNode theValue)
@@ -220,7 +220,7 @@ namespace Fuse
                     ShaderNode<Int3> _ => "Int3",
                     ShaderNode<Int4> _ => "Int4",
                     ShaderNode<GpuVoid> _ => "Void",
-                    ShaderNode<Fuse.sdf.Ray> _ => "Ray",
+                    ShaderNode<MarchRay> _ => "Ray",
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
             }
@@ -268,7 +268,7 @@ namespace Fuse
                 {typeof(SamplerState), "Sampler"},
                 
                 {typeof(GpuVoid), "void"},
-                {typeof(Fuse.sdf.Ray), "Ray"},
+                {typeof(MarchRay), "Ray"},
             };
             
             public static string GetGpuType(AbstractShaderNode abstractShaderNode)
@@ -287,7 +287,7 @@ namespace Fuse
                     ShaderNode<Int3> _ => "int3",
                     ShaderNode<Int4> _ => "int4",
                     ShaderNode<GpuVoid> _ => "void",
-                    ShaderNode<Fuse.sdf.Ray> _ => "Ray",
+                    ShaderNode<MarchRay> _ => "Ray",
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
             }
@@ -333,7 +333,7 @@ namespace Fuse
                 {typeof(SamplerState), 1},
                 
                 {typeof(GpuVoid), 0},
-                {typeof(Fuse.sdf.Ray), 1},
+                {typeof(MarchRay), 1},
             };
             
             public static int GetDimension(AbstractShaderNode abstractShaderNode)
@@ -351,7 +351,7 @@ namespace Fuse
                     ShaderNode<Int3> _ => 3,
                     ShaderNode<Int4> _ => 4,
                     ShaderNode<GpuVoid> _ => 0,
-                    ShaderNode<Fuse.sdf.Ray> _ => 1,
+                    ShaderNode<MarchRay> _ => 1,
                     _ => 0
                 };
             }
@@ -412,7 +412,7 @@ namespace Fuse
                     ShaderNode<Int3> _ => 3 * 4,
                     ShaderNode<Int4> _ => 4 * 4,
                     ShaderNode<GpuVoid> _ => 0,
-                    ShaderNode<Fuse.sdf.Ray> _ => 4,
+                    ShaderNode<MarchRay> _ => 4,
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
             }
