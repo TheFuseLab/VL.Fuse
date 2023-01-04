@@ -13,7 +13,7 @@ namespace Fuse
 
         public Float2Join(NodeContext nodeContext) : base(nodeContext, "float2Join")
         {
-            _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
+            _default = new ConstantValue<float>(0);
             
             _x = _default;
             _y = _default;
@@ -51,7 +51,7 @@ namespace Fuse
 
         public Float3Join(NodeContext nodeContext) : base(nodeContext, "Float3Join")
         {
-            _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
+            _default = new ConstantValue<float>(0);
             
             _x = _default;
             _y = _default;
@@ -92,7 +92,7 @@ namespace Fuse
 
         public Float4Join(NodeContext nodeContext) : base(nodeContext, "Float4Join")
         {
-            _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
+            _default = new ConstantValue<float>(0);
 
             _x = _default;
             _y = _default;
@@ -134,7 +134,7 @@ namespace Fuse
         
         public FromFloat(NodeContext nodeContext, ShaderNode<float> x) : base(nodeContext, "fromFloat")
         {
-            _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
+            _default = new ConstantValue<float>(0);
             
             _x =_default;
             
@@ -179,8 +179,8 @@ namespace Fuse
         public FloatJoinAdaptive(NodeContext nodeContext) : base(nodeContext, "join")
         {
             var subContextFactory = new NodeSubContextFactory(nodeContext);
-            _input = _defaultIn = ConstantHelper.FromFloat<TIn>(subContextFactory.NextSubContext(), 0);
-            _extension = _defaultExtension = ConstantHelper.FromFloat<TExtension>(subContextFactory.NextSubContext(), 0);
+            _input = _defaultIn = ConstantHelper.FromFloat<TIn>( 0);
+            _extension = _defaultExtension = ConstantHelper.FromFloat<TExtension>(0);
 
             SetInputs(new List<AbstractShaderNode>{_input, _extension});
         }
@@ -222,7 +222,7 @@ namespace Fuse
 
         public ToFloat4(NodeContext nodeContext) : base(nodeContext, "ToFloat")
         {
-            _default = new ConstantValue<float>(new NodeSubContextFactory(nodeContext).NextSubContext(),0);
+            _default = new ConstantValue<float>(0);
         }
 
         public void SetInput(AbstractShaderNode x)

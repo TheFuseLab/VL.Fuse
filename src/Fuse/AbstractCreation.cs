@@ -124,10 +124,13 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractConstant(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theGpuValue, float theValue)
         {
-            var dataType = new[] { theGpuValue.GetType().BaseType.GetGenericArguments()[0]};
-            return ConstantHelper.AbstractFromFloat(theSubContextFactory.NextSubContext(), dataType[0], theValue);
+            return AbstractConstant(theGpuValue.GetType().BaseType,theValue);
         }
         
-        
+        public static AbstractShaderNode AbstractConstant(Type theType, float theValue)
+        {
+            var dataType = new[] { theType.GetGenericArguments()[0]};
+            return ConstantHelper.AbstractFromFloat( dataType[0], theValue);
+        }
     }
 }
