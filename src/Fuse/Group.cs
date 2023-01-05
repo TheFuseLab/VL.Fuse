@@ -24,7 +24,7 @@ namespace Fuse
             return "";
         }
         
-        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
@@ -38,11 +38,11 @@ namespace Fuse
             }
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
             BuildChildrenSource(theSourceBuilder, theHashes);
 
-            if (!theHashes.Add(HashCode))return;
+            if (!theHashes.Add(ID))return;
             
             var source = SourceCode;
             //Console.Out.WriteLine(Name + " : " + HashCode);

@@ -30,9 +30,9 @@ namespace Fuse.regions
             SetInputs(theInputs);
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
-            if (!theHashes.Add(HashCode)) return;
+            if (!theHashes.Add(ID)) return;
 
             const string shaderCode = @"
         for(int ${index} = ${start}; ${index} < ${end};${index}++){";
@@ -55,7 +55,7 @@ namespace Fuse.regions
             theSourceBuilder.Append(myChildSource);
 
             var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(HashCode))
+            if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(ID))
             {
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }
@@ -203,7 +203,7 @@ namespace Fuse.regions
             SetInputs(inputList);
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
             var nodes = new List<AbstractShaderNode>();
             Children.ForEach(child =>
@@ -219,7 +219,7 @@ namespace Fuse.regions
 
 
             var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(HashCode))
+            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(ID))
             {
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }

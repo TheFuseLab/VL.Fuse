@@ -293,7 +293,7 @@ namespace Fuse
             OnPassContext(nodeContext);
         }
 
-        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
@@ -307,11 +307,11 @@ namespace Fuse
             }
         }
 
-        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<uint> theHashes)
+        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
             BuildChildrenSource(theSourceBuilder, theHashes);
 
-            if (!theHashes.Add(HashCode))return;
+            if (!theHashes.Add(ID))return;
             
             var source = SourceCode;
             //Console.Out.WriteLine(Name + " : " + HashCode);
@@ -336,7 +336,7 @@ namespace Fuse
         public string BuildSourceCode()
         {
             var myStringBuilder = new StringBuilder();
-            var myHashes = new HashSet<uint>();
+            var myHashes = new HashSet<string>();
 
             BuildSource( myStringBuilder, myHashes);
             return myStringBuilder.ToString();
