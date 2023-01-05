@@ -95,7 +95,7 @@ namespace Fuse.compute
 
     }
     
-    public class StructuredBufferResource : AbstractStructuredBufferAttribute<GpuStruct>, IBufferInput<GpuStruct>
+    public class StructuredBufferResource : AbstractStructuredBufferAttribute<Buffer>, IBufferInput<GpuStruct>
     {
         public StructuredBufferResource(NodeContext nodeContext, string theName) : base(nodeContext, theName, theName, AttributeType.StructuredBuffer)
         {
