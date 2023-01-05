@@ -27,6 +27,10 @@ namespace Fuse
         {
             _member = theMember;
             _input = theInput;
+            if(theInput != null && theMember != null)
+            {
+                Name = theInput.Name + ShaderNodesUtil.FirstLetterToUpper(theMember);
+            }
             SetInputs(new List<AbstractShaderNode>{theInput});
         }
 
