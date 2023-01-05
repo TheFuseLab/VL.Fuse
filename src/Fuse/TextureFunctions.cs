@@ -7,6 +7,7 @@ using VL.Core;
 
 namespace Fuse
 {
+
     public class TextureGetDimensions : ShaderNode<GpuVoid>
     {
         private ShaderNode<Texture> _texture;
