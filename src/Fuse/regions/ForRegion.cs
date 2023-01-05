@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Text;
 using VL.Core;
+using VL.Core.PublicAPI;
 
 namespace Fuse.regions
 {
@@ -68,19 +69,16 @@ namespace Fuse.regions
     
     public class IndexNode : ShaderNode<int>
     {
-        
-        [ThreadStatic] // Not really needed in your case, but good practice
-        private static ForRegion _current; // Could be your loop for example
-
-        public static ForRegion Current => _current;
+        [field: ThreadStatic]
+        public static ForRegion Current { get; private set; }
 
         public static IDisposable MakeCurrent(ForRegion context)
         {
-            var previous = _current;
-            _current = context;
+            var previous = Current;
+            Current = context;
             return Disposable.Create(() => 
             { 
-                _current = previous; 
+                Current = previous; 
             });
         }
         
@@ -114,7 +112,8 @@ namespace Fuse.regions
             ShaderNode<int> inEnd,
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
-            IEnumerable<AbstractShaderNode> theCrossLinks)
+            IEnumerable<AbstractShaderNode> theCrossLinks,
+            IEnumerable<BorderControlPointDescription> theDescriptions)
         {
             var subContextFactory = new NodeSubContextFactory(NodeContext);
             OptionalOutputs.Clear();
@@ -122,15 +121,12 @@ namespace Fuse.regions
             var inputs = theInputs.ToList();
             var outputs = theOutputs.ToList();
             var crossLinks = theCrossLinks.ToList();
+            var descriptions = theDescriptions.ToList();
 
             var myCrossLinks = new List<AbstractShaderNode>();
             crossLinks.ForEach(c =>
             {
                 if (c == null) return;
-                
-                // cross link is a function and handled by connected invoke
-                //if (c.Delegates().Count > 0) return;
-                
                 myCrossLinks.Add(c);
             });
 
@@ -149,16 +145,16 @@ namespace Fuse.regions
 
                         break;
                     default:
-                        var myInput = i >= inputs.Count || inputs[i] == null 
-                            ? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0f) 
+                        var myInput  = inputs[i] == null 
+                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f) 
                             : inputs[i];
-                        var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
-                        myInputs.Add(myDeclareValue);
+                        //var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
+                        myInputs.Add(myInput);
 
                         var myOutput = i >= outputs.Count
-                            ? AbstractCreation.AbstractConstant(subContextFactory, inputs[i], 0f)
+                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f)
                             : outputs[i];
-                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myDeclareValue, myOutput);
+                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myInput, myOutput);
                         myOutputs.Add(myAssign);
 
                         break;
@@ -194,7 +190,7 @@ namespace Fuse.regions
 
             var inputList = new List<AbstractShaderNode>
             {
-                crossLinkCall,
+              //  crossLinkCall,
                 inStart,
                 inEnd,
                 inCall,
