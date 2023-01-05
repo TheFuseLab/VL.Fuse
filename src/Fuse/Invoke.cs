@@ -106,11 +106,15 @@ namespace Fuse
         {
             _delegate?.Outs.Remove(this);
             _delegate = theDelegate;
+
+            if (theDelegate == null)
+            {
+                CallChangeEvent();
+                return;
+            }
             _delegate?.Outs.Add(this);
 
             SetInputs(theParameters, false);
-            
-            
             AddFunctionInvoke(FunctionName,_delegate, Ins);
             
             CallChangeEvent();
@@ -122,15 +126,9 @@ namespace Fuse
             base.CheckContext(theContext);
         }
 
-        protected override Dictionary<string,string> CreateTemplateMap ()
-        {
-            var result = base.CreateTemplateMap();
-            result["function"] = FunctionName;
-            return result;
-        }
-
         public void UpdateInvoke()
         {
+            if (_delegate == null) return;
             AddFunctionInvoke(FunctionName, _delegate, Ins);
         }
 
