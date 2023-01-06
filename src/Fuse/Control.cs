@@ -67,7 +67,8 @@ ${cases}
             _check = theCheck;
             _cases = inputs.ToList();
             _default = theDefault;
-            var myIns = new List<AbstractShaderNode>(_cases);
+            var myIns = new List<AbstractShaderNode>{_check};
+            myIns.AddRange(_cases);
             if (theDefault != null)
             {
                 myIns.Add(theDefault);
