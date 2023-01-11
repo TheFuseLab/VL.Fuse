@@ -36,8 +36,6 @@ namespace Fuse
         private readonly int _myMaximumVertexCount;
         private readonly InputPrimitiveType _myInputPrimitiveType;
         private readonly OutputPrimitiveType _myOutputPrimitiveType;
-        
-        public ShaderNode<GpuVoid> GeometryNode { get; set; }
 
         public GeometryStage(
             ShaderNode<GpuVoid> theGeometryNode,
