@@ -15,19 +15,26 @@ namespace Fuse.ShaderFX
     {
         public readonly string Key;
 
-        public readonly AbstractShaderNode StageNode;
+        public AbstractShaderNode StageNode;
 
         public int Ticket { get; private set; }
 
         public AbstractStage(string theKey, AbstractShaderNode theShaderNode)
         {
             Key = theKey;
-            StageNode = theShaderNode;
+            SetInput(theShaderNode);
             Ticket = 0;
         }
 
         public virtual void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
+        }
+
+        public void SetInput(AbstractShaderNode theShaderNode)
+        {
+            StageNode?.RemoveChangeGraph(this);
+            StageNode = theShaderNode;
+            StageNode?.AddChangeGraph(this);
         }
 
         public abstract string Source();
