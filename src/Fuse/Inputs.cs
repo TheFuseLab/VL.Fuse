@@ -15,6 +15,8 @@ namespace Fuse{
     public interface IGpuInput : IAtomicComputeNode
     {
         void SetParameterValue(ParameterCollection theCollection);
+        
+        public void CheckDeclaration(bool theCallChangeEvent = true);
     }
     
     
@@ -29,7 +31,11 @@ namespace Fuse{
         public void SetParameterValue(ParameterCollection theCollection)
         {
         }
-        
+
+        public void CheckDeclaration(bool theCallChangeEvent = true)
+        {
+        }
+
         protected override string SourceTemplate()
         {
             return "";
@@ -141,6 +147,8 @@ namespace Fuse{
          }
          
          public abstract void SetParameterValue(ParameterCollection theCollection);
+
+         public abstract void CheckDeclaration(bool theCallChangeEvent = true);
      }
 
      public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>, ObjectParameterUpdater<T>> where T : class
@@ -182,7 +190,7 @@ namespace Fuse{
 
          public abstract string ComputeDeclaration();
 
-         public void CheckDeclaration(bool callChangeEvent = true)
+         public override void CheckDeclaration(bool callChangeEvent = true)
          {
              var declaration = Declaration();
              var computeDeclaration = ComputeDeclaration();
@@ -244,6 +252,10 @@ namespace Fuse{
          public SamplerInput(NodeContext nodeContext) : base(nodeContext, "SamplerInput")
          {
              SetFieldDeclaration("SamplerState", "SamplerState");
+         }
+
+         public override void CheckDeclaration(bool theCallChangeEvent = true)
+         {
          }
      }
 
@@ -365,7 +377,10 @@ namespace Fuse{
         {
             theCollection.Set(ParameterKey, Value);
         }
-        
+
+        public override void CheckDeclaration(bool theCallChangeEvent = true)
+        {
+        }
     }
     /*
     public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
