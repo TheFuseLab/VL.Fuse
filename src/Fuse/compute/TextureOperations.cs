@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Stride.Graphics;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
@@ -39,6 +40,66 @@ namespace Fuse.compute
                 {"textureName", _texture.ID},
                 {"index", _index.ID}
             });
+        }
+    }
+    
+    public class TextureAttributeFunction<T> : ShaderNode<T>
+    {
+        private ShaderNode<T> _textureAttribute;
+        private List<AbstractShaderNode> _arguments;
+        private readonly string _functionName;
+
+        public TextureAttributeFunction(
+            NodeContext nodeContext, 
+            string theFunction,
+            ShaderNode<T> theDefault) : base(nodeContext, "textureNode", theDefault)
+        {
+            _functionName = theFunction;
+        }
+
+        public void SetInput(
+            ShaderNode<T> theTextureAttribute,
+            IEnumerable<AbstractShaderNode> theArguments)
+        {
+            _textureAttribute = theTextureAttribute;
+            _arguments = theArguments.ToList();
+
+            var ins = new List<AbstractShaderNode>();
+            ins.Add(theTextureAttribute);
+            ins.AddRange(_arguments);
+            SetInputs(ins);
+        }
+
+        protected override string SourceTemplate()
+        {
+            if (ShaderNodesUtil.HasNullValue(_arguments) || _textureAttribute == null)
+            {
+                return GenerateDefaultSource();
+            }
+
+            const string shaderCode = "${resultType} ${resultName} = ${textureName}.${function}(${arguments});";
+
+            try
+            {
+                var textureAttribute = _textureAttribute as ITextureAttribute;
+
+                return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+                {
+                    {"textureName", textureAttribute.TextureInput.ID},
+                    {"function", _functionName},
+                    {"resultName", ID},
+                    {"resultType", TypeName()},
+                    {"arguments", ShaderNodesUtil.BuildArguments(_arguments)},
+                    {"default", Default == null ? "" : Default.ID}
+                });
+            }
+            catch (Exception)
+            {
+                return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = " + TypeHelpers.GetDefaultForType<T>()+";", new Dictionary<string, string>
+                {
+                    
+                });
+            }
         }
     }
     
