@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using Fuse.compute;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
@@ -149,7 +150,7 @@ namespace Fuse
         {
             base.SetInput(theIn);
             
-            SetInputs(new List<AbstractShaderNode>{Input,theCommand});
+            SetInputs(new List<AbstractShaderNode>{theCommand,Input});
         }
     }
     
@@ -166,5 +167,36 @@ namespace Fuse
             AddProperties(_propertyId, theResources);
             CallChangeEvent();
         }
+    }
+    
+    
+    
+    public class AddToGraph<T>: ShaderNode<T>, IComputeVoid
+    {
+        private ShaderNode<T> _input;
+        public AddToGraph(NodeContext nodeContext, string name = "AddToGraph") : base(nodeContext, name)
+        {
+            NullInputMode = HandleNullInputMode.Remove;
+        }
+
+        public void SetInput(ShaderNode<T> theMain, IEnumerable<AbstractShaderNode> theInputs, bool theCallChangeEvent = true)
+        {
+            _input = theMain;
+            var ins = new List<AbstractShaderNode>() { theMain };
+            ins.AddRange(theInputs);
+            SetInputs(ins, theCallChangeEvent);
+        }
+
+        protected override string SourceTemplate()
+        {
+            return "";
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+        
+        public override string ID => _input.ID;
     }
 }
