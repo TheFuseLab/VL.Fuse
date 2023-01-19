@@ -11,16 +11,31 @@ using Vortice.Vulkan;
 namespace Fuse.ShaderFX
 {
     
+    public class GenerateNormal_VSStage : AbstractStage
+    {
+        private const string ShaderSource = @"
+	stage override void GenerateNormal_VS() 
+	{
+        ${sourceGenerateNormal_VS}
+	}";
+        
+        public GenerateNormal_VSStage(ShaderNode<GpuVoid> theShaderNode) : base("GenerateNormal_VS", theShaderNode) { }
+
+        public override string Source()
+        {
+            return ShaderSource;
+        }
+    }
+    
     public class PreTransformPositionStage : AbstractStage
     {
         private const string ShaderSource = @"
-    //override shading, create sphere impostor in this case
 	stage override void PreTransformPosition() 
 	{
-        ${sourcePreTP}
+        ${sourcePreTransformPosition}
 	}";
         
-        public PreTransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("PreTP", theShaderNode) { }
+        public PreTransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("PreTransformPosition", theShaderNode) { }
 
         public override string Source()
         {
@@ -31,13 +46,12 @@ namespace Fuse.ShaderFX
     public class TransformPositionStage : AbstractStage
     {
         private const string ShaderSource = @"
-    //override shading, create sphere impostor in this case
 	stage override void TransformPosition()
 	{
-        ${sourceTP}
+        ${sourceTransformPosition}
 	}";
         
-        public TransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("TP", theShaderNode) { }
+        public TransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("TransformPosition", theShaderNode) { }
 
         public override string Source()
         {
@@ -48,13 +62,12 @@ namespace Fuse.ShaderFX
     public class PostTransformPositionStage : AbstractStage
     {
         private const string ShaderSource = @"
-    //override shading, create sphere impostor in this case
 	stage override void PostTransformPosition()
 	{
-        ${sourcePostTP}
+        ${sourcePostTransformPosition}
 	}";
         
-        public PostTransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("PostTP", theShaderNode) { }
+        public PostTransformPositionStage(ShaderNode<GpuVoid> theShaderNode) : base("PostTransformPosition", theShaderNode) { }
 
         public override string Source()
         {
@@ -65,7 +78,6 @@ namespace Fuse.ShaderFX
     public class ShadingStage : AbstractStage
     {
         private const string ShaderSource = @"
-    //override shading, create sphere impostor in this case
 	stage override float4 Shading()
 	{
         ${sourceShading}
@@ -109,11 +121,13 @@ ${functions}
 
 ${compositions}
 
-${stagePreTP}
+${stageGenerateNormal_VS}
 
-${stageTP}
+${stagePreTransformPosition}
 
-${stagePostTP}
+${stageTransformPosition}
+
+${stagePostTransformPosition}
 
 ${stageGS}
 
@@ -123,6 +137,7 @@ ${stageShading}
 
 
         public ToMaterialExtension(
+            ShaderNode<GpuVoid> theGenerateNormal_VS,
             ShaderNode<GpuVoid> thePreTransform,
             ShaderNode<GpuVoid> theTransform,
             ShaderNode<GpuVoid> thePostTransform,
@@ -131,6 +146,7 @@ ${stageShading}
         ) : base(
             new List<AbstractStage>
             {
+                theGenerateNormal_VS == null ? null : new GenerateNormal_VSStage(theGenerateNormal_VS),
                 thePreTransform == null ? null : new PreTransformPositionStage(thePreTransform),
                 theTransform == null ? null : new TransformPositionStage(theTransform),
                 thePostTransform == null ? null : new PostTransformPositionStage(thePostTransform),
