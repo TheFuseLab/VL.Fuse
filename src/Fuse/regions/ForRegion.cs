@@ -190,7 +190,7 @@ namespace Fuse.regions
 
             var inputList = new List<AbstractShaderNode>
             {
-              //  crossLinkCall,
+                crossLinkCall,
                 inStart,
                 inEnd,
                 inCall,
