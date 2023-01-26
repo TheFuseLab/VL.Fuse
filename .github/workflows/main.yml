@@ -1,11 +1,15 @@
-name: push_nuget
+name: release-fuse
 
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'The branch to release from'
+        required: true
+        default: 'develop'
       version:
         description: 'The version to push'
-        required: false
+        required: true
         default: 'X.X.X'
       is_pre:
         description: 'Is pre release'
@@ -20,6 +24,8 @@ jobs:
     steps:
     - name: Git Checkout
       uses: actions/checkout@master
+      with:
+        ref: ${{ github.event.inputs.branch }}
     
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1.0.2
