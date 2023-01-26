@@ -16,17 +16,29 @@ Here is the preview release presentation: [Release Presentation: FUSE](https://y
 
 ## Installing
 
-New to vvvv? We have a short video tutorial that will show you how to install vvvv and VL.Fuse : [How to install vvvv and VL.Fuse](https://youtu.be/25sk7_NaEgM)
+New to vvvv? We have a short video tutorial that will show you how to install vvvv and VL.Fuse : [How to install vvvv and VL.Fuse](https://youtu.be/25sk7_NaEgM). You can then decide to install the stable or the preview version of Fuse. For both, you'll have to [open vvvv's command line](https://thegraybook.vvvv.org/reference/hde/managing-nugets.html) and type one of the following install commands :
 
-The library is still in a preview state. Before installing it, please make sure you have the [latest vvvv gamma preview](https://visualprogramming.net/#Download).
+### Current stable
 
-- Go to vvvv gamma's _Quad menu_, then click on _Manage Nugets_ and _Commandline_. Once you have the command line open, type :
+To install the current stable version, type
+
+```
+nuget install VL.Fuse
+```
+
+Then press <kbd>Enter</kbd> and wait for the end of the installation process. 
+
+### Current preview
+
+To install the current preview version, type
 
 ```
 nuget install VL.Fuse -pre
 ```
 
-- Press <kbd>Enter</kbd> and wait for the end of the installation process
+Then press <kbd>Enter</kbd> and wait for the end of the installation process. This will give you access to the latest features but bewere, there might be bugs!
+
+Please note that this version is only compatible with vvvv 5.0 and won't work with earlier version.
 
 ## Getting started
 
