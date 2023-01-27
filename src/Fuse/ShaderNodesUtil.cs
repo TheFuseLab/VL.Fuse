@@ -189,7 +189,9 @@ namespace Fuse
             if (game == null) return null;
             
             var effectImageShader = new DynamicDrawEffectInstance("ShaderFXGraphEffect");
-            var context = typeof(ShaderGraph).GetMethod("NewShaderGeneratorContext",BindingFlags.Static)?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
+            var method = typeof(ShaderGraph).GetMethod("NewShaderGeneratorContext", BindingFlags.Static | BindingFlags.NonPublic);
+            var context = method?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
+            
           //  var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Color.White);
             theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);

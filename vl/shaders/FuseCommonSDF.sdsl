@@ -120,7 +120,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	  return max((q.x * 0.866025 + q.y * 0.5), q.y) - radius;
 	}
 
-	float fPentagon( in float2 p, in float r )
+	float fPentagon(float2 p,float r )
 	{
 		const float3 k = float3(0.809016994,0.587785252,0.726542528);
 		p.x = abs(p.x);
@@ -189,8 +189,46 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return length(p) - r;
 	}
 
+	float fCutSphere( float3 p, float r, float h )
+	{
+		// sampling independent computations (only depend on shape)
+		float w = sqrt(r * r - h * h);
+
+		// sampling dependant computations
+		float2 q = float2(length(p.xz), p.y);
+		float s = max( (h - r) * q.x * q.x + w * w * (h + r - 2.0 * q.y), h * q.x - w * q.y);
+		return (s < 0.0) ? length(q) - r :
+			(q.x < w) ? h - q.y     :
+			length(q - float2(w,h));
+	}
+
+	float fCutHollowSphere( float3 p, float r, float h, float t )
+	{
+		// sampling independent computations (only depend on shape)
+		float w = sqrt(r * r - h * h);
+  
+		// sampling dependant computations
+		float2 q = float2( length(p.xz), p.y );
+		return ((h * q.x < w * q.y) ? length(q - float2(w, h)) : 
+                          abs(length(q) - r) ) - t;
+	}
+
+	float fDeathStar(float3 p2, float ra, float rb, float d)
+	{
+		// sampling independent computations (only depend on shape)
+		float a = (ra*ra - rb*rb + d*d)/(2.0*d);
+		float b = sqrt(max(ra*ra-a*a,0.0));
+	
+		// sampling dependant computations
+		float2 p = float2( p2.x, length(p2.yz) );
+		if( p.x * b - p.y * a > d * max(b - p.y, 0.0) )
+			return length(p - float2(a, b));
+		else
+			return max( (length(p) - ra), -(length(p - float2(d, 0)) - rb));
+	}
+
 	// generic ellipsoid - improved approximated distance
-	float fEllipsoid( in float3 p, in float3 r ) 
+	float fEllipsoid(float3 p,float3 r ) 
 	{
 		float k0 = length(p/r);
 		float k1 = length(p/(r*r));
@@ -269,6 +307,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return l - 1.5 - 0.2 * (1.5 / 2)* cos(min(sqrt(1.01 - b / l)*(PI / 0.25), PI));
 	}
 
+	float fCylinder(float3 p, float r)
+	{
+  		return length(p.xz)-r;
+	}
+
 	// Cylinder standing upright on the xz plane
 	float fCylinder(float3 p, float r, float height) 
 	{
@@ -277,10 +320,24 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return d;
 	}
 
-	// Capsule: A Cylinder with round caps on both sides
-	float fCapsule(float3 p, float r, float c) 
+	float fRoundCylinder(float3 p, float ra, float rb, float h )
 	{
-		return lerp(length(p.xz) - r, length(float3(p.x, abs(p.y) - c, p.z)) - r, step(c, abs(p.y)));
+  		float2 d = float2(length(p.xz) - 2.0 * ra + rb, abs(p.y) - h );
+  		return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - rb;
+	}
+
+	float fCylinder(float3 p, float3 a, float3 b, float r)
+	{
+  		float3 ba = b - a;
+  		float3 pa = p - a;
+  		float baba = dot(ba, ba);
+  		float paba = dot(pa, ba);
+  		float x = length(pa * baba - ba * paba) - r * baba;
+  		float y = abs(paba - baba * 0.5) - baba * 0.5;
+  		float x2 = x * x;
+  		float y2 = y * y * baba;
+  		float d = (max(x,y) < 0.0) ? - min(x2,y2) : (((x > 0.0)? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));
+  		return sign(d) * sqrt(abs(d)) / baba;
 	}
 
 	// Distance to line segment between <a> and <b>, used for fCapsule() version 2below
@@ -304,6 +361,12 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return length( pa - ba*h )*.6;
 	}
 
+	float fCapsule(float3 p, float r, float h)
+	{
+  		p.y -= clamp( p.y, 0.0, h );
+  		return length( p ) - r;
+	}
+
 	// Capsule version 2: between two end points <a> and <b> with radius r 
 	float fCapsule(float3 p, float3 a, float3 b, float r) 
 	{
@@ -314,6 +377,20 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	float fTorus(float3 p, float smallRadius, float largeRadius) 
 	{
 		return length(float2(length(p.xz) - largeRadius, p.y)) - smallRadius;
+	}
+
+	float fCappedTorus(float3 p, float angle, float ra, float rb)
+	{
+    	p.x = abs(p.x);
+		float2 sc = float2(sin(angle),cos(angle));
+    	float k = (sc.y * p.x > sc.x * p.z) ? dot(p.xz, sc) : length(p.xz);
+    	return sqrt( dot(p, p) + ra * ra - 2.0 * ra * k) - rb;
+	}
+
+	float fLink(float3 p, float le, float r1, float r2)
+	{
+  		float3 q = float3(p.x, max(abs(p.z) - le, 0.0), p.y );
+  		return length(float2(length(q.xy) - r1, q.z)) - r2;
 	}
 
 	// A circle line. Can also be used to make a torus by subtracting the smaller radius of the torus.
@@ -345,7 +422,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
 	}
 	*/
-
+/*
 	float fPyramid(float3 p, float3 h ) 
 	{
 		float box = fBox( p - float3(0,-2.0*h.z,0),2.0*h.z); 
@@ -356,7 +433,28 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		d = max( d, abs( dot(p, float3(  0, h.y,-h.x )) ));
 		float octa = d - h.z;
 		return max(-box,octa);
-	 }
+	 }*/
+
+	 float fPyramid(float3 p, float h)
+	{
+		float m2 = h*h + 0.25;
+    
+		p.xz = abs(p.xz);
+		p.xz = (p.z>p.x) ? p.zx : p.xz;
+		p.xz -= 0.5;
+
+		float3 q = float3( p.z, h*p.y - 0.5*p.x, h*p.x + 0.5*p.y);
+   
+		float s = max(-q.x,0.0);
+		float t = clamp( (q.y-0.5*p.z)/(m2+0.25), 0.0, 1.0 );
+    
+		float a = m2*(q.x+s)*(q.x+s) + q.y*q.y;
+		float b = m2*(q.x+0.5*t)*(q.x+0.5*t) + (q.y-m2*t)*(q.y-m2*t);
+    
+		float d2 = min(q.y,-q.x*m2-q.y*0.5) > 0.0 ? 0.0 : min(a,b);
+    
+		return sqrt( (d2+q.z*q.z)/m2 ) * sign(max(q.z,-p.y));
+	}
 
 	// Hexagonal prism, circumcircle variant
 	float fHexagonCircumcircle(float3 p, float2 h) 
@@ -371,6 +469,15 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	float fHexagonIncircle(float3 p, float2 h) 
 	{
 		return fHexagonCircumcircle(p, float2(h.x*sqrt(3)*0.5, h.y));
+	}
+
+	float fCone( float3 p, float angle )
+	{
+		// c is the sin/cos of the angle
+		float2 c = float2(sin(angle), cos(angle));
+		float2 q = float2(length(p.xz), -p.y);
+		float d = length(q - c * max(dot(q, c), 0.0));
+		return d * ((q.x * c.y - q.y * c.x < 0.0) ? -1.0 : 1.0);
 	}
 
 	// Cone with correct distances to tip and base circle. Y is up, 0 is in the middle of the base.
@@ -393,6 +500,105 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 			d = max(d, length(q - float2(radius, 0)));
 		}
 		return d;
+	}
+
+	float fCappedCone(float3 p, float r1, float r2, float h)
+	{
+		float2 q = float2(length(p.xz), p.y );
+		float2 k1 = float2(r2, h);
+		float2 k2 = float2(r2 - r1, 2.0 * h);
+		float2 ca = float2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - h);
+		float2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot(k2, k2), 0.0, 1.0 );
+		float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+		return s * sqrt(min(dot(ca, ca),dot(cb, cb)));
+	}
+
+	float fCappedCone(float3 p, float3 a, float3 b, float ra, float rb)
+	{
+		float rba  = rb - ra;
+		float baba = dot(b - a, b - a);
+		float papa = dot(p - a, p - a);
+		float paba = dot(p - a, b - a) / baba;
+		float x = sqrt(papa - paba * paba * baba);
+		float cax = max(0.0, x - ((paba < 0.5) ? ra : rb));
+		float cay = abs(paba - 0.5) - 0.5;
+		float k = rba * rba + baba;
+		float f = clamp((rba * (x - ra) + paba * baba) / k, 0.0, 1.0);
+		float cbx = x - ra - f * rba;
+		float cby = paba - f;
+		float s = (cbx < 0.0 && cay < 0.0) ? -1.0 : 1.0;
+		return s * sqrt(min(cax*cax + cay * cay * baba, cbx * cbx + cby * cby * baba));
+	}
+
+	float fRoundCone(float3 p, float r1, float r2, float h )
+	{
+		// sampling independent computations (only depend on shape)
+		float b = (r1 - r2) / h;
+		float a = sqrt(1.0 - b * b);
+
+		// sampling dependant computations
+		float2 q = float2(length(p.xz), p.y );
+		float k = dot(q, float2(-b, a));
+		if( k < 0.0 ) return length(q) - r1;
+		if( k > a * h ) return length(q - float2(0.0, h)) - r2;
+		return dot(q, float2(a,b)) - r1;
+	}
+
+	float fRoundCone(float3 p, float3 a, float3 b, float r1, float r2)
+	{
+		// sampling independent computations (only depend on shape)
+		float3  ba = b - a;
+		float l2 = dot(ba, ba);
+		float rr = r1 - r2;
+		float a2 = l2 - rr * rr;
+		float il2 = 1.0 / l2;
+    
+		// sampling dependant computations
+		float3 pa = p - a;
+		float y = dot(pa, ba);
+		float z = y - l2;
+		float x2 = dot2( pa * l2 - ba * y );
+		float y2 = y * y * l2;
+		float z2 = z * z * l2;
+
+		// single square root!
+		float k = sign(rr) * rr * rr * x2;
+		if( sign(z) * a2 * z2 > k ) return sqrt(x2 + z2) * il2 - r2;
+		if( sign(y) * a2 * y2 < k ) return sqrt(x2 + y2) * il2 - r1;
+			return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+	}
+
+	float fSolidAngle(float3 p, float angle, float ra)
+	{
+  		// c is the sin/cos of the angle
+		float2 c = float2(sin(angle), cos(angle));
+		float2 q = float2(length(p.xz), p.y);
+		float l = length(q) - ra;
+		float m = length(q - c * clamp(dot(q, c), 0.0, ra) );
+		return max(l,m * sign(c.y * q.x - c.x * q.y));
+	}
+
+	float ndot(float2 a,float2 b ) { return a.x*b.x - a.y*b.y; }
+
+	float fRhombus(float3 p, float la, float lb, float h, float ra)
+	{
+		p = abs(p);
+		float2 b = float2(la, lb);
+		float f = clamp( (ndot(b, b - 2.0 * p.xz)) / dot(b, b), -1.0, 1.0 );
+		float2 q = float2(length(p.xz - 0.5 * b * float2(1.0 - f, 1.0 + f)) * sign(p.x * b.y + p.z * b.x - b.x * b.y) - ra, p.y - h);
+		return min(max(q.x,q.y),0.0) + length(max(q,0.0));
+	}
+
+	float fOctahedron(float3 p, float s)
+	{
+		p = abs(p);
+		float m = p.x + p.y + p.z - s;
+		float3 r = 3.0*p - m;
+    
+		// filbs111's version (see comments)
+		float3 o = min(r, 0.0);
+		o = max(r*2.0 - o*3.0 + (o.x+o.y+o.z), 0.0);
+		return length(p - s*o/(o.x+o.y+o.z));
 	}
 
 	
@@ -512,7 +718,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return pow(x,1.0/3.0);
 	}
 
-	int fBezierSolveCubic(in float a, in float b, in float c, out float r[3])
+	int fBezierSolfloatubic(in float a,float b,float c, out float r[3])
 	{
 		float  p = b - a*a / 3.0;
 		float  q = a * (2.0*a*a - 9.0*b) / 27.0 + c;
@@ -557,7 +763,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float d = dot(D, sd);
 
 		float res[3];
-		int n = fBezierSolveCubic(b*a, c*a, d*a, res);
+		int n = fBezierSolfloatubic(b*a, c*a, d*a, res);
 
 		float t = clamp(res[0],0.0, 1.0);
 		float2 pos = P0 + (sb + sc*t)*t;
@@ -803,7 +1009,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// Specialized implementations can well be faster in all cases.
 	//
 
-	static const float3 GDFVectors[19] = 
+	static const float3 GDFfloattors[19] = 
 	{
 		normalize(float3(1, 0, 0)),
 		normalize(float3(0, 1, 0)),
@@ -835,7 +1041,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	{
 		float d = 0;
 		for (int i = begin; i <= end; ++i)
-			d += pow(abs(dot(p, GDFVectors[i])), e);
+			d += pow(abs(dot(p, GDFfloattors[i])), e);
 		return pow(d, 1/e) - r;
 	}
 
@@ -844,7 +1050,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	{
 		float d = 0;
 		for (int i = begin; i <= end; ++i)
-			d = max(d, abs(dot(p, GDFVectors[i])));
+			d = max(d, abs(dot(p, GDFfloattors[i])));
 		return d - r;
 	}
 
@@ -1155,7 +1361,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 
 	// Revolve a 2D signed distance field in to a third dimension
 	// called as sdf(fOpRevolution(p, w))
-	float2 fOpRevolution( in float3 p, float w )
+	float2 fOpRevolution(float3 p, float w )
 	{
 		return float2( length(p.xz) - w, p.y );
 	}
@@ -1306,7 +1512,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// 	Elongate- strech a SDF primitive.  Should be used like so: 
 	//	float4 w = pElongate(p);
 	//	float Distance = SDF(w.xyz) + w.w;
-	float4 fOpElongate( in float3 p, in float3 h )
+	float4 fOpElongate(float3 p,float3 h )
 	{
 		//return float3( p-clamp(p,-h,h)); // faster, but produces zero in the interior elongated box
 		float3 q = abs(p)-h;

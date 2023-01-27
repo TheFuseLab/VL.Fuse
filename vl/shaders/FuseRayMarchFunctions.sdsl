@@ -58,4 +58,24 @@ shader FuseRayMarchFunctions : ShaderBaseStream, Transformation, Texturing, Posi
 		sn = SDFNormal(p);
 		return p;
 	}
+
+	#define PI = 3.14159265359
+	#define HASHSCALE1 .1031
+float hash11(float p)
+{
+	float3 p3  = frac(float3(p,p,p) * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return frac((p3.x + p3.y) * p3.z);
+}
+
+    float3 randomSphereDir(float2 rnd){
+	    float s = rnd.x*PI*2.;
+	    float t = rnd.y*2.-1.;
+	    return float3(sin(s), cos(s), t) / sqrt(1.0 + t * t);
+    }
+
+    float3 randomHemisphereDir(float3 dir, float i){
+	    float3 v = randomSphereDir( float2(hash11(i+1.), hash11(i+2.)) );
+	    return v * sign(dot(v, dir));
+    }
 };
