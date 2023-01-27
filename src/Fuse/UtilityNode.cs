@@ -169,7 +169,14 @@ namespace Fuse
         }
     }
     
+    public interface IInjectToRegion{}
     
+    public class InjectToRegion<T> : PassThroughNode<T>, IInjectToRegion
+    {
+        public InjectToRegion(NodeContext nodeContext) : base(nodeContext, "InjectToRegion")
+        {
+        }
+    }
     
     public class AddToGraph<T>: ShaderNode<T>, IComputeVoid
     {
