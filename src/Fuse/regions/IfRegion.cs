@@ -80,7 +80,7 @@ namespace Fuse.regions
             var myCrossLinks = new List<AbstractShaderNode>();
             crossLinks.ForEach(c =>
             {
-                if (c == null) return;
+                if (c is null or IInjectToRegion) return;
                 myCrossLinks.Add(c);
             });
 
@@ -143,7 +143,7 @@ namespace Fuse.regions
 
             var inputList = new List<AbstractShaderNode>
             {
-               // crossLinkCall,
+                crossLinkCall,
                 inCheck,
                 inCall,
                 ifGroup
