@@ -1,0 +1,95 @@
+shader FuseCommonDraw : Texturing
+{
+    float4 FetchLowResDepths(Texture2D theLowresTexture, Sampler theLowResSampler, float2 UV, float4x4 projection){
+	    float4 deviceZ = theLowresTexture.GatherRed(theLowResSampler, UV);
+	
+	    // Linearize
+        return projection._43/(deviceZ - projection._33);
+    }
+
+    float FetchFullResDepth(Texture2D theHighresTexture, Sampler theNearestSampler, float2 uv, float4x4 projection)
+	{
+		float deviceZ = theHighresTexture.SampleLevel(theNearestSampler, uv, 0).x;
+		// Linearize
+        return projection._43/(deviceZ - projection._33);
+	}
+
+    void UpdateNearestSample(
+        inout float MinDist,
+		inout float2 NearestUV,
+		float Z,
+		float2 UV,
+		float ZFull
+	){
+        float Dist = abs(Z - ZFull);
+	    if (Dist < MinDist)
+	    {
+		    MinDist = Dist;
+		    NearestUV = UV;
+	    }
+    }
+
+    float4 LowResUpsample(
+        Texture2D theLowresTexture, 
+        Texture2D theHighresTexture,
+       // Texture2DMS<float4,4> theHighresTexture,
+        Texture2D theLowresContent,
+        Sampler samplerBilinear,
+        Sampler samplerNearest,
+        float reductionFactor, 
+        float2 uv, 
+        float4x4 projection,
+        float depthThreshold
+    ) {
+	    uint w, h;
+	    theLowresTexture.GetDimensions(w,h);
+	    float2 LowResTexelSize = 1.f / float2(w,h);
+        // uint NumSamples;
+	    // theHighresTexture.GetDimensions(w, h, NumSamples);
+	    theHighresTexture.GetDimensions(w, h);
+
+	    // This corrects for cases where the hi-res texture doesn't correspond to 100% of the low-res
+	    // texture (e.g. 1023x1023 vs 512x512)
+	    float2 LoResUV = reductionFactor * LowResTexelSize * float2(w,h) * uv;
+
+        // Check here
+        uint2 tex = floor(uv * float2(w,h));
+	    float ZFull = FetchFullResDepth(theHighresTexture, samplerNearest, uv, projection);
+        //float ZFull = FetchFullResDepthAA(theHighresTexture, tex, projection);
+
+	    float MinDist = 1.e8f;
+
+	    float4 ZLo = FetchLowResDepths(theLowresTexture, samplerBilinear, LoResUV, projection);
+	
+	    float2 UV00 = LoResUV - 0.5 * LowResTexelSize;
+	    float2 NearestUV = UV00;
+	    float Z00 = ZLo.w;
+	    UpdateNearestSample(MinDist, NearestUV, Z00, UV00, ZFull);
+	
+	    float2 UV10 = float2(UV00.x+LowResTexelSize.x, UV00.y);
+	    float Z10 = ZLo.z;
+	    UpdateNearestSample(MinDist, NearestUV, Z10, UV10, ZFull);
+
+	    float2 UV01 = float2(UV00.x, UV00.y+LowResTexelSize.y);
+	    float Z01 = ZLo.x;
+	    UpdateNearestSample(MinDist, NearestUV, Z01, UV01, ZFull);
+	
+	    float2 UV11 = UV00 + LowResTexelSize;
+	    float Z11 = ZLo.y;
+	    UpdateNearestSample(MinDist, NearestUV, Z11, UV11, ZFull);
+	
+        //return float4(1,0,0,1);
+	    if (abs(Z00 - ZFull) < depthThreshold &&
+	        abs(Z10 - ZFull) < depthThreshold &&
+	        abs(Z01 - ZFull) < depthThreshold &&
+	        abs(Z11 - ZFull) < depthThreshold)
+	    {
+		    return theLowresContent.SampleLevel(samplerBilinear, LoResUV, 0);
+	    }
+	    else
+	    {
+		    return theLowresContent.SampleLevel(samplerNearest, NearestUV, 0);
+	    }
+    }
+
+};
