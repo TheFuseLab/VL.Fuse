@@ -15,12 +15,8 @@ using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
-    public interface IAtomicComputeNode: Trees.IReadOnlyTreeNode, IComputeNode
-    {
 
-    }
-
-    
+    /*
 
     public class ShaderTree : Trees.IReadOnlyTreeNode
     {
@@ -46,7 +42,7 @@ namespace Fuse
         }
     }
 
-
+*/
 
     public interface IChangeGraph
     {
@@ -61,6 +57,133 @@ namespace Fuse
     public interface IPrepareGraph
     {
         public void PrepareGraph(AbstractShaderNode theNode);
+    }
+    
+    public interface IShaderNodeVisitor {
+        void Visit(AbstractShaderNode node);
+    }
+
+    public class ChildrenOfTypeVisitor<TNode> : IShaderNodeVisitor where TNode : class
+    {
+        public readonly HashSet<TNode> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            if (node is TNode shaderNode)
+            {
+                Result.Add(shaderNode);
+            }
+        }
+    }
+
+    public class PropertyOfTypeVisitor<TPropertyType> : IShaderNodeVisitor 
+    {
+        public readonly List<TPropertyType> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            node.Property.ForEach(kv =>
+            {
+                var values = kv.Value.OfType<TPropertyType>();
+                var tProperties = values as TPropertyType[] ?? values.ToArray();
+                if (tProperties.IsEmpty()) return;
+                tProperties.ForEach(v => Result.Add(v));
+            });
+        }
+    }
+    
+    public class PropertyOfTypeAndIdVisitor<TPropertyType> : IShaderNodeVisitor 
+    {
+        public readonly HashSet<TPropertyType> Result = new ();
+
+        private string _propertyId;
+        public PropertyOfTypeAndIdVisitor(string theThePropertyId)
+        {
+            _propertyId = theThePropertyId;
+        }
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            if (node.Property.ContainsKey(_propertyId))
+            {
+                Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(node.Property[_propertyId], i => Result.Add(i));
+            }
+        }
+    }
+    
+    public class PropertyIdsVisitor : IShaderNodeVisitor
+    {
+        public readonly HashSet<string> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            foreach (var kv in node.Property)
+            {
+                Result.Add(kv.Key);
+            }
+        }
+    }
+    
+    public class PropertiesVisitor : IShaderNodeVisitor
+    {
+        public readonly Dictionary<string, IList> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            foreach (var kv in node.Property)
+            {
+                if (!Result.ContainsKey(kv.Key))
+                {
+                    var list = new ArrayList();
+                    Result[kv.Key] = list;
+                }
+
+                foreach (var value in kv.Value)
+                {
+                    Result[kv.Key].Add(value);
+                }
+            }
+        }
+    }
+    
+    public class PropertiesTypedVisitor<TProperty> : IShaderNodeVisitor
+    {
+        public readonly Dictionary<string, List<TProperty>> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            foreach (var kv in node.Property)
+            {
+                var values = kv.Value.OfType<TProperty>();
+                if (values.IsEmpty()) return;
+                
+                if (!Result.ContainsKey(kv.Key))
+                {
+                    var list = new List<TProperty>();
+                    Result[kv.Key] = list;
+                }
+
+                foreach (var value in values)
+                {
+                    Result[kv.Key].Add(value);
+                }
+            }
+        }
+    }
+    
+    public class FunctionMapVisitor : IShaderNodeVisitor
+    {
+        public readonly Dictionary<string,string> Result = new ();
+        
+        public void Visit(AbstractShaderNode node)
+        {
+            if (node.Functions == null) return;
+            foreach (var kv in node.Functions)
+            {
+                if (Result.ContainsKey(kv.Key)) continue;
+                Result.Add(kv.Key, kv.Value);
+            }
+        }
     }
 
     public enum HandleNullInputMode
@@ -134,15 +257,11 @@ namespace Fuse
 
         public abstract int Dimension();
 
-        public readonly ShaderTree Tree;
-
         protected AbstractShaderNode(NodeContext nodeContext, string theId)
         {
             NodeContext = nodeContext;
             Name = theId;
             HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
-
-            Tree = new ShaderTree(this);
             WriteCounter = 0;
         }
         
@@ -152,7 +271,7 @@ namespace Fuse
             protected set => throw new NotImplementedException();
         }
 
-        public IReadOnlyList<Trees.IReadOnlyTreeNode> Children => Tree.Children;
+        public IReadOnlyList<AbstractShaderNode> Children => Ins;
 
         private const string DefaultShaderCode = "${resultType} ${resultName};";
 
@@ -298,12 +417,12 @@ namespace Fuse
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                if (child is not ShaderTree input)
+                if (child is not AbstractShaderNode input)
                 {
                     return;
                 }
                
-                input.Node.BuildSource( theSourceBuilder, theHashes);
+                input.BuildSource( theSourceBuilder, theHashes);
             }
         }
 
@@ -342,17 +461,20 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
 
-        public List<TNode> ChildrenOfType<TNode>()
+        public void Visit(IShaderNodeVisitor theVisitor)
         {
-            var result = new HashSet<TNode>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
+            theVisitor.Visit(this);
+            foreach (var node in Ins)
             {
-                if (n is ShaderTree {Node: TNode input})
-                {
-                    result.Add(input);
-                }
-            });
-            return result.ToList();
+                node?.Visit(theVisitor);
+            }
+        }
+
+        public List<TNode> ChildrenOfType<TNode>() where TNode : class
+        {
+            var visitor = new ChildrenOfTypeVisitor<TNode>();
+            Visit(visitor);
+            return visitor.Result.ToList();
         }
         
         public List<IFunctionParameter> FunctionParameters()
@@ -360,83 +482,42 @@ namespace Fuse
             return ChildrenOfType<IFunctionParameter>();
         }
         
-        private delegate List<T> GetInfoElement<T>(AbstractShaderNode theInput);
-        
-        private  List<T> GetInfo<T>(GetInfoElement<T> theDelegate)
-        {
-            var result = new HashSet<T>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if(n is ShaderTree tree)result.AddRange(theDelegate(tree.Node));
-            });
-            return result.ToList();
-        }
-        
         public List<TPropertyType> PropertyForTree<TPropertyType>(string theThePropertyId)
         {
-            var result = new HashSet<TPropertyType>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if (n is not ShaderTree tree || !tree.Node.Property.ContainsKey(theThePropertyId)) return;
-                Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(tree.Node.Property[theThePropertyId], i => result.Add(i));
-
-            });
-            return result.ToList();
+            var visitor = new PropertyOfTypeAndIdVisitor<TPropertyType>(theThePropertyId);
+            Visit(visitor);
+            return visitor.Result.ToList();
+        }
+        
+        public List<TPropertyType> PropertiesForTreeList<TPropertyType>()
+        {
+            var visitor = new PropertyOfTypeVisitor<TPropertyType>();
+            Visit(visitor);
+            return visitor.Result.ToList();
         }
 
         public List<string> PropertyIdsForTree()
         {
-            var result = new HashSet<string>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if (!(n is ShaderTree tree)) return;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    if (result.Add(kv.Key)) return;
-                });
-            });
-            return result.ToList();
+            var visitor = new PropertyIdsVisitor();
+            Visit(visitor);
+            return visitor.Result.ToList();
         }
         
         public Dictionary<string, IList> PropertiesForTree()
         {
-            var result = new Dictionary<string, IList>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if (!(n is ShaderTree tree)) return;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    if (result.ContainsKey(kv.Key)) return;
-                    
-                    var list = new ArrayList();
-                    PropertyForTree<object>(kv.Key).ForEach(i => list.Add(i));
-                    result[kv.Key] = list;
-                });
-            });
-            return result;
+            var visitor = new PropertiesVisitor();
+            Visit(visitor);
+            return visitor.Result;
         }
         
         public Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(Dictionary<string, List<TProperty>> theProperties = null)
         {
-            theProperties ??= new Dictionary<string, List<TProperty>>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if (!(n is ShaderTree tree)) return;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    var values = kv.Value.OfType<TProperty>();
-                    if (values.IsEmpty()) return;
-                    if (!theProperties.ContainsKey(kv.Key))
-                    {
-                        theProperties[kv.Key] = new List<TProperty>();
-                    }
-                    values.ForEach(v => theProperties[kv.Key].Add(v));
-                });
-            });
-            return theProperties;
+            var visitor = new PropertiesTypedVisitor<TProperty>();
+            Visit(visitor);
+            return visitor.Result;
         }
 
-        public Dictionary<string, IList> Property { get; } = new Dictionary<string, IList>();
+        public Dictionary<string, IList> Property { get; } = new();
 
         // ReSharper disable once MemberCanBeProtected.Global
         public void AddProperty(string thePropertyId, object theProperty)
@@ -515,21 +596,9 @@ namespace Fuse
         }
         
         public Dictionary<string,string> FunctionMap(){
-       
-            var result = new Dictionary<string,string>();
-            Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
-            {
-                if (n is not ShaderTree tree) return;
-                
-                tree.Node.Functions?.ForEach(kv =>
-                {
-                    if (result.ContainsKey(kv.Key)) return;
-                    
-                    result.Add(kv.Key, kv.Value);
-                });
-                
-            });
-            return result;
+            var visitor = new FunctionMapVisitor();
+            Visit(visitor);
+            return visitor.Result;
         }
 
         public void Dispose()

@@ -215,7 +215,7 @@ namespace Fuse
             
             theInputs.AddRange(theGpuValue.InputList());
         }
-        
+        /*
         public static Dictionary<string, List<TProperty>> PropertiesForTreeBreadthFirst<TProperty>(AbstractShaderNode theNode)
         {
             var result = new Dictionary<string, List<TProperty>>();
@@ -256,49 +256,18 @@ namespace Fuse
                 return Trees.TraverseAllChilds;
             }, out _);
             return result;
-        }
+        }*/
         
         public static Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new Dictionary<string, List<TProperty>>();
-            Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
-            {
-                if (node is not ShaderTree tree) return Trees.SkipAllChilds;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    var (key, value) = kv;
-                    var values = value.OfType<TProperty>();
-                    var tProperties = values as TProperty[] ?? values.ToArray();
-                    if (tProperties.IsEmpty()) return;
-                    if (!result.ContainsKey(key))
-                    {
-                        result[key] = new List<TProperty>();
-                    }
-                    tProperties.ForEach(v => result[key].Add(v));
-                });
-                return Trees.TraverseAllChilds;
-            }, out _, out _);
-            return result;
+            return theNode.PropertiesForTree<TProperty>();
         }
         
         
         
         public static List<TProperty> PropertiesForTreeList<TProperty>(AbstractShaderNode theNode)
         {
-            var result = new List<TProperty>();
-            Trees.ReadOnlyTreeNode.Traverse(theNode.Tree, node =>
-            {
-                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    var values = kv.Value.OfType<TProperty>();
-                    var tProperties = values as TProperty[] ?? values.ToArray();
-                    if (tProperties.IsEmpty()) return;
-                    tProperties.ForEach(v => result.Add(v));
-                });
-                return Trees.TraverseAllChilds;
-            }, out _, out _);
-            return result;
+            return theNode.PropertiesForTreeList<TProperty>();
         }
         
         static readonly PropertyKey<int> VarIDCounterKey = new PropertyKey<int>("Fuse.FuseIDCounter", typeof(int), DefaultValueMetadata.Static(0, keepDefaultValue: true));

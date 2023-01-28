@@ -12,7 +12,7 @@ using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse{
 
-    public interface IGpuInput : IAtomicComputeNode
+    public interface IGpuInput : IComputeNode
     {
         void SetParameterValue(ParameterCollection theCollection);
         
