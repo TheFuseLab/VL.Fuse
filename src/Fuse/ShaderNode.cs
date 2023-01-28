@@ -70,7 +70,7 @@ namespace Fuse
         SetOff
     }
 
-    public abstract class AbstractShaderNode : IComputeNode
+    public abstract class AbstractShaderNode : IComputeNode, IDisposable
     {
         public List<AbstractShaderNode> Ins = new();
         // Used for out parameters to trigger code generation
@@ -377,7 +377,7 @@ namespace Fuse
             var result = new HashSet<TPropertyType>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is ShaderTree tree) || !tree.Node.Property.ContainsKey(theThePropertyId)) return;
+                if (n is not ShaderTree tree || !tree.Node.Property.ContainsKey(theThePropertyId)) return;
                 Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(tree.Node.Property[theThePropertyId], i => result.Add(i));
 
             });
@@ -519,7 +519,7 @@ namespace Fuse
             var result = new Dictionary<string,string>();
             Trees.ReadOnlyTreeNode.Flatten(Tree).ForEach(n =>
             {
-                if (!(n is ShaderTree tree)) return;
+                if (n is not ShaderTree tree) return;
                 
                 tree.Node.Functions?.ForEach(kv =>
                 {
@@ -530,6 +530,14 @@ namespace Fuse
                 
             });
             return result;
+        }
+
+        public void Dispose()
+        {
+            foreach (var node in Ins)
+            {
+                node.Outs.Remove(this);
+            }
         }
     }
     
