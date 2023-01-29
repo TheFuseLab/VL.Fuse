@@ -201,16 +201,9 @@ namespace Fuse.regions
 
         protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
         {
-            var nodes = new List<AbstractShaderNode>();
             Children.ForEach(child =>
             {
-                if (!(child is ShaderTree input))
-                {
-                    return;
-                }
-
-                nodes.Add(input.Node);
-                input.Node.BuildSource(theSourceBuilder, theHashes);
+                child.BuildSource(theSourceBuilder, theHashes);
             });
 
 

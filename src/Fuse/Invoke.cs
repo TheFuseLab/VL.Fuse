@@ -9,7 +9,7 @@ using VL.Core;
 namespace Fuse
 {
 
-    public interface IFunctionParameter : IAtomicComputeNode
+    public interface IFunctionParameter : IComputeNode
     {
         string TypeName();
 

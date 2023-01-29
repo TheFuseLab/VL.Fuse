@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Fuse.compute;
@@ -30,12 +29,7 @@ namespace Fuse
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                if (child is not ShaderTree input)
-                {
-                    return;
-                }
-               
-                input.Node.BuildSource( theSourceBuilder, theHashes);
+                child.BuildSource( theSourceBuilder, theHashes);
             }
         }
 
@@ -85,12 +79,7 @@ namespace Fuse
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                if (child is not ShaderTree input)
-                {
-                    return;
-                }
-               
-                input.Node.BuildSource( theSourceBuilder, theHashes);
+                child.BuildSource( theSourceBuilder, theHashes);
             }
         }
 
