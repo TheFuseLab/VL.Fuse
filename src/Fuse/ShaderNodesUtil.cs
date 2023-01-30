@@ -122,6 +122,11 @@ namespace Fuse
                     return idMap[key];
                 });
         }
+        
+        public static string FixName(string theName)
+        {
+            return theName.Replace(".","").Replace(" ","");
+        }
 
         public static void AddShaderSource(string type, string sourceCode, string sourcePath)
         {
