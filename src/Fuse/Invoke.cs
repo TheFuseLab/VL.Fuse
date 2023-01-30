@@ -32,7 +32,6 @@ namespace Fuse
 
         public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate")
         {
-            
             _name = "arg_" + theId;
             Ins = new List<AbstractShaderNode>();
             _id = theId;
@@ -41,8 +40,10 @@ namespace Fuse
         public void Remap(List<AbstractShaderNode> theParameters)
         {
             if (_id >= theParameters.Count()) return;
-            Name = "arg_"+theParameters[_id].DelegateID;
+            Name = "arg_"+ShaderNodesUtil.FixName(theParameters[_id].DelegateID);
         }
+
+        
 
         public override string ID => Name;
 
@@ -170,7 +171,7 @@ ${functionImplementation}
             {
                 stringBuilder.Append(input.TypeName());
                 stringBuilder.Append(" ");
-                stringBuilder.Append("arg_"+input.DelegateID);
+                stringBuilder.Append("arg_"+ShaderNodesUtil.FixName(input.DelegateID));
                 stringBuilder.Append(", ");
             });
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
