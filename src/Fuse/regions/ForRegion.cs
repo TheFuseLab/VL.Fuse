@@ -154,9 +154,20 @@ namespace Fuse.regions
                         var myOutput = i >= outputs.Count
                             ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f)
                             : outputs[i];
-                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myInput, myOutput);
+                        myOutputs.Add(myOutput);
+                        break;
+                }
+            }
+            
+            for (var i = 0; i < outputs.Count; i++)
+            {
+                switch (outputs[i])
+                {
+                    case ShaderNode<GpuVoid>:
+                        break;
+                    default:
+                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myInputs[i], myOutputs[i]);
                         myOutputs.Add(myAssign);
-
                         break;
                 }
             }
