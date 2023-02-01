@@ -84,6 +84,17 @@ namespace Fuse
 
             return str.ToUpper();
         }
+        
+        public static string FirstLetterToLower(string str)
+        {
+            if (str == null)
+                return null;
+
+            if (str.Length > 1)
+                return char.ToLower(str[0]) + str[1..];
+
+            return str.ToLower();
+        }
 
         public static string Evaluate(string theShaderTemplate, IDictionary<string,string> theKeys)
         {
