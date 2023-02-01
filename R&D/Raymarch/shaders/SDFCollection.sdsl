@@ -1,0 +1,47 @@
+shader SDFCollection{
+    // I love this distance field. So elegant, and I can thank Fizzer for coming up with it.
+// The idea is about as simple as it gets. Break space into octahedrons then use each
+// otahedral cell to obtain a unique ID. Use that ID to render a randomly oriented square 
+// tube and you're done.
+//
+// I've done a little trimming and shuffling, which probably confuses things slightly. 
+// Either way, it's worth reading the following article for a much clearer explanation:
+//
+// Implicit Maze-Like Patterns - Fizzer
+// http://amietia.com/slashmaze.html
+//
+float maze(float3 p) {
+    
+    
+   // Cubes, for a simpler, more orderly scene.
+   //p = abs(fract(p) - .5);    
+   //return max(max(p.x, p.y), p.z) - .225;
+   
+   // Unique identifier for the cube, but needs to be converted to a unique ID
+   // for the nearest octahedron. The extra ".5" is to save a couple of 
+   // of calculations. See below.
+   float3 ip = floor(p) + .5;
+    
+   p -= ip; // Break space into cubes. Equivalent to: fract(p) - .5.
+    
+   // Stepping trick used to identify faces in a cube. The center of the cube face also
+   // happens to be the center of the nearest octahedron, so that works out rather well. 
+   // The result needs to be factored a little (see the hash line), but it basically  
+   // provides a unique octahedral ID. Fizzer provided a visual of this, which is easier 
+   // to understand, and worth taking a look at.
+   float3 q = abs(p); 
+   q = step(q.yzx, q.xyz)*step(q.zxy, q.xyz)*sign(p); // Used for cube mapping also.
+   
+   // Put the ID into a hash function to produce a unique random number. Reusing "q" to
+   // save declaring a float. Don't know if it's faster, but it looks neater, I guess.
+   float x1 = frac(sin(dot(ip + q*.5, float3(111.67, 147.31, 27.53)))*43758.5453);
+    
+   // Use the random number to orient a square tube in one of three random axial
+   // directions... See Fizzer's article explanation. It's better. :) By the way, it's
+   // possible to rewrite this in "step" form, but I don't know if it's quicker, so I'll
+   // leave it as is for now.
+   p.xy = abs(x1>.333 ? x1>.666 ? p.xz : p.yz : p.xy);
+   return max(p.x, p.y) - .2;   
+
+}
+};
