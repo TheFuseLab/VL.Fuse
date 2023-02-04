@@ -38009,7 +38009,7 @@
     ************************ Cross ************************
 
 -->
-        <Node Name="Cross" Bounds="1011,126" Id="KzcRZY1g9unOgaV8s66u2c" Summary="Returns a distance scalar between two vectors." Remarks="A floating-point, scalar value that represents the distance between the x parameter and the y parameter.">
+        <Node Name="Cross" Bounds="1011,126" Id="KzcRZY1g9unOgaV8s66u2c" Summary="Returns the cross product of two floating-point, 3D vectors.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -38049,7 +38049,16 @@
             <Link Id="G715Y3tVjtJL11YG20OoxE" Ids="UW46RsNTsnqL9iAC9IEXGi,OuTnQJWjgdULAhTAO0w2b8" />
             <Patch Id="TTRytgJDyPhLknesiZwRBl" Name="Create" />
             <Patch Id="RCabZxdLUxGOP2wkoQQsGA" Name="Update">
-              <Pin Id="OtI6L64mY6NN1QRX1baaWb" Name="Input1" Kind="InputPin" />
+              <Pin Id="OtI6L64mY6NN1QRX1baaWb" Name="Input1" Kind="InputPin">
+                <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="Vector3" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="NaHiZJLj6G7LBGeU10rue4" Name="Input2" Kind="InputPin" />
               <Pin Id="C2cZEcD5vdaLPGaiAkPtGC" Name="Output" Kind="OutputPin" Bounds="420,633">
                 <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
@@ -38291,9 +38300,9 @@
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
-          <Patch Id="P5pJgvQVHJCL52RstgC9Nn" IsGeneric="true">
+          <Patch Id="P5pJgvQVHJCL52RstgC9Nn" IsGeneric="true" ExplicitTypeParameters="T">
             <Canvas Id="LN5DdwxZPUsQHyf4t3gv9W" CanvasType="Group">
-              <ControlPoint Id="TYPvzJMy8xlPpmvWM4EEgG" Bounds="90,351" />
+              <ControlPoint Id="TYPvzJMy8xlPpmvWM4EEgG" Bounds="98,352" />
               <Pad Id="Ls8h0UJrNkrOyV1pBjmvID" Comment="Function" Bounds="92,125,47,15" ShowValueBox="true" isIOBox="true" Value="refract">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastSymbolSource="VL.CoreLib.vl">
                   <Choice Kind="TypeFlag" Name="String" />
@@ -38409,8 +38418,26 @@
             <Link Id="QS0crMJdUAXPuBRRc0qp1C" Ids="EUWnxdI88bRP6xHluyIyuF,QeDEnQLtRAAQbNHBf21EeJ" IsHidden="true" />
             <Patch Id="OEUSu7k0K3RPLlWCo3RQWe" Name="Create" ParticipatingElements="BM0SvUF7ic4P2pSkSuu2fA,IyDYP8OuepyN9vzav6m9kG" />
             <Patch Id="SuQLa9WE8LQLxlwCgEoUBz" Name="Update">
-              <Pin Id="L5skGpHqdeTLNGeOWYPAAc" Name="Ray" Kind="InputPin" />
-              <Pin Id="MyL6Z126RX7NCRWZ7NJcZi" Name="Normal" Kind="InputPin" />
+              <Pin Id="L5skGpHqdeTLNGeOWYPAAc" Name="Ray" Kind="InputPin">
+                <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="T" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
+              <Pin Id="MyL6Z126RX7NCRWZ7NJcZi" Name="Normal" Kind="InputPin">
+                <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
+                  <Choice Kind="TypeFlag" Name="ShaderNode" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="T" />
+                    </TypeReference>
+                  </p:TypeArguments>
+                </p:TypeAnnotation>
+              </Pin>
               <Pin Id="EUWnxdI88bRP6xHluyIyuF" Name="Refraction Index" Kind="InputPin" Bounds="480,338">
                 <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
                   <Choice Kind="TypeFlag" Name="ShaderNode" />
@@ -38424,6 +38451,11 @@
               <Pin Id="TcviCs1qDudOTX6i58XRjN" Name="Output" Kind="OutputPin" Bounds="420,633">
                 <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastSymbolSource="Fuse.Core.vl">
                   <Choice Kind="TypeFlag" Name="ShaderNode" />
+                  <p:TypeArguments>
+                    <TypeReference>
+                      <Choice Kind="TypeFlag" Name="T" />
+                    </TypeReference>
+                  </p:TypeArguments>
                 </p:TypeAnnotation>
               </Pin>
             </Patch>
@@ -39503,7 +39535,7 @@
     ************************ SumComponent ************************
 
 -->
-        <Node Name="SumComponent" Bounds="1012,556" Id="A0JZqdCKNDsL1qXEjct85G" Summary="Returns the sum of the components of the given value.">
+        <Node Name="SumComponent" Bounds="1012,556" Id="A0JZqdCKNDsL1qXEjct85G" Summary="Returns the sum of the components of the given vector">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -40720,7 +40752,7 @@
     ************************ MeanComponent ************************
 
 -->
-        <Node Name="MeanComponent" Bounds="1012,596" Id="Jp86JEIg7EnNcib9qifsXT">
+        <Node Name="MeanComponent" Bounds="1012,596" Id="Jp86JEIg7EnNcib9qifsXT" Summary="Returns the mean of the components of the given vector">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -42488,7 +42520,7 @@
     ************************ ComponentFunction ************************
 
 -->
-        <Node Name="ComponentFunction" Bounds="1011,433" Id="S2njYs39HClMeTyjnpKbks" Summary="Returns the maximum component of the given vector.">
+        <Node Name="ComponentFunction" Bounds="1011,433" Id="S2njYs39HClMeTyjnpKbks" Summary="Helper for component wise functions">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -42799,7 +42831,7 @@
     ************************ Mul ************************
 
 -->
-        <Node Name="Mul" Bounds="1227,125" Id="E8iYZeeJBVUOTT6eNI9RTw" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul" Bounds="1227,125" Id="E8iYZeeJBVUOTT6eNI9RTw" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -42918,7 +42950,7 @@
     ************************ Mul (Scalar, Scalar) ************************
 
 -->
-        <Node Name="Mul (Scalar, Scalar)" Bounds="1227,179" Id="KCubt7bve2nLsSrTiBlUXI" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul (Scalar, Scalar)" Bounds="1227,179" Id="KCubt7bve2nLsSrTiBlUXI" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -42990,7 +43022,7 @@
     ************************ Mul (Matrix,Matrix) ************************
 
 -->
-        <Node Name="Mul (Matrix,Matrix)" Bounds="1227,383" Id="MlovCgx9xu5Ox3HvSIuJPb">
+        <Node Name="Mul (Matrix,Matrix)" Bounds="1227,383" Id="MlovCgx9xu5Ox3HvSIuJPb" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -43062,7 +43094,7 @@
     ************************ Mul (Scalar, Any) ************************
 
 -->
-        <Node Name="Mul (Scalar, Any)" Bounds="1227,216" Id="A8QiCPbW3DNNAI12eexqMQ" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul (Scalar, Any)" Bounds="1227,216" Id="A8QiCPbW3DNNAI12eexqMQ" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -43134,7 +43166,7 @@
     ************************ Mul (Any, Scalar) ************************
 
 -->
-        <Node Name="Mul (Any, Scalar)" Bounds="1227,254" Id="VgpBWDvyvjMLQiAqv1XtcX" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul (Any, Scalar)" Bounds="1227,254" Id="VgpBWDvyvjMLQiAqv1XtcX" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -43206,7 +43238,7 @@
     ************************ Mul (Vector, Matrix) ************************
 
 -->
-        <Node Name="Mul (Vector, Matrix)" Bounds="1227,310" Id="Dh0i0ggP59YLmo15T8lrRS" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul (Vector, Matrix)" Bounds="1227,310" Id="Dh0i0ggP59YLmo15T8lrRS" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -43278,7 +43310,7 @@
     ************************ Mul (Matrix,Vector) ************************
 
 -->
-        <Node Name="Mul (Matrix,Vector)" Bounds="1227,346" Id="PbFDjhT6S3vLm3iyoTwxv1" Summary="Returns the dot product of two vectors.">
+        <Node Name="Mul (Matrix,Vector)" Bounds="1227,346" Id="PbFDjhT6S3vLm3iyoTwxv1" Summary="Multiplies inputs using matrix math. The inner dimension x-columns and y-rows must be equal.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
@@ -44490,7 +44522,7 @@
     ************************ MinComponent ************************
 
 -->
-        <Node Name="MinComponent" Bounds="1008,475" Id="ULJvndt91coNt8gmPgo1KI" Summary="Returns the maximum component of the given vector.">
+        <Node Name="MinComponent" Bounds="1008,475" Id="ULJvndt91coNt8gmPgo1KI" Summary="Returns the minimum component of the given vector.">
           <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
             <Choice Kind="ContainerDefinition" Name="Process" />
           </p:NodeReference>
