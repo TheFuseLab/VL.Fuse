@@ -245,8 +245,8 @@ namespace Fuse
 
         public abstract AbstractShaderNode AbstractDefault { get; }
 
-        public readonly uint HashCode;
-        
+        public uint HashCode { get; set; }
+
         public abstract string ID { get; }
 
         public virtual string DelegateID => ID;
