@@ -49,7 +49,7 @@ namespace Fuse
             //return CreateAbstract(theMember, typeof(AssignValueToMember<>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, theValue});
             
             
-            var setMemberBaseType = typeof(AssignValueToMember<>);
+            var setMemberBaseType = typeof(SetMember<>);
             var dataType = new[] {typeof(T)};
             var getType = setMemberBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember, theValue) as AbstractShaderNode;
