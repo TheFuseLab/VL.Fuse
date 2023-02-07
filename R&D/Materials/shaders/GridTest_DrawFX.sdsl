@@ -1,0 +1,37 @@
+[Summary("Draws geometry in the given color.")]
+shader GridTest_DrawFX : VS_PS_Base, Texturing
+{
+    float N = 5.0; // grid ratio
+    float2 freq = 64.;
+    float gridTextureGradBox( in float2 p, in float2 ddx, in float2 ddy )
+    {
+        // filter kernel
+        float2 w = max(abs(ddx), abs(ddy)) + 0.01;
+
+        // analytic (box) filtering
+        float2 a = p + 0.5*w;                        
+        float2 b = p - 0.5*w;           
+        float2 i = (floor(a)+min(frac(a)*N,1.0)-
+                  floor(b)-min(frac(b)*N,1.0))/(N*w);
+        //pattern
+        return (1.0-i.x)*(1.0-i.y);
+    }
+
+
+    override stage void VSMain()
+    {
+        streams.ShadingPosition = mul(streams.Position, WorldViewProjection);
+    }
+
+    override stage void PSMain() 
+    {
+        streams.Depth = 1;
+        float4 col = 1.;
+        float2 uv = streams.TexCoord.xy * freq;
+        float2 ddxuv = ddx(uv);
+        float2 ddyuv = ddy(uv);
+    
+        col.rgb = gridTextureGradBox(uv, ddxuv, ddyuv);
+        streams.ColorTarget = col;
+    }
+};
