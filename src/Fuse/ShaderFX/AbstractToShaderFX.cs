@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Stride.Rendering.Materials;
@@ -222,7 +223,9 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
+            var watch = new System.Diagnostics.Stopwatch();
             
+            watch.Start();
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();
             
@@ -269,7 +272,9 @@ namespace Fuse.ShaderFX
            // _parameters = theContext.Parameters;
             
            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
-            
+           watch.Stop();
+
+           Console.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms");
             return new ShaderClassSource(ShaderName);
         }
     }
