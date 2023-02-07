@@ -223,7 +223,7 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
-            var watch = new System.Diagnostics.Stopwatch();
+            var watch = new Stopwatch();
             
             watch.Start();
             var sourceStream = new Dictionary<string,(string source, string stream)>();
@@ -274,7 +274,7 @@ namespace Fuse.ShaderFX
            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
            watch.Stop();
 
-           Console.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms");
+           Console.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
             return new ShaderClassSource(ShaderName);
         }
     }
