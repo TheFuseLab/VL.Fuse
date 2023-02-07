@@ -49,19 +49,19 @@ namespace Fuse
         }
     }
     
-    public class AssignValueToMember<T> : ShaderNode<GpuVoid>, IComputeVoid
+    public class SetMember<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
 
         private ShaderNode<T> _object;
         private AbstractShaderNode _value;
         private string _member;
         
-        public AssignValueToMember(NodeContext nodeContext) : base(nodeContext, "StructAttribute")
+        public SetMember(NodeContext nodeContext) : base(nodeContext, "SetMember")
         {
             
         }
         
-        public AssignValueToMember(NodeContext nodeContext,ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base(nodeContext, "StructAttribute")
+        public SetMember(NodeContext nodeContext,ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base(nodeContext, "SetMember")
         {
             SetInputs(theObject,theMember,theValue);
         }
@@ -87,5 +87,39 @@ namespace Fuse
         {
             return _object;
         }
+    }
+    
+    public class SetItem<TSource, T> : ShaderNode<GpuVoid>, IComputeVoid  where T :struct
+    {
+        private ShaderNode<TSource> _source;
+        private ShaderNode<int> _index;
+        private ShaderNode<T> _value;
+        
+        public SetItem(NodeContext nodeContext) : base( nodeContext, "setItem")
+        {
+            
+        }
+
+        public void SetInputs(ShaderNode<TSource> theSource, ShaderNode<int> theIndex, ShaderNode<T> theValue)
+        {
+            _source = theSource;
+            _index = theIndex;
+            _value = theValue;
+            
+            SetInputs(new List<AbstractShaderNode>{theSource,theIndex,theValue});
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${source}[${index}] =  ${value};";
+            
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"source", _source.ID},
+                {"index", _index.ID},
+                {"value", _value.ID}
+            });
+        }
+
     }
 }
