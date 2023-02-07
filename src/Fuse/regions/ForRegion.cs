@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Fuse.compute;
-using System.Linq;
 using System.Reactive.Disposables;
 using System.Text;
 using VL.Core;
@@ -16,11 +14,18 @@ namespace Fuse.regions
 
         private readonly ForRegion _parentRegion;
 
+        private readonly bool _loop;
+        private readonly bool _unroll;
+        private readonly int _unrollLoops;
+
         public ForGroup(
             NodeContext nodeContext,
             ForRegion parentRegion,
             ShaderNode<int> inStart,
             ShaderNode<int> inEnd,
+            bool theLoop,
+            bool theUnroll,
+            int theUnrollLoops,
             IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, "ForGroup")
         {
             Name = "ForGroup";
@@ -28,7 +33,31 @@ namespace Fuse.regions
             _inStart = inStart;
             _inEnd = inEnd;
 
+            _loop = theLoop;
+            _unroll = theUnroll;
+            _unrollLoops = theUnrollLoops;
+
             SetInputs(theInputs);
+        }
+
+        private string BuildAttributes()
+        {
+            if (_unrollLoops > 0)
+            {
+                return "[unroll(" + _unrollLoops + ")]";
+            }
+            
+            if (_unroll)
+            {
+                return "[unroll]";
+            }
+
+            if (_loop)
+            {
+                return "[loop]"; 
+            }
+
+            return "";
         }
 
         protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
@@ -36,15 +65,17 @@ namespace Fuse.regions
             if (!theHashes.Add(ID)) return;
 
             const string shaderCode = @"
+        ${attributes}
         for(int ${index} = ${start}; ${index} < ${end};${index}++){";
             theSourceBuilder.Append(
                 ShaderNodesUtil.Evaluate(
                     shaderCode,
                     new Dictionary<string, string>
                     {
-                        {"start", _inStart.ID},
-                        {"end", _inEnd.ID},
-                        {"index",_parentRegion.IndexName}
+                        { "start", _inStart.ID },
+                        { "end", _inEnd.ID },
+                        { "index", _parentRegion.IndexName },
+                        { "attributes", BuildAttributes() }
                     }
                 )
             );
@@ -66,28 +97,24 @@ namespace Fuse.regions
             theSourceBuilder.AppendLine();
         }
     }
-    
+
     public class IndexNode : ShaderNode<int>
     {
-        [field: ThreadStatic]
-        public static ForRegion Current { get; private set; }
+        [field: ThreadStatic] public static ForRegion Current { get; private set; }
 
         public static IDisposable MakeCurrent(ForRegion context)
         {
             var previous = Current;
             Current = context;
-            return Disposable.Create(() => 
-            { 
-                Current = previous; 
-            });
+            return Disposable.Create(() => { Current = previous; });
         }
-        
+
         public IndexNode(NodeContext nodeContext) : base(nodeContext, "index")
         {
             Name = Current.IndexName;
-            SetInputs(new List<AbstractShaderNode>() );
+            SetInputs(new List<AbstractShaderNode>());
         }
-        
+
         public override string ID => Name;
 
         protected override string SourceTemplate()
@@ -96,133 +123,41 @@ namespace Fuse.regions
         }
     }
 
-    public class ForRegion : ShaderNode<GpuVoid>
+    public class ForRegion : AbstractRegion
     {
         public string IndexName { get; }
 
         public ForRegion(NodeContext nodeContext) : base(nodeContext, "forRegion")
         {
-            OptionalOutputs = new List<AbstractShaderNode>();
-
             IndexName = "index_" + HashCode;
         }
 
         public void Setup(
             ShaderNode<int> inStart,
             ShaderNode<int> inEnd,
+            bool theLoop,
+            bool theUnroll,
+            int theUnrollLoops,
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks,
             IEnumerable<BorderControlPointDescription> theDescriptions)
         {
-            var subContextFactory = new NodeSubContextFactory(NodeContext);
-            OptionalOutputs.Clear();
-
-            var inputs = theInputs.ToList();
-            var outputs = theOutputs.ToList();
-            var crossLinks = theCrossLinks.ToList();
-            var descriptions = theDescriptions.ToList();
-
-            var myCrossLinks = new List<AbstractShaderNode>();
-            crossLinks.ForEach(c =>
-            {
-                if (c is null or IInjectToRegion) return;
-                myCrossLinks.Add(c);
-            });
-
-            var myInputs = new List<AbstractShaderNode>();
-            var myOutputs = new List<AbstractShaderNode>();
-            
-
-            for (var i = 0; i < outputs.Count; i++)
-            {
-                switch (outputs[i])
-                {
-                    case ShaderNode<GpuVoid> shaderNode:
-                        var myInputVoid = inputs[i];
-                        myInputs.Add(myInputVoid);
-                        myOutputs.Add(shaderNode);
-
-                        break;
-                    default:
-                        var myInput  = inputs[i] == null 
-                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f) 
-                            : inputs[i];
-                        //var myDeclareValue = AbstractCreation.AbstractDeclareValueAssigned(subContextFactory, myInput);
-                        myInputs.Add(myInput);
-
-                        var myOutput = i >= outputs.Count
-                            ? AbstractCreation.AbstractConstant(descriptions[i].TypeInfo, 0f)
-                            : outputs[i];
-                        myOutputs.Add(myOutput);
-                        break;
-                }
-            }
-            
-            for (var i = 0; i < outputs.Count; i++)
-            {
-                switch (outputs[i])
-                {
-                    case ShaderNode<GpuVoid>:
-                        break;
-                    default:
-                        var myAssign = AbstractCreation.AbstractAssignNode(subContextFactory, myInputs[i], myOutputs[i]);
-                        myOutputs.Add(myAssign);
-                        break;
-                }
-            }
-
-            var inCall = new Group(subContextFactory.NextSubContext());
-            inCall.SetInput(myInputs);
-
-            var crossLinkCall = new Group(subContextFactory.NextSubContext());
-            crossLinkCall.SetInput(myCrossLinks);
-            
-            for (var i = 0; i < outputs.Count; i++)
-            {
-                switch (outputs[i])
-                {
-                    case ShaderNode<GpuVoid> shaderNode:
-                        var myInputVoid = myInputs[i] ?? new EmptyVoid(subContextFactory.NextSubContext());
-                        var outputVoid = AbstractCreation.AbstractOutput(subContextFactory, this, myInputVoid);
-                        OptionalOutputs.Add(outputVoid);
-
-                        break;
-                    default:
-                        var myInput = myInputs[i] ?? AbstractCreation.AbstractConstant(subContextFactory, outputs[i],0);
-                        var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
-                        OptionalOutputs.Add(output);
-
-                        break;
-                }
-            }
-
-            var forGroup = new ForGroup(subContextFactory.NextSubContext(), this, inStart, inEnd, myOutputs);
-
-            var inputList = new List<AbstractShaderNode>
-            {
-                crossLinkCall,
-                inStart,
-                inEnd,
-                inCall,
-                forGroup
-            };
-            SetInputs(inputList);
-        }
-
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
-        {
-            Children.ForEach(child =>
-            {
-                child.BuildSource(theSourceBuilder, theHashes);
-            });
-
-
-            var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(ID))
-            {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
+            SetupRegion(
+                (subContextFactory, myOutputs) => new ForGroup(
+                    subContextFactory.NextSubContext(), 
+                    this, 
+                    inStart, 
+                    inEnd, 
+                    theLoop, 
+                    theUnroll, 
+                    theUnrollLoops, 
+                    myOutputs),
+                (theInputList) => { theInputList.Add(inStart);theInputList.Add(inEnd);},
+                theInputs,
+                theOutputs, 
+                theCrossLinks, 
+                theDescriptions);
         }
     }
 }
