@@ -43,6 +43,10 @@ namespace Fuse
 
     public static class ShaderNodesUtil
     {
+        public static bool IsFunctionNode(AbstractShaderNode theNode)
+        {
+            return theNode.Outs.Select(output => output.GetType()).Any(objectType => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Invoke<>));
+        }
 
         public static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
