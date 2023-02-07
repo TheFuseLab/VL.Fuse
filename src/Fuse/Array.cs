@@ -112,38 +112,4 @@ ${arrayContent}
         }
 
     }
-    
-    public class ArraySet<T> : ShaderNode<GpuVoid>, IComputeVoid  where T :struct
-    {
-        private Array<T> _array;
-        private ShaderNode<int> _index;
-        private ShaderNode<T> _value;
-        
-        public ArraySet(NodeContext nodeContext) : base( nodeContext, "getItem")
-        {
-            
-        }
-
-        public void SetInputs(Array<T> theArray, ShaderNode<int> theIndex, ShaderNode<T> theValue)
-        {
-            _array = theArray;
-            _index = theIndex;
-            _value = theValue;
-            
-            SetInputs(new List<AbstractShaderNode>{theArray,theIndex,theValue});
-        }
-
-        protected override string SourceTemplate()
-        {
-            const string shaderCode = "${arrayName}[${index}] =  ${value};";
-            
-            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
-            {
-                {"arrayName", _array.ID},
-                {"index", _index.ID},
-                {"value", _value.ID}
-            });
-        }
-
-    }
 }
