@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reflection;
@@ -205,6 +206,9 @@ namespace Fuse
         
         public static DynamicEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
         {
+            var watch = new Stopwatch();
+            
+            watch.Start();
             var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
@@ -217,6 +221,7 @@ namespace Fuse
             theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
             AddShaderSource( theDrawShader.ShaderName, theDrawShader.ShaderCode, "shaders\\" + theDrawShader.ShaderName + ".sdsl");
             effectImageShader.EffectName = theDrawShader.ShaderName;
+            Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
             return effectImageShader;
         }
 
