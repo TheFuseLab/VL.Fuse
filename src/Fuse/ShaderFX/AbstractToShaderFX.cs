@@ -272,10 +272,11 @@ namespace Fuse.ShaderFX
            // _parameters = theContext.Parameters;
             
            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
+           var result = new ShaderClassSource(ShaderName);
            watch.Stop();
 
            Console.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
-            return new ShaderClassSource(ShaderName);
+           return result;
         }
     }
 }
