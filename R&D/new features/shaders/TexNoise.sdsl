@@ -1,13 +1,15 @@
 shader TexNoise :  Texturing
 {
-    float noise( Texture2D tex, float3 x ){
+    float noise( Texture2D<float4> tex, SamplerState sampler2, float3 x ){
     
         float3 i = floor(x);
         float3 f = frac(x);
         f = f*f*(3.0-2.0*f);
         float2 uv = (i.xy+float2(37.0,17.0)*i.z) + f.xy;
-        float2 rg = textureLod( tex, (uv+0.5)/256.0, 0.0).yx;
-        return mix( rg.x, rg.y, f.z );
+        uv = (uv+0.5)/256.0;
+        uv.y = 1 - uv.y;
+        float2 rg = tex.SampleLevel( sampler2, uv, 0.0).yx;
+        return lerp( rg.x, rg.y, f.z );
     }
 
 };
