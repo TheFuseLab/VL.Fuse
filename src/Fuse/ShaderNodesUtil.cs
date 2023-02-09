@@ -240,49 +240,7 @@ namespace Fuse
             
             theInputs.AddRange(theGpuValue.InputList());
         }
-        /*
-        public static Dictionary<string, List<TProperty>> PropertiesForTreeBreadthFirst<TProperty>(AbstractShaderNode theNode)
-        {
-            var result = new Dictionary<string, List<TProperty>>();
-            Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
-            {
-                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    var values = kv.Value.OfType<TProperty>();
-                    var tProperties = values.ToList();
-                    if (tProperties.IsEmpty()) return;
-                    if (!result.ContainsKey(kv.Key))
-                    {
-                        result[kv.Key] = new List<TProperty>();
-                    }
-                    tProperties.ForEach(v => result[kv.Key].Add(v));
-                });
-                return Trees.TraverseAllChilds;
-            }, out _);
-            return result;
-        }
-        
-        
-        
-        public static List<TProperty> PropertiesForTreeBreadthFirstList<TProperty>(AbstractShaderNode theNode)
-        {
-            var result = new List<TProperty>();
-            Trees.ReadOnlyTreeNode.TraverseBreadthFirst(theNode.Tree, node =>
-            {
-                if (!(node is ShaderTree tree)) return Trees.SkipAllChilds;
-                tree.Node.Property.ForEach(kv =>
-                {
-                    var values = kv.Value.OfType<TProperty>();
-                    var tProperties = values as TProperty[] ?? values.ToArray();
-                    if (tProperties.IsEmpty()) return;
-                    tProperties.ForEach(v => result.Add(v));
-                });
-                return Trees.TraverseAllChilds;
-            }, out _);
-            return result;
-        }*/
-        
+
         public static Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(AbstractShaderNode theNode)
         {
             return theNode.PropertiesForTree<TProperty>();
