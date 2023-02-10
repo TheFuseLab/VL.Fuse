@@ -14,6 +14,8 @@ namespace Fuse.compute
         
         public bool DoubleBuffered { get; }
 
+        public ShaderNode<Int3> Index { get; set; }
+
         public TextureInput TextureInput{
             get;
             set;
@@ -37,14 +39,25 @@ namespace Fuse.compute
             get;
             set;
         }
+        
+        public ShaderNode<Int3> Index{
+            get;
+            set;
+        }
 
         public bool DoubleBuffered { get; }
         public string Group { get; }
 
+        public void OverRideByIndex(ShaderNode<Texture> theInstance, ShaderNode<Int3> theIndex)
+        {
+            Index = theIndex;
+            SetProperty("ComputeSystemAttribute", this);
+            CallChangeEvent();
+        }
+        
         public void OverRideByTexture(ShaderNode<Texture> theInstance, ShaderNode<TIndex> theIndex)
         {
-            if (theInstance == null)
-            {
+            if (theInstance == null) {
                 SetProperty("ComputeSystemAttribute", this);
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
