@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Stride.Rendering.Materials;
 using VL.Core;
@@ -12,10 +13,9 @@ namespace Fuse
     {
         string TypeName();
 
-        string ID { get; }
+        void Remap(List<AbstractShaderNode> theParameters);
 
-        int ArgumentNumber { get; }
-        uint HashCode { get; set; }
+        void DeleteRemap();
     }
 
     public enum InputModifier
@@ -27,22 +27,30 @@ namespace Fuse
     
     public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
+        private readonly string _name;
+        private readonly int _id;
 
-        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "arg_" + theId)
+        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate")
         {
+            _name = "arg_" + theId;
             Ins = new List<AbstractShaderNode>();
-            ArgumentNumber = theId;
+            _id = theId;
         }
 
         public void Remap(List<AbstractShaderNode> theParameters)
         {
-            if (ArgumentNumber >= theParameters.Count) return;
-            Name = "arg_"+ShaderNodesUtil.FixName(theParameters[ArgumentNumber].DelegateID);
+            if (_id >= theParameters.Count()) return;
+            Name = "arg_"+ShaderNodesUtil.FixName(theParameters[_id].DelegateID);
         }
+
         
+
         public override string ID => Name;
 
-        public int ArgumentNumber { get; }
+        public void DeleteRemap()
+        {
+            Name = _name;
+        }
 
         public override string TypeName()
         {
@@ -106,14 +114,9 @@ namespace Fuse
                 return;
             }
             _delegate?.Outs.Add(this);
-            
-            
-            Functions.Clear();
-            Property.Clear();
 
             SetInputs(theParameters, false);
-            
-            UpdateInvoke();
+            AddFunctionInvoke(FunctionName,_delegate, Ins);
             
             CallChangeEvent();
         }
@@ -126,44 +129,23 @@ namespace Fuse
 
         public void UpdateInvoke()
         {
-            
-            Functions.Clear();
-            Property.Clear();
-
-            var i = 0;
-            foreach (var abstractShaderNode in Ins)
-            {
-                var myFunctionParameters = abstractShaderNode.FunctionParameters();
-                if (myFunctionParameters.Count <= 0)
-                {
-                    i++;
-                    continue;
-                }
-                AddFunctionInvoke(Name + "_" + abstractShaderNode.HashCode,abstractShaderNode);
-                foreach (var parameter in _delegate.FunctionParameters())
-                {
-                    if (parameter.ArgumentNumber == i)
-                    {
-                        parameter.HashCode = abstractShaderNode.HashCode;
-                    }
-                }
-                i++;
-            }
-            
             if (_delegate == null) return;
-            AddFunctionInvoke(FunctionName, _delegate);
+            AddFunctionInvoke(FunctionName, _delegate, Ins);
         }
 
-        private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate)
+        private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate, List<AbstractShaderNode> theParameters)
         {
-            if (theDelegate is null or IFunctionParameter) return;
+            if (theDelegate == null) return;
+            Functions.Clear();
+            Property.Clear();
             var functionParameters = theDelegate.FunctionParameters();
+            functionParameters.ForEach(input => input.Remap(theParameters));
             
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetGpuType<T>()},
                 {"functionName", theFunctionName},
-                {"arguments", BuildArguments(functionParameters)},
+                {"arguments", BuildArguments(theParameters)},
                 {"functionImplementation", theDelegate.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
@@ -178,21 +160,18 @@ ${functionImplementation}
             {
                 AddProperties(kv.Key, kv.Value );
             });
+            
+            functionParameters.ForEach(input => input.DeleteRemap());
         }
         
-        private static string BuildArguments(List<IFunctionParameter> inputs)
+        private static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
-            inputs.Sort((a,b) => string.Compare(a.ID, b.ID, StringComparison.Ordinal));
-            var usedIDs = new HashSet<string>();
-            
             var stringBuilder = new StringBuilder();
             inputs.ForEach(input =>
             {
-                if (usedIDs.Contains(input.ID)) return;
-                usedIDs.Add(input.ID);
                 stringBuilder.Append(input.TypeName());
-                stringBuilder.Append(' ');
-                stringBuilder.Append(ShaderNodesUtil.FixName(input.ID));
+                stringBuilder.Append(" ");
+                stringBuilder.Append("arg_"+ShaderNodesUtil.FixName(input.DelegateID));
                 stringBuilder.Append(", ");
             });
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
