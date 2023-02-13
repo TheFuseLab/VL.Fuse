@@ -44,7 +44,7 @@
             <Node Bounds="333,395,50,19" Id="J6npfSk5LbcNARpe33JhUH">
               <p:NodeReference LastCategoryFullName="Fuse.Raymarching" LastDependency="Fuse.Raymarching.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="CullRayBox (BoundingBox)" />
+                <Choice Kind="ProcessAppFlag" Name="CullRayBox" />
               </p:NodeReference>
               <Pin Id="AqCvZr549EmPxyRVhPKyLw" Name="Ray" Kind="InputPin" />
               <Pin Id="C74Kt9om3WrOciu9lBAkyY" Name="Position" Kind="InputPin" />
@@ -1670,16 +1670,16 @@
       </Node>
       <!--
 
-    ************************ CullRayBox (BoundingBox) ************************
+    ************************ CullRayBox ************************
 
 -->
-      <Node Name="CullRayBox (BoundingBox)" Bounds="428,563" Id="A6sn0p1W9eRMhcpz1T8CF2">
+      <Node Name="CullRayBox" Bounds="428,563" Id="A6sn0p1W9eRMhcpz1T8CF2">
         <p:NodeReference LastCategoryFullName="Primitive" LastDependency="Builtin">
           <Choice Kind="ContainerDefinition" Name="Process" />
         </p:NodeReference>
         <Patch Id="L5D40dIsqEgOunBDwL64hQ">
           <Canvas Id="Mepr8eRg0fnLrCeRHldRXf" CanvasType="Group">
-            <Pad Id="UBhJHIOZGgfNaDUa8n8Y2s" Bounds="703,117,649,496" ShowValueBox="true" isIOBox="true" Value="float2 cullRayByBox(Ray ray, float3 pos = 0., float3 radius = 2.)  // bounding box&#xD;&#xA;&#x9;{&#xD;&#xA;&#x9;&#x9;float3 m = 1.0 / ray.rd;&#xD;&#xA;&#x9;&#x9;float3 n = m * ray.ro;&#xD;&#xA;&#x9;&#x9;float3 k = abs(m) * radius;&#xD;&#xA;&#x9;&#x9;float3 t1 = -n - k;&#xD;&#xA;&#x9;&#x9;float3 t2 = -n + k;&#xD;&#xA;&#xD;&#xA;&#x9;&#x9;float tN = max( max( t1.x, t1.y ), t1.z );&#xD;&#xA;&#x9;&#x9;float tF = min( min( t2.x, t2.y ), t2.z );&#xD;&#xA;&#x9;&#xD;&#xA;&#x9;&#x9;if( tN &gt; tF || tF &lt; 0.0) killRay(); // no intersection&#xD;&#xA;&#x9;&#x9;tN = max(tN, 0); // avoid starting our ray behind us&#xD;&#xA;&#x9;&#x9;//return float2( 0.01, 200 );&#xD;&#xA;&#x9;&#x9;return float2(tN, tF);&#xD;&#xA;&#x9;}">
+            <Pad Id="UBhJHIOZGgfNaDUa8n8Y2s" Bounds="465,187,649,496" ShowValueBox="true" isIOBox="true" Value="float2 cullRayByBox(Ray ray, float3 pos = 0., float3 radius = 2.)  // bounding box&#xD;&#xA;&#x9;{&#xD;&#xA;&#x9;&#x9;float3 m = 1.0 / ray.rd;&#xD;&#xA;&#x9;&#x9;float3 n = m * ray.ro;&#xD;&#xA;&#x9;&#x9;float3 k = abs(m) * radius;&#xD;&#xA;&#x9;&#x9;float3 t1 = -n - k;&#xD;&#xA;&#x9;&#x9;float3 t2 = -n + k;&#xD;&#xA;&#xD;&#xA;&#x9;&#x9;float tN = max( max( t1.x, t1.y ), t1.z );&#xD;&#xA;&#x9;&#x9;float tF = min( min( t2.x, t2.y ), t2.z );&#xD;&#xA;&#x9;&#xD;&#xA;&#x9;&#x9;if( tN &gt; tF || tF &lt; 0.0) killRay(); // no intersection&#xD;&#xA;&#x9;&#x9;tN = max(tN, 0); // avoid starting our ray behind us&#xD;&#xA;&#x9;&#x9;//return float2( 0.01, 200 );&#xD;&#xA;&#x9;&#x9;return float2(tN, tF);&#xD;&#xA;&#x9;}">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
