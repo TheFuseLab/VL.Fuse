@@ -857,8 +857,8 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	float fGyroidTPMS(float3 p)
 	{
 		float3 sp = sin(p);
-		float3 cp = cos(p);
-		return sp.x * cp.y + sp.y * cp.z + sp.z * cp.x;
+		float3 cp = cos(p.yzx);
+		return dot(sp, cp);
 	}
 
 	float fSchwartzPTPMS(float3 p)
