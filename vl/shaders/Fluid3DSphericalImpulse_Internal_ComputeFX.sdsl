@@ -33,8 +33,8 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
     // Textures
     //--------------------------------------------------------------------------------------
 
-    Texture3D<float3> Texture_Target; //Input & Output Texture
-    RWTexture3D<float3> Texture_Target_RW; //Input & Output Texture
+    Texture3D<float4> Texture_Target; //Input & Output Texture
+    RWTexture3D<float4> Texture_Target_RW; //Input & Output Texture
     Texture3D<float> Texture_ObstaclesGradient;
 
     //--------------------------------------------------------------------------------------
@@ -45,6 +45,7 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
 
     Buffer<float4> PosSizeBuffer;
     Buffer<float4> ValueBuffer;
+    Buffer<float> AdditiveBuffer;
 
     int SphericalImpulseCount;
 
@@ -73,7 +74,7 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
             return; // !!!
         }
 
-        float3 AccumValue = Texture_Target[i];
+        float4 NewValue = Texture_Target[i];
 
         for(uint s=0 ; s<(uint)SphericalImpulseCount; s++)
         {
@@ -81,16 +82,25 @@ shader Fluid3DSphericalImpulse_Internal_ComputeFX : ComputeShaderBase, Fluid3DGl
             float4 Source_Value = ValueBuffer[s];
 
             float dist = length( i - Source_PosSize.xyz ) * Source_PosSize.w;
-            float4 result;
-            result.rgb = Source_Value.xyz;    // + sin(splatColor.rgb*10.0+cell*5.0)*0.2;
-            result.a = exp( -dist * dist );
-                
-            AccumValue +=  result.xyz * result.a;
+            if(dist < Source_Value.w);
+            {
+                float4 result;
+                //result.a = exp( -dist * dist );
+                float gradient = 1;//1 - saturate(dist / Source_Value.w);
+            
+            
+                bool Additive = AdditiveBuffer[s].x > 0.5;
+                if(Additive)
+                NewValue +=  Source_Value * gradient;//result.a;
+                if(!Additive)
+                NewValue = Source_Value * gradient;//result.a;
+            }
+
 
         }
 
 
-    Texture_Target_RW[i] = AccumValue;
+    Texture_Target_RW[i] = NewValue;
 
     }
 };

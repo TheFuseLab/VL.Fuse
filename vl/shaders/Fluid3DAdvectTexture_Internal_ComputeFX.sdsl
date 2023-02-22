@@ -33,9 +33,9 @@ shader Fluid3DAdvectTexture_Internal_ComputeFX : ComputeShaderBase, Fluid3DGloba
     // Textures
     //--------------------------------------------------------------------------------------
     
-    Texture3D<float3> Texture_VectorField; 
-    Texture3D<float3> Texture_Value; 
-    RWTexture3D<float3> Texture_Value_RW; //Output Texture
+    Texture3D<float4> Texture_VectorField; 
+    Texture3D<float4> Texture_Value; 
+    RWTexture3D<float4> Texture_Value_RW; //Output Texture
 
     //--------------------------------------------------------------------------------------
     // Variables
@@ -47,6 +47,8 @@ shader Fluid3DAdvectTexture_Internal_ComputeFX : ComputeShaderBase, Fluid3DGloba
     float3 CoordsOffset;
     int BorderMargin = 5;
     float BorderGamma = 1.0f;
+
+    float4 DefaultValue = 0;
 
     //--------------------------------------------------------------------------------------
     // Pipeline State Definitions
@@ -68,7 +70,7 @@ shader Fluid3DAdvectTexture_Internal_ComputeFX : ComputeShaderBase, Fluid3DGloba
     {
         float3 pos = i;
     
-        pos -= Timestep * Forward *	Texture_VectorField[i];
+        pos -= Timestep * Forward *	Texture_VectorField[i].xyz;
     
         return pos;
     }
@@ -90,8 +92,11 @@ shader Fluid3DAdvectTexture_Internal_ComputeFX : ComputeShaderBase, Fluid3DGloba
         //BorderFader =  smoothstep(halfDim, halfDim - BorderMargin, borderGradient);
         //float finalGrad = min(min(BorderFader.x, BorderFader.y), BorderFader.z);
         //finalGrad = pow(finalGrad, BorderGamma);
+
+        float4 NewValue = Texture_Value.SampleLevel(samLinear, npos,0);
+        float4 Modulation = (DefaultValue - NewValue) * (1 - Modulate);
      
-        Texture_Value_RW[i] = Texture_Value.SampleLevel(samLinear, npos,0) * Modulate;// * finalGrad;
+        Texture_Value_RW[i] =  NewValue + Modulation;// * finalGrad;
     }
 
 };
