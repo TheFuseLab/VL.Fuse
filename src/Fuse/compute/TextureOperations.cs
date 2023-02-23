@@ -64,8 +64,7 @@ namespace Fuse.compute
             _textureAttribute = theTextureAttribute;
             _arguments = theArguments.ToList();
 
-            var ins = new List<AbstractShaderNode>();
-            ins.Add(theTextureAttribute);
+            var ins = new List<AbstractShaderNode> { theTextureAttribute };
             ins.AddRange(_arguments);
             SetInputs(ins);
         }
@@ -251,6 +250,82 @@ namespace Fuse.compute
                 {"index", _index.ID},
                 {"value", _value.ID}
             });
+        }
+    }
+    
+    public class TextureAttributeGetDimensions : ShaderNode<GpuVoid>
+    {
+        private AbstractShaderNode _textureAttribute;
+        private List<AbstractShaderNode> _arguments;
+        private ShaderNode<int> _mipLevel;
+
+        private readonly int _dimension;
+
+        public TextureAttributeGetDimensions(NodeContext nodeContext, int dimension) : base(nodeContext, "textureGetDimension")
+        {
+            _dimension = dimension;
+            OptionalOutputs = new List<AbstractShaderNode>();
+        }
+
+        public void SetInput(AbstractShaderNode theTextureAttribute, ShaderNode<int> mipLevel)
+        {
+            _textureAttribute = theTextureAttribute;
+            _mipLevel = mipLevel;
+            OptionalOutputs.Clear();
+
+            _arguments = new List<AbstractShaderNode>{_mipLevel};
+            var myInputs = new List<AbstractShaderNode> {_textureAttribute, _mipLevel};
+            var factory = new NodeSubContextFactory(NodeContext);
+            for (var i = 0; i < _dimension + 1; i++)
+            {
+                var myDeclareValue = new DeclareValue<float>(factory.NextSubContext());
+                myInputs.Add(myDeclareValue);
+                _arguments.Add(myDeclareValue);
+                OptionalOutputs.Add(myDeclareValue);
+            }
+
+            SetInputs(myInputs);
+        }
+
+        protected override string SourceTemplate()
+        {
+            const string shaderCode = "${textureName}.GetDimensions(${arguments});";
+            
+            try
+            {
+                var textureAttribute = _textureAttribute as ITextureAttribute;
+
+                return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+                {
+                    {"textureName", textureAttribute.TextureInput.ID},
+                    {"arguments", ShaderNodesUtil.BuildArguments(_arguments)},
+                });
+            }
+            catch
+            {
+            }
+
+            return "";
+        }
+
+        protected override string GenerateDefaultSource()
+        {
+            const string shaderCode = "${textureName}.GetDimensions(${arguments});";
+            
+            try
+            {
+                var textureAttribute = _textureAttribute as ITextureAttribute;
+
+                return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+                {
+                    {"textureName", textureAttribute.TextureInput.ID}
+                });
+            }
+            catch
+            {
+            }
+
+            return "";
         }
     }
 }
