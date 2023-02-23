@@ -8,9 +8,15 @@ using VL.Core;
 namespace Fuse
 {
 
+    public interface ITextureInput
+    {
+        
+    }
+
     public class TextureGetDimensions : ShaderNode<GpuVoid>
     {
         private ShaderNode<Texture> _texture;
+        private List<AbstractShaderNode> _arguments;
         private ShaderNode<int> _mipLevel;
 
         private readonly int _dimension;
@@ -28,12 +34,14 @@ namespace Fuse
 
             OptionalOutputs.Clear();
 
+           _arguments = new List<AbstractShaderNode>{_mipLevel};
             var myInputs = new List<AbstractShaderNode> {_texture, _mipLevel};
-
+            var factory = new NodeSubContextFactory(NodeContext);
             for (var i = 0; i < _dimension + 1; i++)
             {
-                var myDeclareValue = new DeclareValue<float>(new NodeSubContextFactory(NodeContext).NextSubContext());
+                var myDeclareValue = new DeclareValue<float>(factory.NextSubContext());
                 myInputs.Add(myDeclareValue);
+                _arguments.Add(myDeclareValue);
                 OptionalOutputs.Add(myDeclareValue);
             }
 
@@ -42,15 +50,11 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
-            var result = new Dictionary<string, string>();
+            var result = new Dictionary<string, string>()
+                { { "arguments", ShaderNodesUtil.BuildArguments(_arguments) } };
             if (_texture != null) result["texture"] = _texture.ID;
 
             return ShaderNodesUtil.Evaluate("${texture}.GetDimensions(${arguments});", result);
-        }
-
-        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers,
-            string theFunction)
-        {
         }
     }
 
