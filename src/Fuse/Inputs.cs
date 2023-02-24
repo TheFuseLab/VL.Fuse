@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
-using Microsoft.CodeAnalysis.Editing;
 using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
@@ -314,7 +313,7 @@ namespace Fuse{
          }
      }
      
-     public class TypedBufferInput<T>: ChangeableObjectInput<Buffer<T>> where T : struct
+     public class TypedBufferInput<T>: ChangeableObjectInput<Buffer<T>> where T : unmanaged
      {
          private bool _append;
 
