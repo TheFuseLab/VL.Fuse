@@ -1,150 +1,85 @@
 ﻿using NUnit.Framework;
-using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
-using VL.Lang;
-using VL.Lang.Symbols;
-using VL.Model;
-using VVVV.NuGetAssemblyLoader;
+using VL.TestFramework;
 
-namespace MyTests
+namespace Fuse.Tests
 {
-    enum SaveDocCondition { Never, WhenGreen, Always };
-
     [TestFixture]
     public class PatchTests
     {
+        TestEnvironment testEnvironment;
 
-        static string VLVersion = "2021.4.7";
-        static string[] Packs = new string[]{ 
-        
-        //  FIX ME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            @"C:\Program Files\vvvv\vvvv_gamma_" + VLVersion + @"\lib\packs",
-
-        };
-
-        // DO YOU WANT TO SAVE THE VL DOCS TO DISK? 
-        static SaveDocCondition SaveDocCondition = SaveDocCondition.Never;
-
-
-        public static IEnumerable<string> NormalPatches()
+        // Watch out: Don't use async Task here. NUnit keeps a synchronization context per async method,
+        // subsequent calls to the session therefor fail with the exception that the context had been shut down.
+        // See https://github.com/nunit/nunit/issues/3500
+        [OneTimeSetUp]
+        public void Setup()
         {
-            var allVLDocs = Directory.GetFiles(MainLibPath, "*.vl", SearchOption.AllDirectories);
-            var allVLDocsWithoutRnD = allVLDocs.Where(f => !f.Contains("R&D"));
+            testEnvironment = CreateEnvironment();
+        }
 
-            var pathUri = new Uri(MainLibPath, UriKind.Absolute);
-            // Yield all your VL docs1
-            //foreach (var file in allVLDocs)
-            foreach (var file in allVLDocsWithoutRnD)
+        [OneTimeTearDown]
+        public void TearDown()
+        {
+            testEnvironment.Dispose();
+            testEnvironment = null;
+        }
+
+        private static TestEnvironment CreateEnvironment()
+        {
+            var vvvvExePath = Task.Run(() => TestEnvironmentLoader.DownloadEntryAssemblyAsync());
+            return TestEnvironmentLoader.Load(vvvvExePath.Result, new[] { MainLibPath, RepositoriesPath });
+        }
+
+        public static IEnumerable<TestCaseData> NormalPatches()
+        {
+            using var testEnv = CreateEnvironment();
+            foreach (var p in testEnv.GetPackages())
             {
-                var fileUri = new Uri(file, UriKind.Absolute);
-                yield return Uri.UnescapeDataString(pathUri.MakeRelativeUri(fileUri).ToString()).Replace("/", @"\");
+                if (p.Identity.Id != "VL.Fuse")
+                    continue;
+
+                foreach (var f in p.Files)
+                {
+                    if (Path.GetExtension(f.AbsolutePath) != ".vl")
+                        continue;
+
+                    if (f.PackagePath.Contains("R&D"))
+                        continue;
+
+                    var testCase = new TestCaseData(f.AbsolutePath)
+                        .SetCategory(p.Identity.ToString())
+                        .SetArgDisplayNames(f.PackagePath);
+
+                    yield return testCase;
+                }
             }
         }
 
 
-
-        public static readonly VLSession Session;
         public static string MainLibPath;
         public static string RepositoriesPath;
 
         static PatchTests()
         {
             var currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            MainLibPath = Path.GetFullPath(Path.Combine(currentDirectory, @"..\..\..\..\..\"));
+            MainLibPath = Path.GetFullPath(Path.Combine(currentDirectory, @"..\..\..\..\"));
             RepositoriesPath = Path.GetFullPath(Path.Combine(MainLibPath, @".."));
-
-            foreach (var pack in Packs)
-                AssemblyLoader.AddPackageRepositories(pack);
-
-            // Also add the "vl-libs" folder. The folder that contains our library.
-            AssemblyLoader.AddPackageRepositories(RepositoriesPath);
-
-            Session = new VLSession("gamma", includeUserPackages: false)
-            {
-                CheckSolution = false,
-                IgnoreDynamicEnumErrors = true,
-                NoCache = true,
-                KeepTargetCode = false
-            };
         }
-
-        static Solution FCompiledSolution;
 
 
         /// <summary>
         /// Checks if the document comes with compile time errors (e.g. red nodes). Doesn't actually run the patches.
         /// </summary>
         /// <param name="filePath"></param>
-      //  [TestCaseSource(nameof(NormalPatches))]
-        public static async Task IsntRed(string filePath)
+        [TestCaseSource(nameof(NormalPatches))]
+        public async Task IsntRed(string filePath)
         {
-            filePath = Path.Combine(MainLibPath, filePath);
-            var solution = FCompiledSolution ?? (FCompiledSolution = await CompileAsync(NormalPatches()));
-            var document = solution.GetOrAddDocument(filePath);
-
-            // Check document structure
-            Assert.True(document.IsValid);
-
-            // Check dependenices
-            foreach (var dep in document.GetDocSymbols().Dependencies)
-                Assert.IsFalse(dep.RemoteSymbolSource is Dummy, $"Couldn't find dependency {dep}");
-
-            // Check all containers and process node definitions, including application entry point
-            CheckNodes(document.AllTopLevelDefinitions);
-
-            if (SaveDocCondition == SaveDocCondition.Always || (SaveDocCondition == SaveDocCondition.WhenGreen && Success()))
-                document.Save(isTrusted: false); // TODO: discuss when this can be turned on.
-        }
-
-        private static bool Success()
-        {
-            var thisTest = TestExecutionContext.CurrentContext.CurrentTest;
-            var testResult = thisTest.MakeTestResult();
-            var resultState = testResult.ResultState;
-            return resultState == ResultState.Success || resultState == ResultState.Inconclusive;
-        }
-
-        static async Task<Solution> CompileAsync(IEnumerable<string> docs)
-        {
-            var solution = Session.CurrentSolution;
-            foreach (var f in docs)
-                solution = solution.GetOrAddDocument(Path.Combine(MainLibPath, f)).Solution;
-            return await solution.WithFreshCompilationAsync();
-        }
-
-        public static void CheckNodes(IEnumerable<Node> nodes)
-        {
-            Parallel.ForEach(nodes, definition =>
-            {
-                var definitionSymbol = definition.GetSymbol() as IDefinitionSymbol;
-                Assert.IsNotNull(definitionSymbol, $"No symbol for {definition}.");
-                var errorMessages = definitionSymbol.Messages.Where(m => m.Severity == MessageSeverity.Error);
-                Assert.That(errorMessages.None(), () => $"{definition}: {string.Join(Environment.NewLine, errorMessages)}");
-                Assert.IsFalse(definitionSymbol.IsUnused, $"The symbol of {definition} is marked as unused.");
-            });
-        }
-
-
-
-
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // Running Tests patches not supported yet. We for now can only check for compile time errors (like red nodes)
-
-
-        /// <summary>
-        /// Yield all test patches that shall run
-        /// </summary>
-        public static IEnumerable<string> TestPatches()
-        {
-            yield return $@"C:\dev\vl-libs\VL.DemoLib\src\NUnitTests\tests\tests.vl";
+            await testEnvironment.LoadAndTestAsync(filePath);
         }
     }
 }
