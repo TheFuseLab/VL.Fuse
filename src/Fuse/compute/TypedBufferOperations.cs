@@ -55,7 +55,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferGet<T> : AbstractTypedFunction<T,T> where T : struct
+    public class TypedBufferGet<T> : AbstractTypedFunction<T,T> where T : unmanaged
     {
         private ShaderNode<Buffer<T>> _buffer;
         private ShaderNode<int> _index;
@@ -83,7 +83,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid>, IComputeVoid where TIn : struct
+    public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid>, IComputeVoid where TIn : unmanaged
     {
         private ShaderNode<Buffer<TIn>> _buffer;
         private ShaderNode<int> _index;
@@ -125,7 +125,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : struct
+    public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : unmanaged
     {
         private ShaderNode<Buffer<T>> _buffer;
         private ShaderNode<T> _value;
@@ -164,7 +164,7 @@ ${structMembers}
         }
     }
     
-    public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : struct
+    public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : unmanaged
     {
         private ShaderNode<Buffer<T>> _buffer;
         
