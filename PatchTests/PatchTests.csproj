@@ -1,28 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
-    <VLPackageBasePath>..\</VLPackageBasePath>
-    <PackageId>$(AssemblyName)</PackageId>
-    <Description>Test for my library</Description>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <TargetFramework>net6.0</TargetFramework>
 
-    <!-- Triggers stride asset compiler -->
-    <StrideIsExecutable>true</StrideIsExecutable>
-    <VLVersion>2021.4.7</VLVersion>
+    <!-- We do not want Stride to process this assembly as it would add unwanted runtime dependencies into our module ctor prevent the assembly from loading -->
+    <StrideAssemblyProcessor>false</StrideAssemblyProcessor>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NUnit" Version="3.13.2" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.3.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="VL.Lang" Version="2021.4.7" />
-    <PackageReference Include="VL.Meta.Gamma" Version="2021.4.7" />
-    <PackageReference Include="VL.Stride" Version="2021.4.7" />
-    <PackageReference Include="VL.TestLib" Version="2021.4.7" />
+    <PackageReference Include="VL.TestFramework" Version="2022.5.0-0656-gccbf255842" />
   </ItemGroup>
   <ItemGroup>
     <PackageFile Include="*.vl" />
@@ -31,6 +22,20 @@
     <None Include="*.vl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="TestComputeSystem.cs" />
+    <Compile Remove="TestControl.cs" />
+    <Compile Remove="TestDynamicStruct.cs" />
+    <Compile Remove="TestGraph.cs" />
+    <Compile Remove="TestTypeHelpers.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestComputeSystem.cs" />
+    <None Include="TestControl.cs" />
+    <None Include="TestDynamicStruct.cs" />
+    <None Include="TestGraph.cs" />
+    <None Include="TestTypeHelpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\Fuse\Fuse.csproj" />
