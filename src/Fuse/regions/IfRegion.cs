@@ -21,9 +21,11 @@ namespace Fuse.regions
             SetInputs(theInputs);
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
             if (!theHashes.Add(ID)) return;
+            
+            if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
 
             const string shaderCode = @"
         if(${check}){";
@@ -35,7 +37,7 @@ namespace Fuse.regions
             );
             theSourceBuilder.AppendLine();
             var myChildSourceBuilder = new StringBuilder();
-            BuildChildrenSource(myChildSourceBuilder, theHashes);
+            BuildChildrenSource(myChildSourceBuilder, theHashes, thePrepend);
             var myChildSource = myChildSourceBuilder.ToString();
             myChildSource = ShaderNodesUtil.IndentCode(myChildSource);
             theSourceBuilder.Append(myChildSource);

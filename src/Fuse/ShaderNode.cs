@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Fuse.ShaderFX;
@@ -97,17 +98,28 @@ namespace Fuse
         public readonly HashSet<TPropertyType> Result = new ();
 
         private string _propertyId;
+
+        private Stopwatch _stopWatch;
+
+        private int count = 0;
         public PropertyOfTypeAndIdVisitor(string theThePropertyId)
         {
             _propertyId = theThePropertyId;
+            _stopWatch = new Stopwatch();
+            _stopWatch.Start();
         }
         
         public void Visit(AbstractShaderNode node)
         {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+            count++;
             if (node.Property.ContainsKey(_propertyId))
             {
                 Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(node.Property[_propertyId], i => Result.Add(i));
+                
             }
+            if(ShaderNodesUtil.DebugVisit)Console.WriteLine($"Get Prop {_propertyId} {node.ID} in time{stopWatch.ElapsedMilliseconds} ms in complete {_stopWatch.ElapsedMilliseconds} ms {count}");
         }
     }
     
@@ -412,7 +424,7 @@ namespace Fuse
             OnPassContext(nodeContext);
         }
 
-        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
@@ -422,14 +434,16 @@ namespace Fuse
                     return;
                 }
                
-                input.BuildSource( theSourceBuilder, theHashes);
+                input.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
             }
         }
 
-        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
-            BuildChildrenSource(theSourceBuilder, theHashes);
-
+            if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
+            
+            BuildChildrenSource(theSourceBuilder, theHashes, thePrepend);
+            
             if (!theHashes.Add(ID))return;
             
             var source = SourceCode;
@@ -457,7 +471,7 @@ namespace Fuse
             var myStringBuilder = new StringBuilder();
             var myHashes = new HashSet<string>();
 
-            BuildSource( myStringBuilder, myHashes);
+            BuildSource( myStringBuilder, myHashes,"");
             return myStringBuilder.ToString();
         }
 
@@ -693,7 +707,7 @@ namespace Fuse
         }
 
         protected abstract string ImplementationTemplate();
-/* TODO check this with delegates
+ /* TODO check this with delegates
         public override string ID
         {
             get

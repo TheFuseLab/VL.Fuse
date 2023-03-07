@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Stride.Core.Mathematics;
 using VL.Core;
 
@@ -22,6 +23,11 @@ namespace Fuse
         {
             SetInput(theMember, theInput);
         }
+        
+        protected override string SourceTemplate()
+        {
+            return Outs.Count <= 1 ? "" : base.SourceTemplate();
+        }
 
         public void SetInput(string theMember, ShaderNode<TIn> theInput)
         {
@@ -41,6 +47,27 @@ namespace Fuse
                 {"input", _input == null ? "" : _input.ID},
                 {"member", _member}
             });
+        }
+        
+        public override string ID
+        {
+            get
+            {
+                
+                if (Outs.Count > 1) return base.ID;
+
+                var result = base.ID;
+                try
+                {
+                    result = ImplementationTemplate();
+                }
+                catch (Exception)
+                {
+                }
+
+                return result;
+
+            }
         }
     }
     

@@ -24,18 +24,20 @@ namespace Fuse
             return "";
         }
         
-        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                child.BuildSource( theSourceBuilder, theHashes);
+                child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
             }
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
-            BuildChildrenSource(theSourceBuilder, theHashes);
+            if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
+            
+            BuildChildrenSource(theSourceBuilder, theHashes,thePrepend);
 
             if (!theHashes.Add(ID))return;
             
@@ -74,18 +76,18 @@ namespace Fuse
             return "";
         }
         
-        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
             //Console.WriteLine(Name);
             foreach (var child in Children)
             {
-                child.BuildSource( theSourceBuilder, theHashes);
+                child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
             }
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
         {
-            BuildChildrenSource(theSourceBuilder, theHashes);
+            BuildChildrenSource(theSourceBuilder, theHashes, thePrepend);
 
             if (!theHashes.Add(ID))return;
             

@@ -9,13 +9,11 @@ using System.Text.RegularExpressions;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
-using Stride.Engine;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Core;
-using VL.Lib.Collections;
 using VL.Stride;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
@@ -44,6 +42,12 @@ namespace Fuse
 
     public static class ShaderNodesUtil
     {
+        public static bool DebugShaderGeneration = true;
+        public static bool DebugVisit = true;
+        public static bool TimeShaderGeneration = true;
+
+        public static string DebugIdent = ". ";
+        
         public static bool IsFunctionNode(AbstractShaderNode theNode)
         {
             return theNode.Outs.Select(output => output.GetType()).Any(objectType => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Invoke<>));

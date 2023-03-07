@@ -196,23 +196,48 @@ namespace Fuse.ShaderFX
         
         private void HandleShader(bool theIsComputeShader, AbstractShaderNode theShaderInput, string theKey, out string theSource, out string theStreams, out string theDefinedStreams)
         {
+            var handleShaderWatch = new Stopwatch();
+            handleShaderWatch.Start();
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"  -> HandleShader: {theKey}");
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
             
+            _stopwatch.Restart();
             theShaderInput.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Declaration: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.StructList().ForEach(value => _structs.Add(value));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Structs: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.ConstantArrayList().ForEach(value => _constantArrays.Add(value));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Arrays: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.StreamList().ForEach(value => _streams.Add(value));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     streams: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Mixins: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Compositions: {_stopwatch.ElapsedMilliseconds} ms");
+            
+            _stopwatch.Restart();
             theShaderInput.FunctionMap().ForEach(HandleFunction);
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Functions: {_stopwatch.ElapsedMilliseconds} ms");
 
+            _stopwatch.Restart();
             streamBuilder.AppendLine("        streams. = " + theKey + theShaderInput.ID+";");
             streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuType(theShaderInput) + " " + theKey + ";");
             
             theSource = theShaderInput.BuildSourceCode();
             theStreams = streamBuilder.ToString();
             theDefinedStreams = streamDeclareBuilder.ToString();
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Finish Stage: {handleShaderWatch.ElapsedMilliseconds} ms");
         }
 
         private string CheckCode(string theCode)
@@ -220,12 +245,16 @@ namespace Fuse.ShaderFX
             return _isCompute ? theCode : theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
         }
 
+        private readonly Stopwatch _stopwatch = new ();
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
-            var watch = new Stopwatch();
+            _stopwatch.Reset();
             
+            _stopwatch.Start();
+            var watch = new Stopwatch();
             watch.Start();
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Start Generating Shader {ShaderName}");
             var sourceStream = new Dictionary<string,(string source, string stream)>();
             var streamDefinesBuilder = new StringBuilder();
             
@@ -240,6 +269,7 @@ namespace Fuse.ShaderFX
                 streamDefinesBuilder.AppendLine(streamDefines);
             }
 
+            _stopwatch.Restart();
             var templateMap = BuildTemplateMap();
             templateMap["streamDeclaration"] = streamDefinesBuilder.ToString();
             CustomTemplates ().ForEach(kv =>
@@ -252,7 +282,6 @@ namespace Fuse.ShaderFX
                 templateMap.Add("source" + kv.Key,kv.Value.source);
                 templateMap.Add("streams" + kv.Key,kv.Value.stream);
             });
-            
             ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
@@ -266,16 +295,18 @@ namespace Fuse.ShaderFX
             {
                 kv.Value.ShaderCode = ShaderCode;
             }
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
-            
+            _stopwatch.Restart();
             ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
            // _parameters = theContext.Parameters;
             
            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
            var result = new ShaderClassSource(ShaderName);
-           watch.Stop();
+           _stopwatch.Stop();
 
-           Console.WriteLine($"Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
+           if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
            return result;
         }
     }

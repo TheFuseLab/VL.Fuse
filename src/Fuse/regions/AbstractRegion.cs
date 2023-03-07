@@ -117,10 +117,12 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
         SetInputs(inputList);
     }
 
-    protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes)
+    protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
     {
-        Children.ForEach(child => { child.BuildSource(theSourceBuilder, theHashes); });
-
+        foreach (var child in Children)
+        {
+            child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
+        }
 
         var source = SourceCode;
         if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(ID))
