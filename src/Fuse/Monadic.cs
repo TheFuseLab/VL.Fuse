@@ -144,7 +144,7 @@ namespace Fuse
         }
     }
     
-    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, ShaderNode<Buffer<T>>> where T : struct
+    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, ShaderNode<Buffer<T>>> where T : unmanaged
     {
         private readonly TypedBufferInput<T> _bufferInput;
         

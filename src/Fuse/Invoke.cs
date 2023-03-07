@@ -100,7 +100,7 @@ namespace Fuse
             
             Name = theId;
             
-            ChangeGraphListener.Add(new InvokeChangeLister<T>(this));
+            //ChangeGraphListener.Add(new InvokeChangeLister<T>(this));
         }
 
         public void SetInputs(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters)

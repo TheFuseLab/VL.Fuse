@@ -37,17 +37,17 @@ namespace Fuse
              
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
-            public static void ConstrainTypesByBuffer<T>(ShaderNode<T> input, ShaderNode<Buffer<T>> input2) where T : struct
+            public static void ConstrainTypesByBuffer<T>(ShaderNode<T> input, ShaderNode<Buffer<T>> input2) where T : unmanaged
             {
             }
             
             // USED BY VL
             // ReSharper disable once UnusedMember.Global 
-            public static void ConstrainType<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
+            public static void ConstrainType<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : unmanaged
             {
             }
             
-            public static void ConstrainBuffer<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : struct
+            public static void ConstrainBuffer<T>(T value, ShaderNode<T> shaderNode, Buffer<T> buffer, ShaderNode<Buffer<T>> gpuBuffer) where T : unmanaged
             {
             }
 
