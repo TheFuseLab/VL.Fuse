@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reflection;
@@ -42,6 +43,16 @@ namespace Fuse
 
     public static class ShaderNodesUtil
     {
+
+        public static void SetConsoleOut(string path)
+        {
+            var filestream = new FileStream(path, FileMode.Create);
+            var streamWriter = new StreamWriter(filestream);
+            streamWriter.AutoFlush = true;
+            Console.SetOut(streamWriter);
+            Console.SetError(streamWriter);
+        }
+        
         public static bool DebugShaderGeneration = true;
         public static bool DebugVisit = true;
         public static bool TimeShaderGeneration = true;
