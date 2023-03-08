@@ -61,14 +61,14 @@ namespace Fuse
     }
     
     public interface IShaderNodeVisitor {
-        void Visit(AbstractShaderNode node);
+        void Visit(AbstractShaderNode node, string thePrepend);
     }
 
     public class ChildrenOfTypeVisitor<TNode> : IShaderNodeVisitor where TNode : class
     {
         public readonly HashSet<TNode> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             if (node is TNode shaderNode)
             {
@@ -81,7 +81,7 @@ namespace Fuse
     {
         public readonly List<TPropertyType> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             node.Property.ForEach(kv =>
             {
@@ -109,7 +109,7 @@ namespace Fuse
             _stopWatch.Start();
         }
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             var stopWatch = new Stopwatch();
             stopWatch.Start();
@@ -119,7 +119,7 @@ namespace Fuse
                 Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(node.Property[_propertyId], i => Result.Add(i));
                 
             }
-            if(ShaderNodesUtil.DebugVisit)Console.WriteLine($"Get Prop {_propertyId} {node.ID} in time{stopWatch.ElapsedMilliseconds} ms in complete {_stopWatch.ElapsedMilliseconds} ms {count}");
+            if(ShaderNodesUtil.DebugVisit)Console.WriteLine($"{thePrepend}Get Prop {_propertyId} {node.ID} in time{stopWatch.ElapsedMilliseconds} ms in complete {_stopWatch.ElapsedMilliseconds} ms {count}");
         }
     }
     
@@ -127,7 +127,7 @@ namespace Fuse
     {
         public readonly HashSet<string> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             foreach (var kv in node.Property)
             {
@@ -140,7 +140,7 @@ namespace Fuse
     {
         public readonly Dictionary<string, IList> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             foreach (var kv in node.Property)
             {
@@ -162,7 +162,7 @@ namespace Fuse
     {
         public readonly Dictionary<string, List<TProperty>> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             foreach (var kv in node.Property)
             {
@@ -187,7 +187,7 @@ namespace Fuse
     {
         public readonly Dictionary<string,string> Result = new ();
         
-        public void Visit(AbstractShaderNode node)
+        public void Visit(AbstractShaderNode node, string thePrepend)
         {
             if (node.Functions == null) return;
             foreach (var kv in node.Functions)
@@ -475,12 +475,12 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
 
-        public void Visit(IShaderNodeVisitor theVisitor)
+        public void Visit(IShaderNodeVisitor theVisitor, string thePrepend = "")
         {
-            theVisitor.Visit(this);
+            theVisitor.Visit(this, thePrepend);
             foreach (var node in Ins)
             {
-                node?.Visit(theVisitor);
+                node?.Visit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
             }
         }
 
