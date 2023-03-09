@@ -61,7 +61,7 @@ namespace Fuse.regions
         }
 
         public void SetArguments(AbstractShaderNode theFunction, IEnumerable<AbstractShaderNode> theArguments,
-            IEnumerable<IInvoke> theDelegates = null)
+            IEnumerable<IDelegate> theDelegates = null)
         {
             Functions = new Dictionary<string, string>();
             
@@ -98,7 +98,7 @@ ${functionImplementation}
             return result;
         }
         
-        private void HandleDelegates(IEnumerable<IInvoke> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IEnumerable<IDelegate> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             theDelegates?.ForEach(delegateNode =>
             {

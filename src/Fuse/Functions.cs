@@ -186,7 +186,7 @@ namespace Fuse
     
     public sealed class CustomFunction<T>: AbstractFunction<T>
     {
-        private IEnumerable<IInvoke> _delegates;
+        private Dictionary<string, IDelegate> _delegates;
 
         private string _codeTemplate;
 
@@ -239,13 +239,13 @@ namespace Fuse
             CallChangeEvent();
         }
 
-        public void SetDelegates(IEnumerable<IInvoke> theDelegates)
+        public void SetDelegates(Dictionary<string, IDelegate> theDelegates)
         {
             if (_delegates != null)
             {
                 foreach (var myDelegate in _delegates)
                 {
-                    (myDelegate as AbstractShaderNode)?.ChangeGraphListener.Remove(_delegateChangeListener);
+                    (myDelegate.Value as AbstractShaderNode)?.ChangeGraphListener.Remove(_delegateChangeListener);
                 }
             }
             _delegates = theDelegates;
@@ -253,7 +253,7 @@ namespace Fuse
             {
                 foreach (var myDelegate in _delegates)
                 {
-                    (myDelegate as AbstractShaderNode)?.ChangeGraphListener.Add(_delegateChangeListener);
+                    (myDelegate.Value as AbstractShaderNode)?.ChangeGraphListener.Add(_delegateChangeListener);
                 }
             }
             CallChangeEvent();
@@ -300,17 +300,17 @@ namespace Fuse
             Setup(theArguments);
         }
         
-        private void HandleDelegates(IEnumerable<IInvoke> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(Dictionary<string,IDelegate> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             if (theDelegates == null) return;
 
             foreach (var delegateNode in theDelegates)
             {
-                if (delegateNode == null) continue;
+                if (delegateNode.Value == null) continue;
                 
-                theFunctionValueMap.Add(delegateNode.Name, delegateNode.FunctionName);
-                delegateNode.Functions.ForEach(kv => Functions[kv.Key] = kv.Value);
-                delegateNode.PropertiesForTree().ForEach(kv =>
+                theFunctionValueMap.Add(delegateNode.Key, delegateNode.Value.FunctionName);
+                delegateNode.Value.Functions.ForEach(kv => Functions[kv.Key] = kv.Value);
+                delegateNode.Value.PropertiesForTree().ForEach(kv =>
                 {
                     AddProperties(kv.Key, kv.Value);
                 });
@@ -321,9 +321,9 @@ namespace Fuse
         {
             _delegates?.ForEach(delegateNode =>
             {
-                if (delegateNode == null) return;
+                if (delegateNode.Value == null) return;
                 
-                delegateNode.CheckContext(theContext);
+                delegateNode.Value.CheckContext(theContext);
             });
             
             base.CheckContext(theContext);

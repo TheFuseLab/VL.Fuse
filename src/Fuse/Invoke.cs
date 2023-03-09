@@ -13,9 +13,10 @@ namespace Fuse
     {
         string TypeName();
 
-        void Remap(List<AbstractShaderNode> theParameters);
+        string ID { get; }
 
-        void DeleteRemap();
+        int ArgumentNumber { get; }
+        uint HashCode { get; set; }
     }
 
     public enum InputModifier
@@ -27,30 +28,16 @@ namespace Fuse
     
     public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
-        private readonly string _name;
-        private readonly int _id;
 
         public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate")
         {
-            _name = "arg_" + theId;
             Ins = new List<AbstractShaderNode>();
-            _id = theId;
+            ArgumentNumber = theId;
         }
-
-        public void Remap(List<AbstractShaderNode> theParameters)
-        {
-            if (_id >= theParameters.Count()) return;
-            Name = "arg_"+ShaderNodesUtil.FixName(theParameters[_id].DelegateID);
-        }
-
         
-
         public override string ID => Name;
-
-        public void DeleteRemap()
-        {
-            Name = _name;
-        }
+        
+        public int ArgumentNumber { get; }
 
         public override string TypeName()
         {
@@ -62,48 +49,86 @@ namespace Fuse
             return "";
         }
     }
-    
-    public interface IInvoke
+
+    public interface IDelegate
     {
-         string Name { get; }
-         string FunctionName { get;  }
-         
-         IDictionary<string, string> Functions { get; }
+        string Name { get; }
+        string FunctionName { get; }
+        
+        IDictionary<string, string> Functions { get; }
+        
+        Dictionary<string, IList> PropertiesForTree();
 
-
-         Dictionary<string, IList> PropertiesForTree();
-
-         public void CheckContext(ShaderGeneratorContext theContext);
+        public void CheckContext(ShaderGeneratorContext theContext);
     }
 
-    public class InvokeChangeLister<T> : IChangeGraph
+    public class Delegate<T> :  ShaderNode<T>, IDelegate
     {
-
-        private readonly Invoke<T> _invoke;
-
-        public InvokeChangeLister(Invoke<T> theInvoke)
+        public Delegate(NodeContext nodeContext, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
-            _invoke = theInvoke;
         }
-        public void ChangeGraph(AbstractShaderNode theNode)
+        
+        private static string BuildArguments(List<IFunctionParameter> inputs)
         {
-            _invoke.UpdateInvoke();
+            inputs.Sort((a,b) => string.Compare(a.ID, b.ID, StringComparison.Ordinal));
+            var usedIDs = new HashSet<string>();
+            
+            var stringBuilder = new StringBuilder();
+            inputs.ForEach(input =>
+            {
+                if (usedIDs.Contains(input.ID)) return;
+                usedIDs.Add(input.ID);
+                stringBuilder.Append(input.TypeName());
+                stringBuilder.Append(' ');
+                stringBuilder.Append(ShaderNodesUtil.FixName(input.ID));
+                stringBuilder.Append(", ");
+            });
+            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            return stringBuilder.ToString();
         }
+        
+        public void SetInput(AbstractShaderNode theDelegate)
+        {
+            
+            if (theDelegate == null) return;
+            Functions.Clear();
+            Property.Clear();
+            var functionParameters = theDelegate.FunctionParameters();
+            
+            var functionValueMap = new Dictionary<string, string>
+            {
+                {"resultType", TypeHelpers.GetGpuType<T>()},
+                {"functionName", FunctionName},
+                {"arguments", BuildArguments(functionParameters)},
+                {"functionImplementation", theDelegate.BuildSourceCode()},
+                {"result", theDelegate.ID}
+            };
+
+            const string functionCode = @"    ${resultType} ${functionName}(${arguments}){
+${functionImplementation}
+        return ${result};
+    }";
+            Functions.Add(FunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
+            theDelegate.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
+            theDelegate.PropertiesForTree().ForEach(kv =>
+            {
+                AddProperties(kv.Key, kv.Value );
+            });
+        }
+        public string FunctionName => Name + "_" + HashCode;
     }
 
-    public class Invoke<T> : ShaderNode<T>, IInvoke
+    public class Invoke<T> : ShaderNode<T>
     {
-        private AbstractShaderNode _delegate;
+        private Delegate<T> _delegate;
         public Invoke(NodeContext nodeContext, string theId = "Invoke", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
             
             Name = theId;
-            
-            ChangeGraphListener.Add(new InvokeChangeLister<T>(this));
         }
 
-        public void SetInputs(AbstractShaderNode theDelegate, IEnumerable<AbstractShaderNode> theParameters)
+        public void SetInputs(Delegate<T> theDelegate, IEnumerable<AbstractShaderNode> theParameters)
         {
             _delegate?.Outs.Remove(this);
             _delegate = theDelegate;
@@ -116,7 +141,6 @@ namespace Fuse
             _delegate?.Outs.Add(this);
 
             SetInputs(theParameters, false);
-            AddFunctionInvoke(FunctionName,_delegate, Ins);
             
             CallChangeEvent();
         }
@@ -125,57 +149,6 @@ namespace Fuse
         {
             _delegate?.CheckContext(theContext);
             base.CheckContext(theContext);
-        }
-
-        public void UpdateInvoke()
-        {
-            if (_delegate == null) return;
-            AddFunctionInvoke(FunctionName, _delegate, Ins);
-        }
-
-        private void AddFunctionInvoke(string theFunctionName, AbstractShaderNode theDelegate, List<AbstractShaderNode> theParameters)
-        {
-            if (theDelegate == null) return;
-            Functions.Clear();
-            Property.Clear();
-            var functionParameters = theDelegate.FunctionParameters();
-            functionParameters.ForEach(input => input.Remap(theParameters));
-            
-            var functionValueMap = new Dictionary<string, string>
-            {
-                {"resultType", TypeHelpers.GetGpuType<T>()},
-                {"functionName", theFunctionName},
-                {"arguments", BuildArguments(theParameters)},
-                {"functionImplementation", theDelegate.BuildSourceCode()},
-                {"result", theDelegate.ID}
-            };
-
-            const string functionCode = @"    ${resultType} ${functionName}(${arguments}){
-${functionImplementation}
-        return ${result};
-    }";
-            Functions.Add(theFunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
-            theDelegate.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
-            theDelegate.PropertiesForTree().ForEach(kv =>
-            {
-                AddProperties(kv.Key, kv.Value );
-            });
-            
-            functionParameters.ForEach(input => input.DeleteRemap());
-        }
-        
-        private static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
-        {
-            var stringBuilder = new StringBuilder();
-            inputs.ForEach(input =>
-            {
-                stringBuilder.Append(input.TypeName());
-                stringBuilder.Append(" ");
-                stringBuilder.Append("arg_"+ShaderNodesUtil.FixName(input.DelegateID));
-                stringBuilder.Append(", ");
-            });
-            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
-            return stringBuilder.ToString();
         }
 
         protected override string SourceTemplate()
@@ -189,12 +162,11 @@ ${functionImplementation}
             return ShaderNodesUtil.Evaluate(shader, 
                 new Dictionary<string, string>
                 {
-                    {"functionName", FunctionName}
+                    {"functionName", _delegate.FunctionName}
                 });
         }
 
         public sealed override IDictionary<string, string> Functions { get; protected set; }
-        public string FunctionName => Name + "_" + _delegate.HashCode;
 
     }
 }
