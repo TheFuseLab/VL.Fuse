@@ -29,7 +29,7 @@ namespace Fuse
     public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
 
-        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "delegate")
+        public FunctionParameter(NodeContext nodeContext, ShaderNode<T> theType, int theId = 0): base(nodeContext, "arg_" + theId)
         {
             Ins = new List<AbstractShaderNode>();
             ArgumentNumber = theId;
@@ -66,6 +66,7 @@ namespace Fuse
     {
         public Delegate(NodeContext nodeContext, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
+            Functions = new Dictionary<string, string>();
         }
         
         private static string BuildArguments(List<IFunctionParameter> inputs)
@@ -86,6 +87,8 @@ namespace Fuse
             if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
             return stringBuilder.ToString();
         }
+        
+        public sealed override IDictionary<string, string> Functions { get; protected set; }
         
         public void SetInput(AbstractShaderNode theDelegate)
         {
@@ -114,7 +117,14 @@ ${functionImplementation}
             {
                 AddProperties(kv.Key, kv.Value );
             });
+            CallChangeEvent();
         }
+
+        protected override string SourceTemplate()
+        {
+            return "";
+        }
+
         public string FunctionName => Name + "_" + HashCode;
     }
 
@@ -140,7 +150,9 @@ ${functionImplementation}
             }
             _delegate?.Outs.Add(this);
 
-            SetInputs(theParameters, false);
+            var inputs = new List<AbstractShaderNode> { _delegate };
+            inputs.AddRange(theParameters);
+            SetInputs(inputs, false);
             
             CallChangeEvent();
         }
@@ -162,7 +174,8 @@ ${functionImplementation}
             return ShaderNodesUtil.Evaluate(shader, 
                 new Dictionary<string, string>
                 {
-                    {"functionName", _delegate.FunctionName}
+                    {"functionName", _delegate.FunctionName},
+                    {"arguments", ShaderNodesUtil.BuildArguments(Ins.GetRange(1, Ins.Count - 1))}
                 });
         }
 
