@@ -89,36 +89,41 @@ namespace Fuse
         }
     }
     
-    public class SetItem<TSource, T> : ShaderNode<GpuVoid>, IComputeVoid  where T :struct
+    public class SetItem<T, TValue> : ShaderNode<GpuVoid>, IComputeVoid  where TValue :struct
     {
-        private ShaderNode<TSource> _source;
+        private ShaderNode<T> _target;
         private ShaderNode<int> _index;
-        private ShaderNode<T> _value;
+        private ShaderNode<TValue> _value;
         
         public SetItem(NodeContext nodeContext) : base( nodeContext, "setItem")
         {
             
         }
 
-        public void SetInputs(ShaderNode<TSource> theSource, ShaderNode<int> theIndex, ShaderNode<T> theValue)
+        public void SetInputs(ShaderNode<T> theTarget, ShaderNode<int> theIndex, ShaderNode<TValue> theValue)
         {
-            _source = theSource;
+            _target = theTarget;
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>{theSource,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{theTarget,theIndex,theValue});
         }
 
         protected override string SourceTemplate()
         {
-            const string shaderCode = "${source}[${index}] =  ${value};";
+            const string shaderCode = "${target}[${index}] =  ${value};";
             
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
-                {"source", _source.ID},
+                {"target", _target.ID},
                 {"index", _index.ID},
                 {"value", _value.ID}
             });
+        }
+        
+        public ShaderNode<T> Value()
+        {
+            return _target;
         }
 
     }
