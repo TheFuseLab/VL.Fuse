@@ -11,6 +11,7 @@ namespace Fuse
     {
 
         private string _sourceTemplate = "";
+        
         public Array(NodeContext nodeContext) : base(nodeContext, "Array")
         {
         }
@@ -36,7 +37,7 @@ ${arrayContent}
                 {"arraySize", theInputs.Count.ToString()},
                 {"arrayContent", content.ToString()}
             });
-            
+            Size = theInputs.Count; 
             SetProperty(ConstantArrays, constantArrayString);
         }
 
@@ -51,6 +52,7 @@ ${arrayContent}
                 {"arrayName", ID},
                 {"arraySize", theSize.ToString()}
             });
+            Size = theSize; 
         }
 
         public void SetDynamicInput(ICollection<ShaderNode<T>> theInputs)
@@ -80,6 +82,8 @@ ${arrayContent}
         {
             return _sourceTemplate;
         }
+
+        public int Size { get; private set; }
     }
     
     public class ArrayGet<T> : ShaderNode<T>  where T :struct
