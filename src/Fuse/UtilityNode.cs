@@ -56,6 +56,54 @@ namespace Fuse
             return Input != null ? Input.TypeName() : base.TypeName();
         }
     }
+    
+    public class PassThroughDelegate<T> : Delegate<T>
+    {
+        private Delegate<T> _input;
+
+        private readonly bool _triggerChange;
+        public Delegate<T> Input { get => _input;
+            set
+            {
+                _input = value;
+                SetInputs(new List<AbstractShaderNode>{Input}, _triggerChange);
+            }
+        }
+        
+        public PassThroughDelegate(NodeContext nodeContext, string theName = "PassThrough", bool triggerChange = true) : base(nodeContext, theName)
+        {
+            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"PassThroughDefault");
+            _triggerChange = triggerChange;
+            // ReSharper disable once VirtualMemberCallInConstructor
+        }
+        
+        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue, bool triggerChange = true) : this(nodeContext, theName, triggerChange)
+        {
+            // ReSharper disable once VirtualMemberCallInConstructor
+            SetInput(theValue);
+        }
+        
+        protected override string SourceTemplate()
+        {
+            return "";
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+
+        public virtual void SetInput(IDelegate theValue)
+        {
+            Input = theValue as Delegate<T>;
+        }
+        public override string ID => _input.ID;
+        
+        public override string TypeName()
+        {
+            return Input != null ? Input.TypeName() : base.TypeName();
+        }
+    }
 
     public class PassVoid : PassThroughNode<GpuVoid>, IComputeVoid
     {
@@ -174,6 +222,13 @@ namespace Fuse
     public class InjectToRegion<T> : PassThroughNode<T>, IInjectToRegion
     {
         public InjectToRegion(NodeContext nodeContext) : base(nodeContext, "InjectToRegion")
+        {
+        }
+    }
+    
+    public class InjectToRegionDelegate<T> : PassThroughDelegate<T>, IInjectToRegion
+    {
+        public InjectToRegionDelegate(NodeContext nodeContext) : base(nodeContext, "InjectToRegion")
         {
         }
     }
