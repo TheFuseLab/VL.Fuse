@@ -55,15 +55,20 @@ namespace Fuse
             {
                 {typeof(MarchRay), "Ray"},
             };
+
+            public static bool IsStructType(Type t)
+            {
+                return StructTypes.ContainsKey(t);
+            }
             
             public static bool IsStructType<T>()
             {
                 return IsStructType(typeof(T));        
             }
-
-            public static bool IsStructType(Type t)
+            
+            public static bool IsDelegate(AbstractShaderNode theValue)
             {
-                return StructTypes.ContainsKey(t);
+                return theValue != null && theValue.GetType().IsGenericType && theValue.GetType().GetGenericTypeDefinition() == typeof(Delegate<>);
             }
             
             public static bool IsVoidNode(AbstractShaderNode theValue)
