@@ -125,7 +125,7 @@ ${functionImplementation}
             return "";
         }
 
-        public string FunctionName => Name + "_" + HashCode;
+        public virtual string FunctionName => Name + "_" + HashCode;
     }
 
     public class Invoke<T> : ShaderNode<T>
