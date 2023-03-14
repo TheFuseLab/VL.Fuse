@@ -23,31 +23,6 @@ namespace Fuse
         {
             return "";
         }
-        
-        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
-        {
-            //Console.WriteLine(Name);
-            foreach (var child in Children)
-            {
-                child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
-            }
-        }
-
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
-        {
-            if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
-            
-            BuildChildrenSource(theSourceBuilder, theHashes,thePrepend);
-
-            if (!theHashes.Add(ID))return;
-            
-            var source = SourceCode;
-            //Console.Out.WriteLine(Name + " : " + HashCode);
-            if (!string.IsNullOrWhiteSpace(source))
-            {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
-        }
     }
     
     public class Do2<T>: ShaderNode<T>
@@ -74,29 +49,6 @@ namespace Fuse
         protected override string SourceTemplate()
         {
             return "";
-        }
-        
-        public override void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
-        {
-            //Console.WriteLine(Name);
-            foreach (var child in Children)
-            {
-                child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
-            }
-        }
-
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
-        {
-            BuildChildrenSource(theSourceBuilder, theHashes, thePrepend);
-
-            if (!theHashes.Add(ID))return;
-            
-            var source = SourceCode;
-            //Console.Out.WriteLine(Name + " : " + HashCode);
-            if (!string.IsNullOrWhiteSpace(source))
-            {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
         }
         
         public override string ID => _input.ID;

@@ -298,7 +298,7 @@ namespace Fuse.ShaderFX
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
             _stopwatch.Restart();
-            ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+            //ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
            // _parameters = theContext.Parameters;
             

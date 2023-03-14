@@ -39,9 +39,9 @@ namespace Fuse.regions
             SetInputs(theInputs);
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
+        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
         {
-            if (!theHashes.Add(ID)) return;
+            if (!theHashes.Add(this)) return;
             
             if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
 
@@ -76,7 +76,7 @@ namespace Fuse.regions
             theSourceBuilder.Append(myChildSource);
 
             var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(ID))
+            if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(this))
             {
                 theSourceBuilder.Append("        " + source + Environment.NewLine);
             }

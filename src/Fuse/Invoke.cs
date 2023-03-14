@@ -64,6 +64,7 @@ namespace Fuse
 
     public class Delegate<T> :  ShaderNode<T>, IDelegate
     {
+        private AbstractShaderNode _delegate;
         public Delegate(NodeContext nodeContext, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
@@ -92,8 +93,12 @@ namespace Fuse
         
         public void SetInput(AbstractShaderNode theDelegate)
         {
+            if (theDelegate == _delegate) return;
             
-            if (theDelegate == null) return;
+            _delegate?.Outs.Remove(this);
+
+            _delegate = theDelegate;
+            if (_delegate == null) return;
             Functions.Clear();
             Property.Clear();
             var functionParameters = theDelegate.FunctionParameters();
@@ -117,6 +122,9 @@ ${functionImplementation}
             {
                 AddProperties(kv.Key, kv.Value );
             });
+            
+            _delegate.Outs.Add(this);
+            
             CallChangeEvent();
         }
 

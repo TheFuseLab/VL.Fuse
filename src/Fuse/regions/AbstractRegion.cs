@@ -116,18 +116,4 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
         inputList.Add(theCreateRegion(subContextFactory, myOutputs));
         SetInputs(inputList);
     }
-
-    protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
-    {
-        foreach (var child in Children)
-        {
-            child.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
-        }
-
-        var source = SourceCode;
-        if (!string.IsNullOrWhiteSpace(source) && theHashes.Add(ID))
-        {
-            theSourceBuilder.Append("        " + source + Environment.NewLine);
-        }
-    }
 }

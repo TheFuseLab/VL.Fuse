@@ -197,6 +197,19 @@ namespace Fuse
             }
         }
     }
+    
+    public class BuildSourceVisitor : IShaderNodeVisitor
+    {
+        StringBuilder myStringBuilder = new StringBuilder();
+        HashSet<AbstractShaderNode> myHashes = new HashSet<AbstractShaderNode>();
+        
+        public void Visit(AbstractShaderNode node, string thePrepend)
+        {
+            foreach (var kv in node.Property)
+            {
+            }
+        }
+    }
 
     public enum HandleNullInputMode
     {
@@ -282,8 +295,6 @@ namespace Fuse
             get => new Dictionary<string, string>();
             protected set => throw new NotImplementedException();
         }
-
-        public IReadOnlyList<AbstractShaderNode> Children => Ins;
 
         private const string DefaultShaderCode = "${resultType} ${resultName};";
 
@@ -424,27 +435,22 @@ namespace Fuse
             OnPassContext(nodeContext);
         }
 
-        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
+        public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
         {
             //Console.WriteLine(Name);
-            foreach (var child in Children)
+            foreach (var input in Ins)
             {
-                if (child is not AbstractShaderNode input)
-                {
-                    return;
-                }
-               
                 input.BuildSource( theSourceBuilder, theHashes, thePrepend + ShaderNodesUtil.DebugIdent);
             }
         }
 
-        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<string> theHashes, string thePrepend)
+        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
         {
             if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
             
-            BuildChildrenSource(theSourceBuilder, theHashes, thePrepend);
+            if (!theHashes.Add(this))return;
             
-            if (!theHashes.Add(ID))return;
+            BuildChildrenSource(theSourceBuilder, theHashes, thePrepend);
             
             var source = SourceCode;
             //Console.Out.WriteLine(Name + " : " + HashCode);
@@ -469,25 +475,34 @@ namespace Fuse
         public string BuildSourceCode()
         {
             var myStringBuilder = new StringBuilder();
-            var myHashes = new HashSet<string>();
+            var myHashes = new HashSet<AbstractShaderNode>();
 
             BuildSource( myStringBuilder, myHashes,"");
             return myStringBuilder.ToString();
         }
 
-        public void Visit(IShaderNodeVisitor theVisitor, string thePrepend = "")
+        public void PreOrderVisit(IShaderNodeVisitor theVisitor, string thePrepend = "")
         {
             theVisitor.Visit(this, thePrepend);
             foreach (var node in Ins)
             {
-                node?.Visit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
+                node?.PreOrderVisit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
             }
+        }
+        
+        public void PostOrderVisit(IShaderNodeVisitor theVisitor, string thePrepend = "")
+        {
+            foreach (var node in Ins)
+            {
+                node?.PostOrderVisit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
+            }
+            theVisitor.Visit(this, thePrepend);
         }
 
         public List<TNode> ChildrenOfType<TNode>() where TNode : class
         {
             var visitor = new ChildrenOfTypeVisitor<TNode>();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result.ToList();
         }
         
@@ -499,35 +514,35 @@ namespace Fuse
         public List<TPropertyType> PropertyForTree<TPropertyType>(string theThePropertyId)
         {
             var visitor = new PropertyOfTypeAndIdVisitor<TPropertyType>(theThePropertyId);
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result.ToList();
         }
         
         public List<TPropertyType> PropertiesForTreeList<TPropertyType>()
         {
             var visitor = new PropertyOfTypeVisitor<TPropertyType>();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result.ToList();
         }
 
         public List<string> PropertyIdsForTree()
         {
             var visitor = new PropertyIdsVisitor();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result.ToList();
         }
         
         public Dictionary<string, IList> PropertiesForTree()
         {
             var visitor = new PropertiesVisitor();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result;
         }
         
         public Dictionary<string, List<TProperty>> PropertiesForTree<TProperty>(Dictionary<string, List<TProperty>> theProperties = null)
         {
             var visitor = new PropertiesTypedVisitor<TProperty>();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result;
         }
 
@@ -611,7 +626,7 @@ namespace Fuse
         
         public Dictionary<string,string> FunctionMap(){
             var visitor = new FunctionMapVisitor();
-            Visit(visitor);
+            PreOrderVisit(visitor);
             return visitor.Result;
         }
 
