@@ -7,17 +7,8 @@ namespace Fuse
     {
 
         private ShaderNode<T> _value;
-
-        public DeclareValue(NodeContext nodeContext): base(nodeContext, "output")
-        {
-        }
         
-        public DeclareValue(NodeContext nodeContext, ShaderNode<T> theValue = null): this(nodeContext)
-        {
-            SetInput(theValue);
-        }
-
-        public void SetInput(ShaderNode<T> theValue = null)
+        public DeclareValue(NodeContext nodeContext, ShaderNode<T> theValue = null): base(nodeContext, "output")
         {
             _value = theValue ?? Default;
             SetInputs(new List<AbstractShaderNode>{_value});

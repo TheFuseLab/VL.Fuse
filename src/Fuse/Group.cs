@@ -9,14 +9,10 @@ namespace Fuse
 {
     public class Group: ShaderNode<GpuVoid>, IComputeVoid
     {
-        public Group(NodeContext nodeContext, string name = "Group2") : base(nodeContext, name)
+        public Group(NodeContext nodeContext, IEnumerable<AbstractShaderNode> theInputs, string name = "Group2") : base(nodeContext, name)
         {
             NullInputMode = HandleNullInputMode.Remove;
-        }
-
-        public void SetInput(IEnumerable<AbstractShaderNode> theInputs, bool theCallChangeEvent = true)
-        {
-            SetInputs(theInputs, theCallChangeEvent);
+            SetInputs(theInputs);
         }
 
         protected override string SourceTemplate()
@@ -29,13 +25,9 @@ namespace Fuse
     {
         
         private ShaderNode<T> _input;
-        public Do2(NodeContext nodeContext, string name = "Do2") : base(nodeContext, name)
+        public Do2(NodeContext nodeContext, ShaderNode<T> theOne, IEnumerable<AbstractShaderNode> theInputs, string name = "Do2") : base(nodeContext, name)
         {
             NullInputMode = HandleNullInputMode.Remove;
-        }
-
-        public void SetInput(ShaderNode<T> theOne, IEnumerable<AbstractShaderNode> theInputs, bool theCallChangeEvent = true)
-        {
             _input = theOne;
             var ins = new List<AbstractShaderNode>();
             foreach (var input in theInputs)
@@ -43,7 +35,7 @@ namespace Fuse
                 ins.Add(input);
             }
             ins.Add(theOne);
-            SetInputs(ins, theCallChangeEvent);
+            SetInputs(ins);
         }
 
         protected override string SourceTemplate()

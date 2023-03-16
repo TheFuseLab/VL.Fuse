@@ -57,15 +57,10 @@ ${structMembers}
     
     public class TypedBufferGet<T> : AbstractTypedFunction<T,T> where T : unmanaged
     {
-        private ShaderNode<Buffer<T>> _buffer;
-        private ShaderNode<int> _index;
+        private readonly ShaderNode<Buffer<T>> _buffer;
+        private readonly ShaderNode<int> _index;
         
-        public TypedBufferGet(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext, "getBuffer", theDefault)
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<Buffer<T>> theBuffer, ShaderNode<int> theIndex)
+        public TypedBufferGet(NodeContext nodeContext, ShaderNode<Buffer<T>> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault) : base( nodeContext, "getBuffer", theDefault)
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -85,16 +80,11 @@ ${structMembers}
     
     public class TypedBufferSet<TIn> : AbstractTypedFunction<TIn, GpuVoid>, IComputeVoid where TIn : unmanaged
     {
-        private ShaderNode<Buffer<TIn>> _buffer;
-        private ShaderNode<int> _index;
-        private ShaderNode<TIn> _value;
+        private readonly ShaderNode<Buffer<TIn>> _buffer;
+        private readonly ShaderNode<int> _index;
+        private readonly ShaderNode<TIn> _value;
     
-        public TypedBufferSet(NodeContext nodeContext) : base( nodeContext, "setBuffer")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<Buffer<TIn>> theBuffer, ShaderNode<int> theIndex, ShaderNode<TIn> theValue)
+        public TypedBufferSet(NodeContext nodeContext,ShaderNode<Buffer<TIn>> theBuffer, ShaderNode<int> theIndex, ShaderNode<TIn> theValue) : base( nodeContext, "setBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;
@@ -127,15 +117,10 @@ ${structMembers}
     
     public class TypedBufferAppend<T> : AbstractTypedFunction<T, GpuVoid> where T : unmanaged
     {
-        private ShaderNode<Buffer<T>> _buffer;
-        private ShaderNode<T> _value;
+        private readonly ShaderNode<Buffer<T>> _buffer;
+        private readonly ShaderNode<T> _value;
     
-        public TypedBufferAppend(NodeContext nodeContext) : base( nodeContext, "appendBuffer")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theValue)
+        public TypedBufferAppend(NodeContext nodeContext, ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theValue) : base( nodeContext, "appendBuffer")
         {
             _buffer = theBuffer;
             _value = theValue;
@@ -166,14 +151,9 @@ ${structMembers}
     
     public class TypedBufferConsume<T> : AbstractTypedFunction<T,T> where T : unmanaged
     {
-        private ShaderNode<Buffer<T>> _buffer;
+        private readonly ShaderNode<Buffer<T>> _buffer;
         
-        public TypedBufferConsume(NodeContext nodeContext, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<Buffer<T>> theBuffer)
+        public TypedBufferConsume(NodeContext nodeContext, ShaderNode<Buffer<T>> theBuffer, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
             SetInputs(new List<AbstractShaderNode>{theBuffer});

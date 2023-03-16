@@ -30,34 +30,21 @@ namespace Fuse.compute
         public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
             var vertexId =  new Semantic<int>(NodeContext.Default, "VertexId");
-            var join = new Int3Join(nodeContext);
-            join.SetInputs(vertexId, new ConstantValue<int>(0), new ConstantValue<int>(0));
+            var join = new Int3Join(nodeContext, vertexId, new ConstantValue<int>(0), new ConstantValue<int>(0));
             theReadIndex = theWriteIndex = join;
         }
     }
     
     public class DynamicIndex : PassThroughNode<Int3>
     {
+        public IIndexProvider IndexProvider { get; }
 
-        private  IIndexProvider _indexProvider;
-        private bool _useReadIndex;
-        public IIndexProvider IndexProvider
+        public DynamicIndex(NodeContext nodeContext, IIndexProvider theIndexProvider, bool useReadIndex = false) : base(nodeContext, "Index")
         {
-            get => _indexProvider;
-            set
-            {
-                _indexProvider = value;
-                _indexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
-                
-                SetInput(_useReadIndex? readIndex:writeIndex);
-            }
-        }
-
-        public DynamicIndex(NodeContext nodeContext, bool useReadIndex = false) : base(nodeContext, "Index", false)
-        {
-            IndexProvider = new DefaultIndexProvider();
-            _useReadIndex = useReadIndex;
+            IndexProvider = theIndexProvider ?? new DefaultIndexProvider();
             AddProperty("DynamicIndex", this);
+            IndexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
+            Input = useReadIndex ? readIndex : writeIndex;
         }
     }
 }

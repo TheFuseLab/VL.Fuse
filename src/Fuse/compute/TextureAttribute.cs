@@ -52,7 +52,6 @@ namespace Fuse.compute
         {
             Index = theIndex;
             SetProperty("ComputeSystemAttribute", this);
-            CallChangeEvent();
         }
         
         public void OverRideByTexture(ShaderNode<Texture> theInstance, ShaderNode<TIndex> theIndex)
@@ -61,12 +60,10 @@ namespace Fuse.compute
                 SetProperty("ComputeSystemAttribute", this);
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext());
-                textureGet.SetInputs(theInstance, theIndex);
+                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance, theIndex);
                 SetInput(textureGet);
                 RemoveProperty("ComputeSystemAttribute");
             }
-            CallChangeEvent();
         }
 
         public override Int3 Resolution => TextureInput?.Value == null ? new Int3(1) : new Int3(TextureInput.Value.Width, TextureInput.Value.Height, TextureInput.Value.Depth);

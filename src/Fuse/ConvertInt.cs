@@ -6,25 +6,15 @@ namespace Fuse
 {
     public class Int2Join : ResultNode<Int2>
     {
-        private ShaderNode<int> _x;
-        private ShaderNode<int> _y;
-        
-        private readonly ShaderNode<int> _default;
+        private readonly ShaderNode<int> _x;
+        private readonly ShaderNode<int> _y;
 
-        public Int2Join(NodeContext nodeContext) : base(nodeContext, "int2Join")
+        public Int2Join(NodeContext nodeContext, ShaderNode<int> x, ShaderNode<int> y) : base(nodeContext, "int2Join")
         {
-            _default = new ConstantValue<int>(0);
+            ShaderNode<int> @default = new ConstantValue<int>(0);
             
-            _x = _default;
-            _y = _default;
-            
-            SetInputs( new List<AbstractShaderNode>{_x,_y});
-        }
-
-        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y)
-        {
-            _x = x ?? _default;
-            _y = y ?? _default;
+            _x = x ?? @default;
+            _y = y ?? @default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y});
         }
@@ -43,32 +33,21 @@ namespace Fuse
     public class Int3Join : ResultNode<Int3>
     {
         
-        private ShaderNode<int> _x;
-        private ShaderNode<int> _y;
-        private ShaderNode<int> _z;
-        
-        private readonly ShaderNode<int> _default;
+        private readonly ShaderNode<int> _x;
+        private readonly ShaderNode<int> _y;
+        private readonly ShaderNode<int> _z;
 
-        public Int3Join(NodeContext nodeContext) : base(nodeContext, "Int3Join")
+        public Int3Join(NodeContext nodeContext, ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z) : base(nodeContext, "Int3Join")
         {
-            _default = new ConstantValue<int>(0);
+            ShaderNode<int> @default = new ConstantValue<int>(0);
             
-            _x = _default;
-            _y = _default;
-            _z = _default;
+            _x = x ?? @default;
+            _y = y ?? @default;
+            _z = z ?? @default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
         }
 
-        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z)
-        {
-            _x = x ?? _default;
-            _y = y ?? _default;
-            _z = z ?? _default;
-            
-            SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
-        }
-        
         protected override string ImplementationTemplate()
         {
             return ShaderNodesUtil.Evaluate("int3(${x},${y},${z})", 
@@ -83,35 +62,22 @@ namespace Fuse
     
     public class Int4Join : ResultNode<Int4>
     {
-        private ShaderNode<int> _x;
-        private ShaderNode<int> _y;
-        private ShaderNode<int> _z;
-        private ShaderNode<int> _w;
-        
-        private readonly ShaderNode<int> _default;
+        private readonly ShaderNode<int> _x;
+        private readonly ShaderNode<int> _y;
+        private readonly ShaderNode<int> _z;
+        private readonly ShaderNode<int> _w;
 
-        public Int4Join(NodeContext nodeContext) : base(nodeContext, "Int4Join")
+        public Int4Join(NodeContext nodeContext, ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z, ShaderNode<int> w) : base(nodeContext, "Int4Join")
         {
-            _default = new ConstantValue<int>(0);
+            ShaderNode<int> @default = new ConstantValue<int>(0);
 
-            _x = _default;
-            _y = _default;
-            _z = _default;
-            _w = _default;
+            _x = x ?? @default;
+            _y = y ?? @default;
+            _z = z ?? @default;
+            _w = w ?? @default;
             
             SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
         }
-
-        public void SetInputs(ShaderNode<int> x, ShaderNode<int> y, ShaderNode<int> z, ShaderNode<int> w)
-        {
-            _x = x ?? _default;
-            _y = y ?? _default;
-            _z = z ?? _default;
-            _w = w ?? _default;
-            
-            SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
-        }
-
 
         protected override string ImplementationTemplate()
         {
@@ -126,27 +92,52 @@ namespace Fuse
         }
     }
     
+    public class IntJoinAdaptive<TIn, TExtension, TOut> : ResultNode<TOut> where TOut : struct
+    {
+
+        private readonly ShaderNode<TIn> _input;
+        private readonly ShaderNode<TExtension> _extension;
+        
+        public IntJoinAdaptive(NodeContext nodeContext, ShaderNode<TIn> theInput,ShaderNode<TExtension> theExtension) : base(nodeContext, "join")
+        {
+            _input = theInput ?? ConstantHelper.FromFloat<TIn>( 0);
+            _extension = theExtension ?? ConstantHelper.FromFloat<TExtension>(0);
+
+            SetInputs(new List<AbstractShaderNode>{_input, _extension});
+        }
+
+        protected override string ImplementationTemplate()
+        {
+            var shader = TypeHelpers.GetDimension(typeof(TOut)) switch
+            {
+                2 => "int2(${input},${extension})",
+                3 => "int3(${input},${extension})",
+                4 => "int4(${input},${extension})",
+                _ => ""
+            };
+           
+
+            return ShaderNodesUtil.Evaluate(shader, 
+                new Dictionary<string, string>
+                {
+                    {"input", _input.ID},
+                    {"extension", _extension.ID}
+                });
+        }
+    }
+    
     public class FromInt<T> : ResultNode<T> where T : struct
     {
         
-        private ShaderNode<int> _x;
-        
-        private readonly ShaderNode<int> _default;
+        private readonly ShaderNode<int> _x;
 
-        public FromInt(NodeContext nodeContext) : base(nodeContext, "fromInt")
+        public FromInt(NodeContext nodeContext, ShaderNode<int> x) : base(nodeContext, "fromInt")
         {
-            _default = new ConstantValue<int>(0);
+            ShaderNode<int> @default = new ConstantValue<int>(0);
             
-            _x = _default;
+            _x = x ?? @default;
             
             SetInputs(new List<AbstractShaderNode>{_x});
-        }
-
-        public void SetInput(ShaderNode<int> x)
-        {
-            _x = x ?? _default;
-            
-            SetInputs(new List<AbstractShaderNode>{x});
         }
 
         protected override string ImplementationTemplate()

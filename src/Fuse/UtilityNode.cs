@@ -10,29 +10,20 @@ namespace Fuse
 {
     public class PassThroughNode<T> : ShaderNode<T>
     {
-        private ShaderNode<T> _input;
+        public ShaderNode<T> Input { get; set; }
 
-        private readonly bool _triggerChange;
-        public ShaderNode<T> Input { get => _input;
-            set
-            {
-                _input = value ?? Default;
-                SetInputs(new List<AbstractShaderNode>{Input}, _triggerChange);
-            }
-        }
-        
-        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough", bool triggerChange = true) : base(nodeContext, theName)
+        public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough") : base(nodeContext, theName)
         {
             Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"PassThroughDefault");
-            _triggerChange = triggerChange;
             // ReSharper disable once VirtualMemberCallInConstructor
-            Input = Default;
         }
-        
-        public PassThroughNode(NodeContext nodeContext, string theName, AbstractShaderNode theValue, bool triggerChange = true) : this(nodeContext, theName, triggerChange)
+
+        public PassThroughNode(NodeContext nodeContext, AbstractShaderNode theValue, string theName = "PassThrough") : base(nodeContext, theName)
         {
+            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"PassThroughDefault");
             // ReSharper disable once VirtualMemberCallInConstructor
-            SetInput(theValue);
+            Input = theValue as ShaderNode<T>;
+            SetInputs(new List<AbstractShaderNode>{Input});
         }
         
         protected override string SourceTemplate()
@@ -45,11 +36,7 @@ namespace Fuse
             return "";
         }
 
-        public virtual void SetInput(AbstractShaderNode theValue)
-        {
-            Input = theValue as ShaderNode<T>;
-        }
-        public override string ID => _input.ID;
+        public override string ID => Input.ID;
         
         public override string TypeName()
         {
@@ -59,28 +46,15 @@ namespace Fuse
     
     public class PassThroughDelegate<T> : Delegate<T>
     {
-        private Delegate<T> _input;
 
-        private readonly bool _triggerChange;
-        public Delegate<T> Input { get => _input;
-            set
-            {
-                _input = value;
-                SetInputs(new List<AbstractShaderNode>{Input}, _triggerChange);
-            }
-        }
-        
-        public PassThroughDelegate(NodeContext nodeContext, string theName = "PassThrough", bool triggerChange = true) : base(nodeContext, theName)
-        {
-            Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(),"PassThroughDefault");
-            _triggerChange = triggerChange;
-            // ReSharper disable once VirtualMemberCallInConstructor
-        }
-        
-        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue, bool triggerChange = true) : this(nodeContext, theName, triggerChange)
+        public Delegate<T> Input { get; }
+
+        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, theName)
         {
             // ReSharper disable once VirtualMemberCallInConstructor
-            SetInput(theValue);
+            
+            Input = theValue as Delegate<T>;
+            SetInputs(new List<AbstractShaderNode>{Input});
         }
         
         protected override string SourceTemplate()
@@ -92,12 +66,7 @@ namespace Fuse
         {
             return "";
         }
-
-        public virtual void SetInput(IDelegate theValue)
-        {
-            Input = theValue as Delegate<T>;
-        }
-        public override string ID => _input.ID;
+        public override string ID => Input.ID;
         
         public override string TypeName()
         {
@@ -109,11 +78,7 @@ namespace Fuse
 
     public class PassVoid : PassThroughNode<GpuVoid>, IComputeVoid
     {
-        public PassVoid(NodeContext nodeContext, string theName = "PassThrough") : base(nodeContext, theName)
-        {
-        }
-
-        public PassVoid(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theName, theValue)
+        public PassVoid(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, theName)
         {
         }
     }
@@ -121,19 +86,8 @@ namespace Fuse
     public class Output<T> : ShaderNode<T>
     {
 
-        private AbstractShaderNode _input;
-        public Output(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base(nodeContext, "AddOutput", theDefault)
-        {
-            
-        }
-
-        public void SetInputs(AbstractShaderNode theComputation, ShaderNode<T> theValue)
-        {
-            _input = theValue;
-            SetInputs(new List<AbstractShaderNode>{theComputation, theValue});
-        }
-        
-        public void SetInputsAbstract(AbstractShaderNode theComputation, AbstractShaderNode theValue)
+        private readonly AbstractShaderNode _input;
+        public Output(NodeContext nodeContext, AbstractShaderNode theComputation, AbstractShaderNode theValue, ShaderNode<T> theDefault = null) : base(nodeContext, "AddOutput", theDefault)
         {
             _input = theValue;
             SetInputs(new List<AbstractShaderNode>{theComputation, theValue});
@@ -163,17 +117,11 @@ namespace Fuse
     public class Comment<T> : PassThroughNode<T>
     {
 
-        private string _comment;
+        private readonly string _comment;
         
-        public Comment(NodeContext nodeContext) : base(nodeContext, "Comment")
-        {
-            _comment = "";
-        }
-
-        public void SetInput(string theComment, ShaderNode<T> theIn)
+        public Comment(NodeContext nodeContext, string theComment, ShaderNode<T> theIn) : base(nodeContext, theIn, "Comment")
         {
             _comment = theComment;
-            base.SetInput(theIn);
         }
 
         protected override string SourceTemplate()
@@ -192,14 +140,8 @@ namespace Fuse
     {
 
         
-        public Do(NodeContext nodeContext) : base(nodeContext, "Do")
+        public Do(NodeContext nodeContext, ShaderNode<T> theIn, ShaderNode<GpuVoid> theCommand) : base(nodeContext, theIn,"Do")
         {
-        }
-
-        public void SetInput(ShaderNode<T> theIn, ShaderNode<GpuVoid> theCommand)
-        {
-            base.SetInput(theIn);
-            
             SetInputs(new List<AbstractShaderNode>{theCommand,Input});
         }
     }
@@ -207,15 +149,10 @@ namespace Fuse
     public class AddProperty<T> : PassThroughNode<T>
     {
         private readonly string _propertyId;
-        public AddProperty(NodeContext nodeContext, string thePropertyId) : base(nodeContext, "AddProperty")
+        public AddProperty(NodeContext nodeContext, ShaderNode<T> theIn, string thePropertyId, IList theResources) : base(nodeContext, theIn, "AddProperty")
         {
             _propertyId = thePropertyId;
-        }
-
-        public void SetProperties(IList theResources)
-        {
             AddProperties(_propertyId, theResources);
-            CallChangeEvent();
         }
     }
     
@@ -223,14 +160,14 @@ namespace Fuse
     
     public class InjectToRegion<T> : PassThroughNode<T>, IInjectToRegion
     {
-        public InjectToRegion(NodeContext nodeContext) : base(nodeContext, "InjectToRegion")
+        public InjectToRegion(NodeContext nodeContext, ShaderNode<T> theNode) : base(nodeContext, theNode, "InjectToRegion")
         {
         }
     }
     
     public class InjectToRegionDelegate<T> : PassThroughDelegate<T>, IInjectToRegion
     {
-        public InjectToRegionDelegate(NodeContext nodeContext) : base(nodeContext, "InjectToRegion")
+        public InjectToRegionDelegate(NodeContext nodeContext, Delegate<T> theDelegate) : base(nodeContext, "InjectToRegion",theDelegate)
         {
         }
     }
@@ -238,17 +175,13 @@ namespace Fuse
     public class AddToGraph<T>: ShaderNode<T>, IComputeVoid
     {
         private ShaderNode<T> _input;
-        public AddToGraph(NodeContext nodeContext, string name = "AddToGraph") : base(nodeContext, name)
+        public AddToGraph(NodeContext nodeContext, ShaderNode<T> theMain, IEnumerable<AbstractShaderNode> theInputs, string name = "AddToGraph") : base(nodeContext, name)
         {
             NullInputMode = HandleNullInputMode.Remove;
-        }
-
-        public void SetInput(ShaderNode<T> theMain, IEnumerable<AbstractShaderNode> theInputs, bool theCallChangeEvent = true)
-        {
             _input = theMain;
-            var ins = new List<AbstractShaderNode>() { theMain };
+            var ins = new List<AbstractShaderNode> { theMain };
             ins.AddRange(theInputs);
-            SetInputs(ins, theCallChangeEvent);
+            SetInputs(ins);
         }
 
         protected override string SourceTemplate()

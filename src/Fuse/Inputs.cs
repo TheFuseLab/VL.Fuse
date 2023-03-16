@@ -14,8 +14,6 @@ namespace Fuse{
     public interface IGpuInput : IComputeNode
     {
         void SetParameterValue(ParameterCollection theCollection);
-        
-        public void CheckDeclaration(bool theCallChangeEvent = true);
     }
     
     
@@ -31,8 +29,9 @@ namespace Fuse{
         {
         }
 
-        public void CheckDeclaration(bool theCallChangeEvent = true)
+        public bool CheckDeclaration()
         {
+            return false;
         }
 
         protected override string SourceTemplate()
@@ -146,8 +145,6 @@ namespace Fuse{
          }
          
          public abstract void SetParameterValue(ParameterCollection theCollection);
-
-         public abstract void CheckDeclaration(bool theCallChangeEvent = true);
      }
 
      public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>, ObjectParameterUpdater<T>> where T : class
@@ -175,61 +172,60 @@ namespace Fuse{
 
      }
 
-     public abstract class ChangeableObjectInput<T> : ObjectInput<T> where T : class
+     public abstract class GpuTypeTracker<T>
      {
-         private string _lastComputeDeclaration;
-         private string _lastDeclaration;
-         protected ChangeableObjectInput(NodeContext nodeContext, string theName) : base(nodeContext, theName)
+         protected GpuTypeTracker()
          {
-             _lastComputeDeclaration = "";
-             _lastDeclaration = "";
+             ComputeGpuType = "";
+             GpuType = "";
          }
 
-         public abstract string Declaration();
+         public string ComputeGpuType { get; private set; }
 
-         public abstract string ComputeDeclaration();
+         public string GpuType { get; private set; }
 
-         public override void CheckDeclaration(bool callChangeEvent = true)
+         protected abstract string DefineGpuType(T value);
+         protected abstract string DefineComputeGpuType(T value);
+         
+         public bool CheckDeclaration(T value)
          {
-             var declaration = Declaration();
-             var computeDeclaration = ComputeDeclaration();
+             var gpuType = DefineGpuType(value);
+             var computeGpuType = DefineComputeGpuType(value);
              
-             if (computeDeclaration.Equals(_lastComputeDeclaration) &&
-                 declaration.Equals(_lastDeclaration)) return;
+             if (computeGpuType.Equals(ComputeGpuType) &&
+                 gpuType.Equals(GpuType)) return false;
 
-             _lastComputeDeclaration = computeDeclaration;
-             _lastDeclaration = declaration;
-             SetFieldDeclaration(computeDeclaration, declaration);
-
-             if(callChangeEvent)CallChangeEvent();
+             ComputeGpuType = computeGpuType;
+             GpuType = gpuType;
+             return true;
          }
      }
 
-     public class TextureInput : ChangeableObjectInput<Texture>
+     public abstract class ChangeableObjectInput<T> : ObjectInput<T> where T : class
      {
-         private bool _useRw;
-         public TextureInput(NodeContext nodeContext) : base(nodeContext, "TextureInput")
+         
+         protected ChangeableObjectInput(NodeContext nodeContext, GpuTypeTracker<T> theTypeTracker, string theName) : base(nodeContext, theName)
          {
-             _useRw = false;
+             SetFieldDeclaration(theTypeTracker.ComputeGpuType, theTypeTracker.GpuType);
          }
-
-         public void SetInput(Texture theTexture, bool theUseRw, bool theCallChangeEvent = true)
+     }
+     
+     public class TextureTypeTracker:GpuTypeTracker<Texture>{
+         private readonly bool _useRw;
+         public TextureTypeTracker(bool theUseRw)
          {
-             Value = theTexture;
              _useRw = theUseRw;
-
-             CheckDeclaration(theCallChangeEvent);
          }
 
-         public override string Declaration()
+         protected override string DefineGpuType(Texture value)
          {
-             if (Value == null)
+             if (value == null)
              {
                  return "Texture1D";
              }
 
              return
-                 Value.Dimension switch
+                 value.Dimension switch
                  {
                      TextureDimension.Texture1D => "Texture1D",
                      TextureDimension.Texture2D => "Texture2D",
@@ -237,12 +233,19 @@ namespace Fuse{
                      TextureDimension.TextureCube => "TextureCube",
                      _ => "Texture2D"
                  };
-
          }
 
-         public override string ComputeDeclaration()
+         protected override string DefineComputeGpuType(Texture value)
          {
-             return Value == null ? "Texture1D" : TypeHelpers.TextureTypeName(Value, _useRw);
+             return value == null ? "Texture1D" : TypeHelpers.TextureTypeName(value, _useRw);
+         }
+     }
+
+     public class TextureInput : ChangeableObjectInput<Texture>
+     {
+         
+         public TextureInput(NodeContext nodeContext, TextureTypeTracker theTypeTracker) : base(nodeContext, theTypeTracker, "TextureInput")
+         {
          }
      }
      
@@ -252,97 +255,81 @@ namespace Fuse{
          {
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
+     }
 
-         public override void CheckDeclaration(bool theCallChangeEvent = true)
+     public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
+     {
+         private readonly bool _append;
+
+         private readonly bool _forceAppendConsume;
+         private readonly ShaderNode<T> _type;
+
+         public BufferTypeTracker(ShaderNode<T> theType, bool theAppend, bool theForceAppend)
          {
+             _type = theType;
+             _append = theAppend;
+             _forceAppendConsume = theForceAppend;
+         }
+
+         protected override string DefineGpuType(Buffer value)
+         {
+             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), _append, false, _forceAppendConsume);
+         }
+
+         protected override string DefineComputeGpuType(Buffer value)
+         {
+             return DefineGpuType(value);
          }
      }
 
      public class BufferInput<T>: ChangeableObjectInput<Buffer>, IBufferInput<T>
      {
-         private bool _append;
-
-         private bool _forceAppendConsume = false;
          
-         public ShaderNode<T> Type { get; private set; }
+         
+         public ShaderNode<T> Type { get;  }
 
-         public bool ForceAppendConsume { get=>_forceAppendConsume;
-             set
-             {
-                 _forceAppendConsume = value; 
-                 CheckDeclaration();
-             }
-         }
+         public bool Append { get; set; }
 
          public override string TypeName()
          {
              return Type == null ? TypeHelpers.GetGpuType<T>() : Type.TypeName();
          }
 
-         public BufferInput(NodeContext nodeContext, ShaderNode<T> theType) : base(nodeContext, "DynamicBufferInput")
+         public BufferInput(NodeContext nodeContext, BufferTypeTracker<T> theTypeTracker, ShaderNode<T> theType) : base(nodeContext, theTypeTracker, "DynamicBufferInput")
          {
-             ForceAppendConsume = false;
-             SetInput(null,   theType);
-         }
-
-         public bool Append { 
-             get => _append;
-             set
-             {
-                 _append = value; 
-                 CheckDeclaration();
-             }
-         }
-
-         public void SetInput(Buffer theBuffer, ShaderNode<T> theType)
-         {
-             Value = theBuffer;
+             Value = null;
              Type = theType;
-             if(theType != null)SetInputs(new List<AbstractShaderNode>{theType}, false);
-             CheckDeclaration();
          }
 
-         public override string Declaration()
-         {
-             return TypeHelpers.BufferTypeName(Value, Type == null ? TypeHelpers.GetGpuType<T>() : Type.TypeName(), Append, false, ForceAppendConsume);
-         }
-
-         public override string ComputeDeclaration()
-         {
-             return Declaration();
-         }
      }
      
+     /*
      public class TypedBufferInput<T>: ChangeableObjectInput<Buffer<T>> where T : unmanaged
      {
-         private bool _append;
 
-         public bool ForceAppendConsume { get; set; }
-
-         public TypedBufferInput(NodeContext nodeContext) : base(nodeContext, "BufferInput")
+         public TypedBufferInput(NodeContext nodeContext, BufferTypeTracker<T> theTypeTracker) : base(nodeContext,theTypeTracker, "BufferInput")
          {
-             ForceAppendConsume = false;
              SetInput(null, true);
          }
 
-         public void SetInput(Buffer<T> theBuffer,  bool theAppend)
+         public bool SetInput(Buffer<T> theBuffer,  bool theAppend)
          {
              Value = theBuffer;
              _append = theAppend;
              
-             CheckDeclaration();
+             return CheckDeclaration();
          }
          
-         public override string Declaration()
+         public override string DeclarationType()
          {
              return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuType<T>(), _append, false, ForceAppendConsume);
          }
 
-         public override string ComputeDeclaration()
+         public override string ComputeDeclarationType()
          {
-             return Declaration();
+             return DeclarationType();
          }
-     }
+     }*/
      
     public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>> where T : struct 
     {
@@ -375,10 +362,6 @@ namespace Fuse{
         public override void SetParameterValue(ParameterCollection theCollection)
         {
             theCollection.Set(ParameterKey, Value);
-        }
-
-        public override void CheckDeclaration(bool theCallChangeEvent = true)
-        {
         }
     }
     /*

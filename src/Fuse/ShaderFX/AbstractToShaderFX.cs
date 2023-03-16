@@ -23,19 +23,12 @@ namespace Fuse.ShaderFX
         public AbstractStage(string theKey, AbstractShaderNode theShaderNode)
         {
             Key = theKey;
-            SetInput(theShaderNode);
+            StageNode = theShaderNode;
             Ticket = 0;
         }
 
         public virtual void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
-        }
-
-        public void SetInput(AbstractShaderNode theShaderNode)
-        {
-            StageNode?.RemoveChangeGraph(this);
-            StageNode = theShaderNode;
-            StageNode?.AddChangeGraph(this);
         }
 
         public abstract string Source();
@@ -285,7 +278,8 @@ namespace Fuse.ShaderFX
             ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
             // ReSharper disable once VirtualMemberCallInConstructor
             ShaderCode = CheckCode(ShaderCode);
-            ShaderName = "Shader_" + Math.Abs(ShaderNodesUtil.GetStableHashCode(ShaderCode));
+            ShaderCode = ShaderNodesUtil.FormatShaderCode(ShaderCode);
+            ShaderName = "Shader_" + Math.Abs(ShaderCode.GetStableHashCode());
             //ShaderName = "Shader_" + ShaderNodesUtil.GetHashCode(_input.NodeContext);
             ShaderCode = ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string>{{"shaderID",ShaderName}});
             

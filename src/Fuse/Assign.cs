@@ -7,25 +7,14 @@ namespace Fuse
 {
     public class AssignValue<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
-        private ShaderNode<T> _target;
-        private ShaderNode<T> _source;
-        
-        public AssignValue(NodeContext nodeContext) : base(nodeContext, "Assign")
-        {
-        }
-        
+        private readonly ShaderNode<T> _target;
+        private readonly ShaderNode<T> _source;
+
         public AssignValue(NodeContext nodeContext, ShaderNode<T> theTarget, ShaderNode<T> theSource) : base(nodeContext, "Assign")
         {
-            SetInputs(theTarget, theSource);
-        }
-
-        public void SetInputs(ShaderNode<T> theTarget, ShaderNode<T> theSource)
-        {
-            if(_target != null)_target.WriteCounter--;
             _target = theTarget;
-            _target.WriteCounter++;
             _source = theSource;
-            SetInputs(new List<AbstractShaderNode>{theTarget,theSource});
+            SetInputs(new List<AbstractShaderNode>{_target,_source});
         }
         
         protected override string GenerateDefaultSource()
@@ -52,21 +41,11 @@ namespace Fuse
     public class SetMember<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
 
-        private ShaderNode<T> _object;
-        private AbstractShaderNode _value;
-        private string _member;
-        
-        public SetMember(NodeContext nodeContext) : base(nodeContext, "SetMember")
-        {
-            
-        }
-        
-        public SetMember(NodeContext nodeContext,ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base(nodeContext, "SetMember")
-        {
-            SetInputs(theObject,theMember,theValue);
-        }
+        private readonly ShaderNode<T> _object;
+        private readonly AbstractShaderNode _value;
+        private readonly string _member;
 
-        public void SetInputs(ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue)
+        public SetMember(NodeContext nodeContext,ShaderNode<T> theObject, string theMember, AbstractShaderNode theValue) : base(nodeContext, "SetMember")
         {
             _object = theObject;
             _member = theMember;
@@ -91,16 +70,11 @@ namespace Fuse
     
     public class SetItem<T, TValue> : ShaderNode<GpuVoid>, IComputeVoid  where TValue :struct
     {
-        private ShaderNode<T> _target;
-        private ShaderNode<int> _index;
-        private ShaderNode<TValue> _value;
+        private readonly ShaderNode<T> _target;
+        private readonly ShaderNode<int> _index;
+        private readonly ShaderNode<TValue> _value;
         
-        public SetItem(NodeContext nodeContext) : base( nodeContext, "setItem")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<T> theTarget, ShaderNode<int> theIndex, ShaderNode<TValue> theValue)
+        public SetItem(NodeContext nodeContext, ShaderNode<T> theTarget, ShaderNode<int> theIndex, ShaderNode<TValue> theValue) : base( nodeContext, "setItem")
         {
             _target = theTarget;
             _index = theIndex;

@@ -39,7 +39,7 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
         crossLinks.ForEach(c =>
         {
             if (c is null or IInjectToRegion) return;
-            if (ShaderNodesUtil.IsFunctionNode(c)) return;
+            if (TypeHelpers.IsDelegate(c)) return;
             myCrossLinks.Add(c);
         });
 
@@ -85,11 +85,8 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
             }
         }
 
-        var inCall = new Group(subContextFactory.NextSubContext());
-        inCall.SetInput(myInputs);
-
-        var crossLinkCall = new Group(subContextFactory.NextSubContext());
-        crossLinkCall.SetInput(myCrossLinks);
+        var inCall = new Group(subContextFactory.NextSubContext(),myInputs);
+        var crossLinkCall = new Group(subContextFactory.NextSubContext(), myCrossLinks);
 
         for (var i = 0; i < outputs.Count; i++)
         {

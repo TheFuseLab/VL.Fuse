@@ -10,14 +10,9 @@ namespace Fuse.compute
     
     public class DynamicStruct<T>: ShaderNode<T>
     {
-        private string _structName;
+        private readonly string _structName;
         
-        public DynamicStruct(NodeContext nodeContext, T instance) : base(nodeContext, "GPUAttributeStruct")
-        {
-            
-        }
-
-        public void SetInput(IEnumerable<AbstractShaderNode> theInputs, string theName)
+        public DynamicStruct(NodeContext nodeContext,IEnumerable<AbstractShaderNode> theInputs, string theName, T instance) : base(nodeContext, "GPUAttributeStruct")
         {
             _structName = theName;
             
@@ -50,10 +45,9 @@ ${structMembers}
         }
 
         private string _sourceTemplate = "";
-
-        public void SetInput(Dictionary<string,AbstractShaderNode> theInputs)
+        
+        public DynamicStruct(NodeContext nodeContext,Dictionary<string,AbstractShaderNode> theInputs, T instance) : base(nodeContext, "GPUAttributeStruct")
         {
-            //_name = typeof(T).Name;
             _structName = TypeHelpers.GetGpuType<T>();
             Name = ShaderNodesUtil.FirstLetterToLower(_structName);
             

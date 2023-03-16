@@ -58,11 +58,11 @@ namespace Fuse
         public static bool TimeShaderGeneration = true;
 
         public static string DebugIdent = ". ";
-        
+        /*
         public static bool IsFunctionNode(AbstractShaderNode theNode)
         {
             return theNode.Outs.Select(output => output.GetType()).Any(objectType => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Invoke<>));
-        }
+        }*/
 
         public static string BuildArguments(IEnumerable<AbstractShaderNode> inputs)
         {
@@ -158,6 +158,55 @@ namespace Fuse
         {
             return theName.Replace(".","").Replace(" ","");
         }
+        
+        public static string FormatShaderCode(string shaderCode)
+        {
+            var formattedCode = new StringBuilder();
+            var indentLevel = 0;
+            const string indentString = "    "; // You can adjust this to your preferred indentation (e.g., two spaces or a tab)
+            var previousLineWasBlank = false;
+
+            using (var reader = new StringReader(shaderCode))
+            {
+                while (reader.ReadLine() is { } line)
+                {
+                    line = line.Trim();
+
+                    if (line.Length == 0) // Current line is blank
+                    {
+                        if (!previousLineWasBlank) // Add a blank line only if the previous line wasn't blank
+                        {
+                            formattedCode.AppendLine();
+                            previousLineWasBlank = true;
+                        }
+                        continue;
+                    }
+
+                    previousLineWasBlank = false; // Reset the flag since the current line is not blank
+                    
+                    // Decrease indent level if line contains a closing brace
+                    if (line.Contains('}')){
+                        indentLevel--;
+                        indentLevel = Math.Max(indentLevel, 0); // Ensure indentLevel is never negative
+                    }
+                    
+                    // Append indented line to the formatted code
+                    formattedCode.AppendLine($"{new string(indentString[0], indentLevel * indentString.Length)}{line}");
+                    
+                    // Increase indent level if line contains an opening brace
+                    if (line.Contains('{'))
+                        indentLevel++;
+
+                    
+
+                    
+
+                }
+            }
+
+            return formattedCode.ToString();
+        }
+
 
         public static void AddShaderSource(string type, string sourceCode, string sourcePath)
         {
@@ -312,23 +361,6 @@ namespace Fuse
         {
             unchecked{
                 return (uint)GetStableHashCode(nodeContext.Path.ToString());
-            }
-        }
-
-        public static void ReplaceNode(AbstractShaderNode theOrigin, AbstractShaderNode theReplacement)
-        {
-            var myConnectedNodes = new List<AbstractShaderNode>(theOrigin.Outs);
-
-            foreach (var myConnectedNode in myConnectedNodes)
-            {
-                for (var i = 0; i < myConnectedNode.Ins.Count; i++)
-                {
-                    if (myConnectedNode.Ins[i] != theOrigin) continue;
-                    
-                    theOrigin.Outs.Remove(myConnectedNode);
-                    myConnectedNode.Ins[i] = theReplacement;
-                    theReplacement.Outs.Add(myConnectedNode);
-                }
             }
         }
     }

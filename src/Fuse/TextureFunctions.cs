@@ -15,29 +15,21 @@ namespace Fuse
 
     public class TextureGetDimensions : ShaderNode<GpuVoid>
     {
-        private ShaderNode<Texture> _texture;
-        private List<AbstractShaderNode> _arguments;
-        private ShaderNode<int> _mipLevel;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly List<AbstractShaderNode> _arguments;
 
-        private readonly int _dimension;
-
-        public TextureGetDimensions(NodeContext nodeContext, int dimension) : base(nodeContext, "textureGetDimension")
+        public TextureGetDimensions(NodeContext nodeContext, int dimension, ShaderNode<Texture> theTexture, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
         {
-            _dimension = dimension;
             OptionalOutputs = new List<AbstractShaderNode>();
-        }
-
-        public void SetInput(ShaderNode<Texture> theTexture, ShaderNode<int> mipLevel)
-        {
+            
             _texture = theTexture;
-            _mipLevel = mipLevel;
 
             OptionalOutputs.Clear();
 
-           _arguments = new List<AbstractShaderNode>{_mipLevel};
-            var myInputs = new List<AbstractShaderNode> {_texture, _mipLevel};
+            _arguments = new List<AbstractShaderNode> { mipLevel };
+            var myInputs = new List<AbstractShaderNode> {_texture, mipLevel};
             var factory = new NodeSubContextFactory(NodeContext);
-            for (var i = 0; i < _dimension + 1; i++)
+            for (var i = 0; i < dimension + 1; i++)
             {
                 var myDeclareValue = new DeclareValue<float>(factory.NextSubContext());
                 myInputs.Add(myDeclareValue);
@@ -60,22 +52,18 @@ namespace Fuse
 
     public class TextureFunction<T> : ShaderNode<T>
     {
-        private ShaderNode<Texture> _texture;
-        private List<AbstractShaderNode> _arguments;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly List<AbstractShaderNode> _arguments;
         private readonly string _functionName;
 
         public TextureFunction(
             NodeContext nodeContext, 
             string theFunction,
+            ShaderNode<Texture> theTexture,
+            IEnumerable<AbstractShaderNode> theArguments,
             ShaderNode<T> theDefault) : base(nodeContext, "textureNode", theDefault)
         {
             _functionName = theFunction;
-        }
-
-        public void SetInput(
-            ShaderNode<Texture> theTexture,
-            IEnumerable<AbstractShaderNode> theArguments)
-        {
             _texture = theTexture;
             _arguments = theArguments.ToList();
 

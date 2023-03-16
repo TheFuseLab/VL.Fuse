@@ -26,7 +26,7 @@ namespace Fuse.regions
             bool theLoop,
             bool theUnroll,
             int theUnrollLoops,
-            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, "ForGroup")
+            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext,theInputs, "ForGroup")
         {
             Name = "ForGroup";
             _parentRegion = parentRegion;
@@ -36,8 +36,6 @@ namespace Fuse.regions
             _loop = theLoop;
             _unroll = theUnroll;
             _unrollLoops = theUnrollLoops;
-
-            SetInputs(theInputs);
         }
 
         private string BuildAttributes()

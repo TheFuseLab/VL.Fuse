@@ -49,24 +49,13 @@ namespace Fuse
     
     public class ConstantValue<T>: ShaderNode<T>
     {
-        private T _value;
         public ConstantValue(T theValue) : base(NodeContext.Default, "constant", null, false)
         {
-            _value = theValue;
+            Value = theValue;
         }
 
 
-        public T Value
-        {
-            get => _value;
-            set
-            {
-                if (value == null) return;
-                if (value.Equals(_value)) return;
-                _value = value;
-                CallChangeEvent();
-            }
-        }
+        public T Value { get; }
 
         public override string ID => TypeHelpers.GetDefaultForType(Value);
         public override string TypeName()

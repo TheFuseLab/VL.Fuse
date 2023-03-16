@@ -218,33 +218,16 @@ namespace Fuse
         SetOff
     }
 
-    public abstract class AbstractShaderNode : IComputeNode, IDisposable
+    public abstract class AbstractShaderNode : IComputeNode
     {
         public List<AbstractShaderNode> Ins = new();
         // Used for out parameters to trigger code generation
-
-        public readonly List<AbstractShaderNode> Outs = new();
         
-        public readonly List<IChangeGraph> ChangeGraphListener = new();
         public readonly List<IPrepareGraph> PrepareGraphListener = new();
         public readonly List<ICompileGraph> CompileGraphListener = new();
 
         public readonly NodeContext NodeContext;
 
-        public int WriteCounter { get; set; }
-
-        public int ReadCounter => Outs.Count;
-
-        public void AddChangeGraph(IChangeGraph theDelegate)
-        {
-            ChangeGraphListener.Add(theDelegate);
-        }
-        
-        public void RemoveChangeGraph(IChangeGraph theDelegate)
-        {
-            ChangeGraphListener.Remove(theDelegate);
-        }
-        
         public void AddPrepareGraph(IPrepareGraph theDelegate)
         {
             PrepareGraphListener.Add(theDelegate);
@@ -287,7 +270,6 @@ namespace Fuse
             NodeContext = nodeContext;
             Name = theId;
             HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
-            WriteCounter = 0;
         }
         
         public virtual IDictionary<string,string> Functions
@@ -297,20 +279,6 @@ namespace Fuse
         }
 
         private const string DefaultShaderCode = "${resultType} ${resultName};";
-
-        
-        public void CallChangeEvent()
-        {
-            foreach (var listener in new List<IChangeGraph>(ChangeGraphListener))
-            {
-                listener.ChangeGraph(this);
-            }
-            
-            foreach (var output in new List<AbstractShaderNode>(Outs))
-            {
-                output.CallChangeEvent();
-            }
-        }
 
         public void CallCompileGraph()
         {
@@ -342,15 +310,10 @@ namespace Fuse
         
         private bool _hasNullInput;
 
-        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns, bool theCallChangeEvent = true)
+        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
         {
             if (Ins.SequenceEqual(theIns)) return;
-
-            foreach (var input in Ins)
-            {
-                input.Outs.Remove(this);
-            }
-
+            
             _hasNullInput = false;
             Ins = new List<AbstractShaderNode>();
             theIns.ForEach(input =>
@@ -370,13 +333,6 @@ namespace Fuse
                 }
                 
             });
-            
-            foreach (var input in Ins)
-            {
-                input.Outs.Add(this);
-            }
-            
-            if(theCallChangeEvent)CallChangeEvent();
         }
 
         public void AddInput(AbstractShaderNode theInput)
@@ -628,14 +584,6 @@ namespace Fuse
             var visitor = new FunctionMapVisitor();
             PreOrderVisit(visitor);
             return visitor.Result;
-        }
-
-        public void Dispose()
-        {
-            foreach (var node in Ins)
-            {
-                node.Outs.Remove(this);
-            }
         }
     }
     

@@ -38,7 +38,7 @@ namespace Fuse.ComputeSystem
     
     public abstract class Attribute<T> : PassThroughNode<T>, IAttribute
     {
-        public Attribute(NodeContext nodeContext, string theName, AttributeType theType) : base(nodeContext, theName, false)
+        public Attribute(NodeContext nodeContext, string theName, AttributeType theType,AbstractShaderNode theValue = null) : base(nodeContext, theValue, theName)
         {
             AttributeType = theType;
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
@@ -47,6 +47,11 @@ namespace Fuse.ComputeSystem
         }
         public AttributeType AttributeType { get; }
         public AbstractShaderNode ShaderNode { get; }
+
+        public void SetInput(AbstractShaderNode theNode)
+        {
+            throw new NotImplementedException();
+        }
 
         public ShaderNode<GpuVoid> WriteCall { get; set; }
         
@@ -71,7 +76,7 @@ namespace Fuse.ComputeSystem
 
         public override Int3 Resolution => new(1);
     }
-
+/*
     public class AppendBufferAttribute : Attribute<BufferInput<int>>
     {
 
@@ -82,7 +87,7 @@ namespace Fuse.ComputeSystem
             set
             {
                 _appendBuffer = value;
-                AppendBufferGpu.SetInput(value,null);
+                AppendBufferGpu.Value =value;
             }
         }
         
@@ -92,7 +97,7 @@ namespace Fuse.ComputeSystem
             set
             {
                 _dispatchArgsBuffer = value;
-                DispatchArgsBufferGpu.SetInput(value,null);
+                DispatchArgsBufferGpu.Value = value;
             }
         }
         
@@ -113,5 +118,5 @@ namespace Fuse.ComputeSystem
             DispatchArgsBufferGpu = new BufferInput<int>(nodeSubContextFactory.NextSubContext(), new ConstantValue<int>(0));
             DispatchArgsBufferGpu.AddProperty("ComputeSystemAttribute", this);
         }
-    }
+    }*/
 }

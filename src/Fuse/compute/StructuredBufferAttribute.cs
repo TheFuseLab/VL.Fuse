@@ -68,12 +68,10 @@ namespace Fuse.compute
                 IsOverridden = false;
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext());
-                getMember.SetInput(Name, theInstance);
+                var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext(), theInstance,Name);
                 SetInput(getMember);
                 IsOverridden = true;
             }
-            CallChangeEvent();
         }
 
         public List<string> Description {

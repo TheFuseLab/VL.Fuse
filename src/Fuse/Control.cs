@@ -10,15 +10,10 @@ namespace Fuse
 {
     public class SwitchBoolean<T> : ResultNode<T>
     {
-        private ShaderNode<bool> _inCheck;
-        private ShaderNode<T> _inFalse;
-        private ShaderNode<T> _inTrue;
-        public SwitchBoolean(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base(nodeContext, "expression", theDefault)
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue)
+        private readonly ShaderNode<bool> _inCheck;
+        private readonly ShaderNode<T> _inFalse;
+        private readonly ShaderNode<T> _inTrue;
+        public SwitchBoolean(NodeContext nodeContext, ShaderNode<bool> inCheck, ShaderNode<T> inFalse, ShaderNode<T> inTrue, ShaderNode<T> theDefault = null) : base(nodeContext, "expression", theDefault)
         {
             var ins = new List<AbstractShaderNode>(){inCheck};
             _inCheck = inCheck;
@@ -53,16 +48,10 @@ ${cases}
     }
         ";
 
-        private ShaderNode<T> _default;
-        private List<ShaderNode<T>> _cases;
-        private ShaderNode<int> _check;
-        public SwitchNumeric(NodeContext nodeContext) : base(nodeContext, "numericSwitch")
-        {
-            
-            
-        }
-
-        public void SetInputs(ShaderNode<int> theCheck, IEnumerable<ShaderNode<T>> inputs, ShaderNode<T> theDefault)
+        private readonly ShaderNode<T> _default;
+        private readonly List<ShaderNode<T>> _cases;
+        private readonly ShaderNode<int> _check;
+        public SwitchNumeric(NodeContext nodeContext, ShaderNode<int> theCheck, IEnumerable<ShaderNode<T>> inputs, ShaderNode<T> theDefault) : base(nodeContext, "numericSwitch")
         {
             _check = theCheck;
             _cases = inputs.ToList();
@@ -73,11 +62,7 @@ ${cases}
             {
                 myIns.Add(theDefault);
             }
-            
-            var myKeyMap = new Dictionary<string, string>
-            {
-                {"check", theCheck.ID}
-            };
+
             SetInputs(myIns);
         }
         
@@ -117,16 +102,9 @@ ${cases}
     
     public class Not: ResultNode<bool>
     {
-        private ShaderNode<bool> _in;
+        private readonly ShaderNode<bool> _in;
 
-        public Not(NodeContext nodeContext) : base(nodeContext, "not")
-        {
-            _in = Default;
-            
-            SetInputs( new List<AbstractShaderNode>{_in});
-        }
-
-        public void SetInput(ShaderNode<bool> theIn)
+        public Not(NodeContext nodeContext, ShaderNode<bool> theIn) : base(nodeContext, "not")
         {
             _in = theIn ?? Default;
             
@@ -146,7 +124,7 @@ ${cases}
     public class SimpleKeyword : ShaderNode<GpuVoid>, IComputeVoid
     {
 
-        private string _keyword;
+        private readonly string _keyword;
 
         protected SimpleKeyword(NodeContext nodeContext, string theKeyword) : base( nodeContext, "void")
         {

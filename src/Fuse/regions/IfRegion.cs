@@ -13,12 +13,10 @@ namespace Fuse.regions
         public IfGroup(
             NodeContext nodeContext,
             ShaderNode<bool> inCheck,
-            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, "IfGroup")
+            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs,"IfGroup")
         {
             Name = "IfGroup";
             _inCheck = inCheck;
-
-            SetInputs(theInputs);
         }
 
         protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)

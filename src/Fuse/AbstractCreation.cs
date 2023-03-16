@@ -102,18 +102,10 @@ namespace Fuse
         {
             return CreateAbstract(theValue, typeof(DeclareValue<>), new object[] {theSubContextFactory.NextSubContext(), theValue});
         }
-
-        public static void CallFunction(AbstractShaderNode theNode, string theFunctionName, object[] theArgs)
-        {
-            var resultType = theNode.GetType();
-            var method = resultType.GetMethod(theFunctionName);
-            method?.Invoke(theNode, theArgs);
-        }
         
         public static AbstractShaderNode AbstractOutput(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theComputation, AbstractShaderNode theOutput)
         {
-            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {theSubContextFactory.NextSubContext(), null});
-            CallFunction(result,"SetInputsAbstract",new object[]{ theComputation, theOutput});
+            var result = CreateAbstract(theOutput, typeof(Output<>), new object[] {theSubContextFactory.NextSubContext(),theComputation, theOutput, null});
             return result;
         }
         

@@ -10,22 +10,11 @@ namespace Fuse.compute
 
     public class ComputeTextureGet<TIndex,T> : ShaderNode<T> where T : struct
     {
-        private ShaderNode<Texture> _texture;
-        private ShaderNode<TIndex> _index;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly ShaderNode<TIndex> _index;
         
-        public ComputeTextureGet(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
-        {
-            
-        }
         
         public ComputeTextureGet(NodeContext nodeContext, ShaderNode<Texture> theTexture, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
-        {
-            _texture = theTexture;
-            _index = theIndex;
-            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex});
-        }
-
-        public void SetInputs(ShaderNode<Texture> theTexture, ShaderNode<TIndex> theIndex)
         {
             _texture = theTexture;
             _index = theIndex;
@@ -45,22 +34,18 @@ namespace Fuse.compute
     
     public class TextureAttributeFunction<T> : ShaderNode<T>
     {
-        private ShaderNode<T> _textureAttribute;
-        private List<AbstractShaderNode> _arguments;
+        private readonly ShaderNode<T> _textureAttribute;
+        private readonly List<AbstractShaderNode> _arguments;
         private readonly string _functionName;
 
         public TextureAttributeFunction(
             NodeContext nodeContext, 
             string theFunction,
+            ShaderNode<T> theTextureAttribute,
+            IEnumerable<AbstractShaderNode> theArguments,
             ShaderNode<T> theDefault) : base(nodeContext, "textureNode", theDefault)
         {
             _functionName = theFunction;
-        }
-
-        public void SetInput(
-            ShaderNode<T> theTextureAttribute,
-            IEnumerable<AbstractShaderNode> theArguments)
-        {
             _textureAttribute = theTextureAttribute;
             _arguments = theArguments.ToList();
 
@@ -104,22 +89,10 @@ namespace Fuse.compute
     
     public class ComputeTextureAttributeGet<TIndex,T> : ShaderNode<T> where T : struct
     {
-        private ShaderNode<T> _textureAttribute;
-        private ShaderNode<TIndex> _index;
-        
-        public ComputeTextureAttributeGet(NodeContext nodeContext, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
-        {
-            
-        }
-        
-        public ComputeTextureAttributeGet(NodeContext nodeContext, ShaderNode<T> theTextureAttribute, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
-        {
-            _textureAttribute = theTextureAttribute;
-            _index = theIndex;
-            SetInputs(new List<AbstractShaderNode>{theTextureAttribute,theIndex});
-        }
+        private readonly ShaderNode<T> _textureAttribute;
+        private readonly ShaderNode<TIndex> _index;
 
-        public void SetInputs(ShaderNode<T> theTextureAttribute, ShaderNode<TIndex> theIndex)
+        public ComputeTextureAttributeGet(NodeContext nodeContext, ShaderNode<T> theTextureAttribute, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
         {
             _textureAttribute = theTextureAttribute;
             _index = theIndex;
@@ -152,9 +125,9 @@ namespace Fuse.compute
 
     public class ComputeTextureSet<TIndex, T> : ShaderNode<GpuVoid>, IComputeVoid where T : struct
     {
-        private ShaderNode<Texture> _texture;
-        private AbstractShaderNode _index;
-        private ShaderNode<T> _value;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly AbstractShaderNode _index;
+        private readonly ShaderNode<T> _value;
     
         public ComputeTextureSet(NodeContext nodeContext) : base( nodeContext, "setTextureValue")
         {
@@ -166,14 +139,6 @@ namespace Fuse.compute
             ShaderNode<Texture> theTexture, 
             ShaderNode<TIndex> theIndex, 
             ShaderNode<T> theValue) : base( nodeContext, "setTextureValue")
-        {
-            SetInputs(theTexture, theIndex, theValue);
-        }
-
-        public void SetInputs(
-            ShaderNode<Texture> theTexture, 
-            ShaderNode<TIndex> theIndex, 
-            ShaderNode<T> theValue)
         {
             _texture = theTexture;
             _index = theIndex;
@@ -211,18 +176,15 @@ namespace Fuse.compute
     
     public class ComputeTextureAbstractSet : ShaderNode<GpuVoid> 
     {
-        private ShaderNode<Texture> _texture;
-        private AbstractShaderNode _index;
-        private AbstractShaderNode _value;
+        private readonly ShaderNode<Texture> _texture;
+        private readonly AbstractShaderNode _index;
+        private readonly AbstractShaderNode _value;
     
-        public ComputeTextureAbstractSet(NodeContext nodeContext) : base( nodeContext, "setTextureValue")
-        {
-           
-        }
-
-        public void SetInputs(ShaderNode<Texture> theTexture, 
+        public ComputeTextureAbstractSet(
+            NodeContext nodeContext,
+            ShaderNode<Texture> theTexture, 
             AbstractShaderNode theIndex,
-            AbstractShaderNode theValue)
+            AbstractShaderNode theValue) : base( nodeContext, "setTextureValue")
         {
             _texture = theTexture;
             _index = theIndex;
@@ -255,28 +217,18 @@ namespace Fuse.compute
     
     public class TextureAttributeGetDimensions : ShaderNode<GpuVoid>
     {
-        private AbstractShaderNode _textureAttribute;
-        private List<AbstractShaderNode> _arguments;
-        private ShaderNode<int> _mipLevel;
+        private readonly AbstractShaderNode _textureAttribute;
+        private readonly List<AbstractShaderNode> _arguments;
 
-        private readonly int _dimension;
-
-        public TextureAttributeGetDimensions(NodeContext nodeContext, int dimension) : base(nodeContext, "textureGetDimension")
+        public TextureAttributeGetDimensions(NodeContext nodeContext, int dimension, AbstractShaderNode theTextureAttribute, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
         {
-            _dimension = dimension;
             OptionalOutputs = new List<AbstractShaderNode>();
-        }
-
-        public void SetInput(AbstractShaderNode theTextureAttribute, ShaderNode<int> mipLevel)
-        {
             _textureAttribute = theTextureAttribute;
-            _mipLevel = mipLevel;
-            OptionalOutputs.Clear();
 
-            _arguments = new List<AbstractShaderNode>{_mipLevel};
-            var myInputs = new List<AbstractShaderNode> {_textureAttribute, _mipLevel};
+            _arguments = new List<AbstractShaderNode>{mipLevel};
+            var myInputs = new List<AbstractShaderNode> {_textureAttribute, mipLevel};
             var factory = new NodeSubContextFactory(NodeContext);
-            for (var i = 0; i < _dimension + 1; i++)
+            for (var i = 0; i < dimension + 1; i++)
             {
                 var myDeclareValue = new DeclareValue<float>(factory.NextSubContext());
                 myInputs.Add(myDeclareValue);

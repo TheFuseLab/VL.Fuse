@@ -12,11 +12,7 @@ namespace Fuse
 
         private string _sourceTemplate = "";
         
-        public Array(NodeContext nodeContext) : base(nodeContext, "Array")
-        {
-        }
-        
-        public void SetConstantInput(ICollection<T> theInputs)
+        public Array(NodeContext nodeContext, ICollection<T> theInputs) : base(nodeContext, "Array")
         {
             _sourceTemplate = "";
             
@@ -40,8 +36,8 @@ ${arrayContent}
             Size = theInputs.Count; 
             SetProperty(ConstantArrays, constantArrayString);
         }
-
-        public void SetDynamicInput(int theSize)
+        
+        public Array(NodeContext nodeContext, int theSize) : base(nodeContext, "Array")
         {
             const string shaderCode = 
                 @"    ${arrayType} ${arrayName}[${arraySize}];" ;
@@ -54,8 +50,7 @@ ${arrayContent}
             });
             Size = theSize; 
         }
-
-        public void SetDynamicInput(ICollection<ShaderNode<T>> theInputs)
+        public Array(NodeContext nodeContext, ICollection<ShaderNode<T>> theInputs) : base(nodeContext, "Array")
         {
             
             var content = new StringBuilder("    ${arrayType} ${arrayName}[${arraySize}];"+Environment.NewLine);
@@ -83,20 +78,15 @@ ${arrayContent}
             return _sourceTemplate;
         }
 
-        public int Size { get; private set; }
+        public int Size { get; }
     }
     
     public class ArrayGet<T> : ShaderNode<T>  where T :struct
     {
-        private Array<T> _array;
-        private ShaderNode<int> _index;
+        private readonly Array<T> _array;
+        private readonly ShaderNode<int> _index;
         
-        public ArrayGet(NodeContext nodeContext) : base( nodeContext, "getItem")
-        {
-            
-        }
-
-        public void SetInputs(Array<T> theArray, ShaderNode<int> theIndex)
+        public ArrayGet(NodeContext nodeContext, Array<T> theArray, ShaderNode<int> theIndex) : base( nodeContext, "getItem")
         {
             _array = theArray;
             _index = theIndex;

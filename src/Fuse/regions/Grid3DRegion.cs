@@ -26,7 +26,7 @@ namespace Fuse.regions
             ShaderNode<Int3> gridDim,
             BufferInput<Int2> gridIndices,
             BufferInput<Int2> elementIndices,
-            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, "Grid3DGroup")
+            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "Grid3DGroup")
         {
             Name = "Grid3DGroup";
             _parentRegion = parentRegion;
@@ -35,8 +35,6 @@ namespace Fuse.regions
 
             _gridIndices = gridIndices;
             _elementIndices = elementIndices;
-
-            SetInputs(theInputs);
         }
 
         protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)

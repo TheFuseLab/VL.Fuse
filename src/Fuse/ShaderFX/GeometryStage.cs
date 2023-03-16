@@ -119,14 +119,9 @@ namespace Fuse
     
     public class SetStreams : ShaderNode<GpuVoid> , IComputeVoid
     {
-        private ShaderNode<int> _index;
+        private readonly ShaderNode<int> _index;
         
-        public SetStreams(NodeContext nodeContext) : base( nodeContext, "getStream")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<int> theIndex)
+        public SetStreams(NodeContext nodeContext, ShaderNode<int> theIndex) : base( nodeContext, "getStream")
         {
             _index = theIndex;
             
@@ -146,15 +141,10 @@ namespace Fuse
     
     public class GetStreamMember<T> : ShaderNode<T>
     {
-        private ShaderNode<int> _index;
-        private string _member;
+        private readonly ShaderNode<int> _index;
+        private readonly string _member;
         
-        public GetStreamMember(NodeContext nodeContext) : base( nodeContext, "getStream")
-        {
-            
-        }
-
-        public void SetInputs(ShaderNode<int> theIndex, string theMember)
+        public GetStreamMember(NodeContext nodeContext, ShaderNode<int> theIndex, string theMember) : base( nodeContext, "getStream")
         {
             _index = theIndex;
             _member = theMember;

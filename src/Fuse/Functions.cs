@@ -12,49 +12,28 @@ namespace Fuse
     {
         private bool _isGroupable;
 
-        private int _groupOptions;
+        private readonly int _groupOptions;
 
         private readonly IEnumerable<InputModifier> _modifiers;
 
-        private string _functionName;
-
-        public virtual string FunctionName
-        {
-            get => _functionName;
-            
-        }
+        public virtual string FunctionName { get; }
 
         protected AbstractFunction(
             NodeContext nodeContext, 
             string theFunction, 
+            IEnumerable<AbstractShaderNode> theArguments, 
             IEnumerable<InputModifier> theModifiers,
             ShaderNode<T> theDefault, 
             bool theIsGroupable = false,
             int theGroupOptions = 0
             ) : base(nodeContext, theFunction, theDefault)
         {
-            _functionName = theFunction;
+            FunctionName = theFunction;
             _modifiers = theModifiers;
             _isGroupable = theIsGroupable;
             _groupOptions = theGroupOptions;
             OptionalOutputs = new List<AbstractShaderNode>();
-        }
-
-        public void SetGroupOptions(int theGroupOptions)
-        {
-            _groupOptions = theGroupOptions;
-        }
-        
-        public virtual void SetArguments(IEnumerable<AbstractShaderNode> theArguments)
-        {
             Setup(theArguments);
-        }
-
-        public void SetFunctionName(string theName)
-        {
-            Name = theName;
-            _functionName = theName;
-            CallChangeEvent();
         }
 
         protected void Setup(IEnumerable<AbstractShaderNode> theArguments)
@@ -144,8 +123,9 @@ namespace Fuse
             NodeContext nodeContext,
             string theFunction,
             ShaderNode<T> theDefault,
-            bool theIsGroupable = false,
-            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theModifiers, theDefault, theIsGroupable)
+            IEnumerable<AbstractShaderNode> theArguments,
+            bool theIsGroupable = false, 
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theArguments, theModifiers, theDefault, theIsGroupable)
         {
             
         }
@@ -159,130 +139,72 @@ namespace Fuse
             string theFunction,
             ShaderNode<T> theDefault,
             string theMixin,
+            IEnumerable<AbstractShaderNode> theArguments, 
             bool theIsGroupable = false,
             int theGroupOptions = 0,
-            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theModifiers, theDefault, theIsGroupable, theGroupOptions)
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theArguments, theModifiers, theDefault, theIsGroupable, theGroupOptions)
         {
             AddProperty(Mixins, theMixin);
-        }
-    }
-
-    public class DelegateChangeListener<T> : IChangeGraph
-    {
-
-        private readonly CustomFunction<T> _function;
-        
-        public DelegateChangeListener(CustomFunction<T> theFunction)
-        {
-            _function = theFunction;
-        }
-        
-        public void ChangeGraph(AbstractShaderNode theNode)
-        {
-            _function.UpdateDelegates();
-            _function.CallChangeEvent();
         }
     }
     
     public sealed class CustomFunction<T>: AbstractFunction<T>
     {
-        private Dictionary<string, IDelegate> _delegates;
+        private readonly Dictionary<string, IDelegate> _delegates;
 
-        private string _codeTemplate;
+        private readonly string _codeTemplate;
 
-        private IEnumerable<string> _mixins;
-
-        private IDictionary<string, string> _templateValues;
+        private readonly IDictionary<string, string> _templateValues;
 
         private string Signature => base.FunctionName + HashCode;
-
-        private readonly DelegateChangeListener<T> _delegateChangeListener;
 
         public CustomFunction(
             NodeContext nodeContext,
             string theFunction,
             string theCodeTemplate,
             ShaderNode<T> theDefault,
+            IEnumerable<AbstractShaderNode> theArguments, 
+            Dictionary<string, IDelegate> theDelegates,
             IEnumerable<string> theMixins = null,
             IDictionary<string, string> theFunctionValues = null,
             bool theIsGroupable = false,
-            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction, theModifiers, theDefault, theIsGroupable)
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext, theFunction,theArguments, theModifiers, theDefault, theIsGroupable)
         {
             
 
-            _mixins = theMixins;
+            UpdateMixins(theMixins);
             
             Functions = new Dictionary<string, string>();
 
-            _delegateChangeListener = new DelegateChangeListener<T>(this);
-
-            _codeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
-
-            _templateValues = theFunctionValues;
-        }
-
-        public void SetMixins(IEnumerable<string> theMixins)
-        {
-            _mixins = theMixins;
-            CallChangeEvent();
-        }
-
-        public void SetCodeTemplate(string theCodeTemplate)
-        {
-            _codeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
-            CallChangeEvent();
-        }
-
-        public void SetTemplateValues(IDictionary<string,string> theFunctionValues)
-        {
-            _templateValues = theFunctionValues;
-            CallChangeEvent();
-        }
-
-        public void SetDelegates(Dictionary<string, IDelegate> theDelegates)
-        {
-            if (_delegates != null)
-            {
-                foreach (var myDelegate in _delegates)
-                {
-                    (myDelegate.Value as AbstractShaderNode)?.ChangeGraphListener.Remove(_delegateChangeListener);
-                }
-            }
             _delegates = theDelegates;
-            if (_delegates != null)
-            {
-                foreach (var myDelegate in _delegates)
-                {
-                    (myDelegate.Value as AbstractShaderNode)?.ChangeGraphListener.Add(_delegateChangeListener);
-                }
-            }
-            CallChangeEvent();
+
+            _codeTemplate = ShaderNodesUtil.IndentCode(theCodeTemplate);
+
+            _templateValues = theFunctionValues;
+
+            BuildFunction();
         }
 
-        private void UpdateMixins()
+        private void UpdateMixins(IEnumerable<string> theMixins)
         {
-            if (_mixins == null) return;
+            if (theMixins == null) return;
 
             var mixinList = new ArrayList();
-            foreach (var mixin in _mixins)
+            foreach (var mixin in theMixins)
             {
                 mixinList.Add(mixin);
             }
             AddProperties(Mixins, mixinList);
         }
 
-        public void UpdateDelegates()
+        private void BuildFunction()
         {
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetGpuType<T>()},
                 {"signature", Signature}
             };
-            
-            Functions.Clear();
-            Property.Clear();
-            
-            UpdateMixins();
+
             HandleDelegates(_delegates,functionValueMap);
 
             _templateValues?.ForEach(kv => functionValueMap.Add(kv.Key, kv.Value));
@@ -290,15 +212,6 @@ namespace Fuse
             Functions.Add(Signature, ShaderNodesUtil.Evaluate(_codeTemplate, functionValueMap) + Environment.NewLine);
         }
 
-        public override void SetArguments(IEnumerable<AbstractShaderNode> theArguments)
-        {
-            UpdateDelegates();
-            
-           // var inputs = theArguments.ToList();
-          //  Ins = inputs;
-
-            Setup(theArguments);
-        }
         
         private void HandleDelegates(Dictionary<string,IDelegate> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {

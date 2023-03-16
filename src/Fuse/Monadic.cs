@@ -33,12 +33,12 @@ namespace Fuse
             if (typeof(Buffer).IsAssignableFrom(typeof(T)))
             {
                 // Can't call the constructor directly due to value type constraint
-                var builderType = typeof(BufferGpuValueBuilder<>);
+                var builderType = typeof(BufferShaderNodeBuilder<>);
                 return Activator.CreateInstance(builderType.MakeGenericType(typeof(T)), nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
             }
             
             if (typeof(T) == typeof(Texture))
-                return new TextureGpuValueBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
+                return new TextureShaderNodeBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
             
             if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
@@ -112,19 +112,56 @@ namespace Fuse
     }
 
     // Not sure about this one, never tested it ..
-    internal sealed class TextureGpuValueBuilder : IMonadBuilder<Texture, ShaderNode<Texture>>
+    internal sealed class TextureShaderNodeBuilder : IMonadBuilder<Texture, ShaderNode<Texture>>
     {
-        private readonly TextureInput _textureInput;
+        private TextureInput _textureInput;
 
-        public TextureGpuValueBuilder(NodeContext nodeContext)
+        private readonly NodeContext _nodeContext;
+
+        private readonly TextureTypeTracker _typeTracker;
+
+        public TextureShaderNodeBuilder(NodeContext nodeContext)
         {
-            _textureInput = new TextureInput(nodeContext);
+            _nodeContext = nodeContext;
+            _typeTracker = new TextureTypeTracker(false);
+            
         }
 
         public ShaderNode<Texture> Return(Texture value)
         {
-            _textureInput.SetInput(value, false);
+            var changeDeclaration = _typeTracker.CheckDeclaration(value);
+            if (changeDeclaration || _textureInput == null)
+            {
+                _textureInput = new TextureInput(_nodeContext, _typeTracker);
+            }
+            _textureInput.Value = value;
             return _textureInput;
+        }
+    }
+    
+    internal sealed class BufferShaderNodeBuilder<T> : IMonadBuilder<Buffer, ShaderNode<Buffer>> where T : unmanaged
+    {
+        private BufferInput<T> _bufferInput;
+
+        private readonly NodeContext _nodeContext;
+
+        private readonly BufferTypeTracker<T> _typeTracker;
+        
+        public BufferShaderNodeBuilder(NodeContext nodeContext)
+        {
+            _nodeContext = nodeContext;
+            _typeTracker = new BufferTypeTracker<T>(null,false, false);
+        }
+
+        public ShaderNode<Buffer> Return(Buffer value)
+        {
+            var changeDeclaration = _typeTracker.CheckDeclaration(value);
+            if (changeDeclaration || _bufferInput == null)
+            {
+                _bufferInput = new BufferInput<T>(_nodeContext, _typeTracker, null);
+            }
+            _bufferInput.Value = value;
+            return _bufferInput;
         }
     }
 
@@ -141,22 +178,6 @@ namespace Fuse
         {
             _samplerInput.Value = value;
             return _samplerInput;
-        }
-    }
-    
-    internal sealed class BufferGpuValueBuilder<T> : IMonadBuilder<Buffer<T>, ShaderNode<Buffer<T>>> where T : unmanaged
-    {
-        private readonly TypedBufferInput<T> _bufferInput;
-        
-        public BufferGpuValueBuilder(NodeContext nodeContext)
-        {
-            _bufferInput = new TypedBufferInput<T>(nodeContext);
-        }
-
-        public ShaderNode<Buffer<T>> Return(Buffer<T> value)
-        {
-            _bufferInput.Value = value;
-            return _bufferInput;
         }
     }
 }

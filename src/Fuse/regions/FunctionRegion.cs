@@ -46,10 +46,12 @@ namespace Fuse.regions
         public RegionFunction(NodeContext nodeContext,
             string theName,
             ShaderNode<T> theDefault,
+            AbstractShaderNode theFunction, IEnumerable<AbstractShaderNode> theArguments,
+            IEnumerable<IDelegate> theDelegates = null,
             IEnumerable<string> theMixins = null,
             IDictionary<string, string> theFunctionValues = null,
             bool theIsGroupable = false,
-            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext,"patchedFunction", theModifiers, theDefault,  theIsGroupable)
+            IEnumerable<InputModifier> theModifiers = null) : base(nodeContext,"patchedFunction", theArguments, theModifiers, theDefault,  theIsGroupable)
         {
             _name = theName;
             if (theMixins == null) return;
@@ -57,12 +59,6 @@ namespace Fuse.regions
             theMixins.ForEach(m => mixinList.Add(m));
             AddProperties(Mixins, mixinList);
 
-
-        }
-
-        public void SetArguments(AbstractShaderNode theFunction, IEnumerable<AbstractShaderNode> theArguments,
-            IEnumerable<IDelegate> theDelegates = null)
-        {
             Functions = new Dictionary<string, string>();
             
             _signature = _name + BuildSignature(theArguments)  +"To" + TypeHelpers.GetSignature<T>();

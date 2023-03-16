@@ -5,19 +5,11 @@ namespace Fuse
 {
     public class Negate<T> : ResultNode<T>
     {
-        private ShaderNode<T> _in;
+        private readonly ShaderNode<T> _in;
 
-        public Negate(NodeContext nodeContext) : base(nodeContext, "negate")
-        {
-            _in = Default;
-            
-            SetInputs( new List<AbstractShaderNode>{_in});
-        }
-
-        public void SetInput(ShaderNode<T> theIn)
+        public Negate(NodeContext nodeContext, ShaderNode<T> theIn) : base(nodeContext, "negate")
         {
             _in = theIn ??  Default;
-            
             SetInputs( new List<AbstractShaderNode>{_in});
         }
         protected override string ImplementationTemplate()

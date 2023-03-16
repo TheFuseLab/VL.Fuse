@@ -64,41 +64,11 @@ namespace Fuse
 
     public class Delegate<T> :  ShaderNode<T>, IDelegate
     {
-        private AbstractShaderNode _delegate;
-        public Delegate(NodeContext nodeContext, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
+        public Delegate(NodeContext nodeContext, AbstractShaderNode theDelegate, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
-        }
-        
-        private static string BuildArguments(List<IFunctionParameter> inputs)
-        {
-            inputs.Sort((a,b) => string.Compare(a.ID, b.ID, StringComparison.Ordinal));
-            var usedIDs = new HashSet<string>();
-            
-            var stringBuilder = new StringBuilder();
-            inputs.ForEach(input =>
-            {
-                if (usedIDs.Contains(input.ID)) return;
-                usedIDs.Add(input.ID);
-                stringBuilder.Append(input.TypeName());
-                stringBuilder.Append(' ');
-                stringBuilder.Append(ShaderNodesUtil.FixName(input.ID));
-                stringBuilder.Append(", ");
-            });
-            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
-            return stringBuilder.ToString();
-        }
-        
-        public sealed override IDictionary<string, string> Functions { get; protected set; }
-        
-        public void SetInput(AbstractShaderNode theDelegate)
-        {
-            if (theDelegate == _delegate) return;
-            
-            _delegate?.Outs.Remove(this);
 
-            _delegate = theDelegate;
-            if (_delegate == null) return;
+            if (theDelegate == null) return;
             Functions.Clear();
             Property.Clear();
             var functionParameters = theDelegate.FunctionParameters();
@@ -122,11 +92,28 @@ ${functionImplementation}
             {
                 AddProperties(kv.Key, kv.Value );
             });
-            
-            _delegate.Outs.Add(this);
-            
-            CallChangeEvent();
         }
+        
+        private static string BuildArguments(List<IFunctionParameter> inputs)
+        {
+            inputs.Sort((a,b) => string.Compare(a.ID, b.ID, StringComparison.Ordinal));
+            var usedIDs = new HashSet<string>();
+            
+            var stringBuilder = new StringBuilder();
+            inputs.ForEach(input =>
+            {
+                if (usedIDs.Contains(input.ID)) return;
+                usedIDs.Add(input.ID);
+                stringBuilder.Append(input.TypeName());
+                stringBuilder.Append(' ');
+                stringBuilder.Append(ShaderNodesUtil.FixName(input.ID));
+                stringBuilder.Append(", ");
+            });
+            if(stringBuilder.Length > 2)stringBuilder.Remove(stringBuilder.Length - 2, 2);
+            return stringBuilder.ToString();
+        }
+        
+        public override IDictionary<string, string> Functions { get; protected set; }
 
         protected override string SourceTemplate()
         {
@@ -139,30 +126,17 @@ ${functionImplementation}
     public class Invoke<T> : ShaderNode<T>
     {
         private Delegate<T> _delegate;
-        public Invoke(NodeContext nodeContext, string theId = "Invoke", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
+        public Invoke(NodeContext nodeContext, Delegate<T> theDelegate, IEnumerable<AbstractShaderNode> theParameters, string theId = "Invoke", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
             Functions = new Dictionary<string, string>();
             
             Name = theId;
-        }
-
-        public void SetInputs(Delegate<T> theDelegate, IEnumerable<AbstractShaderNode> theParameters)
-        {
-            _delegate?.Outs.Remove(this);
+            
             _delegate = theDelegate;
-
-            if (theDelegate == null)
-            {
-                CallChangeEvent();
-                return;
-            }
-            _delegate?.Outs.Add(this);
-
+            
             var inputs = new List<AbstractShaderNode> { _delegate };
             inputs.AddRange(theParameters);
-            SetInputs(inputs, false);
-            
-            CallChangeEvent();
+            SetInputs(inputs);
         }
 
         public override void CheckContext(ShaderGeneratorContext theContext)

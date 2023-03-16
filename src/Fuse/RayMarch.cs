@@ -16,17 +16,13 @@ namespace Fuse
         private ShaderNode<Vector3> _surfaceNormal;
         private ShaderNode<Vector3> _surfacePosition;
 
-        public MakeRay(NodeContext nodeContext) : base(nodeContext, "MakeRay")
+        public MakeRay(NodeContext nodeContext,ShaderNode<Vector3> theOrigin, ShaderNode<Vector3> theDirection, ShaderNode<Vector3> theSurfacePosition, ShaderNode<Vector3> theSurfaceNormal) : base(nodeContext, "MakeRay")
         {
             
             SetProperty(Structs, @"struct Ray
 	{
 		float3 origin, direction, surfacePosition, surfaceNormal; 
 	};");
-        }
-
-        public void SetInputs(ShaderNode<Vector3> theOrigin, ShaderNode<Vector3> theDirection, ShaderNode<Vector3> theSurfacePosition, ShaderNode<Vector3> theSurfaceNormal)
-        {
             _origin = theOrigin;
             _direction = theDirection;
             _surfacePosition = theSurfacePosition ?? new ConstantValue<Vector3>(new Vector3());
