@@ -115,12 +115,8 @@ namespace Fuse.regions
     {
         public string IndexName { get; }
 
-        public Grid3DRegion(NodeContext nodeContext) : base(nodeContext, "forRegion")
-        {
-            IndexName = "index_" + HashCode;
-        }
-
-        public void Setup(
+        public Grid3DRegion(
+            NodeContext nodeContext,
             ShaderNode<Int3> cell,
             ShaderNode<Int3> gridDim,
             BufferInput<Int2> gridIndices,
@@ -128,8 +124,9 @@ namespace Fuse.regions
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks,
-            IEnumerable<BorderControlPointDescription> theDescriptions)
+            IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "forRegion")
         {
+            IndexName = "index_" + HashCode;
             SetupRegion(
                 (subContextFactory, myOutputs) => new Grid3DGroup(
                     subContextFactory.NextSubContext(), 

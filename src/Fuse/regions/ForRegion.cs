@@ -100,9 +100,9 @@ namespace Fuse.regions
 
     public class IndexNode : ShaderNode<int>
     {
-        [field: ThreadStatic] public static ForRegion Current { get; private set; }
+        [field: ThreadStatic] private static NodeContext Current { get; set; }
 
-        public static IDisposable MakeCurrent(ForRegion context)
+        public static IDisposable MakeCurrent(NodeContext context)
         {
             var previous = Current;
             Current = context;
@@ -111,11 +111,11 @@ namespace Fuse.regions
 
         public IndexNode(NodeContext nodeContext) : base(nodeContext, "index")
         {
-            Name = Current.IndexName;
+            ID = Current == null ?  "0": $"index_{ShaderNodesUtil.GetHashCode(Current)}";
             SetInputs(new List<AbstractShaderNode>());
         }
 
-        public override string ID => Name;
+        public override string ID { get; }
 
         protected override string SourceTemplate()
         {
@@ -127,12 +127,8 @@ namespace Fuse.regions
     {
         public string IndexName { get; }
 
-        public ForRegion(NodeContext nodeContext) : base(nodeContext, "forRegion")
-        {
-            IndexName = "index_" + HashCode;
-        }
-
-        public void Setup(
+        public ForRegion(
+            NodeContext nodeContext,
             ShaderNode<int> inStart,
             ShaderNode<int> inEnd,
             bool theLoop,
@@ -141,8 +137,10 @@ namespace Fuse.regions
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks,
-            IEnumerable<BorderControlPointDescription> theDescriptions)
+            IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "forRegion")
         {
+            IndexName = "index_" + HashCode;
+            
             SetupRegion(
                 (subContextFactory, myOutputs) => new ForGroup(
                     subContextFactory.NextSubContext(), 

@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Fuse.compute;
 using VL.Core;
 using VL.Core.PublicAPI;
@@ -10,7 +8,7 @@ namespace Fuse.regions;
 
 public abstract class AbstractRegion : ShaderNode<GpuVoid>
 {
-    public AbstractRegion(NodeContext nodeContext, string theName) : base(nodeContext, theName)
+    protected AbstractRegion(NodeContext nodeContext, string theName) : base(nodeContext, theName)
     {
         OptionalOutputs = new List<AbstractShaderNode>();
     }
@@ -19,7 +17,7 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
 
     public delegate void AddRegionNodes(List<AbstractShaderNode> theNodes);
 
-    public void SetupRegion(
+    protected virtual void SetupRegion(
         CreateRegionGroup theCreateRegion,
         AddRegionNodes theAddRegionNodes,
         IEnumerable<AbstractShaderNode> theInputs,
@@ -92,7 +90,7 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
         {
             switch (outputs[i])
             {
-                case ShaderNode<GpuVoid> shaderNode:
+                case ShaderNode<GpuVoid>:
                     var myInputVoid = myInputs[i] ?? new EmptyVoid(subContextFactory.NextSubContext());
                     var outputVoid = AbstractCreation.AbstractOutput(subContextFactory, this, myInputVoid);
                     OptionalOutputs.Add(outputVoid);

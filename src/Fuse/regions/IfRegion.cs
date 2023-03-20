@@ -48,23 +48,19 @@ namespace Fuse.regions
 
             theSourceBuilder.Append(@"        }
 ");
-            //   theSourceBuilder.AppendLine();
         }
     }
 
     public class IfRegion : AbstractRegion
     {
 
-        public IfRegion(NodeContext nodeContext) : base(nodeContext, "ifRegion")
-        {
-        }
-
-        public void Setup(
+        public IfRegion(
+            NodeContext nodeContext,
             ShaderNode<bool> inCheck,
             IEnumerable<AbstractShaderNode> theInputs,
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks,
-            IEnumerable<BorderControlPointDescription> theDescriptions)
+            IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "ifRegion")
         {
             SetupRegion(
                 (subContextFactory, myOutputs) => new IfGroup(subContextFactory.NextSubContext(), inCheck, myOutputs),
