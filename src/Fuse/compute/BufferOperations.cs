@@ -120,6 +120,7 @@ namespace Fuse.compute
         public BufferConsume(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
+            _buffer.Append = false;
             
             SetInputs(new List<AbstractShaderNode> {theBuffer as AbstractShaderNode});
         }
@@ -160,11 +161,6 @@ namespace Fuse.compute
             if (_buffer != null) result["buffer"] = _buffer.ID;
 
             return ShaderNodesUtil.Evaluate("${buffer}.GetDimensions(${arguments});", result);
-        }
-
-        protected void Setup(IEnumerable<AbstractShaderNode> theArguments, IEnumerable<InputModifier> theModifiers,
-            string theFunction)
-        {
         }
     }
 }
