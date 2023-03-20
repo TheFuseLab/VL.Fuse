@@ -12,7 +12,7 @@ using VL.Stride.Shaders.ShaderFX;
 namespace Fuse.ShaderFX
 {
 
-    public abstract class AbstractStage : IChangeGraph
+    public abstract class AbstractStage 
     {
         public readonly string Key;
 
@@ -214,11 +214,11 @@ namespace Fuse.ShaderFX
             _stopwatch.Restart();
             theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Mixins: {_stopwatch.ElapsedMilliseconds} ms");
-            
+            /*
             _stopwatch.Restart();
             theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Compositions: {_stopwatch.ElapsedMilliseconds} ms");
-            
+            */
             _stopwatch.Restart();
             theShaderInput.FunctionMap().ForEach(HandleFunction);
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Functions: {_stopwatch.ElapsedMilliseconds} ms");
@@ -292,7 +292,7 @@ namespace Fuse.ShaderFX
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
             _stopwatch.Restart();
-            //ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+            ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
            // _parameters = theContext.Parameters;
             

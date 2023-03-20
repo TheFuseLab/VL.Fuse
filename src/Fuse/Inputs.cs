@@ -158,8 +158,8 @@ namespace Fuse{
          {
              return new ObjectParameterUpdater<T>();
          }
-         
-         protected override void OnPassContext(ShaderGeneratorContext nodeContext)
+
+         public override void OnPassContext(ShaderGeneratorContext nodeContext)
          {
              Updater.Track(nodeContext, ParameterKey);
              Updater.Value = _value;
@@ -259,7 +259,7 @@ namespace Fuse{
 
      public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
      {
-         private readonly bool _append;
+         public bool Append { get; set; }
 
          private readonly bool _forceAppendConsume;
          private readonly ShaderNode<T> _type;
@@ -267,13 +267,13 @@ namespace Fuse{
          public BufferTypeTracker(ShaderNode<T> theType, bool theAppend, bool theForceAppend)
          {
              _type = theType;
-             _append = theAppend;
+             Append = theAppend;
              _forceAppendConsume = theForceAppend;
          }
 
          protected override string DefineGpuType(Buffer value)
          {
-             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), _append, false, _forceAppendConsume);
+             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append, false, _forceAppendConsume);
          }
 
          protected override string DefineComputeGpuType(Buffer value)
@@ -288,7 +288,17 @@ namespace Fuse{
          
          public ShaderNode<T> Type { get;  }
 
-         public bool Append { get; set; }
+         private readonly BufferTypeTracker<T> _typeTracker;
+
+         public bool Append
+         {
+             get => _typeTracker.Append;
+             set
+             {
+                 _typeTracker.Append = value;
+                 SetFieldDeclaration(_typeTracker.ComputeGpuType, _typeTracker.GpuType);
+             }
+         }
 
          public override string TypeName()
          {
@@ -297,39 +307,12 @@ namespace Fuse{
 
          public BufferInput(NodeContext nodeContext, BufferTypeTracker<T> theTypeTracker, ShaderNode<T> theType) : base(nodeContext, theTypeTracker, "DynamicBufferInput")
          {
+             _typeTracker = theTypeTracker; 
              Value = null;
              Type = theType;
          }
 
      }
-     
-     /*
-     public class TypedBufferInput<T>: ChangeableObjectInput<Buffer<T>> where T : unmanaged
-     {
-
-         public TypedBufferInput(NodeContext nodeContext, BufferTypeTracker<T> theTypeTracker) : base(nodeContext,theTypeTracker, "BufferInput")
-         {
-             SetInput(null, true);
-         }
-
-         public bool SetInput(Buffer<T> theBuffer,  bool theAppend)
-         {
-             Value = theBuffer;
-             _append = theAppend;
-             
-             return CheckDeclaration();
-         }
-         
-         public override string DeclarationType()
-         {
-             return TypeHelpers.BufferTypeName(Value, TypeHelpers.GetGpuType<T>(), _append, false, ForceAppendConsume);
-         }
-
-         public override string ComputeDeclarationType()
-         {
-             return DeclarationType();
-         }
-     }*/
      
     public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>> where T : struct 
     {
@@ -345,7 +328,7 @@ namespace Fuse{
             return new ValueParameterUpdater<T>();
         }
 
-        protected override void OnPassContext(ShaderGeneratorContext nodeContext)
+        public override void OnPassContext(ShaderGeneratorContext nodeContext)
         {
             try
             {

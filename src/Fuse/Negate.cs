@@ -3,7 +3,7 @@ using VL.Core;
 
 namespace Fuse
 {
-    public class Negate<T> : ResultNode<T>
+    public class Negate<T> : ShaderNode<T>
     {
         private readonly ShaderNode<T> _in;
 
@@ -12,9 +12,10 @@ namespace Fuse
             _in = theIn ??  Default;
             SetInputs( new List<AbstractShaderNode>{_in});
         }
-        protected override string ImplementationTemplate()
+        
+        protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("-${in}", 
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = -${in}", 
                 new Dictionary<string, string>
                 {
                     {"in", _in.ID},

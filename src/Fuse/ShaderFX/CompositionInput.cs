@@ -39,9 +39,8 @@ namespace Fuse.ShaderFX
             return "${resultType} ${resultName} = ${compositionName}.Compute();";
         }
         
-        public override void CheckContext(ShaderGeneratorContext theContext)
+        public override void OnPassContext(ShaderGeneratorContext theContext)
         {
-            base.CheckContext(theContext);
             ShaderNodesUtil.Evaluate(DeclarationTemplate,CreateTemplateMap());
         }
     }

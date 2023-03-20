@@ -80,7 +80,12 @@ namespace Fuse
 
         protected override string SourceTemplate()
         {
-            if(!_isGroupable || Ins.Count <= 2)return "${resultType} ${resultName} = ${function}(${arguments});";
+            var resultPart = "";
+            if (!TypeHelpers.IsVoidNode(this))
+            {
+                resultPart = "${resultType} ${resultName} = ";
+            }
+            if(!_isGroupable || Ins.Count <= 2)return resultPart + "${function}(${arguments});";
 
             var inputList = new List<AbstractShaderNode>(Ins);
             var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID);
@@ -92,7 +97,7 @@ namespace Fuse
                 call.Append(inputList[index].ID);
             }
 
-            call.Append(")");
+            call.Append(')');
 
             for (var i = 2; i < optionIndex;i++)
             {
@@ -108,7 +113,7 @@ namespace Fuse
                 
                 call.Append(")");
             }
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${Call};",new Dictionary<string,string>
+            return ShaderNodesUtil.Evaluate(resultPart + "${Call};",new Dictionary<string,string>
             {
                 {"Call",call.ToString()}
             });
@@ -230,7 +235,7 @@ namespace Fuse
             }
         }
 
-        public override void CheckContext(ShaderGeneratorContext theContext)
+        public override void OnPassContext(ShaderGeneratorContext theContext)
         {
             _delegates?.ForEach(delegateNode =>
             {
@@ -238,8 +243,6 @@ namespace Fuse
                 
                 delegateNode.Value.CheckContext(theContext);
             });
-            
-            base.CheckContext(theContext);
         }
 
         public override IDictionary<string, string> Functions { get; protected set; }
