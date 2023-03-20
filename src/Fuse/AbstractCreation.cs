@@ -8,12 +8,7 @@ namespace Fuse
     {
         public static AbstractShaderNode CreateAbstract(AbstractShaderNode theValue, Type theBaseType, object[] theArguments )
         {
-            var nodeType = theValue.GetType();
-
-            while (nodeType != null && nodeType.BaseType != null && nodeType.BaseType != typeof(AbstractShaderNode))
-            {
-                nodeType = nodeType.BaseType;
-            }
+            var nodeType = GetBaseType(theValue);
             
             var dataType = new[] { nodeType.GetGenericArguments()[0]};
             var getType = theBaseType.MakeGenericType(dataType);
@@ -33,9 +28,6 @@ namespace Fuse
         
         public static AbstractShaderNode AbstractGetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, AbstractShaderNode theMember)
         {
-            //return CreateAbstract(theMember, typeof(GetMember<,>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null});
-            
-           
             var getMemberBaseType = typeof(GetMember<,>);
             var nodeType = GetBaseType(theMember);
             var dataType = new[] {typeof(T), nodeType.GetGenericArguments()[0]};
@@ -54,6 +46,23 @@ namespace Fuse
             var getType = setMemberBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember, theValue) as AbstractShaderNode;
            
+        }
+        
+        public static AbstractShaderNode AbstractFunctionParameter(NodeSubContextFactory theSubContextFactory, Type theParameterType, InputModifier theModifier = InputModifier.In, int theId = 0 )
+        {
+            var baseType = typeof(FunctionParameter<>);
+            var nodeType = theParameterType;
+            
+            var dataType = new[] { nodeType.GetGenericArguments()[0]};
+            var getType = baseType.MakeGenericType(dataType);
+            
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), null, theModifier, theId) as AbstractShaderNode;
+           
+        }
+        
+        public static AbstractShaderNode AbstractFunctionParameter(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theParameter, InputModifier theModifier = InputModifier.In, int theId = 0 )
+        {
+            return AbstractFunctionParameter(theSubContextFactory, GetBaseType(theParameter),theModifier, theId);
         }
         
         public static AbstractShaderNode AbstractComputeTextureGet(NodeSubContextFactory theSubContextFactory, ShaderNode<Texture> theTexture, AbstractShaderNode theIndex, AbstractShaderNode theValue)
@@ -83,19 +92,11 @@ namespace Fuse
         public static AbstractShaderNode AbstractShaderNodePassThrough(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
         {
             return CreateAbstract(theValue, typeof(PassThroughNode<>), new object[]{theSubContextFactory.NextSubContext(), "pass", theValue});
-            /*
-            var getBaseType = typeof(PassThroughNode<>);
-            var nodeType = theValue.GetType().BaseType;
-            if (nodeType == null) return null;
-            var dataType = new[] { nodeType.GetGenericArguments()[0] };
-            var getType = getBaseType.MakeGenericType(dataType);
-            return Activator.CreateInstance(getType, theValue) as AbstractShaderNode;
-            */
         }
         
         public static AbstractShaderNode AbstractDeclareValue(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
         {
-            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{theSubContextFactory.NextSubContext()});
+            return CreateAbstract(theValue, typeof(DeclareValue<>), new object[]{theSubContextFactory.NextSubContext(), null});
         }
         
         public static AbstractShaderNode AbstractDeclareValueAssigned(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue)
