@@ -103,11 +103,9 @@ namespace Fuse
             Parameters = theDelegate.FunctionParameters();
             
             Functions = new Dictionary<string, string>();
+            
+            
 
-            if (theDelegate == null) return;
-            
-            
-            
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetGpuType<T>()},
@@ -116,11 +114,20 @@ namespace Fuse
                 {"functionImplementation", theDelegate.BuildSourceCode()},
                 {"result", theDelegate.ID}
             };
-
-            const string functionCode = @"${resultType} ${functionName}(${arguments}){
+            string functionCode;
+            if (TypeHelpers.IsVoidNode(theDelegate))
+            {
+                functionCode = @"${resultType} ${functionName}(${arguments}){
+                ${functionImplementation}
+            }";
+            }
+            else
+            {
+                functionCode = @"${resultType} ${functionName}(${arguments}){
                 ${functionImplementation}
                 return ${result};
             }";
+            }
             Functions.Add(FunctionName, ShaderNodesUtil.Evaluate(functionCode, functionValueMap) + Environment.NewLine);
             theDelegate.FunctionMap().ForEach(kv2 => Functions.Add(kv2));
             theDelegate.PropertiesForTree().ForEach(kv =>
