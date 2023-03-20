@@ -9,7 +9,6 @@ using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Core;
-using VL.Lib.Collections;
 using VL.Stride.Shaders.ShaderFX;
 using Buffer = Stride.Graphics.Buffer;
 
@@ -45,11 +44,6 @@ namespace Fuse
 
 */
 
-    public interface IChangeGraph
-    {
-        public void ChangeGraph(AbstractShaderNode theNode);
-    }
-
     public interface ICompileGraph
     {
         public void CompileGraph(AbstractShaderNode theNode);
@@ -60,15 +54,16 @@ namespace Fuse
         public void PrepareGraph(AbstractShaderNode theNode);
     }
     
-    public interface IShaderNodeVisitor {
-        void Visit(AbstractShaderNode node, string thePrepend);
+    public interface IShaderNodeVisitor
+    {
+        void Visit(AbstractShaderNode node, int recursionLevel);
     }
 
     public class ChildrenOfTypeVisitor<TNode> : IShaderNodeVisitor where TNode : class
     {
         public readonly HashSet<TNode> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             if (node is TNode shaderNode)
             {
@@ -81,7 +76,7 @@ namespace Fuse
     {
         public readonly List<TPropertyType> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             node.Property.ForEach(kv =>
             {
@@ -97,29 +92,21 @@ namespace Fuse
     {
         public readonly HashSet<TPropertyType> Result = new ();
 
-        private string _propertyId;
-
-        private Stopwatch _stopWatch;
-
-        private int count = 0;
+        private readonly string _propertyId;
         public PropertyOfTypeAndIdVisitor(string theThePropertyId)
         {
             _propertyId = theThePropertyId;
-            _stopWatch = new Stopwatch();
-            _stopWatch.Start();
         }
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             var stopWatch = new Stopwatch();
             stopWatch.Start();
-            count++;
             if (node.Property.ContainsKey(_propertyId))
             {
                 Stride.Core.Extensions.EnumerableExtensions.ForEach<TPropertyType>(node.Property[_propertyId], i => Result.Add(i));
                 
             }
-            if(ShaderNodesUtil.DebugVisit)Console.WriteLine($"{thePrepend}Get Prop {_propertyId} {node.ID} in time{stopWatch.ElapsedMilliseconds} ms in complete {_stopWatch.ElapsedMilliseconds} ms {count}");
         }
     }
     
@@ -127,7 +114,7 @@ namespace Fuse
     {
         public readonly HashSet<string> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             foreach (var kv in node.Property)
             {
@@ -140,7 +127,7 @@ namespace Fuse
     {
         public readonly Dictionary<string, IList> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             foreach (var kv in node.Property)
             {
@@ -162,7 +149,7 @@ namespace Fuse
     {
         public readonly Dictionary<string, List<TProperty>> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             foreach (var kv in node.Property)
             {
@@ -187,7 +174,7 @@ namespace Fuse
     {
         public readonly Dictionary<string,string> Result = new ();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             if (node.Functions == null) return;
             foreach (var kv in node.Functions)
@@ -198,12 +185,38 @@ namespace Fuse
         }
     }
     
+    public class PrintShaderNodeVisitor : IShaderNodeVisitor
+    {
+        public void Visit(AbstractShaderNode node, int recursionLevel)
+        {
+            if (node == null) return;
+
+            // Print node with the prepend string
+            Console.WriteLine(new string('.', recursionLevel) + " " + node.ID + node.GetHashCode());
+        }
+    }
+
+    public class CheckContextVisitor : IShaderNodeVisitor
+    {
+        private ShaderGeneratorContext _context;
+
+        public CheckContextVisitor(ShaderGeneratorContext theContext)
+        {
+            _context = theContext;
+        }
+        
+        public void Visit(AbstractShaderNode node, int recursionLevel)
+        {
+            node.OnPassContext(_context);
+        }
+    }
+    
     public class BuildSourceVisitor : IShaderNodeVisitor
     {
         StringBuilder myStringBuilder = new StringBuilder();
         HashSet<AbstractShaderNode> myHashes = new HashSet<AbstractShaderNode>();
         
-        public void Visit(AbstractShaderNode node, string thePrepend)
+        public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             foreach (var kv in node.Property)
             {
@@ -371,24 +384,9 @@ namespace Fuse
             return sourceCode.Trim() == "" ? "" : ShaderNodesUtil.Evaluate(sourceCode, CreateTemplateMap());
         }
 
-        protected virtual void OnPassContext(ShaderGeneratorContext nodeContext)
+        public virtual void OnPassContext(ShaderGeneratorContext nodeContext)
         {
             
-        }
-
-        private readonly HashSet<ShaderGeneratorContext> _contexts = new HashSet<ShaderGeneratorContext>();
-
-        public virtual void CheckContext(ShaderGeneratorContext nodeContext)
-        {
-            
-            Ins.ForEach(input =>
-            {
-                if (input == null) return;
-                input.CheckContext(nodeContext);
-            });
-
-            if (!_contexts.Add(nodeContext)) return;
-            OnPassContext(nodeContext);
         }
 
         public virtual void BuildChildrenSource( StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
@@ -437,22 +435,50 @@ namespace Fuse
             return myStringBuilder.ToString();
         }
 
-        public void PreOrderVisit(IShaderNodeVisitor theVisitor, string thePrepend = "")
+        public void PreOrderVisit(IShaderNodeVisitor theVisitor, HashSet<AbstractShaderNode> theVisitedNodes, int recursionLevel = 0)
         {
-            theVisitor.Visit(this, thePrepend);
+            if (!theVisitedNodes.Add(this)) return;
+
+            theVisitor.Visit(this, recursionLevel);
             foreach (var node in Ins)
             {
-                node?.PreOrderVisit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
+                node?.PreOrderVisit(theVisitor, theVisitedNodes, recursionLevel + 1);
             }
         }
-        
-        public void PostOrderVisit(IShaderNodeVisitor theVisitor, string thePrepend = "")
+
+        public void PreOrderVisit(IShaderNodeVisitor theVisitor)
         {
+            PreOrderVisit(theVisitor, new HashSet<AbstractShaderNode>());
+        }
+
+        public void PostOrderVisit(IShaderNodeVisitor theVisitor, HashSet<AbstractShaderNode> theVisitedNodes, int recursionLevel = 0)
+        {
+            if (!theVisitedNodes.Add(this))return;
+            
             foreach (var node in Ins)
             {
-                node?.PostOrderVisit(theVisitor, ShaderNodesUtil.DebugIdent + thePrepend);
+                node?.PostOrderVisit(theVisitor, theVisitedNodes);
             }
-            theVisitor.Visit(this, thePrepend);
+            theVisitor.Visit(this, recursionLevel);
+        }
+
+        public void PrintVisitTree()
+        {
+            // Start visiting the nodes from the root node
+            PreOrderVisit(new PrintShaderNodeVisitor(), new HashSet<AbstractShaderNode>());
+        }
+        
+        
+
+        private readonly HashSet<ShaderGeneratorContext> _contexts = new();
+
+        public void CheckContext(ShaderGeneratorContext theContext)
+        {
+
+            if (!_contexts.Add(theContext)) return;
+
+            var visitor = new CheckContextVisitor(theContext);
+            PreOrderVisit(visitor);
         }
 
         public List<TNode> ChildrenOfType<TNode>() where TNode : class
@@ -658,40 +684,13 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            /*
-            if (Outs.Count <= 1)
-            {
-                return "";
-            }
-            */
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${implementation};",new Dictionary<string, string> {
                 {"implementation", ImplementationTemplate()}
             });
         }
 
         protected abstract string ImplementationTemplate();
- /* TODO check this with delegates
-        public override string ID
-        {
-            get
-            {
-                
-                if (Outs.Count > 1) return base.ID;
 
-                var result = base.ID;
-                try
-                {
-                    result = ImplementationTemplate();
-                }
-                catch (Exception)
-                {
-                }
-
-                return result;
-
-            }
-        }
-        */
     }
 
     public class ComputeNode<T> : ShaderNode<T> , IComputeVoid
