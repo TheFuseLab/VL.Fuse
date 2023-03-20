@@ -53,9 +53,9 @@ namespace Fuse
             Console.SetError(streamWriter);
         }
         
-        public static bool DebugShaderGeneration = true;
-        public static bool DebugVisit = true;
-        public static bool TimeShaderGeneration = true;
+        public static bool DebugShaderGeneration = false;
+        public static bool DebugVisit = false;
+        public static bool TimeShaderGeneration = false;
 
         public static string DebugIdent = ". ";
         /*
@@ -246,10 +246,7 @@ namespace Fuse
             if (game == null) return null;
             
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
-            var computeShader = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-            AddShaderSource( theComputeFx.ShaderName, theComputeFx.ShaderCode, "shaders\\" + theComputeFx.ShaderName + ".sdsl");
-            
-            return computeShader;
+            return ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
         }
 
         class DynamicDrawEffectInstance : DynamicEffectInstance
@@ -283,7 +280,6 @@ namespace Fuse
             //var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Color.White);
             theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
-            AddShaderSource( theDrawShader.ShaderName, theDrawShader.ShaderCode, "shaders\\" + theDrawShader.ShaderName + ".sdsl");
             effectImageShader.EffectName = theDrawShader.ShaderName;
             Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
             return effectImageShader;
@@ -293,9 +289,7 @@ namespace Fuse
         // accessed from vl
         public static ToShaderFX<T> RegisterShaderFX<T>(ShaderNode<T> theGpuValue, bool isCompute = true) where T : struct
         {
-            var toShaderFx = new ToShaderFX<T>(theGpuValue);
-            AddShaderSource( toShaderFx.ShaderName, toShaderFx.ShaderCode, "shaders\\" + toShaderFx.ShaderName + ".sdsl");
-            return toShaderFx;
+            return new ToShaderFX<T>(theGpuValue);
         }
 
         public static void ListInputs(List<IGpuInput> theInputs, AbstractShaderNode theGpuValue)
