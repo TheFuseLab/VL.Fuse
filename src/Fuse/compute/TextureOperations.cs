@@ -270,7 +270,8 @@ namespace Fuse.compute
 
                 return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
                 {
-                    {"textureName", textureAttribute.TextureInput.ID}
+                    {"textureName", textureAttribute.TextureInput.ID},
+                    {"arguments", ShaderNodesUtil.BuildArguments(_arguments)},
                 });
             }
             catch
