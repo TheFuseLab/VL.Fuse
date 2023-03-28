@@ -50,7 +50,8 @@ namespace Fuse.ComputeSystem
 
         public void SetInput(AbstractShaderNode theNode)
         {
-            throw new NotImplementedException();
+            Input = theNode as ShaderNode<T>;
+            SetInputs(new List<AbstractShaderNode>{Input});
         }
 
         public ShaderNode<GpuVoid> WriteCall { get; set; }

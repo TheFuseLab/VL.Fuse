@@ -15,7 +15,7 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = -${in}", 
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = -${in};", 
                 new Dictionary<string, string>
                 {
                     {"in", _in.ID},

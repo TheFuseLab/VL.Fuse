@@ -73,7 +73,7 @@ namespace Fuse
             return Input != null ? Input.TypeName() : base.TypeName();
         }
         
-        public override string FunctionName => Input.FunctionName;
+        public override string FunctionName => Input == null ? "null input" : Input.FunctionName;
     }
 
     public class PassVoid : PassThroughNode<GpuVoid>, IComputeVoid

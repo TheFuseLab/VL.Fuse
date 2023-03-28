@@ -13,6 +13,7 @@ namespace Fuse
         public AssignValue(NodeContext nodeContext, ShaderNode<T> theTarget, ShaderNode<T> theSource) : base(nodeContext, "Assign")
         {
             _target = theTarget;
+            _target.WriteCounter++;
             _source = theSource;
             SetInputs(new List<AbstractShaderNode>{_target,_source});
         }

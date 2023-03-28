@@ -7,7 +7,6 @@ namespace Fuse.compute
 
     public interface IBufferInput<T> 
     {
-        
         bool Append { set; }
         string ID { get;  }
         string TypeName();

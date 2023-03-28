@@ -110,6 +110,11 @@ namespace Fuse{
          {
              return "";
          }
+         
+         protected override string GenerateDefaultSource()
+         {
+             return "";
+         }
 
          protected TParameterKeyType ParameterKey { get; set;}
 
@@ -203,16 +208,29 @@ namespace Fuse{
 
      public abstract class ChangeableObjectInput<T> : ObjectInput<T> where T : class
      {
+
+         public GpuTypeTracker<T> TypeTracker { get; }
          
          protected ChangeableObjectInput(NodeContext nodeContext, GpuTypeTracker<T> theTypeTracker, string theName) : base(nodeContext, theName)
          {
-             SetFieldDeclaration(theTypeTracker.ComputeGpuType, theTypeTracker.GpuType);
+             TypeTracker = theTypeTracker;
+             SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
+         }
+
+         public void UpdateFieldDeclaration()
+         {
+             SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
          }
      }
      
      public class TextureTypeTracker:GpuTypeTracker<Texture>{
-         private readonly bool _useRw;
+         private bool _useRw;
          public TextureTypeTracker(bool theUseRw)
+         {
+             _useRw = theUseRw;
+         }
+
+         public void SetUseRw(bool theUseRw)
          {
              _useRw = theUseRw;
          }
@@ -243,9 +261,11 @@ namespace Fuse{
 
      public class TextureInput : ChangeableObjectInput<Texture>
      {
+         public TextureTypeTracker TextureTypeTracker { get; }
          
          public TextureInput(NodeContext nodeContext, TextureTypeTracker theTypeTracker) : base(nodeContext, theTypeTracker, "TextureInput")
          {
+             TextureTypeTracker = theTypeTracker;
          }
      }
      
@@ -310,6 +330,8 @@ namespace Fuse{
              _typeTracker = theTypeTracker; 
              Value = null;
              Type = theType;
+             
+             SetInputs( new List<AbstractShaderNode>{Type});
          }
 
      }

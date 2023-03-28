@@ -37,11 +37,27 @@ namespace Fuse.compute
     
     public class DynamicIndex : PassThroughNode<Int3>
     {
-        public IIndexProvider IndexProvider { get; }
+        private IIndexProvider _indexProvider;
+        private readonly bool _useReadIndex;
+
+        public IIndexProvider IndexProvider
+        {
+            get => _indexProvider;
+
+            set
+            {
+                _indexProvider = value;
+                _indexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
+
+                Input = _useReadIndex ? readIndex : writeIndex;
+                SetInputs(new List<AbstractShaderNode>{Input});
+            }
+        }
 
         public DynamicIndex(NodeContext nodeContext, IIndexProvider theIndexProvider, bool useReadIndex = false) : base(nodeContext, "Index")
         {
             IndexProvider = theIndexProvider ?? new DefaultIndexProvider();
+            _useReadIndex = useReadIndex;
             AddProperty("DynamicIndex", this);
             IndexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
             Input = useReadIndex ? readIndex : writeIndex;

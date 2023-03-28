@@ -241,6 +241,8 @@ namespace Fuse
 
         public readonly NodeContext NodeContext;
 
+        public int WriteCounter { get; set; }
+
         public void AddPrepareGraph(IPrepareGraph theDelegate)
         {
             PrepareGraphListener.Add(theDelegate);

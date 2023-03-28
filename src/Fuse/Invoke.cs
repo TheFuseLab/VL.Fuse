@@ -89,18 +89,30 @@ namespace Fuse
 
         public Delegate(NodeContext nodeContext, AbstractShaderNode theDelegate, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
+            Parameters = new List<IFunctionParameter>();
+            
             if (theDelegate == null) return;
-            
-            
-            
+
             BuildFunction(theDelegate);
+        }
+        
+        public static List<IFunctionParameter> GetUniqueParameters(List<IFunctionParameter> parameters)
+        {
+            var uniqueParams = new List<IFunctionParameter>();
+
+            foreach (var parameter in parameters.Where(parameter => uniqueParams.All(p => p.ID != parameter.ID)))
+            {
+                uniqueParams.Add(parameter);
+            }
+
+            return uniqueParams.OrderBy(p => p.ID).ToList();
         }
 
         protected void BuildFunction(AbstractShaderNode theDelegate)
         {
             _delegate = theDelegate;
             
-            Parameters = theDelegate.FunctionParameters();
+            Parameters = GetUniqueParameters(theDelegate.FunctionParameters());
             
             Functions = new Dictionary<string, string>();
             
@@ -191,6 +203,7 @@ namespace Fuse
         private void SetInputs(Delegate<T> theDelegate, IEnumerable<AbstractShaderNode> theValues)
         {
             if (theDelegate == null) return;
+            
             
             var inputs = new List<AbstractShaderNode> { theDelegate };
             

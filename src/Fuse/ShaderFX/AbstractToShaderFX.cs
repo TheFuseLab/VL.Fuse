@@ -22,11 +22,13 @@ namespace Fuse.ShaderFX
 
         public AbstractStage(string theKey, AbstractShaderNode theShaderNode)
         {
+            
+            
             Key = theKey;
             StageNode = theShaderNode;
             Ticket = 0;
         }
-
+        
         public virtual void AppendInputs(Dictionary<string, string> theTemplateMap)
         {
         }
