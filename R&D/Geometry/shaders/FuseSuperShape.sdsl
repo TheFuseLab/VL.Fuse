@@ -1,0 +1,277 @@
+shader FuseSuperShape{
+
+    #define PI 3.1415926535897932384626433832795
+    #define HALF_PI 1.5707963267948966
+
+    // Computes the signed power of a base to an exponent. 
+    // For a negative base and an odd exponent, the sign is preserved, 
+    // otherwise, the result is positive.
+    // Parameters:
+    // - base: The base number
+    // - exponent: The exponent to raise the base to
+    float oddSignedPow(float base, float exponent){
+        if(base < 0.0)
+        {
+            float p = pow(abs(base), exponent);
+            if(fmod(exponent, 2.0) != 0.0)
+                p *= -1.0;
+            return p;
+        }
+        return pow(base, exponent);
+    }
+
+    // Computes the power of a number base to an exponent 
+    // while preserving the sign of base.
+    // Parameters:
+    // - base: The base number
+    // - exponent: The exponent to raise the base to
+    float signedPow(float base, float exponent){
+        float t = abs(base); // Get the absolute value of base
+        const float epsilon = 1e-5; // Define a small positive number as a constant
+
+        // If t is very close to 0, return 0 to avoid unnecessary calculations
+        if (t < epsilon)
+        {
+            return 0.0;
+        }
+
+        // Calculate the power of t to the exponent, preserving the sign of base
+        return sign(base) * pow(t, exponent);
+    }
+
+    /////////////////////
+    //
+    // superformula
+    //
+    /////////////////////
+
+    float3 sphericalHarmonics(
+        float lat,float lon,
+
+        float latExp1, float latVal1,
+        float latExp2, float latVal2,
+        float lonExp1, float lonVal1,
+        float lonExp2, float lonVal2,
+        
+        float internalRadius,
+        float verticalHelixOffset,
+        float horizontalSpiral,
+        float verticalSpiral,
+        float lonRotations,
+        float latRotations,
+        float horizontalScale,
+        float verticalUnfolding)
+    {
+        float theta = HALF_PI + lerp(-HALF_PI, HALF_PI,lat) * latRotations;
+        float sinTheta = sin(theta);
+        float cosTheta = cos(theta);
+
+        float phi = PI + lerp(-PI, PI, lon) * lonRotations;
+        float sinPhi = sin(phi);
+        float cosPhi = cos(phi);
+        
+        
+        float harmonic = 0.0;
+        harmonic += oddSignedPow(sin(latVal1 * theta), (latExp1));
+        harmonic += oddSignedPow(cos(latVal2 * theta), (latExp2));
+        harmonic += oddSignedPow(sin(lonVal1 * phi), (lonExp1));
+        harmonic += oddSignedPow(cos(lonVal2 * phi), (lonExp2));
+        float scale = (1.0 + 3.0 * oddSignedPow(verticalUnfolding, 2.0)) * horizontalScale;
+
+        float horizontalSpiralFactor = pow(lon * lonRotations + .1, .5 * horizontalSpiral);
+        float oneMinusLon = 1.0 - lon;
+        float verticalHelixFactor = 3.0 * (oneMinusLon) * verticalHelixOffset * (1.0 + 25.0 * verticalUnfolding);
+        float verticalSpiralFactor = pow(lon * latRotations + .1, .5 * verticalSpiral);
+        float radiusFactor = 3.0 * internalRadius * (lon + oneMinusLon * horizontalSpiralFactor);
+
+        return float3(
+            -harmonic * scale * horizontalSpiralFactor * sinTheta * cosPhi - radiusFactor * scale * cosPhi,
+             harmonic * scale * horizontalSpiralFactor * sinTheta * sinPhi + radiusFactor * scale * sinPhi,
+             oddSignedPow(verticalUnfolding, 2.5) * lat * verticalSpiralFactor * 25.0 - clamp(1.0 + verticalUnfolding, 0.0, 2.0) * (harmonic * verticalSpiralFactor * cosTheta) - verticalHelixFactor
+        );
+    }
+
+    /////////////////////
+    //
+    // superformula
+    //
+    /////////////////////
+
+    float superformulaRadius(float angle, float freq, float exp1, float exp2, float exp3)
+    {
+        angle = freq * angle / 4.0;
+        float t1 = pow(abs(cos(angle)), exp2);
+        float t2 = pow(abs(sin(angle)), exp3);
+        return pow(t1 + t2, -1.0 / exp1);
+    }
+
+    float3 superformula(
+        float lat, float lon, 
+        
+        float latFreq, float latExp1, float latExp2, float latExp3, 
+        float lonFreq, float lonExp1, float lonExp2, float lonExp3, 
+        
+        float internalRadius,
+        float verticalHelixOffset,
+        float horizontalSpiral,
+        float verticalSpiral,
+        float lonRotations,
+        float latRotations,
+        float horizontalScale,
+        float verticalUnfolding)
+    {
+        float theta = lerp(-PI, PI, lat) * latRotations;
+        float phi = lerp(HALF_PI, -HALF_PI, lon) * lonRotations;
+        float latRadius  = superformulaRadius(theta, latFreq, latExp1, latExp2, latExp3);
+        float lonRadius  = superformulaRadius(phi, lonFreq, lonExp1, lonExp2, lonExp3);
+        float cosPhi = cos(phi);
+
+        float scaleFactor  = (1.0 + verticalUnfolding) * horizontalScale;
+        float verticalFactor = pow(lonRotations, verticalSpiral) * verticalHelixOffset * latRotations / 2.0;
+        verticalHelixOffset = verticalHelixOffset * latRotations * lat;
+        horizontalSpiral = pow(lat * latRotations + 0.1, horizontalSpiral);
+        verticalSpiral = pow(lat * lonRotations + 0.1, verticalSpiral);
+
+        float horizontalRadius = latRadius * scaleFactor * (internalRadius + horizontalSpiral * lonRadius * cosPhi);
+        return float3 (
+             horizontalRadius * cos(theta),
+            -horizontalRadius * sin(theta),
+            verticalUnfolding * lon * 50.0 - clamp(1.0 + verticalUnfolding, 0.0, 2.0) * (verticalSpiral * (lonRadius * sin(phi) - verticalHelixOffset) + verticalFactor)
+        );
+    }
+
+    ///////////////////////////
+    //
+    // SuperEllipsoid
+
+    float3 superEllipsoid(
+        float lat, float lon,
+
+        float latFrequency, float lonFrequency,
+
+        float internalRadius,
+        float verticalHelixOffset,
+        float horizontalSpiral,
+        float verticalSpiral,
+        float lonRotations,
+        float latRotations,
+        float horizontalScale,
+        float verticalUnfolding
+    )
+    {
+        const float smoothingValue = 1.0 / 10.0;
+
+        latFrequency = max(1e-6, latFrequency);
+        lonFrequency = max(1e-6, lonFrequency);
+
+        float latAngle = lerp(-HALF_PI, HALF_PI, lat) * latRotations;
+        float sinLatAngle = sin(latAngle);
+        float cosLatAngle = signedPow(cos(latAngle), latFrequency);
+
+        float lonOffset = 1.0 - lon;
+        lon += smoothingValue;
+        float lonAngle = lerp(-PI, PI, lon) * lonRotations;
+        float sinLonAngle = sin(lonAngle);
+        float cosLonAngle = cos(lonAngle);
+
+        float verticalOffset = 3.0 * lonOffset * verticalHelixOffset;
+        float horizontalFactor = pow(lon * lonRotations + 0.1, 0.5 * horizontalSpiral);
+        float verticalFactor = pow(lon * latRotations + 0.1, 0.5 * verticalSpiral);
+        float xOffset = 3.0 * internalRadius * (lon + lonOffset * horizontalFactor);
+
+        return float3(
+            4.0 * ( cosLatAngle * horizontalScale * horizontalFactor * signedPow(cosLonAngle, lonFrequency) + xOffset * horizontalScale * cosLonAngle),
+            4.0 * (-cosLatAngle * horizontalScale * horizontalFactor * signedPow(sinLonAngle, lonFrequency) - xOffset * horizontalScale * sinLonAngle),
+            4.0 * (verticalUnfolding * lat * verticalFactor + clamp(1.0 + verticalUnfolding, 0.0, 2.0) * (verticalFactor * signedPow(sinLatAngle, latFrequency)) - verticalOffset)
+        );
+    }
+
+    //////////////////////////
+    //
+    // super toroid
+
+    float3 superToroid(
+        float lat, float lon,
+        
+        float latFrequency, float lonFrequency,
+        float radius,
+
+        float internalRadius,
+        float verticalHelixOffset,
+        float horizontalSpiral,
+        float verticalSpiral,
+        float lonRotations,
+        float latRotations,
+        float horizontalScale,
+        float verticalUnfolding
+    )
+    {
+        float smoothingValue = 1.0 / 10.0;
+        radius = 1.0 - clamp(radius, 0.001, 0.999);
+
+        float latAngle = lerp(-PI, PI, 1.0 - lat) * latRotations;
+        float sinLatAngle = sin(latAngle);
+        float cosLatAngle = cos(latAngle);
+        
+        float lonOffset = 1.0 - lon;
+        lon += smoothingValue;
+        float lonAngle = PI + lerp(-PI, PI, lon) * lonRotations;
+        float sinLonAngle = sin(lonAngle);
+        float cosLonAngle = cos(lonAngle);
+
+        float verticalOffset = 3.0 * lonOffset * verticalHelixOffset;
+        float horizontalFactor = pow(lon * lonRotations + 0.1, 0.5 * horizontalSpiral);
+        float verticalFactor   = pow(lon * latRotations + 0.1, 0.5 * verticalSpiral);
+        float xOffset = 3.0 * internalRadius * (lon + lonOffset * horizontalFactor);
+        float lonScale = horizontalFactor * (1.0 + radius * signedPow(cosLatAngle, latFrequency)) * horizontalScale;
+
+        return float3(
+            4.0 * (-signedPow(cosLonAngle, lonFrequency) * lonScale - xOffset * horizontalScale * cosLonAngle),
+            4.0 * ( signedPow(sinLonAngle, lonFrequency) * lonScale + xOffset * horizontalScale * sinLonAngle),
+            4.0 * (verticalUnfolding * lat * verticalFactor - clamp(1.0 - verticalUnfolding, 0.0, 1.0) * (radius * verticalFactor * signedPow(sinLatAngle, latFrequency)) - verticalOffset)
+        );
+    }
+
+    ////////////////////
+    //
+    // eliptic torus
+
+    float3 ellipticTorus(
+        float lat, float lon, 
+        
+        float radius,
+
+        float internalRadius,
+        float verticalHelixOffset,
+        float horizontalSpiral,
+        float verticalSpiral,
+        float lonRotations,
+        float latRotations,
+        float horizontalScale,
+        float verticalUnfolding)
+    {
+        float smoothingValue = 1.0 / 10.0;
+
+        float latAngle = PI + lerp(-PI, PI, lat) * latRotations;
+        float sinLatAngle = sin(latAngle);
+        float cosLatAngle = cos(latAngle);
+
+        float lonOffset = 1.0 - lon;
+        lon += smoothingValue;
+        float lonAngle = HALF_PI + lerp(-PI, PI, lon) * lonRotations;
+        float sinLonAngle = sin(lonAngle);
+        float cosLonAngle = cos(lonAngle);
+        
+        float verticalOffset = 3. * lonOffset * verticalHelixOffset;
+        float horizontalFactor = pow(lon * lonRotations + 0.1, 0.5 * horizontalSpiral);
+        float verticalFactor  = pow(lon * latRotations + 0.1, 0.5 * verticalSpiral);
+        float lonScale = 3.0 * internalRadius * (lon + lonOffset * horizontalFactor);
+
+        return -float3(
+            2. * ((radius + cosLatAngle) * horizontalScale * horizontalFactor * sinLonAngle + lonScale * horizontalScale * sinLonAngle),
+            2. * ((radius + cosLatAngle) * horizontalScale * horizontalFactor * cosLonAngle + lonScale * horizontalScale * cosLonAngle),
+            2. * (verticalUnfolding * lat * verticalFactor + clamp(1. - verticalUnfolding, 0., 1.) * (-verticalFactor * (sinLatAngle + cosLatAngle)) - verticalOffset)
+        );
+
+    }
+};
