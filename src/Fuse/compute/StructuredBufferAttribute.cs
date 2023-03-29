@@ -15,14 +15,7 @@ namespace Fuse.compute
 
     public interface IStructureBufferAttribute : IAttribute
     {
-        public Buffer Buffer
-        {
-            get;
-            set;
-
-        }
-        
-        public string Group { get; }
+        public Buffer Buffer { get; set; }
 
         public StructuredBufferAttributeType StructuredBufferAttributeType();
     }
@@ -35,7 +28,6 @@ namespace Fuse.compute
         }
 
         public Buffer Buffer { get; set; }
-        public string Group { get; }
         public abstract StructuredBufferAttributeType StructuredBufferAttributeType();
         
         public override Int3 Resolution => new(Buffer.ElementCount, 1, 1);

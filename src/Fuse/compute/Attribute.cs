@@ -9,9 +9,10 @@ namespace Fuse.ComputeSystem
 {
     public interface IAttribute
     {
+        public string Group { get; set; }
         public string Name { get; }
 
-        public AttributeType AttributeType { get; }
+        public AttributeType AttributeType { get; set; }
         
         public AbstractShaderNode ShaderNode { get; }
         
@@ -30,10 +31,7 @@ namespace Fuse.ComputeSystem
     {
         Temporary,
         StructuredBuffer,
-        PrimitiveBuffer,
-        Texture,
-        DoubleBufferedTexture,
-        IdAppendBuffer
+        Texture
     }
     
     public abstract class Attribute<T> : PassThroughNode<T>, IAttribute
@@ -45,7 +43,9 @@ namespace Fuse.ComputeSystem
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             IsOverridden = false;
         }
-        public AttributeType AttributeType { get; }
+
+        public string Group { get; set; }
+        public AttributeType AttributeType { get; set; }
         public AbstractShaderNode ShaderNode { get; }
 
         public void SetInput(AbstractShaderNode theNode)

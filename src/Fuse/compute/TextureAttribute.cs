@@ -10,7 +10,6 @@ namespace Fuse.compute
 
     public interface ITextureAttribute : IAttribute
     {
-        public string Group { get; }
         
         public bool DoubleBuffered { get; }
 
