@@ -36,15 +36,16 @@ namespace Fuse.ComputeSystem
     
     public abstract class Attribute<T> : PassThroughNode<T>, IAttribute
     {
-        public Attribute(NodeContext nodeContext, string theName, AttributeType theType,AbstractShaderNode theValue = null) : base(nodeContext, theValue, theName)
+        public Attribute(NodeContext nodeContext,string theGroup,  string theName, AttributeType theType,AbstractShaderNode theValue = null) : base(nodeContext, theValue, theName)
         {
+            Group = theGroup;
             AttributeType = theType;
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             IsOverridden = false;
         }
 
-        public string Group { get; set; }
+        public virtual string Group { get; set; }
         public AttributeType AttributeType { get; set; }
         public AbstractShaderNode ShaderNode { get; }
 
@@ -70,7 +71,7 @@ namespace Fuse.ComputeSystem
 
     public class TemporaryAttribute<T> : Attribute<T>
     {
-        public TemporaryAttribute(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.Temporary)
+        public TemporaryAttribute(NodeContext nodeContext, string theName) : base(nodeContext, "Temporary", theName, AttributeType.Temporary)
         {
             AddProperty("ComputeSystemAttribute", this);
         }

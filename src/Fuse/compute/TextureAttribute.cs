@@ -24,10 +24,9 @@ namespace Fuse.compute
     public class TextureAttribute<TIndex,T> : Attribute<T>, ITextureAttribute where T : struct
     {
        // public ShaderNode<T> Default;
-        public TextureAttribute(NodeContext nodeContext, string theGroup, string theName, bool theIsDoubleBuffered, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.Texture)
+        public TextureAttribute(NodeContext nodeContext, string theGroup, string theName, bool theIsDoubleBuffered, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.Texture)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
-            Group = theGroup;
             DoubleBuffered = theIsDoubleBuffered;
             Default = theDefault ?? ConstantHelper.FromFloat<T>( 0f);
             
@@ -45,7 +44,6 @@ namespace Fuse.compute
         }
 
         public bool DoubleBuffered { get; }
-        public string Group { get; }
 
         public void OverRideByIndex(ShaderNode<Texture> theInstance, ShaderNode<Int3> theIndex)
         {
