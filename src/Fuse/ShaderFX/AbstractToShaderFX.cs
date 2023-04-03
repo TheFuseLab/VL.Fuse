@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using JetBrains.Profiler.Api;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
@@ -244,6 +245,7 @@ namespace Fuse.ShaderFX
 
         public ShaderSource GenerateShaderSource(ShaderGeneratorContext theContext, MaterialComputeColorKeys baseKeys)
         {
+            //MeasureProfiler.StartCollectingData();
             _stopwatch.Reset();
             
             _stopwatch.Start();
@@ -256,7 +258,6 @@ namespace Fuse.ShaderFX
 
             foreach (var kv in Inputs)
             {
-                kv.Value.CallCompileGraph();
                 kv.Value.CheckContext(theContext);
                 
                 HandleShader(_isComputeShader, kv.Value, kv.Key, out var source, out var stream, out var streamDefines);
@@ -303,6 +304,7 @@ namespace Fuse.ShaderFX
            _stopwatch.Stop();
 
            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
+           //MeasureProfiler.SaveData(ShaderName);
            return result;
         }
     }
