@@ -586,22 +586,42 @@ namespace Fuse
                 
                 return "StructuredBuffer<" + theBufferType + ">";
             }
-            
+
             public static string GetGenericTypeName(AbstractShaderNode node)
             {
-                if(node == null) return "";
+                if (node == null) return "";
                 var objectType = node.GetType();
                 var genericArguments = objectType.GetGenericArguments();
 
                 if (genericArguments.Length <= 0) return null;
                 var genericType = genericArguments[0];
-        
+
                 if (genericType == typeof(float))
                 {
-                    return "float32";
+                    return "Float32";
                 }
 
-                return genericType == typeof(double) ? "float64" : genericType.Name;
+                if (genericType == typeof(double))
+                {
+                    return "Float64";
+                }
+
+                if (genericType == typeof(Int32))
+                {
+                    return "Integer32";
+                }
+
+                if (genericType == typeof(Int64))
+                {
+                    return "Integer64";
+                }
+
+                if (genericType == typeof(Color4))
+                {
+                    return "RGBA";
+                }
+
+                return genericType.Name;
             }
         }
 }
