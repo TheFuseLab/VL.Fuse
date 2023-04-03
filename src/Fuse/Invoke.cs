@@ -85,11 +85,11 @@ namespace Fuse
 
         private AbstractShaderNode _delegate;
 
-        public List<IFunctionParameter> Parameters { get; private set; }
+        public List<IFunctionParameter> Parameters { get; protected init; }
 
-        public Delegate(NodeContext nodeContext, AbstractShaderNode theDelegate, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
+        public Delegate(NodeContext nodeContext, AbstractShaderNode theDelegate, List<IFunctionParameter> theParameters, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
         {
-            Parameters = new List<IFunctionParameter>();
+            Parameters = theParameters ?? new List<IFunctionParameter>();
             
             if (theDelegate == null) return;
 
@@ -112,12 +112,10 @@ namespace Fuse
         {
             _delegate = theDelegate;
             
-            Parameters = GetUniqueParameters(theDelegate.FunctionParameters());
+            //Parameters = GetUniqueParameters(theDelegate.FunctionParameters());
             
             Functions = new Dictionary<string, string>();
             
-            
-
             var functionValueMap = new Dictionary<string, string>
             {
                 {"resultType", TypeHelpers.GetGpuType<T>()},

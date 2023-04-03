@@ -49,7 +49,7 @@ namespace Fuse
 
         public Delegate<T> Input { get; }
 
-        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, theName)
+        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, null, theName)
         {
             // ReSharper disable once VirtualMemberCallInConstructor
             
