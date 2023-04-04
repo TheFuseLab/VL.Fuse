@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="NjWenCspPhYLCu58CdwVPM" LanguageVersion="2022.5.0-0712-g0a2d06c81a" Version="0.128">
+<Document xmlns:p="property" xmlns:r="reflection" Id="NjWenCspPhYLCu58CdwVPM" LanguageVersion="2022.5.0-0744-g34026bb753" Version="0.128">
   <Patch Id="SHpHcLhuJm2MriIePcbdAH">
     <Canvas Id="Fy2OF3I0C1oMa8VZkrSzda" DefaultCategory="Main" CanvasType="FullCategory">
       <!--
@@ -286,7 +286,7 @@
               <Pin Id="Oh5jMW2SAsUOjHKXHDYGDG" Name="Rasterizer State" Kind="InputPin" />
               <Pin Id="Il2PCHZSxWSNs1iTBuc8kO" Name="Render Fullscreen" Kind="InputPin" />
               <Pin Id="O9hoodQGinfMWDCA9MaeDO" Name="Enabled" Kind="InputPin" />
-              <Pin Id="Ja94ByooKDqMPrTNnrPjIG" Name="Helper Enabled" Kind="InputPin" />
+              <Pin Id="Ja94ByooKDqMPrTNnrPjIG" Name="Screen Coverage Helper Enabled" Kind="InputPin" />
               <Pin Id="LEoJ9fDenSsLn6TFY725J6" Name="Output" Kind="OutputPin" />
               <Pin Id="CmC7jXVLrqSPMSDxyWr6u3" Name="Error Message" Kind="OutputPin" />
               <Pin Id="Th8qsQ6LuRwLYjYCANmPOX" Name="Shader Code" Kind="OutputPin" />
@@ -459,7 +459,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
             </p:NodeReference>
-            <Pin Id="VLl2l2MpZtCQRn65t2IZsv" Name="Bounds" Kind="InputPin" DefaultValue="1289.1428, 90.85714, 757.1429, 576.5714" />
+            <Pin Id="VLl2l2MpZtCQRn65t2IZsv" Name="Bounds" Kind="InputPin" DefaultValue="1394.2858, 61.142857, 757.1429, 576.5714" />
             <Pin Id="DsTwbxQUShEOy9KxptX4CE" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="VlYIXoKhRGwOwCAnEmCK52" Name="Input" Kind="InputPin" />
             <Pin Id="EP1aSxBc308LWYtAnlhCwE" Name="Camera" Kind="InputPin" />
@@ -781,7 +781,7 @@
             <Pin Id="NpeUajUqzKCPQyHFtSK0NJ" Name="Forward Pass Depth Texture" Kind="InputPin" />
             <Pin Id="UW2RYBJcD6nNE3MmuR3snD" Name="Render Fullscreen" Kind="InputPin" />
             <Pin Id="LDVYFgOD37SN5G9ETNDIap" Name="Enabled" Kind="InputPin" />
-            <Pin Id="N6znXsv5jT9MglC2F9AJhI" Name="Helper Enabled" Kind="InputPin" />
+            <Pin Id="N6znXsv5jT9MglC2F9AJhI" Name="Screen Coverage Helper Enabled" Kind="InputPin" />
             <Pin Id="RzXpktU9qF3MgZf9WPb6nd" Name="Output" Kind="OutputPin" />
             <Pin Id="L9VCLi2JmZGNnioySg8lJc" Name="Helper" Kind="OutputPin" />
           </Node>
@@ -926,22 +926,13 @@
             </p:TypeAnnotation>
           </Pad>
           <Overlay Id="Gd9ceAWFcVLMdExxxcjmnK" Name="Opacity" Bounds="1264,147,433,401" />
-          <Pad Id="DjEg7UELBZOMp5W56s1FWv" Bounds="1299,703,337,201" ShowValueBox="true" isIOBox="true" Value="&lt;-- If  we are interested in raymarching content within a certain volume, we can provide the Volume transform and disable the Fullscreen option.&#xD;&#xA;This optimizes rendering by raymarching only pixels inside the quad that the volume occupies on screen.&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;&lt;-- Check yourself by enabling the Helper and toggle between Fullscreen On and Off.">
+          <Pad Id="DjEg7UELBZOMp5W56s1FWv" Bounds="1334,702,337,201" ShowValueBox="true" isIOBox="true" Value="&lt;-- If  we are interested in raymarching content within a certain volume, we can provide the Volume transform and disable the Fullscreen option.&#xD;&#xA;This optimizes rendering by raymarching only pixels inside the quad that the volume occupies on screen.&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;&lt;-- Check yourself by enabling the Helper and toggle between Fullscreen On and Off.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
             <p:ValueBoxSettings>
               <p:fontsize p:Type="Int32">9</p:fontsize>
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
-            </p:ValueBoxSettings>
-          </Pad>
-          <Pad Id="P7Iov1sYuBvMswvWLrR4lU" Comment="Helper Enabled" Bounds="1149,824,35,35" ShowValueBox="true" isIOBox="true" Value="True">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
-              <CategoryReference Kind="Category" Name="Primitive" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
           <Overlay Id="CK7y72trEDMQWHHtzhCtE1" Name="Forward Pass" Bounds="439,349,396,348" />
@@ -1040,6 +1031,15 @@
               <Choice Kind="TypeFlag" Name="Vector3" />
             </p:TypeAnnotation>
           </Pad>
+          <Pad Id="RSnAvS2DJFsMz1VAx9BRPd" Comment="Screen Coverage Helper Enabled" Bounds="1121,832,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+              <CategoryReference Kind="Category" Name="Primitive" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <ProcessDefinition Id="CsmsE9rl7jBMHMUXyMKkMb">
           <Fragment Id="CArqsgsQRkPOq3cUiLsXYP" Patch="JmrOjn6ArQ1O2CnPwFkNrI" Enabled="true" />
@@ -1080,13 +1080,10 @@
         <Link Id="Qk4CVjs9MWHQCc5rMKmisY" Ids="PIK1EQmGW2rOIYBEOXYlc3,CMOJhCv30wnP6efySu0Ksm" />
         <Link Id="Qxzmp8eniiWOddJEUoC6sc" Ids="NQWWcTI8NwxPkUahYXM0Vi,N7k3RHTJ40DLONcDmGeiSf" />
         <Link Id="UgMUdgP2BLdOpwrFf6qAhx" Ids="L9VCLi2JmZGNnioySg8lJc,D5Xq7A6I1aOPsfYnRjOPFQ" />
-        <Link Id="StqRxbrs4j9P9OIRX1ikGt" Ids="P7Iov1sYuBvMswvWLrR4lU,N6znXsv5jT9MglC2F9AJhI" />
         <Link Id="DwAE3rxw7F2MIATgNNOYoE" Ids="UPUbneW20FSP0GOJ1hvmoX,NpeUajUqzKCPQyHFtSK0NJ" />
         <Link Id="OKA22QYeqOzOVPC3BgrRjS" Ids="UCCr93Xb0tWM4NUVQU1yP2,RneSmtioPiNLqcvZM2hqcI" />
         <Link Id="Vz3LyZc4qoKQO4TR8kfDuM" Ids="HuQfSJVB6NMMJqUchbhNFd,F2ct0KNS5DjPXCs6iqXqrk" />
-        <Link Id="DslSPYSJSWZOLpj1VVZR3W" Ids="CyrDbJpkOawPzUkUKDc7Lf,FE2Y13ukf8iN06LasoQSQv" />
         <Link Id="IAfTnBvzeNvMWLam0IpMXu" Ids="RWU1nBlFcvwMn7r9iuOLfz,EauLWYgrPFoOpi7eAgsDZG" />
-        <Link Id="ERiZjIpJEG7Nqe1JUGUTSt" Ids="IZalnyq0xCIP0TdgoTgjGO,KaLz1El2AFuQX1lFND76AO" />
         <Link Id="A88OVUdnqBMLtJSwXOROiP" Ids="KhjufASSYfYLzNE1cdF3nw,NnNNXUuciEPPkFmZkFjxFy" />
         <Link Id="IDGJQUpoN4wMMvEHCHac2K" Ids="SJiRpGkeDUQLweASiQMnKl,QbP5cFgjqL1Ox7uso5Fuli" />
         <Link Id="VLc2dPb0VKcQN3dvTn49Ui" Ids="SJiRpGkeDUQLweASiQMnKl,QrDOoeq5MQbMPDOBUeuMH2" />
@@ -1099,6 +1096,9 @@
         <Link Id="CKkM9TTAU1UMgF0TnXroL7" Ids="Nt6X1dstu2LOiffEpUuk3n,RzK9gmtNOk1LZlb5fa30vW" />
         <Link Id="IH4WaoP8zH4Nh4nwemLbXb" Ids="RytNqNQNyvlOU76ei0VF4C,OIqxetjF6lJOtmOkIUrGBn" />
         <Link Id="JkjEncKcx8CPK4lMhTwGXv" Ids="VZVYJxa8qwgLnF2jPudRHI,UUfadMMtRo5PKoTkqK4wJ9" />
+        <Link Id="LRl47olMus5QIT5AVYWZNZ" Ids="CyrDbJpkOawPzUkUKDc7Lf,FE2Y13ukf8iN06LasoQSQv" />
+        <Link Id="EUR5AR2p1QiO2vSUb9itui" Ids="IZalnyq0xCIP0TdgoTgjGO,KaLz1El2AFuQX1lFND76AO" />
+        <Link Id="Mkq72b7rBqfNjkb29jt1CO" Ids="RSnAvS2DJFsMz1VAx9BRPd,N6znXsv5jT9MglC2F9AJhI" />
       </Patch>
     </Node>
   </Patch>
