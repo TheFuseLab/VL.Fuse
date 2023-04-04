@@ -1,5 +1,6 @@
 ﻿using System;
 using Fuse.compute;
+using Fuse.function;
 using Stride.Graphics;
 
 namespace Fuse

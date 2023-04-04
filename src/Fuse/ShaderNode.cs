@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using Fuse.function;
 using Fuse.ShaderFX;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;

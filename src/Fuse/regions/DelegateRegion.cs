@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Fuse.compute;
+using Fuse.function;
 using Stride.Core.Mathematics;
 using VL.Core;
 using VL.Core.PublicAPI;

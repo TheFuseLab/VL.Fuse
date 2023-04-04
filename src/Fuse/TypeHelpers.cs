@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
+using Fuse.function;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Buffer = Stride.Graphics.Buffer;
