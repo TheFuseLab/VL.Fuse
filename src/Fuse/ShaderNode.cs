@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using Fuse.function;
 using Fuse.ShaderFX;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
@@ -43,11 +44,6 @@ namespace Fuse
     }
 
 */
-
-    public interface ICompileGraph
-    {
-        public void CompileGraph(AbstractShaderNode theNode);
-    }
 
     public interface IPrepareGraph
     {
@@ -237,7 +233,6 @@ namespace Fuse
         // Used for out parameters to trigger code generation
         
         public readonly List<IPrepareGraph> PrepareGraphListener = new();
-        public readonly List<ICompileGraph> CompileGraphListener = new();
 
         public readonly NodeContext NodeContext;
 
@@ -251,16 +246,6 @@ namespace Fuse
         public void RemovePrepareGraph(IPrepareGraph theDelegate)
         {
             PrepareGraphListener.Remove(theDelegate);
-        }
-        
-        public void AddCompileGraph(ICompileGraph theDelegate)
-        {
-            CompileGraphListener.Add(theDelegate);
-        }
-        
-        public void RemoveCompileGraph(ICompileGraph theDelegate)
-        {
-            CompileGraphListener.Remove(theDelegate);
         }
         
         
@@ -294,19 +279,6 @@ namespace Fuse
         }
 
         private const string DefaultShaderCode = "${resultType} ${resultName};";
-
-        public void CallCompileGraph()
-        {
-            foreach (var listener in new List<ICompileGraph>(CompileGraphListener))
-            {
-                listener.CompileGraph(this);
-            }
-            
-            foreach (var input in Ins)
-            {
-                input.CallCompileGraph();
-            }
-        }
 
         public void CallPrepareGraph()
         {
@@ -410,10 +382,11 @@ namespace Fuse
             
             var source = SourceCode;
             //Console.Out.WriteLine(Name + " : " + HashCode);
-            if (!string.IsNullOrWhiteSpace(source))
-            {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
+            if (string.IsNullOrWhiteSpace(source)) return;
+            
+            theSourceBuilder.Append("        ");
+            theSourceBuilder.Append(source);
+            theSourceBuilder.Append(Environment.NewLine);
         }
         
         

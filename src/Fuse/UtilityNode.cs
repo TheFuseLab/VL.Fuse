@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Fuse.compute;
+using Fuse.function;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
@@ -49,7 +50,7 @@ namespace Fuse
 
         public Delegate<T> Input { get; }
 
-        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, theName)
+        public PassThroughDelegate(NodeContext nodeContext, string theName, AbstractShaderNode theValue) : base(nodeContext, theValue, null, theName)
         {
             // ReSharper disable once VirtualMemberCallInConstructor
             

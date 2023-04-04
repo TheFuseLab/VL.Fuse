@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Fuse.compute;
+using Fuse.function;
+using Stride.Core.Mathematics;
 using VL.Core;
 using VL.Core.PublicAPI;
 
@@ -59,9 +61,10 @@ namespace Fuse.regions
             IEnumerable<AbstractShaderNode> theOutputs,
             IEnumerable<AbstractShaderNode> theCrossLinks,
             IEnumerable<BorderControlPointDescription> theInputDescriptions,
-            IEnumerable<BorderControlPointDescription> theOutputDescriptions) : base(nodeContext, null, "delegateRegion")
+            IEnumerable<BorderControlPointDescription> theOutputDescriptions) : base(nodeContext, null, null, "delegateRegion")
         {
             OptionalOutputs = new List<AbstractShaderNode>();
+            Parameters = GetUniqueParameters(FunctionParameters());
             BuildFunction(SetupRegion(
                 theInputs,
                 theOutputs,
@@ -101,9 +104,8 @@ namespace Fuse.regions
             {
                 switch (t)
                 {
-                    case ShaderNode<GpuVoid> shaderNode:
-                        var myInputVoid = t;
-                        myInputs.Add(myInputVoid);
+                    case ShaderNode<GpuVoid>:
+                        myInputs.Add(t);
 
                         break;
                     default:

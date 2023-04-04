@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Fuse.function;
 using Stride.Rendering.Materials;
 using VL.Core;
 

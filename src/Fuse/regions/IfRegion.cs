@@ -43,7 +43,9 @@ namespace Fuse.regions
             var source = SourceCode;
             if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(this))
             {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
+                theSourceBuilder.Append("        ");
+                theSourceBuilder.Append(source);
+                theSourceBuilder.Append(Environment.NewLine);
             }
 
             theSourceBuilder.Append(@"        }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
+using Fuse.function;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Buffer = Stride.Graphics.Buffer;
@@ -622,6 +623,18 @@ namespace Fuse
                 }
 
                 return genericType.Name;
+            }
+            
+            public static string ValueToString(object theObject)
+            {
+                if (theObject is byte || theObject is sbyte || theObject is short || theObject is ushort ||
+                    theObject is int || theObject is uint || theObject is long || theObject is ulong)
+                {
+                    var number = Convert.ToInt64(theObject);
+                    return number.ToString("#,##0").Replace(",", ".");
+                }
+
+                return theObject.ToString();
             }
         }
 }
