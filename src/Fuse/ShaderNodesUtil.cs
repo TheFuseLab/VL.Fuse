@@ -16,6 +16,7 @@ using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Core;
 using VL.Stride;
+using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
 using ServiceRegistry = VL.Core.ServiceRegistry;
@@ -356,6 +357,11 @@ namespace Fuse
             unchecked{
                 return (uint)GetStableHashCode(nodeContext.Path.ToString());
             }
+        }
+
+        public  static Matrix GetParentTransform(RenderDrawContext renderDrawContext)
+        {
+            return renderDrawContext.RenderContext.Tags.Get(EntityRendererRenderFeature.CurrentParentTransformation);
         }
     }
 
