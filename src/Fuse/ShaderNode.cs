@@ -216,6 +216,8 @@ namespace Fuse
         public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             
+            if (node.HasFixedName()) return;
+            
             if (_hashInstances.ContainsKey(node.HashCode))
             {
                 _hashInstances[node.HashCode]++;
@@ -260,6 +262,11 @@ namespace Fuse
         public readonly List<IPrepareGraph> PrepareGraphListener = new();
 
         public readonly NodeContext NodeContext;
+
+        public virtual bool HasFixedName()
+        {
+            return false;
+        }
 
         public int WriteCounter { get; set; }
 

@@ -67,6 +67,11 @@ namespace Fuse
         {
             return "";//TypeHelpers.GetDefaultForType(Value);
         }
+        
+        public override bool HasFixedName()
+        {
+            return true;
+        }
     }
 
     

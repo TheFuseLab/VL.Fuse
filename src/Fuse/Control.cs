@@ -146,6 +146,11 @@ ${cases}
         {
             return _keyword;
         }
+        
+        public override bool HasFixedName()
+        {
+            return true;
+        }
     }
     
     public class EmptyVoid : SimpleKeyword
