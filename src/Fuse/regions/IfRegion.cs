@@ -19,7 +19,7 @@ namespace Fuse.regions
             _inCheck = inCheck;
         }
 
-        protected internal override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
+        protected override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
         {
             if (!theHashes.Add(this)) return;
             

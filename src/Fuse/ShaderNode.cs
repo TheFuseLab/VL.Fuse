@@ -194,7 +194,7 @@ namespace Fuse
 
     public class CheckContextVisitor : IShaderNodeVisitor
     {
-        private ShaderGeneratorContext _context;
+        private readonly ShaderGeneratorContext _context;
 
         public CheckContextVisitor(ShaderGeneratorContext theContext)
         {
@@ -204,6 +204,31 @@ namespace Fuse
         public void Visit(AbstractShaderNode node, int recursionLevel)
         {
             node.OnPassContext(_context);
+        }
+    }
+
+    //this is a visitor that checks if the node has a unique name
+    public class CheckIdsVisitor : IShaderNodeVisitor
+    {
+
+        private readonly Dictionary<uint, uint> _hashInstances = new();
+
+        public void Visit(AbstractShaderNode node, int recursionLevel)
+        {
+            
+            if (_hashInstances.ContainsKey(node.HashCode))
+            {
+                _hashInstances[node.HashCode]++;
+                node.Name += "_" +_hashInstances[node.HashCode];
+                if (node is IGpuInput input)
+                {
+                    input.OnUpdateName();
+                }
+            }
+            else
+            {
+                _hashInstances[node.HashCode] = 1;
+            }
         }
     }
     
@@ -372,7 +397,7 @@ namespace Fuse
             }
         }
 
-        protected internal virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
+        protected virtual void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
         {
             if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
             
@@ -443,7 +468,10 @@ namespace Fuse
             PreOrderVisit(new PrintShaderNodeVisitor(), new HashSet<AbstractShaderNode>());
         }
         
-        
+        public void CheckHashCodes()
+        {
+            PreOrderVisit(new CheckIdsVisitor(), new HashSet<AbstractShaderNode>());
+        }
 
         private readonly HashSet<ShaderGeneratorContext> _contexts = new();
 

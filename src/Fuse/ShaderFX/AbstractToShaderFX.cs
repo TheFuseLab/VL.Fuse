@@ -198,6 +198,7 @@ namespace Fuse.ShaderFX
             var streamBuilder = new StringBuilder();
             var streamDeclareBuilder = new StringBuilder();
             
+            
             _stopwatch.Restart();
             theShaderInput.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Declaration: {_stopwatch.ElapsedMilliseconds} ms");
@@ -258,9 +259,11 @@ namespace Fuse.ShaderFX
 
             foreach (var kv in Inputs)
             {
-                kv.Value.CheckContext(theContext);
+                var shaderInput = kv.Value;
+                shaderInput.CheckHashCodes();
+                shaderInput.CheckContext(theContext);
                 
-                HandleShader(_isComputeShader, kv.Value, kv.Key, out var source, out var stream, out var streamDefines);
+                HandleShader(_isComputeShader, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
                 sourceStream.Add(kv.Key,(source,stream));
                 streamDefinesBuilder.AppendLine(streamDefines);
             }
