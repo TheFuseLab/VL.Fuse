@@ -52,5 +52,10 @@ namespace Fuse
         {
             return "";
         }
+
+        public override bool HasFixedName()
+        {
+            return true;
+        }
     }
 }

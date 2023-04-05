@@ -14,6 +14,8 @@ namespace Fuse{
     public interface IGpuInput : IComputeNode
     {
         void SetParameterValue(ParameterCollection theCollection);
+        
+        public abstract void OnUpdateName();
     }
     
     
@@ -28,6 +30,8 @@ namespace Fuse{
         public void SetParameterValue(ParameterCollection theCollection)
         {
         }
+
+        public void OnUpdateName() {}
 
         public bool CheckDeclaration()
         {
@@ -138,6 +142,8 @@ namespace Fuse{
                      {"inputType", theTypeName}
                  });
          }
+         
+         
 
          protected void SetFieldDeclaration(string theTypeName, string theComputeTypeName)
          {
@@ -150,6 +156,7 @@ namespace Fuse{
          }
          
          public abstract void SetParameterValue(ParameterCollection theCollection);
+         public abstract void OnUpdateName();
      }
 
      public abstract class ObjectInput<T> : AbstractInput<T, ObjectParameterKey<T>, ObjectParameterUpdater<T>> where T : class
@@ -217,7 +224,7 @@ namespace Fuse{
              SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
          }
 
-         public void UpdateFieldDeclaration()
+         public override void OnUpdateName()
          {
              SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
          }
@@ -272,6 +279,11 @@ namespace Fuse{
      public class SamplerInput: ObjectInput<SamplerState>, IGpuInput 
      {
          public SamplerInput(NodeContext nodeContext) : base(nodeContext, "SamplerInput")
+         {
+             SetFieldDeclaration("SamplerState", "SamplerState");
+         }
+
+         public override void OnUpdateName()
          {
              SetFieldDeclaration("SamplerState", "SamplerState");
          }
@@ -367,6 +379,12 @@ namespace Fuse{
         public override void SetParameterValue(ParameterCollection theCollection)
         {
             theCollection.Set(ParameterKey, Value);
+        }
+        
+        public override void OnUpdateName()
+        {
+            ParameterKey = new ValueParameterKey<T>(ID);
+            SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
     }
     /*

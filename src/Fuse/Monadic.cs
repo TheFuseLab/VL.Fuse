@@ -10,7 +10,9 @@ namespace Fuse
     public sealed class ShaderNodeMonadicFactory<T> : IMonadicFactory<T, ShaderNode<T>>
     {
         // This field is accessed by the target code
-        public static readonly ShaderNodeMonadicFactory<T> Default = new ShaderNodeMonadicFactory<T>();
+        public static readonly ShaderNodeMonadicFactory<T> Default = new();
+        
+        private readonly Dictionary<uint, uint> _hashInstances = new();
 
         IMonadBuilder<T, ShaderNode<T>> IMonadicFactory<T, ShaderNode<T>>.GetMonadBuilder(bool isConstant)
         {
