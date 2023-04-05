@@ -1,0 +1,50 @@
+shader SDFVoxelVolume : SDFVoxel
+{
+    RWStructuredBuffer<Voxel> VoxelVolume;
+
+    int3 NumberOfVoxels;
+    float VoxelSpacing;
+    float3 VolumeOffset;
+
+    bool IsOutOfVoxelVolumeBounds(uint3 coordinate)
+    {
+        return any(coordinate > NumberOfVoxels - 1);
+    }
+
+    uint CalculateVoxelVolumeIndex(uint3 coordinate)
+    {
+        return dot(coordinate, uint3(1, NumberOfVoxels.x, NumberOfVoxels.x * NumberOfVoxels.y));
+    }
+
+    Voxel GetVoxel(uint3 coordinate)
+    {
+        // return UnpackVoxel(VoxelVolume[CalculateVoxelVolumeIndex(coordinate)]);
+        return VoxelVolume[CalculateVoxelVolumeIndex(coordinate)];
+    }
+
+    void SetVoxel(uint3 coordinate, Voxel voxel)
+    {
+        // VoxelVolume[CalculateVoxelVolumeIndex(coordinate)] = PackVoxel(voxel);
+        VoxelVolume[CalculateVoxelVolumeIndex(coordinate)] = voxel;
+    }
+
+    float3 VoxelToVoxelVolumeSpace(uint3 coordinate, float3 position = 0.0f)
+    {
+        return VoxelSpacing * (position + coordinate - 0.5f * (NumberOfVoxels - 1.0f));
+    }
+
+    float3 VoxelVolumeToVoxelSpace(uint3 coordinate, float3 position = 0.0f)
+    {
+        return position / VoxelSpacing - coordinate + 0.5f * (NumberOfVoxels - 1.0f);
+    }
+
+    float3 VoxelVolumeToWorldSpace(float3 position)
+    {
+        return position + VolumeOffset;
+    }
+
+    float3 WorldToVoxelVolumeSpace(float3 position)
+    {
+        return position - VolumeOffset;
+    }
+};

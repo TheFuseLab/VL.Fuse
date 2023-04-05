@@ -1,0 +1,55 @@
+shader DrawDCTriangles_DrawFX : VS_PS_Base, ShaderUtils, Transformation, Camera, SDFVertex
+{
+    // PARTICLES BUFFERS
+    StructuredBuffer<Vertex> Vertices;
+    StructuredBuffer<uint> Indices;
+
+    [Color]
+    float4 Color;
+    float SizeMult = 1;
+
+    // STREAMS ================================================================================
+    stream float2 TexCoord;
+    stream uint VertexID : SV_VertexID;
+    stream float Size;
+
+    // VS ================================================================================
+    override stage void VSMain()
+    {
+        uint id = streams.InstanceID;
+        id = Indices[id];
+
+        // READ PARTICLES BUFFERS
+        float3 P_PosSize = Vertices[id].position;
+        streams.PositionWS = float4(P_PosSize.xyz, 1);          
+        streams.Size = 0.1;
+    }
+
+
+    // GS ==============================================================================
+
+    [maxvertexcount(3)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+
+        uint id = streams.InstanceID * 3;
+        for (int i=0; i<3; i++)
+        {
+
+            float4 pos = float4(Vertices[Indices[id + i]].position, 1);
+            streams.ShadingPosition = mul(pos, WorldViewProjection);
+            
+            triangleStream.Append(streams);
+        }
+    }
+
+    // PS ---------------------------------------------------------------------
+    override stage void PSMain() 
+    {
+        streams.ColorTarget = Color;
+    }
+
+};
+
+
