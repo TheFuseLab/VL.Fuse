@@ -38,6 +38,8 @@ public class Delegate<T> : ShaderNode<T>, IDelegate
     protected void BuildFunction(AbstractShaderNode theDelegate)
     {
         _delegate = theDelegate;
+
+        theDelegate.CheckHashCodes();
             
         //Parameters = GetUniqueParameters(theDelegate.FunctionParameters());
             
