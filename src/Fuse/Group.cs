@@ -24,7 +24,7 @@ namespace Fuse
     public class Do2<T>: ShaderNode<T>
     {
         
-        private ShaderNode<T> _input;
+        private readonly ShaderNode<T> _input;
         public Do2(NodeContext nodeContext, ShaderNode<T> theOne, IEnumerable<AbstractShaderNode> theInputs, string name = "Do2") : base(nodeContext, name)
         {
             NullInputMode = HandleNullInputMode.Remove;
