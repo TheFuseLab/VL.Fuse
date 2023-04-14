@@ -39,4 +39,9 @@ public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
     {
         return "";
     }
+    
+    public override bool HasFixedName()
+    {
+        return true;
+    }
 }
