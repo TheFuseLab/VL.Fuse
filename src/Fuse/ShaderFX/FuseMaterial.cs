@@ -10,11 +10,12 @@ public class FuseMaterialClearCoatFeature : MaterialClearCoatFeature
     public Material OriginalMaterial { get;}
     public ShaderNode<GpuVoid> MaterialShading { get; }
     
-    public FuseMaterialClearCoatFeature(Material theOriginalMaterial, ShaderNode<GpuVoid> theShaderNode)
+    public FuseMaterialClearCoatFeature(Material theOriginalMaterial, ShaderNode<GpuVoid> theShaderNode, Mesh theMesh)
     {
         MaterialShading = theShaderNode;
         OriginalMaterial = theOriginalMaterial;
         Enabled = false;
+
     }
     
 }
