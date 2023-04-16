@@ -370,7 +370,7 @@ namespace Fuse
         
         private int _subContextId = 0;
 
-        private int _startIndex = 0;
+        private readonly int _startIndex = 0;
 
         private readonly NodeContext _context;
 
