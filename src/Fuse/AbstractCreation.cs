@@ -52,9 +52,7 @@ namespace Fuse
         public static AbstractShaderNode AbstractFunctionParameter(NodeSubContextFactory theSubContextFactory, Type theParameterType, InputModifier theModifier = InputModifier.In, int theId = 0 )
         {
             var baseType = typeof(FunctionParameter<>);
-            var nodeType = theParameterType;
-            
-            var dataType = new[] { nodeType.GetGenericArguments()[0]};
+            var dataType = new[] { theParameterType.GetGenericArguments()[0]};
             var getType = baseType.MakeGenericType(dataType);
             
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), null, theModifier, theId) as AbstractShaderNode;
@@ -125,6 +123,11 @@ namespace Fuse
         {
             var dataType = new[] { theType.GetGenericArguments()[0]};
             return ConstantHelper.AbstractFromFloat( dataType[0], theValue);
+        }
+        
+        public static AbstractShaderNode AbstractSemantic(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theValue,string theName, bool define = false, string theSemantic = null)
+        {
+            return CreateAbstract(theValue, typeof(Semantic<>), new object[]{theSubContextFactory.NextSubContext(), theName, define, theSemantic});
         }
     }
 }
