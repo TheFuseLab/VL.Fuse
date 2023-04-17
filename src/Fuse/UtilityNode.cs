@@ -175,7 +175,7 @@ namespace Fuse
     
     public class AddToGraph<T>: ShaderNode<T>, IComputeVoid
     {
-        private ShaderNode<T> _input;
+        private readonly ShaderNode<T> _input;
         public AddToGraph(NodeContext nodeContext, ShaderNode<T> theMain, IEnumerable<AbstractShaderNode> theInputs, string name = "AddToGraph") : base(nodeContext, name)
         {
             NullInputMode = HandleNullInputMode.Remove;

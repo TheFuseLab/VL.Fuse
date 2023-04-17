@@ -61,6 +61,7 @@ namespace Fuse.compute
             AddProperty("DynamicIndex", this);
             IndexProvider.Index(NodeContext, out var readIndex, out var writeIndex);
             Input = useReadIndex ? readIndex : writeIndex;
+            SetInputs(new List<AbstractShaderNode>{Input});
         }
     }
 }
