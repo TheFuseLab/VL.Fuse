@@ -130,6 +130,7 @@ ${cases}
         {
             _keyword = theKeyword;
             SetInputs(new List<AbstractShaderNode>{null});
+            HasFixedName = true;
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -145,11 +146,6 @@ ${cases}
         protected override string SourceTemplate()
         {
             return _keyword;
-        }
-        
-        public override bool HasFixedName()
-        {
-            return true;
         }
     }
     

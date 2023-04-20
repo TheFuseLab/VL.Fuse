@@ -215,8 +215,8 @@ namespace Fuse
 
         public void Visit(AbstractShaderNode node, int recursionLevel)
         {
-            
-            if (node.HasFixedName()) return;
+            /*
+            if (node.HasFixedName) return;
             
             if (_hashInstances.ContainsKey(node.HashCode))
             {
@@ -226,11 +226,13 @@ namespace Fuse
                 {
                     input.OnUpdateName();
                 }
+                Console.WriteLine( node.Name + " " + node.GetHashCode());
             }
             else
             {
                 _hashInstances[node.HashCode] = 1;
-            }
+                Console.WriteLine( node.Name + " " + node.GetHashCode());
+            }*/
         }
     }
     
@@ -263,10 +265,7 @@ namespace Fuse
 
         public readonly NodeContext NodeContext;
 
-        public virtual bool HasFixedName()
-        {
-            return false;
-        }
+        public bool HasFixedName { get; set;  }
 
         public int WriteCounter { get; set; }
 
@@ -302,6 +301,7 @@ namespace Fuse
             NodeContext = nodeContext;
             Name = theId;
             HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
+            HasFixedName = false;
         }
         
         public virtual IDictionary<string,string> Functions

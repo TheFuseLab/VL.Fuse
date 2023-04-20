@@ -52,6 +52,7 @@ namespace Fuse
         public ConstantValue(T theValue) : base(NodeContext.Default, "constant", null, false)
         {
             Value = theValue;
+            HasFixedName = true;
         }
 
 
@@ -66,11 +67,6 @@ namespace Fuse
         protected override string SourceTemplate()
         {
             return "";//TypeHelpers.GetDefaultForType(Value);
-        }
-        
-        public override bool HasFixedName()
-        {
-            return true;
         }
     }
 

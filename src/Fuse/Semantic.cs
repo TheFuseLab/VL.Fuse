@@ -11,6 +11,7 @@ namespace Fuse
         public Semantic(NodeContext nodeContext, string theName, bool define = false, string theSemantic = null) : base(nodeContext, "Semantic")
         {
             Name = theName;
+            HasFixedName = true;
             SetInputs(new List<AbstractShaderNode>());
 
             if (!define) return;
@@ -51,11 +52,6 @@ namespace Fuse
         protected override string SourceTemplate()
         {
             return "";
-        }
-
-        public override bool HasFixedName()
-        {
-            return true;
         }
     }
 }

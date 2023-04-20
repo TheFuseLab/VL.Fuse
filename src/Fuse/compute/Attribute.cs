@@ -15,8 +15,10 @@ namespace Fuse.ComputeSystem
         public AttributeType AttributeType { get; set; }
         
         public AbstractShaderNode ShaderNode { get; }
-        
-        public void SetInput(AbstractShaderNode theNode);
+
+        public AbstractShaderNode InputAbstract { get; set; }
+
+        public void Sync(IAttribute theAttribute);
 
         public ShaderNode<GpuVoid> WriteCall { get; set; }
 
@@ -48,11 +50,25 @@ namespace Fuse.ComputeSystem
         public virtual string Group { get; set; }
         public AttributeType AttributeType { get; set; }
         public AbstractShaderNode ShaderNode { get; }
+        public AbstractShaderNode InputAbstract
+        {
+            get => Input;
+            set => SetInput(value);
+        }
 
         public void SetInput(AbstractShaderNode theNode)
         {
             Input = theNode as ShaderNode<T>;
             SetInputs(new List<AbstractShaderNode>{Input});
+        }
+
+        public void Sync(IAttribute theAttribute)
+        {
+            if (theAttribute == null || theAttribute == this || theAttribute.IsOverridden) return;
+
+            InputAbstract = theAttribute.InputAbstract;
+            ReadCall = theAttribute.ReadCall;
+            WriteCall = theAttribute.WriteCall;
         }
 
         public ShaderNode<GpuVoid> WriteCall { get; set; }
@@ -62,11 +78,6 @@ namespace Fuse.ComputeSystem
         public abstract Int3 Resolution { get; }
 
         public bool IsOverridden { get; protected set; }
-
-        public void SetAbstractInput(AbstractShaderNode theNode)
-        {
-            SetInput(theNode);
-        }
     }
 
     public class TemporaryAttribute<T> : Attribute<T>
