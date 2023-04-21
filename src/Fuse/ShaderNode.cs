@@ -683,7 +683,7 @@ namespace Fuse
         {
             return TypeHelpers.GetDimension<T>();
         }
-        public override string ID => Name + "_" + HashCode;
+        public override string ID => Name + "_" + HashCode + "_" + GetHashCode();
     }
 
     public abstract class ResultNode<T> : ShaderNode<T>
