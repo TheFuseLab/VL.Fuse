@@ -215,12 +215,13 @@ namespace Fuse
 
         public void Visit(AbstractShaderNode node, int recursionLevel)
         {
-            /*
+            
             if (node.HasFixedName) return;
             
             if (_hashInstances.ContainsKey(node.HashCode))
             {
                 _hashInstances[node.HashCode]++;
+                if (node.Name.EndsWith("_" + _hashInstances[node.HashCode])) return;
                 node.Name += "_" +_hashInstances[node.HashCode];
                 if (node is IGpuInput input)
                 {
@@ -232,7 +233,7 @@ namespace Fuse
             {
                 _hashInstances[node.HashCode] = 1;
                 Console.WriteLine( node.Name + " " + node.GetHashCode());
-            }*/
+            }
         }
     }
     
@@ -280,7 +281,7 @@ namespace Fuse
         }
         
         
-        public  string Name{ get;  set; }
+        public virtual string Name{ get;  set; }
 
         public abstract AbstractShaderNode AbstractDefault { get; }
 
@@ -683,7 +684,7 @@ namespace Fuse
         {
             return TypeHelpers.GetDimension<T>();
         }
-        public override string ID => Name + "_" + HashCode + "_" + GetHashCode();
+        public override string ID => Name + "_" + HashCode;
     }
 
     public abstract class ResultNode<T> : ShaderNode<T>

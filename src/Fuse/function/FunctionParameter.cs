@@ -11,7 +11,7 @@ public class FunctionParameter<T> : ShaderNode<T> , IFunctionParameter
         Ins = new List<AbstractShaderNode>();
         Modifier = theInputModifier;
         ArgumentNumber = theId;
-        HasFixedName = false;
+        HasFixedName = true;
     }
         
     public override string ID => Name;
