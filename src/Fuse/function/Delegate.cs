@@ -118,6 +118,13 @@ public class Delegate1In1Out<TIn, TOut> :Delegate<TOut>
     }
 }
 
+public class Delegate1In2Out<TIn, TOut1,TOut2> :Delegate<TOut1>
+{
+    public Delegate1In2Out(NodeContext nodeContext, ShaderNode<TOut1> theDelegate, FunctionParameter<TIn> theParam0, FunctionParameter<TOut2> theOutParam1, string theId = "Function", ShaderNode<TOut1> theDefault = null) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theOutParam1}, theId, theDefault)
+    {
+    }
+}
+
 public class Delegate2In1Out<TIn0, TIn1, TOut> :Delegate<TOut>
 {
     public Delegate2In1Out(NodeContext nodeContext, ShaderNode<TOut> theDelegate, FunctionParameter<TIn0> theParam0, FunctionParameter<TIn1> theParam1, string theId = "Function", ShaderNode<TOut> theDefault = null) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theParam1}, theId, theDefault)
