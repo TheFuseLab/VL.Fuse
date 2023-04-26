@@ -4,6 +4,37 @@ using VL.Core;
 
 namespace Fuse
 {
+    
+    public class Matrix3Join : ResultNode<Matrix3>
+    {
+        
+        private readonly ShaderNode<Vector3> _x;
+        private readonly ShaderNode<Vector3> _y;
+        private readonly ShaderNode<Vector3> _z;
+
+        public Matrix3Join(NodeContext nodeContext, ShaderNode<Vector3> x, ShaderNode<Vector3> y, ShaderNode<Vector3> z) : base(nodeContext, "Matrix3Join")
+        {
+            ShaderNode<Vector3> @default = new ConstantValue<Vector3>(new Vector3());
+            
+            _x = x ?? @default;
+            _y = y ?? @default;
+            _z = z ?? @default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z});
+        }
+        
+        protected override string ImplementationTemplate()
+        {
+            return ShaderNodesUtil.Evaluate("float3x3(${x},${y},${z})", 
+                new Dictionary<string, string>
+                {
+                    {"x", _x.ID},
+                    {"y", _y.ID},
+                    {"z", _z.ID}
+                });
+        }
+    }
+    
     public class Float2Join : ResultNode<Vector2>
     {
         private readonly ShaderNode<float> _x;
