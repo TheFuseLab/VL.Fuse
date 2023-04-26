@@ -36,35 +36,34 @@ namespace Fuse.compute
     {
 
         // public ShaderNode<T> Default;
-        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, bool theDefineSemantic = true, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.StructuredBuffer)
+
+        private string _name;
+        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, bool theDefineSemantic = true, ShaderNode<GpuStruct> theOverrideInstance = null, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.StructuredBuffer)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
 
             Default = theDefault ?? ConstantHelper.FromFloat<T>( 0f);
             
-            SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, theDefineSemantic, theName.ToUpper()));
-            SetProperty("ComputeSystemAttribute", this);
+            
+
+            if (theOverrideInstance != null)
+            {
+                var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext(), theOverrideInstance, theName);
+                SetInput(getMember);
+                IsOverridden = true;
+            }
+            else
+            {
+                SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, theDefineSemantic, theName.ToUpper()));
+                SetProperty("ComputeSystemAttribute", this);
+            }
+            
         }
         
         public override StructuredBufferAttributeType StructuredBufferAttributeType()
         {
             return compute.StructuredBufferAttributeType.Attribute;
         }
-
-        public void OverRideByInstance(ShaderNode<GpuStruct> theInstance)
-        {
-            if (theInstance == null)
-            {
-                SetProperty("ComputeSystemAttribute", this);
-                IsOverridden = false;
-            }else{
-                var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext(), theInstance,Name);
-                SetInput(getMember);
-                IsOverridden = true;
-            }
-        }
-
     }
     
     public class StructuredBufferResource : AbstractStructuredBufferAttribute<Buffer>, IBufferInput<GpuStruct>

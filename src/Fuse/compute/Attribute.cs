@@ -62,9 +62,9 @@ namespace Fuse.ComputeSystem
             SetInputs(new List<AbstractShaderNode>{Input});
         }
 
-        public void Sync(IAttribute theAttribute)
+        public virtual void Sync(IAttribute theAttribute)
         {
-            if (theAttribute == null || theAttribute == this || theAttribute.IsOverridden) return;
+            if (theAttribute == null || theAttribute == this) return;
 
             InputAbstract = theAttribute.InputAbstract;
             ReadCall = theAttribute.ReadCall;
