@@ -257,6 +257,16 @@ namespace Fuse
         SetOff
     }
 
+    public class ViewerID
+    {
+        public string ID { get;  }
+
+        public ViewerID(string theID)
+        {
+            ID = theID;
+        }
+    }
+
     public abstract class AbstractShaderNode : IComputeNode
     {
         public List<AbstractShaderNode> Ins = new();
@@ -303,6 +313,11 @@ namespace Fuse
             Name = theId;
             HashCode = ShaderNodesUtil.GetHashCode(nodeContext);
             HasFixedName = false;
+        }
+        
+        public void SetViewerID(string theID)
+        {
+            SetProperty("ViewerID", new ViewerID(theID));
         }
         
         public virtual IDictionary<string,string> Functions

@@ -56,6 +56,7 @@ namespace Fuse.compute
             {
                 SetInput(new Semantic<T>(myFactory.NextSubContext(),theName, theDefineSemantic, theName.ToUpper()));
                 SetProperty("ComputeSystemAttribute", this);
+                SetViewerID("ComputeAttribute");
             }
             
         }
