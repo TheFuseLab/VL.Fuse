@@ -88,9 +88,9 @@ namespace Fuse.regions
 
     public class Index3DNode : ShaderNode<int>
     {
-        [field: ThreadStatic] public static Grid3DRegion Current { get; private set; }
+        [field: ThreadStatic] public static NodeContext Current { get; private set; }
 
-        public static IDisposable MakeCurrent(Grid3DRegion context)
+        public static IDisposable MakeCurrent(NodeContext context)
         {
             var previous = Current;
             Current = context;
@@ -99,11 +99,11 @@ namespace Fuse.regions
 
         public Index3DNode(NodeContext nodeContext) : base(nodeContext, "index")
         {
-            Name = Current.IndexName;
+            ID = Current == null ?  "0": $"index_{ShaderNodesUtil.GetHashCode(Current)}";
             SetInputs(new List<AbstractShaderNode>());
         }
 
-        public override string ID => Name;
+        public override string ID { get; }
 
         protected override string SourceTemplate()
         {
