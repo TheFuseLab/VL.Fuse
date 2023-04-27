@@ -48,14 +48,20 @@ namespace Fuse{
     
     public class FieldDeclaration
     {
+        
+        private const string DeclarationTemplate = @"
+        [Link(""${inputName}"")]
+        stage ${inputType} ${inputName};";
+        
         private string _computeShaderDeclaration;
         private string _declaration;
+        
+        public string TypeName { get; private set; }
 
-        public FieldDeclaration(bool isResource, string computeShaderDeclaration, string declaration)
+        public FieldDeclaration(bool isResource, string computeShaderDeclaration, string declaration, string theID)
         {
             IsResource = isResource;
-            _computeShaderDeclaration = computeShaderDeclaration;
-            _declaration = declaration;
+            Set(computeShaderDeclaration, declaration, theID);
         }
 
         public FieldDeclaration(string declaration)
@@ -63,11 +69,23 @@ namespace Fuse{
             _computeShaderDeclaration = declaration;
             _declaration = declaration;
         }
-
-        public void Set(string computeShaderDeclaration, string declaration)
+        
+        private string BuildDeclaration(string theTypeName, string theID)
         {
-            _computeShaderDeclaration = computeShaderDeclaration;
-            _declaration = declaration;
+            return ShaderNodesUtil.Evaluate(
+                DeclarationTemplate,
+                new Dictionary<string, string>
+                {
+                    {"inputName", theID},
+                    {"inputType", theTypeName}
+                });
+        }
+
+        public void Set(string computeShaderTypeName, string typeName, string theID)
+        {
+            TypeName = typeName;
+            _computeShaderDeclaration = BuildDeclaration(computeShaderTypeName, theID);
+            _declaration = BuildDeclaration(typeName, theID);
         }
 
         public string GetDeclaration(bool theIsComputeShader)
@@ -86,9 +104,7 @@ namespace Fuse{
     public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T> where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
      {
          
-         private const string DeclarationTemplate = @"
-        [Link(""${inputName}"")]
-        stage ${inputType} ${inputName};";
+        
 
          protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
 
@@ -102,7 +118,7 @@ namespace Fuse{
              SetInputs( new List<AbstractShaderNode>());
              AddProperty(Inputs, this);
 
-             _fieldDeclaration = new FieldDeclaration(theIsResource, "", "");
+             _fieldDeclaration = new FieldDeclaration(theIsResource, "", "", ID);
              AddProperty(Declarations,_fieldDeclaration);
          }
 
@@ -132,22 +148,13 @@ namespace Fuse{
              }
          }
 
-         private string BuildDeclaration(string theTypeName)
-         {
-             return ShaderNodesUtil.Evaluate(
-                 DeclarationTemplate,
-                 new Dictionary<string, string>
-                 {
-                     {"inputName", ID},
-                     {"inputType", theTypeName}
-                 });
-         }
+         
          
          
 
          protected void SetFieldDeclaration(string theTypeName, string theComputeTypeName)
          {
-             _fieldDeclaration.Set(BuildDeclaration(theComputeTypeName),BuildDeclaration(theTypeName));
+             _fieldDeclaration.Set(theComputeTypeName,theTypeName, ID);
          }
 
          protected void SetFieldDeclaration(string theTypeName)
