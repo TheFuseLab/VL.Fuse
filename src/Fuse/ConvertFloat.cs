@@ -35,6 +35,39 @@ namespace Fuse
         }
     }
     
+    public class Matrix4Join : ResultNode<Matrix>
+    {
+        
+        private readonly ShaderNode<Vector4> _x;
+        private readonly ShaderNode<Vector4> _y;
+        private readonly ShaderNode<Vector4> _z;
+        private readonly ShaderNode<Vector4> _w;
+
+        public Matrix4Join(NodeContext nodeContext, ShaderNode<Vector4> x, ShaderNode<Vector4> y, ShaderNode<Vector4> z, ShaderNode<Vector4> w) : base(nodeContext, "Matrix4Join")
+        {
+            ShaderNode<Vector4> @default = new ConstantValue<Vector4>(new Vector4());
+            
+            _x = x ?? @default;
+            _y = y ?? @default;
+            _z = z ?? @default;
+            _w = w ?? @default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y,_z,_w});
+        }
+        
+        protected override string ImplementationTemplate()
+        {
+            return ShaderNodesUtil.Evaluate("float4x4(${x},${y},${z},${w})", 
+                new Dictionary<string, string>
+                {
+                    {"x", _x.ID},
+                    {"y", _y.ID},
+                    {"z", _z.ID},
+                    {"w", _w.ID}
+                });
+        }
+    }
+    
     public class Float2Join : ResultNode<Vector2>
     {
         private readonly ShaderNode<float> _x;
