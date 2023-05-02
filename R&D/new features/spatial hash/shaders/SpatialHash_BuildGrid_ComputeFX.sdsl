@@ -1,0 +1,39 @@
+shader SpatialHash_BuildGrid_ComputeFX : ComputeShaderBase
+{
+    StructuredBuffer  <uint2> _GridBufferRead;
+    RWStructuredBuffer<uint2> _GridIndicesBufferWrite;
+
+    int _NumParticles;
+
+    override void Compute()
+    {
+        uint3 DTid = streams.DispatchThreadId;
+        // For number of particles.
+	    const unsigned int p_id = DTid.x;
+
+	    // 1 Calculate the particle ID of the previous particle.
+	    uint p_id_prev = (p_id == 0) ? (uint)_NumParticles : p_id;
+	    p_id_prev--;
+
+	    // 1 Calculate the particle ID of the next particle.
+	    uint p_id_next = p_id + 1;
+	    if (p_id_next == (uint)_NumParticles) { p_id_next = 0; }
+
+	    // Sorted by. Grid-Particle From the buffer.
+	    // Calculate the grid you are on.
+	    const uint cell = _GridBufferRead[p_id].x;				// Retrieving sorted grid IDs
+	    const uint cell_prev = _GridBufferRead[p_id_prev].x;
+	    const uint cell_next = _GridBufferRead[p_id_next].x;
+
+	    // Recorded if different from front/rear cell index
+	    if (cell != cell_prev) {
+		    // Array index at the beginning of the new cell index
+		    _GridIndicesBufferWrite[cell].x = p_id;
+	    }
+
+	    if (cell != cell_next) {
+		    // Array index at the end of the new cell index
+		    _GridIndicesBufferWrite[cell].y = p_id + 1;
+	    }
+    }
+};

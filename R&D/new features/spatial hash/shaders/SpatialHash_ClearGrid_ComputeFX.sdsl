@@ -1,0 +1,10 @@
+shader SpatialHash_ClearGrid_ComputeFX : ComputeShaderBase
+{
+    RWStructuredBuffer<uint2> _GridIndicesBufferWrite;
+
+    override void Compute()
+    {
+        uint3 DTid = streams.DispatchThreadId;
+        _GridIndicesBufferWrite[DTid.x] = uint2(0, 0);
+    }
+};
