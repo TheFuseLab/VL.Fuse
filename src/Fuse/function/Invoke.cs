@@ -91,6 +91,13 @@ namespace Fuse.function
         {
         }
     }
+    
+    public class Invoke0In1Out<TOut> : Invoke<TOut>
+    {
+        public Invoke0In1Out(NodeContext nodeContext, Delegate0In1Out<TOut> theDelegate, string theId = "Invoke", ShaderNode<TOut> theDefault = null) : base(nodeContext, theDelegate, new List<AbstractShaderNode>(), theId, theDefault)
+        {
+        }
+    }
 
     public class Invoke1In2Out<TIn, TOut1, TOut2> : Invoke<TOut1>
     {
