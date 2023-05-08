@@ -227,12 +227,10 @@ namespace Fuse
                 {
                     input.OnUpdateName();
                 }
-                Console.WriteLine( node.Name + " " + node.GetHashCode());
             }
             else
             {
                 _hashInstances[node.HashCode] = 1;
-                Console.WriteLine( node.Name + " " + node.GetHashCode());
             }
         }
     }
