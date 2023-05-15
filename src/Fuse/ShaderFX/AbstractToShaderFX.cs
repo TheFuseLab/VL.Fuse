@@ -63,7 +63,6 @@ namespace Fuse.ShaderFX
         private readonly HashSet<string>_compositions = new();
         private readonly Dictionary<string, string> _functionMap = new();
 
-        private readonly bool _isComputeShader;
         private readonly string _sourceTemplate;
         
         private readonly bool _isCompute;
@@ -80,7 +79,6 @@ namespace Fuse.ShaderFX
             
             _stages = theStages;
             _definedStreams = theDefinedStreams;
-            _isComputeShader = false;
             _sourceTemplate = theSource;
 
             _stages = theStages;
@@ -263,7 +261,7 @@ namespace Fuse.ShaderFX
                 shaderInput.CheckHashCodes();
                 shaderInput.CheckContext(theContext);
                 
-                HandleShader(_isComputeShader, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
+                HandleShader(_isCompute, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
                 sourceStream.Add(kv.Key,(source,stream));
                 streamDefinesBuilder.AppendLine(streamDefines);
             }

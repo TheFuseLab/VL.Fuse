@@ -228,12 +228,12 @@ namespace Fuse{
          protected ChangeableObjectInput(NodeContext nodeContext, GpuTypeTracker<T> theTypeTracker, string theName) : base(nodeContext, theName)
          {
              TypeTracker = theTypeTracker;
-             SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
+             SetFieldDeclaration(TypeTracker.GpuType, TypeTracker.ComputeGpuType);
          }
 
          public override void OnUpdateName()
          {
-             SetFieldDeclaration(TypeTracker.ComputeGpuType, TypeTracker.GpuType);
+             SetFieldDeclaration(TypeTracker.GpuType, TypeTracker.ComputeGpuType);
          }
      }
      
