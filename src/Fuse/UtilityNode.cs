@@ -5,6 +5,7 @@ using System.Text;
 using Fuse.compute;
 using Fuse.function;
 using VL.Core;
+using VL.Lib.Primitive;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
