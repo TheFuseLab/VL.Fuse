@@ -5,6 +5,66 @@ using VL.Core;
 namespace Fuse
 {
     
+    public class Matrix2JoinVector2 : ResultNode<Matrix2>
+    {
+        
+        private readonly ShaderNode<Vector2> _x;
+        private readonly ShaderNode<Vector2> _y;
+
+        public Matrix2JoinVector2(NodeContext nodeContext, ShaderNode<Vector2> x, ShaderNode<Vector2> y) : base(nodeContext, "Matrix2Join")
+        {
+            ShaderNode<Vector2> @default = new ConstantValue<Vector2>(new Vector2());
+            
+            _x = x ?? @default;
+            _y = y ?? @default;
+            
+            SetInputs( new List<AbstractShaderNode>{_x,_y});
+        }
+        
+        protected override string ImplementationTemplate()
+        {
+            return ShaderNodesUtil.Evaluate("float2x2(${x},${y})", 
+                new Dictionary<string, string>
+                {
+                    {"x", _x.ID},
+                    {"y", _y.ID}
+                });
+        }
+    }
+    
+    public class Matrix2Join : ResultNode<Matrix2>
+    {
+        
+        private readonly ShaderNode<float> _00;
+        private readonly ShaderNode<float> _10;
+        private readonly ShaderNode<float> _01;
+        private readonly ShaderNode<float> _11;
+
+        public Matrix2Join(NodeContext nodeContext, ShaderNode<float> the00, ShaderNode<float> the10, ShaderNode<float> the01, ShaderNode<float> the11) : base(nodeContext, "Matrix2Join")
+        {
+            ShaderNode<float> @default = new ConstantValue<float>(0);
+            
+            _00 = the00 ?? @default;
+            _10 = the10 ?? @default;
+            _01 = the01 ?? @default;
+            _11 = the11 ?? @default;
+            
+            SetInputs( new List<AbstractShaderNode>{_00,_10,_01,_11});
+        }
+        
+        protected override string ImplementationTemplate()
+        {
+            return ShaderNodesUtil.Evaluate("float2x2(${m00},${m10},${m01},${m11})", 
+                new Dictionary<string, string>
+                {
+                    {"m00", _00.ID},
+                    {"m10", _10.ID},
+                    {"m01", _01.ID},
+                    {"m11", _11.ID},
+                });
+        }
+    }
+    
     public class Matrix3Join : ResultNode<Matrix3>
     {
         
