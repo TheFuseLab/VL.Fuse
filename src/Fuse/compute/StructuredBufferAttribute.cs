@@ -37,7 +37,6 @@ namespace Fuse.compute
 
         // public ShaderNode<T> Default;
 
-        private string _name;
         public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, bool theDefineSemantic = true, ShaderNode<GpuStruct> theOverrideInstance = null, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.StructuredBuffer)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
