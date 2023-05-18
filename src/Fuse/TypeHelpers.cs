@@ -100,6 +100,7 @@ namespace Fuse
                 {typeof(Color4), "float4(0.0, 0.0, 0.0, 0.0)"},
                 {typeof(Matrix), "float4x4()"},
                 {typeof(Matrix3), "float3x3()"},
+                {typeof(Matrix2), "float2x2()"},
                 
                 {typeof(int), "0"},
                 {typeof(Int2), "int2(0, 0)"},
@@ -196,6 +197,7 @@ namespace Fuse
                 {typeof(Color4), "Float4"},
                 {typeof(Matrix), "Matrix"},
                 {typeof(Matrix3), "Matrix3"},
+                {typeof(Matrix2), "Matrix2"},
                 
                 {typeof(int), "Int"},
                 {typeof(Int2), "Int2"},
@@ -229,6 +231,7 @@ namespace Fuse
                     ShaderNode<GpuVoid> _ => "Void",
                     ShaderNode<Matrix> _ => "Matrix",
                     ShaderNode<Matrix3> _ => "Matrix3",
+                    ShaderNode<Matrix2> _ => "Matrix2",
                     _ => throw new NotImplementedException("No name defined for type: " + theValue.GetType().FullName)
                 };
             }
@@ -263,6 +266,7 @@ namespace Fuse
                 {typeof(Color4), "float4"},
                 {typeof(Matrix), "float4x4"},
                 {typeof(Matrix3), "float3x3"},
+                {typeof(Matrix2), "float2x2"},
                 
                 {typeof(int), "int"},
                 {typeof(Int2), "int2"},
@@ -290,6 +294,7 @@ namespace Fuse
                     ShaderNode<Color4> _ => "float4",
                     ShaderNode<Matrix> _ => "float4x4",
                     ShaderNode<Matrix3> _ => "float3x3",
+                    ShaderNode<Matrix2> _ => "float2x2",
                     ShaderNode<bool> _ => "bool",
                     ShaderNode<int> _ => "int",
                     ShaderNode<Int2> _ => "int2",
@@ -328,6 +333,7 @@ namespace Fuse
                 {typeof(Color4), 4},
                 {typeof(Matrix), 16},
                 {typeof(Matrix3), 9},
+                {typeof(Matrix2), 4},
                 
                 {typeof(int), 1},
                 {typeof(Int2), 2},
@@ -361,6 +367,7 @@ namespace Fuse
                     ShaderNode<GpuVoid> _ => 0,
                     ShaderNode<Matrix> _ => 16,
                     ShaderNode<Matrix3> _ => 9,
+                    ShaderNode<Matrix2> _ => 4,
                     _ => 0
                 };
             }
@@ -395,6 +402,7 @@ namespace Fuse
                 {typeof(Color4), 4 * 4},
                 {typeof(Matrix), 16 * 4},
                 {typeof(Matrix3), 9 * 4},
+                {typeof(Matrix2), 4 * 4},
                 
                 {typeof(int), 1 * 4},
                 {typeof(Int2), 2 * 4},
@@ -417,6 +425,7 @@ namespace Fuse
                     ShaderNode<Color4> _ => 4 * 4,
                     ShaderNode<Matrix> _ => 4 * 4 * 4,
                     ShaderNode<Matrix3> _ => 3 * 3 * 4,
+                    ShaderNode<Matrix2> _ => 2 * 2 * 4,
                     ShaderNode<bool> _ => 1,
                     ShaderNode<int> _ => 4,
                     ShaderNode<Int2> _ => 2 * 4,
