@@ -1,4 +1,4 @@
-﻿namespace Fuse.Core.Math
+﻿namespace Fuse.Math
 {
     public enum Constrain { Off, Clamp, Wrap, Mirror };
     public enum EaseMode 
@@ -35,4 +35,33 @@
         sineIn,
         sineOut
     };
+    
+    public enum BlendMode
+    {
+        Normal,
+        Add,
+        Subtract,
+        Multiply,
+        Divide,
+        Min,
+        Max,
+        Difference,
+
+        ColorBurn,
+        LinearBurn,
+
+        Screen,
+        Dodge,
+        LinearDodge,
+
+        Overlay,
+        SoftLight,
+        HardLight,
+        VividLight,
+        LinearLight,
+        PinLight,
+        HardMix,
+
+        Exclusion,
+    }
 }

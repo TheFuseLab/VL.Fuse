@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Fuse.Core.Color
+namespace Fuse.Color
 {
     public enum ColorSpace { RGB, HSL, HSV, LAB, SRGB };
 

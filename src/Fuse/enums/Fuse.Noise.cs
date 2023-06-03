@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Fuse.Common.Noise
+namespace Fuse.Noise
 {
     public enum NoiseBasisType
     {

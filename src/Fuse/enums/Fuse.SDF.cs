@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Fuse.Common.SDF
+namespace Fuse.SDF
 {
     // ReSharper disable UnusedType.Global
     // ReSharper disable UnusedMember.Global

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Fuse.Core.Calculus
+namespace Fuse.Calculus
 {
     public enum GradientDifferentiationMode { ForwardDifference, CentralDifference, FivePointStencil };
 
