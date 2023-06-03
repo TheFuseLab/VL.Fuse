@@ -307,7 +307,7 @@ namespace Fuse
 
             public static string GetGpuType(Type type)
             {
-                return KnownGpuTypes.TryGetValue(type, out var result) ? result : type.Name;
+                return KnownGpuTypes.TryGetValue(type, out var result) ? result : ShaderNodesUtil.CleanVlClassName(type.Name);
             }
             
             public static string GetGpuType<T>()
