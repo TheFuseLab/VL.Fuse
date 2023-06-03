@@ -8,63 +8,48 @@ using VL.Core;
 namespace Fuse.Function;
 
 
-public delegate void ShadeUpdate( object stateInput, out object stateOutput, ShaderNode<FuseSurface> Surface, ShaderNode<FuseRay> Ray, out ShaderNode<Vector4> Color);
+public delegate void Delegate2In1OutUpdate<TIn1, TIn2,TOut>( object stateInput, out object stateOutput, ShaderNode<TIn1> Input1, ShaderNode<TIn2> Input2, out ShaderNode<TOut> Output);
     
-public delegate void ShadeCreate( out object stateOutput);
+public delegate void Delegate2In1OutCreate( out object stateOutput);
 
-public class FuseRay { }
-
-public class FuseSurface { }
-
-public class Shade : IDisposable
+public class Delegate2In1Out<TIn1, TIn2,TOut> : DelegateStateful<Delegate<TOut>>
 {
-    private object _state;
 
-    private readonly NodeContext _nodeContext;
-
-    public Delegate<Vector4> Delegate { get; private set; }
-
-    public Shade(NodeContext theNodeContext) 
-    {
-          _nodeContext = theNodeContext;  
+    public Delegate2In1Out(NodeContext theNodeContext) : base(theNodeContext)
+    { 
     }
 
-    public void Update(ShadeCreate create, ShadeUpdate update)
+    public void Update(Delegate2In1OutCreate create, Delegate2In1OutUpdate<TIn1, TIn2,TOut> update)
     {
-        if(_state == null)create(out _state);
+        if(State == null)create(out State);
         
-        var nodeSubContextFactory = new NodeSubContextFactory(_nodeContext);
+        var nodeSubContextFactory = new NodeSubContextFactory(NodeContext);
 
-        var surfaceParameter = new FunctionParameter<FuseSurface>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,0);
-        var rayParameter = new FunctionParameter<FuseRay>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,1);
+        var input1Parameter = new FunctionParameter<TIn1>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,0);
+        var input2Parameter = new FunctionParameter<TIn2>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,1);
 
         //update(State,out State, new FunctionParameter<MarchSurface>())
-        update(_state, out _state, surfaceParameter, rayParameter, out var color);
+        update(State, out State, input1Parameter, input2Parameter, out var outArgument);
 
-        Delegate = new Delegate<Vector4>(
+        Delegate = new Delegate<TOut>(
             nodeSubContextFactory.NextSubContext(),
-            color,
+            outArgument,
             new List<IFunctionParameter>
             {
-                surfaceParameter,
-                rayParameter
+                input1Parameter,
+                input2Parameter
             }
         );
     }
-
-    public void Dispose()
-    {
-        if(_state is IDisposable disposable) disposable.Dispose();
-    }
 }
 
-public class ShadeInvoke : Invoke<Vector4>
+public class Delegate2In1OutInvoke<TIn1, TIn2,TOut> : Invoke<TOut>
 {
-    public ShadeInvoke(
+    public Delegate2In1OutInvoke(
         NodeContext nodeContext, 
-        Shade theShade, 
-        ShaderNode<FuseSurface> theSurface,
-        ShaderNode<FuseRay> theRay) : base(nodeContext,theShade.Delegate, new List<AbstractShaderNode> { theSurface, theRay})
+        Delegate2In1Out<TIn1, TIn2,TOut> theDelegate, 
+        ShaderNode<TIn1> theInput1,
+        ShaderNode<TIn2> theInput2) : base(nodeContext,theDelegate.Delegate, new List<AbstractShaderNode> { theInput1, theInput2})
     {
     }
 }

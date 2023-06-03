@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Fuse.Function;
 using Stride.Rendering.Materials;
 using VL.Core;
 
@@ -121,13 +122,6 @@ public class Delegate1In1Out<TIn, TOut> :Delegate<TOut>
 public class Delegate0In1Out<TOut> :Delegate<TOut>
 {
     public Delegate0In1Out(NodeContext nodeContext, ShaderNode<TOut> theDelegate, string theId = "Function", ShaderNode<TOut> theDefault = null) : base(nodeContext, theDelegate, new List<IFunctionParameter>(), theId, theDefault)
-    {
-    }
-}
-
-public class Delegate1In2Out<TIn, TOut1,TOut2> :Delegate<TOut1>
-{
-    public Delegate1In2Out(NodeContext nodeContext, ShaderNode<TOut1> theDelegate, FunctionParameter<TIn> theParam0, FunctionParameter<TOut2> theOutParam1, string theId = "Function", ShaderNode<TOut1> theDefault = null) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theOutParam1}, theId, theDefault)
     {
     }
 }

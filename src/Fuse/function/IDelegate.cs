@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Stride.Rendering.Materials;
 
-namespace Fuse;
+namespace Fuse.Function;
 
 public interface IDelegate
 {
@@ -14,4 +14,9 @@ public interface IDelegate
     Dictionary<string, IList> PropertiesForTree();
 
     public void CheckContext(ShaderGeneratorContext theContext);
+}
+
+public interface IDelegateProvider
+{
+    public IDelegate GetDelegate();
 }

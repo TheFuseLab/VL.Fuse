@@ -6,55 +6,37 @@ using VL.Core;
 namespace Fuse.Function;
 
 
-public delegate void Delegate1In1OutUpdate<TIn, TOut>( object stateInput, out object stateOutput, ShaderNode<TIn> Input, out ShaderNode<TOut> Output);
+public delegate void Delegate0In1OutUpdate<TOut>( object stateInput, out object stateOutput, out ShaderNode<TOut> Output);
     
-public delegate void Delegate1In1OutCreate( out object stateOutput);
+public delegate void Delegate0In1OutCreate( out object stateOutput);
 
-public class Delegate1In1Out<TIn, TOut> : IDisposable
+public class Delegate0In1Out<TOut> : DelegateStateful<Delegate<TOut>>
 {
-    private object _state;
 
-    private readonly NodeContext _nodeContext;
-
-    public Delegate<TOut> Delegate { get; private set; }
-
-    public Delegate1In1Out(NodeContext theNodeContext) 
-    {
-          _nodeContext = theNodeContext;  
+    public Delegate0In1Out(NodeContext theNodeContext) : base(theNodeContext)
+    { 
     }
 
-    public void Update(Delegate1In1OutCreate create, Delegate1In1OutUpdate<TIn, TOut> update)
+    public void Update(Delegate0In1OutCreate create, Delegate0In1OutUpdate<TOut> update)
     {
-        if(_state == null)create(out _state);
+        if(State == null)create(out State);
         
-        var nodeSubContextFactory = new NodeSubContextFactory(_nodeContext);
+        var nodeSubContextFactory = new NodeSubContextFactory(NodeContext);
 
-        var inputParameter = new FunctionParameter<TIn>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,0);
-
-        update(_state, out _state, inputParameter, out var outArgument);
+        update(State, out State, out var outArgument);
 
         Delegate = new Delegate<TOut>(
             nodeSubContextFactory.NextSubContext(),
             outArgument,
-            new List<IFunctionParameter>
-            {
-                inputParameter
-            }
-        );
-    }
-
-    public void Dispose()
-    {
-        if(_state is IDisposable disposable) disposable.Dispose();
+            new List<IFunctionParameter>());
     }
 }
 
-public class Delegate1In1OutInvoke<TIn, TOut> : Invoke<TOut>
+public class Delegate0In1OutInvoke<TOut> : Invoke<TOut>
 {
-    public Delegate1In1OutInvoke(
+    public Delegate0In1OutInvoke(
         NodeContext nodeContext, 
-        Delegate1In1Out<TIn, TOut> theDelegate, 
-        ShaderNode<TIn> theInput) : base(nodeContext,theDelegate?.Delegate, new List<AbstractShaderNode> { theInput})
+        Delegate0In1Out<TOut> theDelegate) : base(nodeContext,theDelegate?.Delegate, new List<AbstractShaderNode>())
     {
         
     }
