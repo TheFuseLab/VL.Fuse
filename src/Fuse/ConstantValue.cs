@@ -54,8 +54,7 @@ namespace Fuse
             Value = theValue;
             HasFixedName = true;
         }
-
-
+        
         public T Value { get; }
 
         public override string ID => TypeHelpers.GetDefaultForType(Value);
@@ -70,5 +69,32 @@ namespace Fuse
         }
     }
 
+    public class ConstantKeyword : ShaderNode<float>
+    {
+
+        private readonly string _keyword;
+
+        protected ConstantKeyword(NodeContext nodeContext, string theKeyword) : base( nodeContext, "constant keyword")
+        {
+            _keyword = theKeyword;
+            SetInputs(new List<AbstractShaderNode>{null});
+            HasFixedName = true;
+        }
+        
+        protected override Dictionary<string, string> CreateTemplateMap()
+        {
+            return new Dictionary<string, string>();
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return _keyword;
+        }
+
+        protected override string SourceTemplate()
+        {
+            return _keyword;
+        }
+    }
     
 }

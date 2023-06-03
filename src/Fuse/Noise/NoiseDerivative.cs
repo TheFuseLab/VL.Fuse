@@ -13,36 +13,34 @@ public delegate void NoiseDerivativeCreate( out object stateOutput);
 
 public class NoiseDerivative<T> : IDisposable
 {
-    private object State;
+    private object _state;
 
-    private NodeContext NodeContext;
+    private readonly NodeContext _nodeContext;
 
     public Delegate<float> Delegate { get; private set; }
 
     public NoiseDerivative(NodeContext theNodeContext) 
     {
-          NodeContext = theNodeContext;  
+          _nodeContext = theNodeContext;  
     }
 
     public void Update(NoiseDerivativeCreate create, NoiseDerivativeUpdate<T> update)
     {
-        if(State == null)create(out State);
+        if(_state == null)create(out _state);
         
-        var NodeSubContextFactory = new NodeSubContextFactory(NodeContext);
+        var nodeSubContextFactory = new NodeSubContextFactory(_nodeContext);
 
-        var domainParameter = new FunctionParameter<T>(NodeSubContextFactory.NextSubContext(), null, InputModifier.In,0);
-        ShaderNode<float> valueArgument;
-        ShaderNode<T> DerivativeArgument;
-        
+        var domainParameter = new FunctionParameter<T>(nodeSubContextFactory.NextSubContext(), null, InputModifier.In,0);
+
         //update(State,out State, new FunctionParameter<MarchSurface>())
-        update(State, out State, domainParameter, out valueArgument, out DerivativeArgument);
+        update(_state, out _state, domainParameter, out var valueArgument, out var derivativeArgument);
         
-        var derivativeParameter = new FunctionParameter<T>(NodeSubContextFactory.NextSubContext(), null, InputModifier.Out,1);
-        var set = new AssignValue<T>(NodeSubContextFactory.NextSubContext(),derivativeParameter,DerivativeArgument);
-        var do2 = new Do2<float>(NodeSubContextFactory.NextSubContext(), valueArgument, new List<AbstractShaderNode>{set});
+        var derivativeParameter = new FunctionParameter<T>(nodeSubContextFactory.NextSubContext(), null, InputModifier.Out,1);
+        var set = new AssignValue<T>(nodeSubContextFactory.NextSubContext(),derivativeParameter,derivativeArgument);
+        var do2 = new Do2<float>(nodeSubContextFactory.NextSubContext(), valueArgument, new List<AbstractShaderNode>{set});
 
         Delegate = new Delegate<float>(
-            NodeSubContextFactory.NextSubContext(),
+            nodeSubContextFactory.NextSubContext(),
             do2,
             new List<IFunctionParameter>
             {
@@ -54,7 +52,7 @@ public class NoiseDerivative<T> : IDisposable
 
     public void Dispose()
     {
-        if(State is IDisposable disposable) disposable.Dispose();
+        if(_state is IDisposable disposable) disposable.Dispose();
     }
 }
 
@@ -63,7 +61,7 @@ public class NoiseDerivativeInvoke<T> : Invoke<float>
     public NoiseDerivativeInvoke(
         NodeContext nodeContext, 
         NoiseDerivative<T> theDelegate, 
-        ShaderNode<T> domain) : base(nodeContext,theDelegate.Delegate, new List<AbstractShaderNode> { domain})
+        ShaderNode<T> domain) : base(nodeContext,theDelegate?.Delegate, new List<AbstractShaderNode> { domain})
     {
         
     }
