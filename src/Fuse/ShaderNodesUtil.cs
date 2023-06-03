@@ -155,6 +155,13 @@ namespace Fuse
                 });
         }
         
+        public static string CleanVlClassName(string theVlClassName)
+        {
+            const string pattern = "_.*";
+            const string replacement = "";
+            return Regex.Replace(theVlClassName, pattern, replacement);
+        }
+        
         public static string FixName(string theName)
         {
             return theName.Replace(".","").Replace(" ","");
@@ -188,7 +195,7 @@ namespace Fuse
                     // Decrease indent level if line contains a closing brace
                     if (line.Contains('}')){
                         indentLevel--;
-                        indentLevel = Math.Max(indentLevel, 0); // Ensure indentLevel is never negative
+                        indentLevel = System.Math.Max(indentLevel, 0); // Ensure indentLevel is never negative
                     }
                     
                     // Append indented line to the formatted code
@@ -279,7 +286,7 @@ namespace Fuse
             var context = method?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
             
             //var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
-            var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Color.White);
+            var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Stride.Core.Mathematics.Color.White);
             theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
             effectImageShader.EffectName = theDrawShader.ShaderName;
             Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
