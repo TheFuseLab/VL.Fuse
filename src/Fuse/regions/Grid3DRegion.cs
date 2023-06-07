@@ -52,7 +52,10 @@ namespace Fuse.regions
             uint2 g_start_end = ${gridIndices}[g_cell];
             
             for (unsigned int n_id = g_start_end.x; n_id < g_start_end.y; n_id++) {
-				int ${index} = ${elementIndices}[n_id].y;";
+				int ${index} = ${elementIndices}[n_id].y;
+
+                if(streams.DispatchThreadId.x == ${index})continue;
+                ";
             theSourceBuilder.Append(
                 ShaderNodesUtil.Evaluate(
                     shaderCode,
