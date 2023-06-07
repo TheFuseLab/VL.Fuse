@@ -321,7 +321,7 @@ namespace Fuse
             }
             
             #endregion
-            
+
             #region GetDimension
             
             private static readonly Dictionary<Type, int> KnownDimensions = new()
@@ -640,14 +640,12 @@ namespace Fuse
             
             public static string ValueToString(object theObject)
             {
-                if (theObject is byte || theObject is sbyte || theObject is short || theObject is ushort ||
-                    theObject is int || theObject is uint || theObject is long || theObject is ulong)
-                {
-                    var number = Convert.ToInt64(theObject);
-                    return number.ToString("#,##0").Replace(",", ".");
-                }
+                if (theObject is not (byte or sbyte or short or ushort or int or uint or long or ulong))
+                    return theObject.ToString();
+                
+                var number = Convert.ToInt64(theObject);
+                return number.ToString("#,##0").Replace(",", ".");
 
-                return theObject.ToString();
             }
         }
 }
