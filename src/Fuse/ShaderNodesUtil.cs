@@ -312,7 +312,10 @@ namespace Fuse
             return theNode.PropertiesForTree<TProperty>();
         }
         
-        
+        public static List<TProperty> PropertiesForTreeList<TProperty>(AbstractShaderNode theNode, string theThePropertyId)
+        {
+            return theNode.PropertyForTree<TProperty>(theThePropertyId);
+        }
         
         public static List<TProperty> PropertiesForTreeList<TProperty>(AbstractShaderNode theNode)
         {
