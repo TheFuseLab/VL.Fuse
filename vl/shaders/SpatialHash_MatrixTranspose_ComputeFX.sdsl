@@ -1,0 +1,27 @@
+shader SpatialHash_MatrixTranspose_ComputeFX : ComputeShaderBase
+{
+    #define TRANSPOSE_BLOCK_SIZE 16
+
+    cbuffer cb
+    {
+        uint _Width;
+        uint _Height;
+    };
+
+    StructuredBuffer  <uint2> Input0;
+    RWStructuredBuffer<uint2> Data0;
+	
+    groupshared uint2 transpose_shared_data[TRANSPOSE_BLOCK_SIZE * TRANSPOSE_BLOCK_SIZE];
+
+    override void Compute()
+    {
+        uint3 DTid = streams.DispatchThreadId;
+        uint3 GTid = streams.GroupThreadId;
+        uint GI = streams.GroupIndex;
+
+        transpose_shared_data[GI] = Input0[DTid.y * _Width + DTid.x];
+	    GroupMemoryBarrierWithGroupSync();
+	    uint2 XY = DTid.yx - GTid.yx + GTid.xy;
+	    Data0[XY.y * _Height + XY.x] = transpose_shared_data[GTid.x * TRANSPOSE_BLOCK_SIZE + GTid.y];
+    }
+};
