@@ -298,27 +298,32 @@ namespace Fuse{
 
      public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
      {
-         public bool Append { get; set; }
+         public BufferType BufferType { get; set; }
 
-         private readonly bool _forceAppendConsume;
          private readonly ShaderNode<T> _type;
 
-         public BufferTypeTracker(ShaderNode<T> theType, bool theAppend, bool theForceAppend)
+         public BufferTypeTracker(ShaderNode<T> theType, BufferType theBufferType = BufferType.Normal)
          {
              _type = theType;
-             Append = theAppend;
-             _forceAppendConsume = theForceAppend;
+             BufferType = theBufferType;
          }
 
          protected override string DefineGpuType(Buffer value)
          {
-             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), Append, false, _forceAppendConsume);
+             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), BufferType, false);
          }
 
          protected override string DefineComputeGpuType(Buffer value)
          {
              return DefineGpuType(value);
          }
+     }
+
+     public enum BufferType
+     {
+         Append,
+         Consume,
+         Normal
      }
 
      public class BufferInput<T>: ChangeableObjectInput<Buffer>, IBufferInput<T>
@@ -329,12 +334,12 @@ namespace Fuse{
 
          private readonly BufferTypeTracker<T> _typeTracker;
 
-         public bool Append
+         public BufferType BufferType
          {
-             get => _typeTracker.Append;
+             get => _typeTracker.BufferType;
              set
              {
-                 _typeTracker.Append = value;
+                 _typeTracker.BufferType = value;
                  SetFieldDeclaration(_typeTracker.ComputeGpuType, _typeTracker.GpuType);
              }
          }

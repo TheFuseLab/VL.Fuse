@@ -7,7 +7,7 @@ namespace Fuse.compute
 
     public interface IBufferInput<T> 
     {
-        bool Append { set; }
+        BufferType BufferType { get; set; }
         string ID { get;  }
         string TypeName();
     }
@@ -84,7 +84,7 @@ namespace Fuse.compute
         public BufferAppend(NodeContext nodeContext,IBufferInput<T> theBuffer, ShaderNode<T> theValue) : base( nodeContext, "appendBuffer")
         {
             _buffer = theBuffer;
-            _buffer.Append = true;
+            _buffer.BufferType = BufferType.Append;
             _value = theValue;
             
             SetInputs(new List<AbstractShaderNode>{theBuffer as AbstractShaderNode, theValue});
@@ -119,7 +119,7 @@ namespace Fuse.compute
         public BufferConsume(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<T> theDefault) : base( nodeContext, "consumeBuffer", theDefault)
         {
             _buffer = theBuffer;
-            _buffer.Append = false;
+            _buffer.BufferType = BufferType.Consume;
             
             SetInputs(new List<AbstractShaderNode> {theBuffer as AbstractShaderNode});
         }

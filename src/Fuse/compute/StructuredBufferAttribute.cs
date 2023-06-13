@@ -95,8 +95,9 @@ namespace Fuse.compute
         {
         }
 
-        public bool Append {
+        public BufferType BufferType {
             set { }
+            get => BufferType.Normal;
         }
     }
     

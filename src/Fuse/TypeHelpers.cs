@@ -568,37 +568,66 @@ namespace Fuse
 
                 return textureType + "<" + textureDataType + ">";
             }
-            
-            public static string BufferTypeName(Buffer theBuffer,string theBufferType, bool theAppend, bool theReadWrite, bool theForceAppendConsume)
+            /*
+            public static string BufferTypeName(Buffer theBuffer,string theType, BufferType theBufferType, bool theReadWrite)
             {
-                if (theForceAppendConsume || theBuffer != null && (theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
+                if (theBufferType != BufferType.Normal || theBuffer != null && (theBuffer.Flags & BufferFlags.StructuredAppendBuffer) == BufferFlags.StructuredAppendBuffer)
                 {
-                    if (theAppend)
+                    if (theBufferType == BufferType.Append)
                     {
-                        return "AppendStructuredBuffer<" + theBufferType + ">";
+                        return "AppendStructuredBuffer<" + theType + ">";
                     }
 
-                    return "ConsumeStructuredBuffer<" + theBufferType + ">";
+                    return "ConsumeStructuredBuffer<" + theType + ">";
                 }
                 
                 if (theBuffer == null)
                 {
                     if (theReadWrite)
                     {
-                        return "RWStructuredBuffer<" + theBufferType + ">";
+                        return "RWStructuredBuffer<" + theType + ">";
                     }
                     else
                     {
-                        return "StructuredBuffer<" + theBufferType + ">";
+                        return "StructuredBuffer<" + theType + ">";
                     }
                 }
 
                 if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
                 {
-                    return "RWStructuredBuffer<" + theBufferType + ">";
+                    return "RWStructuredBuffer<" + theType + ">";
                 }
                 
-                return "StructuredBuffer<" + theBufferType + ">";
+                return "StructuredBuffer<" + theType + ">";
+            }*/
+            
+            public static string BufferTypeName(Buffer theBuffer,string theType, BufferType theBufferType, bool theReadWrite)
+            {
+                switch (theBufferType)
+                {
+                    case BufferType.Append:
+                        return "AppendStructuredBuffer<" + theType + ">";
+                    case BufferType.Consume:
+                        return "ConsumeStructuredBuffer<" + theType + ">";
+                    
+                }
+                
+                
+                if (theBuffer == null)
+                {
+                    if (theReadWrite)
+                    {
+                        return "RWStructuredBuffer<" + theType + ">";
+                    }
+                    return "StructuredBuffer<" + theType + ">";
+                }
+
+                if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+                {
+                    return "RWStructuredBuffer<" + theType + ">";
+                }
+                
+                return "StructuredBuffer<" + theType + ">";
             }
 
             public static string GetGenericTypeName(AbstractShaderNode node)

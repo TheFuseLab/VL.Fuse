@@ -152,7 +152,7 @@ namespace Fuse
         public BufferShaderNodeBuilder(NodeContext nodeContext)
         {
             _nodeContext = nodeContext;
-            _typeTracker = new BufferTypeTracker<T>(null,false, false);
+            _typeTracker = new BufferTypeTracker<T>(null);
         }
 
         public ShaderNode<Buffer> Return(Buffer value)
