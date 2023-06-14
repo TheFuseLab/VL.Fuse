@@ -35,6 +35,29 @@ namespace Fuse.SDF
         Tongue
     }
 
+    public enum CombineMode
+    {
+        Union,
+        Intersect,
+        Difference
+    }
+
+    public enum CombineSmooth
+    {
+        None,
+        Quadratic,
+        Cubic,
+        Power
+    }
+
+    public enum CombineBlend
+    {
+        Default,
+        Blend,
+        In1,
+        In2
+    }
+
     public enum ExtrudeSDF
     {
         Extrude,
