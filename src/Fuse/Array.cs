@@ -7,10 +7,14 @@ using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse
 {
-    public class Array<T> : ShaderNode<T> where T :struct
+    public class GpuArray<T> where T :struct
+    {
+        
+    } 
+    public class Array<T> : ShaderNode<GpuArray<T>> where T :struct
     {
 
-        private string _sourceTemplate = "";
+        private readonly string _sourceTemplate = "";
         
         public Array(NodeContext nodeContext, ICollection<T> theInputs) : base(nodeContext, "Array")
         {
