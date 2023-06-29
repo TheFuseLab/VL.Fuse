@@ -16,14 +16,16 @@ namespace Fuse.compute
         private readonly IBufferInput<T> _buffer;
         private readonly ShaderNode<int> _index;
         
-        public BufferGet(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theDefault) : base( nodeContext, "getBuffer")
+        public BufferGet(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theType) : base( nodeContext, "getBuffer")
         {
             _buffer = theBuffer;
             _index = theIndex;
             
             TypeOverride = theBuffer == null ? TypeHelpers.GetGpuType<T>() : theBuffer.TypeName();
             
-            SetInputs(new List<AbstractShaderNode>{theBuffer as AbstractShaderNode,theIndex});
+            var myInputs = new List<AbstractShaderNode>{theBuffer as AbstractShaderNode,theIndex};
+            if(theType != null)myInputs.Add(theType);
+            SetInputs(myInputs);
         }
 
         protected override string SourceTemplate()
