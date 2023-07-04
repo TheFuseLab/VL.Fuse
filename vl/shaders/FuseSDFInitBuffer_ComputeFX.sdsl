@@ -1,0 +1,17 @@
+// Bakeing SDF using ComputeShader from AMD TressFX : https://github.com/GPUOpen-Effects/TressFX/
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
+
+shader FuseSDFInitBuffer_ComputeFX : ComputeShaderBase, FuseSDFUtils
+{
+    #define INITIAL_DIST 1e+10
+
+    override void Compute()
+    {
+        uint cellIndex = streams.DispatchThreadId.x;
+
+        uint nCells = cellCount.x*cellCount.y*cellCount.z;
+        if(cellIndex >= nCells) return;
+
+        SDFBuffer[cellIndex] = FloatFlip3(INITIAL_DIST);
+    }
+};

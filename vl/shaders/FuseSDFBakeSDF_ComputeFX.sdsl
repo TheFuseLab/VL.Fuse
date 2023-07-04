@@ -1,0 +1,69 @@
+// Bakeing SDF using ComputeShader from AMD TressFX : https://github.com/GPUOpen-Effects/TressFX/
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
+
+shader FuseSDFBakeSDF_ComputeFX : ComputeShaderBase, FuseSDFUtils
+{
+    #define GRID_MARGIN 15
+
+    StructuredBuffer<float3> PositionBuffer;
+    StructuredBuffer<int> IndicesBuffer;
+
+    // float4x4 tW;
+
+    override void Compute()
+    {
+        int triIndex = streams.DispatchThreadId.x;
+
+        uint numIndices, dum;
+        IndicesBuffer.GetDimensions(numIndices, dum);
+        uint numTriangles = numIndices / 3;
+
+        if(triIndex >= (int)numTriangles) return;
+
+        uint index0 = IndicesBuffer[triIndex * 3 + 0];
+        uint index1 = IndicesBuffer[triIndex * 3 + 1];
+        uint index2 = IndicesBuffer[triIndex * 3 + 2];
+
+        // float3 tri0 = mul(float4(PositionBuffer[index0],1), tW).xyz;
+        // float3 tri1 = mul(float4(PositionBuffer[index1],1), tW).xyz;
+        // float3 tri2 = mul(float4(PositionBuffer[index2],1), tW).xyz;
+        float3 origin = gridCenter - (gridSize * .5);
+        float3 tri0 = PositionBuffer[index0] - origin;
+        float3 tri1 = PositionBuffer[index1] - origin;
+        float3 tri2 = PositionBuffer[index2] - origin;
+
+        float3 aabbMin = min(tri0, min(tri1, tri2)) - cellSize;
+        float3 aabbMax = max(tri0, max(tri1, tri2)) + cellSize;
+
+        int3 gridMin = GetSdfCoordinates(aabbMin) - GRID_MARGIN;
+        int3 gridMax = GetSdfCoordinates(aabbMax) + GRID_MARGIN;
+
+        gridMin.x = max(0, min(gridMin.x, cellCount.x - 1));
+        gridMin.y = max(0, min(gridMin.y, cellCount.y - 1));
+        gridMin.z = max(0, min(gridMin.z, cellCount.z - 1));
+
+        gridMax.x = max(0, min(gridMax.x, cellCount.x - 1));
+        gridMax.y = max(0, min(gridMax.y, cellCount.y - 1));
+        gridMax.z = max(0, min(gridMax.z, cellCount.z - 1));
+
+        float sizeMax = max(max(gridSize.x, gridSize.y), gridSize.z); 
+
+        for(int z = gridMin.z; z <= gridMax.z; z++)
+        {
+            for(int y = gridMin.y; y <= gridMax.y; y++)
+            {
+                for(int x = gridMin.x; x <= gridMax.x; x++)
+                {
+                    int3 gridCell = int3(x, y, z);
+                    int gridCellIndex = GetSdfCellIndex(gridCell);
+                    float3 cellPos  = GetSdfCellPosition(gridCell);
+
+                    float dist = SignedDistancePointToUDTriangle(cellPos, tri0, tri1, tri2) / sizeMax;
+
+                    uint distAsUint = FloatFlip3(dist);
+                    InterlockedMin(SDFBuffer[gridCellIndex], distAsUint);
+                }
+            }
+        }
+    }
+};
