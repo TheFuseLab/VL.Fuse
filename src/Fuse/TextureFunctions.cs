@@ -17,7 +17,7 @@ namespace Fuse
         private readonly ITextureInput _texture;
         private readonly List<AbstractShaderNode> _arguments;
 
-        public TextureGetDimensions(NodeContext nodeContext, int dimension, AbstractShaderNode theTexture, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
+        public TextureGetDimensions(NodeContext nodeContext, int dimension, ITextureInput theTexture, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
         {
             OptionalOutputs = new List<AbstractShaderNode>();
             
@@ -58,7 +58,7 @@ namespace Fuse
         public TextureFunction(
             NodeContext nodeContext, 
             string theFunction,
-            AbstractShaderNode theTexture,
+            ITextureInput theTexture,
             IEnumerable<AbstractShaderNode> theArguments,
             ShaderNode<T> theDefault) : base(nodeContext, "textureNode", theDefault)
         {
@@ -66,8 +66,7 @@ namespace Fuse
             _texture = theTexture as ITextureInput;
             _arguments = theArguments.ToList();
 
-            var ins = new List<AbstractShaderNode>();
-            ins.Add(theTexture);
+            var ins = new List<AbstractShaderNode> { theTexture as AbstractShaderNode };
             ins.AddRange(_arguments);
             SetInputs(ins);
         }

@@ -1,5 +1,6 @@
 ﻿using Fuse.ComputeSystem;
 using Stride.Core.Mathematics;
+using Stride.Core.Shaders.Ast;
 using Stride.Graphics;
 using VL.Core;
 
@@ -20,7 +21,18 @@ namespace Fuse.compute
         }
     }
 
-    public class TextureAttribute<TIndex,T> : Attribute<T>, ITextureInput, ITextureAttribute where T : struct
+    public abstract class ITextureAttributeNode<T> : Attribute<T>, ITextureInput
+    {
+        
+
+        public abstract string TextureID { get; }
+
+        protected ITextureAttributeNode(NodeContext nodeContext, string theGroup, string theName, AttributeType theType, AbstractShaderNode theValue = null) : base(nodeContext, theGroup, theName, theType, theValue)
+        {
+        }
+    }
+
+    public class TextureAttribute<TIndex,T> : ITextureAttributeNode<T>, ITextureAttribute where T : struct
     {
        // public ShaderNode<T> Default;
         public TextureAttribute(NodeContext nodeContext, string theGroup, string theName, bool theIsDoubleBuffered, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.Texture)
@@ -56,14 +68,14 @@ namespace Fuse.compute
                 SetProperty("ComputeSystemAttribute", this);
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance, theIndex);
+                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance as ITextureInput, theIndex);
                 SetInput(textureGet);
                 RemoveProperty("ComputeSystemAttribute");
             }
         }
 
         public override Int3 Resolution => TextureInput?.Value == null ? new Int3(1) : new Int3(TextureInput.Value.Width, TextureInput.Value.Height, TextureInput.Value.Depth);
-        public string TextureID => TextureInput?.ID;
+        public override string TextureID => TextureInput?.ID;
     }
 
 }

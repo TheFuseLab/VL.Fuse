@@ -14,11 +14,11 @@ namespace Fuse.compute
         private readonly ShaderNode<TIndex> _index;
         
         
-        public ComputeTextureGet(NodeContext nodeContext, AbstractShaderNode theTexture, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
+        public ComputeTextureGet(NodeContext nodeContext, ITextureInput theTexture, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
         {
             _texture = theTexture as ITextureInput;
             _index = theIndex;
-            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex});
+            SetInputs(new List<AbstractShaderNode>{theTexture as AbstractShaderNode,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -45,7 +45,7 @@ namespace Fuse.compute
         
         public ComputeTextureSet(
             NodeContext nodeContext,
-            AbstractShaderNode theTexture, 
+            ITextureInput theTexture, 
             ShaderNode<TIndex> theIndex, 
             ShaderNode<T> theValue) : base( nodeContext, "setTextureValue")
         {
@@ -53,7 +53,7 @@ namespace Fuse.compute
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -91,7 +91,7 @@ namespace Fuse.compute
     
         public ComputeTextureAbstractSet(
             NodeContext nodeContext,
-            AbstractShaderNode theTexture, 
+            ITextureInput theTexture, 
             AbstractShaderNode theIndex,
             AbstractShaderNode theValue) : base( nodeContext, "setTextureValue")
         {
@@ -99,7 +99,7 @@ namespace Fuse.compute
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>{theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)theTexture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
