@@ -23,7 +23,7 @@
             <ControlPoint Id="I7MJDVEyXbUL8mWBuLa31A" Bounds="191,119" />
             <ControlPoint Id="BGUeiMPc9ZxNivLpf6JdOe" Bounds="231,152" />
             <ControlPoint Id="QHgsE85xXvAOZk9gV9hX2g" Bounds="210,134" />
-            <Node Bounds="70,217,185,19" Id="H1EdXXISTTPN0Y22LmjQde">
+            <Node Bounds="70,217,205,19" Id="H1EdXXISTTPN0Y22LmjQde">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -38,6 +38,7 @@
               <Pin Id="C45B5UOHY1lMobXDW1L9jq" Name="Inflection" Kind="InputPin" />
               <Pin Id="FaRhmYKMlnCL8HhWSWjJ8i" Name="Noise Type" Kind="InputPin" />
               <Pin Id="Otg4JhesAfgMdc9x2kWaZi" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="Obm3uxCmn9UN8hbtFOaAk7" Name="Override Remap" Kind="InputPin" />
               <Pin Id="DPCBtX6SeooPpR1KEF2316" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="KUAYhURzEg7PAD98FfuecX" Bounds="252,180">
@@ -50,6 +51,7 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pad>
+            <ControlPoint Id="K1gQdkZtUlcNNucBo30d8q" Bounds="272,199" />
           </Canvas>
           <ProcessDefinition Aspects="Advanced" Id="JWRHs6DLd0mMInPXLnwwIG">
             <Fragment Id="KWDfF02oRr8LEMJ30exW30" Patch="FRBcsOX2dw2MCKe2IToWBX" Enabled="true" />
@@ -108,7 +110,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="HpI8V7EYdBxLwcihEiUWqx" Name="Override Remap" Kind="InputPin" Bounds="272,199" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
+          <Link Id="GdtbAvvU5SROZIouN4bqBs" Ids="HpI8V7EYdBxLwcihEiUWqx,K1gQdkZtUlcNNucBo30d8q" IsHidden="true" />
+          <Link Id="DSuJpJ4fZb4PjLF5bOdsUT" Ids="K1gQdkZtUlcNNucBo30d8q,Obm3uxCmn9UN8hbtFOaAk7" />
         </Patch>
       </Node>
       <Canvas Id="IW2GKqh55cQPmxdS54q0Pl" Name="Internal" Position="1149,251">
@@ -366,26 +371,18 @@
                     <Pin Id="C0ArfCIWv0lLPaeDCKEJSO" Name="Result" Kind="OutputPin" />
                     <Pin Id="PVsFDEAmz1SOft1EM7x8HU" Name="Not Assigned" Kind="OutputPin" />
                   </Node>
-                  <Node Bounds="177,281,141,165" Id="SaQZIMbp5QUOvCJ8CaoFP2">
+                  <Node Bounds="177,281,167,174" Id="SaQZIMbp5QUOvCJ8CaoFP2">
                     <p:NodeReference LastCategoryFullName="Primitive" LastDependency="Builtin">
                       <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
                       <CategoryReference Kind="Category" Name="Primitive" />
                       <Choice Kind="ApplicationStatefulRegion" Name="If" />
                     </p:NodeReference>
                     <Pin Id="M1JX0VFRgZKNKflWjdNLfS" Name="Condition" Kind="InputPin" />
+                    <ControlPoint Id="Fmgo5Pbn2bHQMoUHtFqBGg" Bounds="191,287" Alignment="Top" />
+                    <ControlPoint Id="BwVcOkifZHMLsYw8LBFi33" Bounds="234,449" Alignment="Bottom" />
                     <Patch Id="SEl35l0LMpjQNOSz4vL7Oi" ManuallySortedPins="true">
                       <Patch Id="F8t2mumTD4mP95pOC24Uyp" Name="Create" ManuallySortedPins="true" />
                       <Patch Id="DpoXePQcKkpNyX9rLY7Glv" Name="Then" ManuallySortedPins="true" />
-                      <Node Bounds="252,369,34,19" Id="UFGEhJIVEiLQIsp6fgCuxP">
-                        <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastDependency="Fuse.Core.vl">
-                          <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                          <Choice Kind="ProcessAppFlag" Name="Bias" />
-                        </p:NodeReference>
-                        <Pin Id="VllIbZEEbyFOHltxUNnWi0" Name="Input" Kind="InputPin" />
-                        <Pin Id="Ac2An09nUt4LjeNZhlWNG1" Name="Control" Kind="InputPin" />
-                        <Pin Id="IUx55VouibKQCOz9ZNNWUo" Name="Output" Kind="OutputPin" />
-                        <Pin Id="OsYVLGjltUsOwlApAsbpTC" Name="Graph" Kind="OutputPin" />
-                      </Node>
                       <Node Bounds="252,313,34,19" Id="FqtDThc3OUKPNBGgf8dQBx">
                         <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastDependency="Fuse.Core.vl">
                           <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -419,18 +416,27 @@
                         <Pin Id="L79RDzPWCllN09K30tz3T3" Name="Input" Kind="InputPin" />
                         <Pin Id="NEoFw8prA6CO02cv4xHT0E" Name="Output" Kind="OutputPin" />
                       </Node>
+                      <Node Bounds="252,372,80,19" Id="VnYgT3ldAAALLw9hT5OEP1">
+                        <p:NodeReference LastCategoryFullName="Fuse.Math" LastDependency="Fuse.Core.vl">
+                          <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                          <Choice Kind="ProcessAppFlag" Name="DefaultRemap" />
+                        </p:NodeReference>
+                        <Pin Id="B4zyPRhQjjTNfvovCCnAkn" Name="Input" Kind="InputPin" />
+                        <Pin Id="FFaCE0052vaOQSJROJA7CK" Name="Bias" Kind="InputPin" />
+                        <Pin Id="NfXHr3EopJOQFH7XL5TQ8c" Name="Override Remap" Kind="InputPin" />
+                        <Pin Id="ROyjbmy5CzGLmkJFfhwhcP" Name="Output" Kind="OutputPin" />
+                        <Pin Id="SM9shvVt3uCMHKsHWpBjze" Name="Preview" Kind="OutputPin" />
+                      </Node>
                     </Patch>
-                    <ControlPoint Id="Fmgo5Pbn2bHQMoUHtFqBGg" Bounds="191,287" Alignment="Top" />
-                    <ControlPoint Id="BwVcOkifZHMLsYw8LBFi33" Bounds="234,440" Alignment="Bottom" />
                   </Node>
-                  <ControlPoint Id="TSC6rqC2tsAMfZoEj9KVVl" Bounds="379,327" />
                 </Patch>
+                <ControlPoint Id="HOyHDzlAyeLNA9YnCG7T21" Bounds="489,191" Alignment="Top" />
               </Node>
               <ControlPoint Id="NfRMY7rdf3VPMEagv7QP0S" Bounds="379,117" />
               <ControlPoint Id="CVnlKePWxAKN2JkIlsR11K" Bounds="308,68" />
               <ControlPoint Id="BdXasCRdBaPNzz8Zmz2v6J" Bounds="343,95" />
               <ControlPoint Id="M8VpCjLGPH9LQv0vPiBLBx" Bounds="234,619" />
-              <Pad Id="UnUiZdP9q5rNEwiYhE2e7S" Bounds="312,362,116,28" ShowValueBox="true" isIOBox="true" Value="Apply Bias">
+              <Pad Id="UnUiZdP9q5rNEwiYhE2e7S" Bounds="408,379,116,28" ShowValueBox="true" isIOBox="true" Value="Apply Bias">
                 <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
@@ -459,6 +465,7 @@
               </Pad>
               <ControlPoint Id="RIq2tcIede9QYibA4BT5Wc" Bounds="191,142" />
               <ControlPoint Id="MOiqqqyk2NIMkzGIsIth4g" Bounds="414,143" />
+              <ControlPoint Id="N1yADj0JSTPNwXgH8CtqUO" Bounds="489,162" />
             </Canvas>
             <ProcessDefinition Id="IEUqOIVGKOVOPHzaVgY9tw">
               <Fragment Id="Borh0RhdNnfN59mwyDSjsC" Patch="RIxjCJbYq5ALO6E2iqDnul" Enabled="true" />
@@ -526,11 +533,10 @@
               </Pin>
               <Pin Id="RkWgHkGSi8hN47wh4mY5qz" Name="Inflection" Kind="InputPin" Bounds="565,177" />
               <Pin Id="D1E9TZKSjCVNLivFPPxSmC" Name="Output" Kind="OutputPin" Bounds="910,897" />
+              <Pin Id="BaFBeRxYC17OkIBbjvA0e0" Name="Override Remap" Kind="InputPin" Bounds="489,162" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
             </Patch>
-            <Link Id="FxAjz5g6R0dOqsbgkAInAI" Ids="ULNDOWMQ6YLMvcNESuXBoG,TSC6rqC2tsAMfZoEj9KVVl,Ac2An09nUt4LjeNZhlWNG1" />
             <Link Id="F9LNg6mNLLzP0EWZ0firNy" Ids="ULNDOWMQ6YLMvcNESuXBoG,VNEKtpedUUEM4xAdcjNpQu" />
             <Link Id="BcE5aJTZdKcMRVbD8ChpIL" Ids="PgHqoaNhSe2PS4InhhDeSq,NGMqWX3dTLoMPwbfZ0o3yX" />
-            <Link Id="SnFLbxssJn2OB2aJo4qswk" Ids="IUx55VouibKQCOz9ZNNWUo,BInPuhc7SZtP8vlMHOc5RV" />
             <Link Id="LJUFughcmOdLfTQnvKRfAW" Ids="Fmgo5Pbn2bHQMoUHtFqBGg,BwVcOkifZHMLsYw8LBFi33" IsFeedback="true" />
             <Link Id="MHZ1iGQGEdoOdPr1VCoHGK" Ids="PghO6NiMIfMMe4wIo7rxly,Fmgo5Pbn2bHQMoUHtFqBGg" />
             <Link Id="DBaAewq7M9FLxVx6fzURE9" Ids="Fmgo5Pbn2bHQMoUHtFqBGg,DVlUYOMmZtuPGk0daJUeEW" />
@@ -539,7 +545,12 @@
             <Link Id="UkjdJHjmLRiLjIdntD9u5x" Ids="BwVcOkifZHMLsYw8LBFi33,HaWX2uUL2Z3Qb9l1l3Kb2W" />
             <Link Id="K8CTFNupnQRPiJe24Y17pj" Ids="C0ArfCIWv0lLPaeDCKEJSO,M1JX0VFRgZKNKflWjdNLfS" />
             <Link Id="JyMZgWA3gwmQbdeuDxLSQB" Ids="ImH8VtAbnL6QLlX0747Ku8,L79RDzPWCllN09K30tz3T3" />
-            <Link Id="VIyjrx1S5WyOzLLs7mICNt" Ids="NEoFw8prA6CO02cv4xHT0E,VllIbZEEbyFOHltxUNnWi0" />
+            <Link Id="I97EiyhtSU7NmA4RioWYnb" Ids="ULNDOWMQ6YLMvcNESuXBoG,FFaCE0052vaOQSJROJA7CK" />
+            <Link Id="QTSXiFHEBbDN60aVHWwzCV" Ids="NEoFw8prA6CO02cv4xHT0E,B4zyPRhQjjTNfvovCCnAkn" />
+            <Link Id="LCU709nYwc3LPKd5V4oVFk" Ids="ROyjbmy5CzGLmkJFfhwhcP,BInPuhc7SZtP8vlMHOc5RV" />
+            <Link Id="Kbu3v5O1nNvQCAKWkdFAel" Ids="HOyHDzlAyeLNA9YnCG7T21,NfXHr3EopJOQFH7XL5TQ8c" />
+            <Link Id="Sk4f0X767DpLmJQa4NX6vH" Ids="N1yADj0JSTPNwXgH8CtqUO,HOyHDzlAyeLNA9YnCG7T21" />
+            <Link Id="C1sVwaHCNajPHrFXkPu6rD" Ids="BaFBeRxYC17OkIBbjvA0e0,N1yADj0JSTPNwXgH8CtqUO" IsHidden="true" />
           </Patch>
         </Node>
       </Canvas>
@@ -585,7 +596,7 @@
                 <Link Id="HXbjjhpwTTuNmK87mgJwEB" Ids="VvTCbv9MjvJLrPb6b6Merc,NrBahCo3iYuPp1YSJVctoy" IsHidden="true" />
               </Patch>
             </Node>
-            <Node Bounds="44,262,185,19" Id="Ltc3varxma5O6cbKyly7lZ">
+            <Node Bounds="44,262,205,19" Id="Ltc3varxma5O6cbKyly7lZ">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -600,9 +611,10 @@
               <Pin Id="PqokOoTKGDOPmEG4qUaJqv" Name="Inflection" Kind="InputPin" />
               <Pin Id="GNHKTlXlTGdMsLwFxL3B0l" Name="Noise Type" Kind="InputPin" />
               <Pin Id="D9hIbMiRqLdQDCI6Z1sSxS" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="LGk6iHFf67dP77ITg3Gk68" Name="Override Remap" Kind="InputPin" />
               <Pin Id="UEzdGp8m8DoQKD8sWJpVz2" Name="Output" Kind="OutputPin" />
             </Node>
-            <Pad Id="JjElxzyZgdJM4UtPFym6Gi" SlotId="UK0CfPpDH5LN0J7x2EMJjE" Bounds="267,223" />
+            <Pad Id="JjElxzyZgdJM4UtPFym6Gi" SlotId="UK0CfPpDH5LN0J7x2EMJjE" Bounds="225,227" />
             <Node Bounds="158,361,64,19" Id="FZFhBxlVO0uMRr3OInQeME">
               <p:NodeReference LastCategoryFullName="Fuse.Core.Util" LastDependency="Fuse.Core.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -634,6 +646,7 @@
               </p:NodeReference>
               <Pin Id="JoT7QjDIIIiOwNYlzw5xhH" Name="Output" Kind="OutputPin" />
             </Node>
+            <ControlPoint Id="UU2DAkgbXf6O5N8BMU1pPR" Bounds="246,247" />
           </Canvas>
           <ProcessDefinition Id="QGZkPXGE0R6PQfbhnnxu7s">
             <Fragment Id="GhVm1eDpsdvNsvGMcotfRj" Patch="VscAebet303OexvAaLqsF5" Enabled="true" />
@@ -719,7 +732,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="IcexL3hBhFgL5kIgb16Pbu" Name="Override Remap" Kind="InputPin" Bounds="245,251" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
+          <Link Id="QYdcCxxarxeOjDy7sezybJ" Ids="UU2DAkgbXf6O5N8BMU1pPR,LGk6iHFf67dP77ITg3Gk68" />
+          <Link Id="IUBaj4jhosYLpzlDTWckwy" Ids="IcexL3hBhFgL5kIgb16Pbu,UU2DAkgbXf6O5N8BMU1pPR" IsHidden="true" />
         </Patch>
       </Node>
       <!--
@@ -764,7 +780,7 @@
                 <Link Id="N4mUHuAD97nOjXrj8RYPwZ" Ids="DROVQBtqCWKMaAjsgHpBln,TL4IL1mZI7iPAoWW1Bt3dA" IsHidden="true" />
               </Patch>
             </Node>
-            <Node Bounds="41,260,185,19" Id="Sq1Omm1En80NWeqArxErZH">
+            <Node Bounds="41,260,205,19" Id="Sq1Omm1En80NWeqArxErZH">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -779,6 +795,7 @@
               <Pin Id="Fpqiv0sqNWUMbXuZfk8zjK" Name="Inflection" Kind="InputPin" />
               <Pin Id="CFY6gOB18sKMhXhV66jMCV" Name="Noise Type" Kind="InputPin" />
               <Pin Id="LLI2oetb5ZWQdZJZxpmMa0" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="NCsfgbT5OCKOBbL0LQDhZU" Name="Override Remap" Kind="InputPin" />
               <Pin Id="FPdZBSqBTksMvlkWycLIHp" Name="Output" Kind="OutputPin" />
             </Node>
             <Node Bounds="188,447,64,19" Id="Fmdv79vhzlCOrPf6mRpIDy">
@@ -824,6 +841,7 @@
               </p:NodeReference>
               <Pin Id="RSx64nnGZzlO3NxCdam25K" Name="Output" Kind="OutputPin" />
             </Node>
+            <ControlPoint Id="KTGkV0LLK56N2TSTeQpzqx" Bounds="244,243" />
           </Canvas>
           <ProcessDefinition Id="SDqiQqEGQ2rMFSANsaCVmY">
             <Fragment Id="UQQSEC9z9aSMU9JnwjWFin" Patch="Hfil8EQ0NTTNSb3Sp68fRW" Enabled="true" />
@@ -898,7 +916,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="Q6u04lbixzoNXpA7Nqip2H" Name="Override Remap" Kind="InputPin" Bounds="241,243" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
+          <Link Id="K7q6jT04sf7Pb50XOB8Wnm" Ids="Q6u04lbixzoNXpA7Nqip2H,KTGkV0LLK56N2TSTeQpzqx" IsHidden="true" />
+          <Link Id="DKFUcY7bg9xN3sR8eD2SGI" Ids="KTGkV0LLK56N2TSTeQpzqx,NCsfgbT5OCKOBbL0LQDhZU" />
         </Patch>
       </Node>
       <!--
@@ -943,7 +964,7 @@
                 <Link Id="TwQ5wiaWYHJOmjXaEpLzHV" Ids="A6TpIcTP9K2Nz1edewLf4p,FvFPZvf8SdRNNTIwBgAWw9" IsHidden="true" />
               </Patch>
             </Node>
-            <Node Bounds="32,265,185,19" Id="DXgvlMmQM5lOdXrPi9UnNF">
+            <Node Bounds="32,265,205,19" Id="DXgvlMmQM5lOdXrPi9UnNF">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -958,6 +979,7 @@
               <Pin Id="HIauZyiRmZOQa8flQxEOeb" Name="Inflection" Kind="InputPin" />
               <Pin Id="UVBCDl4Vqr6MomVLEcLFTB" Name="Noise Type" Kind="InputPin" />
               <Pin Id="NAat6I3alt1PFoHufEilPl" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="FDgoE5fXM54LHD0mSfUM5K" Name="Override Remap" Kind="InputPin" />
               <Pin Id="DAzeseENfLOPYovswndIPr" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="VuKhKBdU47SPLGGr2FQTcC" Bounds="213,211">
@@ -986,7 +1008,7 @@
               </p:NodeReference>
               <Pin Id="TXNCd13G7exPqBc24uhKPL" Name="Output" Kind="OutputPin" />
             </Node>
-            <Node Bounds="249,391,25,19" Id="VqlW8MxhtIeL43dKuZZFwC">
+            <Node Bounds="249,391,75,19" Id="VqlW8MxhtIeL43dKuZZFwC">
               <p:NodeReference LastCategoryFullName="Fuse.Core.Viewer" LastDependency="Fuse.Core.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="AddViewerID" />
@@ -1001,6 +1023,7 @@
               </p:NodeReference>
               <Pin Id="Cg6EDWOUMLpOzej0PoLRSN" Name="Output" Kind="OutputPin" />
             </Node>
+            <ControlPoint Id="MhECD35LgXgQRZILVuMNYz" Bounds="234,251" />
           </Canvas>
           <ProcessDefinition Id="Pg8Rq7jDwoaLilNVqU8UzW">
             <Fragment Id="Scx5rQaCLmRM5LM8auw52N" Patch="BUFkBbkpXprQTSeh56PFyb" Enabled="true" />
@@ -1084,7 +1107,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="NgE74LVLSo5OPAsSuoffTU" Name="Override Remap" Kind="InputPin" Bounds="229,241" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
+          <Link Id="ABID3v7r7PAORqcFvREMlA" Ids="NgE74LVLSo5OPAsSuoffTU,MhECD35LgXgQRZILVuMNYz" IsHidden="true" />
+          <Link Id="C4jS3X0MgpaOv6a06UHDDx" Ids="MhECD35LgXgQRZILVuMNYz,FDgoE5fXM54LHD0mSfUM5K" />
         </Patch>
       </Node>
       <!--
@@ -1129,7 +1155,7 @@
                 <Link Id="TzlwcicgYirNLism1IPzch" Ids="RNCuYrNUVVMLxLQ7GHBfvw,RLalICkeaVyPv3AnqefrY2" IsHidden="true" />
               </Patch>
             </Node>
-            <Node Bounds="30,222,185,19" Id="U9ZRxbdPjxjPrga4RQ65Dv">
+            <Node Bounds="30,222,205,19" Id="U9ZRxbdPjxjPrga4RQ65Dv">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -1144,6 +1170,7 @@
               <Pin Id="IWNVso0B1PTM84uPDu90wg" Name="Inflection" Kind="InputPin" />
               <Pin Id="EmGcTqe7QnQLqVXo0wHR5j" Name="Noise Type" Kind="InputPin" />
               <Pin Id="AJIN353BITCOI4bIBfyB4e" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="IipMxn76gjNLmUOcx0b2uQ" Name="Override Remap" Kind="InputPin" />
               <Pin Id="VGcgAAfNC4vOSgs0FvAp6M" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="RKk2rdN6VLtNWgkpl6uMsl" Bounds="212,191">
@@ -1186,6 +1213,7 @@
               </p:NodeReference>
               <Pin Id="SZFUnaLtOBJN3iVIMQApXR" Name="Output" Kind="OutputPin" />
             </Node>
+            <ControlPoint Id="F36oDeDB2RmQN18HWuSSLP" Bounds="233,207" />
           </Canvas>
           <ProcessDefinition Id="L3nFZgnNFrBPmyTHFzZWye">
             <Fragment Id="VzZYx4pn5PtPwbkwQE9fT5" Patch="JUxi9gBDFD9LLFrt6o97lq" Enabled="true" />
@@ -1269,7 +1297,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="SjPVi2SekV0Mg15u1D9VqR" Name="Override Remap" Kind="InputPin" Bounds="233,205" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
+          <Link Id="COFuB3mcGy1PNvQnIG9jjV" Ids="SjPVi2SekV0Mg15u1D9VqR,F36oDeDB2RmQN18HWuSSLP" IsHidden="true" />
+          <Link Id="Q7PmMB43UqdOJkevyT8zpb" Ids="F36oDeDB2RmQN18HWuSSLP,IipMxn76gjNLmUOcx0b2uQ" />
         </Patch>
       </Node>
       <Pad Id="BGsyMoOkBe4Qc01csC1CSc" Bounds="313,270,225,19" ShowValueBox="true" isIOBox="true" Value="All combinations of 1-4 to 1-4 dims">
@@ -2077,7 +2108,7 @@
                 <Link Id="RTLT5OEh3RcL9SCZT4bO3H" Ids="Af5c3SyMItEM1BgE2wWBr1,EhHDGHszGUMOjB48cq1XbE" IsHidden="true" />
               </Patch>
             </Node>
-            <Node Bounds="311,358,185,19" Id="E5J8ArrGVw0PleFS16eayL">
+            <Node Bounds="311,358,205,19" Id="E5J8ArrGVw0PleFS16eayL">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseBase" />
@@ -2092,6 +2123,7 @@
               <Pin Id="HdqK5skLuH5ONgNrnXbQwe" Name="Inflection" Kind="InputPin" />
               <Pin Id="MtArTAL3rq7Nvs9uw8vWoN" Name="Noise Type" Kind="InputPin" />
               <Pin Id="H7vElBiptjbMp1eg3aItyI" Name="TAnimated" Kind="InputPin" />
+              <Pin Id="BKKQmm4thtEPaRcNyAPUhQ" Name="Override Remap" Kind="InputPin" />
               <Pin Id="L7xwalrU4WqMJeRIkhSOR0" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="Ob41Ey1FiaMO1I3djchEia" Bounds="493,314">
@@ -2134,6 +2166,7 @@
               <Pin Id="GOh1LwUBZvEOBjpaffpkpG" Name="Last Error" Kind="OutputPin" />
               <Pin Id="RYfYGfVfx8LM8uUmQzYYuu" Name="Shader Code" Kind="OutputPin" />
             </Node>
+            <ControlPoint Id="KCBWKGpgfjDOjN122K4Kzz" Bounds="513,342" />
           </Canvas>
           <ProcessDefinition Id="Dj7q53tPHzWPlBGLHTzg8U">
             <Fragment Id="T6bxtbyPP57QY3u0kZo5ry" Patch="QsGdH6wawqlL2AvoWw550H" Enabled="true" />
@@ -2200,9 +2233,12 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="FZi6IonOUlFL9TjkJbrSS4" Name="Override Remap" Kind="InputPin" Bounds="512,341" Visibility="Optional" Summary="Overrides the internal bias function with the one provided to this pin.  This cause the Bias pin to be ignored" />
           </Patch>
           <Link Id="GrQubXPAalaPIDnmZ006RV" Ids="LZT974EIWLNNGSqviyxWCI,R8VcW2wibZXOggGunLdNwi" />
           <Link Id="M6egt1NxSMsPm6Wim1IGla" Ids="L7xwalrU4WqMJeRIkhSOR0,EvsIp8c4GvOMj5CVhfG93Q" />
+          <Link Id="A13l5hKDxmiPo9Fdl6bTgZ" Ids="FZi6IonOUlFL9TjkJbrSS4,KCBWKGpgfjDOjN122K4Kzz" IsHidden="true" />
+          <Link Id="EPXc4UWmCW7NwJk6J5mkpT" Ids="KCBWKGpgfjDOjN122K4Kzz,BKKQmm4thtEPaRcNyAPUhQ" />
         </Patch>
       </Node>
       <Pad Id="Hqo9B9wcJosLvhulWqoKdD" Bounds="364,323,47,19" ShowValueBox="true" isIOBox="true" Value="1 to 1">
@@ -3149,8 +3185,8 @@
             <ControlPoint Id="M7ZfTwP4cadQQEjplcUuQA" Bounds="499,708" />
             <ControlPoint Id="CVXmCjE9WSgOWGLqJnlPhZ" Bounds="520,725" />
             <ControlPoint Id="AldhglYG8RMOOhqG1p7fvZ" Bounds="782,124" />
-            <ControlPoint Id="RX8REDPnJ68L6UKzHW164J" Bounds="539,737" />
-            <Node Bounds="457,754,85,19" Id="PmZBnTIkAlNPq0grmRea9Y">
+            <ControlPoint Id="RX8REDPnJ68L6UKzHW164J" Bounds="536,748" />
+            <Node Bounds="455,780,105,19" Id="PmZBnTIkAlNPq0grmRea9Y">
               <p:NodeReference LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="NoiseShaper" />
@@ -3160,6 +3196,7 @@
               <Pin Id="QGdt0sWJujDLhc2BPRjeON" Name="Center" Kind="InputPin" />
               <Pin Id="ANSq5KlxkYiLD3FZaAB1E5" Name="Bias" Kind="InputPin" />
               <Pin Id="I8utf5BLxG7QWiHSAEF9Sc" Name="Inflection" Kind="InputPin" />
+              <Pin Id="Ay8mWHSmJbCNGcG2Lql2gN" Name="Override Remap" Kind="InputPin" />
               <Pin Id="KsVvzvRdKfOPuuLjguYwj3" Name="Output" Kind="OutputPin" />
             </Node>
             <ControlPoint Id="VUxkw30IbHGNRROQVRncPf" Bounds="236,73" />
@@ -3203,6 +3240,7 @@
                 <Item>randomNoise</Item>
               </p:Value>
             </Pad>
+            <ControlPoint Id="SqWMHMEMZ4xOjM9nJ5Eiq4" Bounds="557,767" />
           </Canvas>
           <ProcessDefinition Aspects="Advanced" Id="OgYxHeNx28YOj3FQtqd4bb">
             <Fragment Id="Tc6kUwlVBz6NHY1rrObDI0" Patch="CQpWmsyiTDrPaJezjT48JL" Enabled="true" />
@@ -3319,7 +3357,10 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="IJyPMaXkN7yNjy8lvssMmP" Name="Override Remap" Kind="InputPin" Bounds="557,766" />
           </Patch>
+          <Link Id="HstlOwSGHh4LeuilgCDuNd" Ids="SqWMHMEMZ4xOjM9nJ5Eiq4,Ay8mWHSmJbCNGcG2Lql2gN" />
+          <Link Id="PAeIrhUohlxPTDG2qsevXE" Ids="IJyPMaXkN7yNjy8lvssMmP,SqWMHMEMZ4xOjM9nJ5Eiq4" IsHidden="true" />
         </Patch>
       </Node>
       <!--
@@ -5514,8 +5555,9 @@
                 <Pin Id="AcjAl8Th3OjPfjDCHawmS9" Name="Amplitude" Kind="InputPin" />
                 <Pin Id="QHmhMeNA0o5OsIWZFVaPgu" Name="Center" Kind="InputPin" />
                 <Pin Id="KiMnPg7oAnfQDWzpTVJt72" Name="Bias" Kind="InputPin" />
-                <Pin Id="PCEAI8vOksQOrym4jiTSw0" Name="Output" Kind="OutputPin" />
                 <Pin Id="FG9BQUSb1I0NdMxCJqAEmc" Name="Inflection" Kind="InputPin" />
+                <Pin Id="AFSJ9qHaEpnL5kFyAUxIoo" Name="Override Remap" Kind="InputPin" />
+                <Pin Id="PCEAI8vOksQOrym4jiTSw0" Name="Output" Kind="OutputPin" />
               </Node>
             </Canvas>
             <ProcessDefinition Aspects="Advanced" Id="Ubxb0QrXpyTQcqOCeKP9t7">
@@ -6090,8 +6132,9 @@
                 <Pin Id="MOi7SgDzc2rPgO5yiX2XCA" Name="Amplitude" Kind="InputPin" />
                 <Pin Id="Ns2t7BC2BoGMeIWGVAENga" Name="Center" Kind="InputPin" />
                 <Pin Id="KI4SemSecQHPAiZfgxmsui" Name="Bias" Kind="InputPin" />
-                <Pin Id="VKv8MzSTgjpNcbCATIy0Xy" Name="Output" Kind="OutputPin" />
                 <Pin Id="QFtYef1cMY0QK6D6S3J7Ip" Name="Inflection" Kind="InputPin" />
+                <Pin Id="PBKnIemlsfaLpsjzizavM8" Name="Override Remap" Kind="InputPin" />
+                <Pin Id="VKv8MzSTgjpNcbCATIy0Xy" Name="Output" Kind="OutputPin" />
               </Node>
               <Node Bounds="414,1644,33,19" Id="VPrBGcKDYDlPt68PuHxMd3">
                 <p:NodeReference LastCategoryFullName="Fuse.Core.Split" LastDependency="Fuse.Core.vl">
@@ -9082,8 +9125,9 @@
                 <Pin Id="VeXKmc9rvAMQO8bCrPKdP1" Name="Amplitude" Kind="InputPin" />
                 <Pin Id="GggqflCbx6TM9HCUKikAuZ" Name="Center" Kind="InputPin" />
                 <Pin Id="PpMXjaX6mhUNQPD2Ecuknt" Name="Bias" Kind="InputPin" />
-                <Pin Id="RXdx0onjYY6K9n0jKgxL5q" Name="Output" Kind="OutputPin" />
                 <Pin Id="Bi3nKdWONkRPKWTP4vn2Md" Name="Inflection" Kind="InputPin" />
+                <Pin Id="HioqDA056l4PlX8FLI1XqB" Name="Override Remap" Kind="InputPin" />
+                <Pin Id="RXdx0onjYY6K9n0jKgxL5q" Name="Output" Kind="OutputPin" />
               </Node>
               <Pad Id="Bcibv9sVdU8PVdXsZ0rkgA" Comment="Inflection" Bounds="441,1491,79,15" ShowValueBox="true" isIOBox="true" Value="None">
                 <p:TypeAnnotation LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
@@ -12512,8 +12556,9 @@
               <Pin Id="K1bAZg55q8PPhBMOx0kFZf" Name="Amplitude" Kind="InputPin" />
               <Pin Id="VJ5iR27gWPgPs26Cf5zKrd" Name="Center" Kind="InputPin" />
               <Pin Id="CsCKvhU1BIUMVwwOrOwS2E" Name="Bias" Kind="InputPin" />
-              <Pin Id="ETNYZsjtRCBO2h0rjzPaGr" Name="Output" Kind="OutputPin" />
               <Pin Id="TlpDsrvjMElLIJYabmMSG5" Name="Inflection" Kind="InputPin" />
+              <Pin Id="FggUZlLVaVjNQCHmwfkx4k" Name="Override Remap" Kind="InputPin" />
+              <Pin Id="ETNYZsjtRCBO2h0rjzPaGr" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="TOeypFnkDJgL4pZMmYimoI" Comment="Inflection" Bounds="317,921,79,15" ShowValueBox="true" isIOBox="true" Value="None">
               <p:TypeAnnotation LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
@@ -12532,8 +12577,9 @@
               <Pin Id="EQYir3NSv7bPwXWechnpfV" Name="Amplitude" Kind="InputPin" />
               <Pin Id="LNzKbsQQe6HPALh5qyASJs" Name="Center" Kind="InputPin" />
               <Pin Id="IrOGumDp4oIMLqOgrFjY8x" Name="Bias" Kind="InputPin" />
-              <Pin Id="IZtmFzIq6WBOSt0zp1KmnB" Name="Output" Kind="OutputPin" />
               <Pin Id="HqME4szWdYGNllmXDDMuoP" Name="Inflection" Kind="InputPin" />
+              <Pin Id="U2egvXRt35aPDMzl6ba3Et" Name="Override Remap" Kind="InputPin" />
+              <Pin Id="IZtmFzIq6WBOSt0zp1KmnB" Name="Output" Kind="OutputPin" />
             </Node>
             <Pad Id="OFB2t7BsUm5OrGMRfcTVG9" Comment="Inflection" Bounds="486,918,79,15" ShowValueBox="true" isIOBox="true" Value="None">
               <p:TypeAnnotation LastCategoryFullName="Fuse.Noise" LastDependency="Fuse.Noise.vl">
