@@ -104,8 +104,6 @@ namespace Fuse{
     public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T> where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
      {
          
-        
-
          protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
 
          protected T _value;
@@ -273,7 +271,7 @@ namespace Fuse{
          }
      }
 
-     public class TextureInput : ChangeableObjectInput<Texture>
+     public class TextureInput : ChangeableObjectInput<Texture>, ITextureInput
      {
          public TextureTypeTracker TextureTypeTracker { get; }
          
@@ -281,6 +279,8 @@ namespace Fuse{
          {
              TextureTypeTracker = theTypeTracker;
          }
+
+         public string TextureID => ID;
      }
      
      public class SamplerInput: ObjectInput<SamplerState>, IGpuInput 

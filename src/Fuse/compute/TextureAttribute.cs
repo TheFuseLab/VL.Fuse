@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Fuse.ComputeSystem;
+﻿using Fuse.ComputeSystem;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using VL.Core;
@@ -21,7 +20,7 @@ namespace Fuse.compute
         }
     }
 
-    public class TextureAttribute<TIndex,T> : Attribute<T>, ITextureAttribute where T : struct
+    public class TextureAttribute<TIndex,T> : Attribute<T>, ITextureInput, ITextureAttribute where T : struct
     {
        // public ShaderNode<T> Default;
         public TextureAttribute(NodeContext nodeContext, string theGroup, string theName, bool theIsDoubleBuffered, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.Texture)
@@ -64,6 +63,7 @@ namespace Fuse.compute
         }
 
         public override Int3 Resolution => TextureInput?.Value == null ? new Int3(1) : new Int3(TextureInput.Value.Width, TextureInput.Value.Height, TextureInput.Value.Depth);
+        public string TextureID => TextureInput?.ID;
     }
 
 }
