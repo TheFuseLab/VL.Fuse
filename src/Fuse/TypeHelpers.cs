@@ -509,6 +509,25 @@ namespace Fuse
             
             #endregion
 
+            #region IsIntType
+            public static bool IsIntType(Type type)
+            {
+                return type == typeof(int) 
+                       || type == typeof(Int2) 
+                       || type == typeof(Int3) 
+                       || type == typeof(Int4);
+            }
+            
+            public static bool IsIntType<T>()
+            {
+                return IsIntType(typeof(T));
+            }
+            
+            public static bool IsIntType<T>(ShaderNode<T> shaderNode)
+            {
+                return IsIntType<T>();
+            }
+            #endregion
             public static List<string> GetDescription(AbstractShaderNode theValue)
             {
                 var keys = new List<string>() { "x", "y", "z", "w"};
