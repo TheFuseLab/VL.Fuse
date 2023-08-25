@@ -24,13 +24,6 @@ shader FuseCoreColor
 		return ((RGB - 1) * HSV.y + 1) * HSV.z;
 	}
 
-	float3 HSLtoRGB(float3 HSL)
-	{
-		float3 RGB = HUEtoRGB(HSL.x);
-		float C = (1 - abs(2 * HSL.z - 1)) * HSL.y;
-		return (RGB - 0.5) * C + HSL.z;
-	}
-
 	float3 RGBtoHSV(float3 RGB)
 	{
 		float3 HSV = 0;
@@ -52,11 +45,26 @@ shader FuseCoreColor
 	}
 
 	// Smooth HSV to RGB conversion 
-	float4 HSVtoRGB_smooth(float4 col)
+	float3 HSVtoRGB_smooth(float3 col)
 	{
-		float3 rgb = clamp( abs(fmod(col.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
+		float3 rgb = HUEtoRGB(col.x);
 		rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing	
-		return float4(col.z * lerp( float3(1.0), rgb, col.y), col.w);
+		return col.z * lerp( float3(1.0,1.0,1.0), rgb, col.y);
+	}
+
+	float3 HSLtoRGB(float3 HSL)
+	{
+		float3 RGB = HUEtoRGB(HSL.x);
+		float C = (1 - abs(2 * HSL.z - 1)) * HSL.y;
+		return (RGB - 0.5) * C + HSL.z;
+	}
+
+	float3 HSLtoRGB_smooth(float3 HSL)
+	{
+		float3 RGB = HUEtoRGB(HSL.x);
+		RGB = RGB*RGB*(3.0-2.0*RGB); // cubic smoothing	
+		float C = (1 - abs(2 * HSL.z - 1)) * HSL.y;
+		return (RGB - 0.5) * C + HSL.z;
 	}
 
 
