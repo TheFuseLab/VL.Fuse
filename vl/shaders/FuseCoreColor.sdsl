@@ -90,23 +90,42 @@ shader FuseCoreColor
 	}
 
 	float3 RGBtoOKLab(float3 RGB){
+		
+
 		const float3x3 kCONEtoLMS = float3x3(                
 			0.4121656120, 0.2118591070, 0.0883097947,
 			0.5362752080, 0.6807189584, 0.2818474174,
 			0.0514575653, 0.1074065790, 0.6302613616
 		);
-	
-		return pow( mul(kCONEtoLMS,RGB), float3(1.0/3.0,1.0/3.0,1.0/3.0));
+
+		float3 lms = mul(RGB, kCONEtoLMS);
+
+		lms = sign(lms) * pow(abs(lms) , float3(1.0/3.0,1.0/3.0,1.0/3.0));
+
+		const float3x3 invA = float3x3(
+			0.2104542553, 1.9779984951, 0.0259040371,
+            0.7936177850, -2.4285922050, 0.7827717662,
+            -0.0040720468, 0.4505937099, -0.8086757660
+		);
+		return mul(lms,invA);
 	}
 
 	float3 OKLabToRGB(float3 okLab){
+		// Calculate inverted LMS components
+		const float3x3 ToLMS = float3x3(
+			1.0, 1.0, 1.0,
+            0.3963377774, -0.1055613458, -0.0894841775,
+            0.2158037573, -0.0638541728, -1.2914855480
+		);
+    	float3 lms = mul(okLab,ToLMS);
+
 		const float3x3 kLMStoCONE = float3x3(
 			 4.0767245293, -1.2681437731, -0.0041119885,
 			-3.3072168827,  2.6093323231, -0.7034763098,
 			 0.2307590544, -0.3411344290,  1.7068625689
 		);
 	
-		return mul(kLMStoCONE,(okLab*okLab*okLab));
+		return mul((lms*lms*lms),kLMStoCONE);
 	}
 
 	// Converts an srgb color to linear space
@@ -184,19 +203,30 @@ shader FuseCoreColor
 	////////////////////////////////////////////////////////////////
 
 	float3 OKLabMix( float3 colA, float3 colB, float blend ){
-		// https://bottosson.github.io/posts/oklab
-		
-		
-						
-		// rgb to cone (arg of pow can't be negative)
-		float3 okA = RGBtoOKLab(colA);
-		float3 okB = RGBtoOKLab(colB);
-		// lerp
-		float3 okS = lerp( okA, okB, blend );
-		// gain in the middle (no oaklab anymore, but looks better?)
-		okS *= 1.0 + 0.2 * blend * (1.0 - blend);
-		// cone to rgb
-		return OKLabToRGB(okS);
+		// Transformation matrices from Oklab to LMS and vice versa
+		const float3x3 kCONEtoLMS = {
+			0.4121656120, 0.2118591070, 0.0883097947,
+			0.5362752080, 0.6807189584, 0.2818474174,
+			0.0514575653, 0.1074065790, 0.6302613616
+		};
+		const float3x3 kLMStoCONE = {
+			4.0767245293, -1.2681437731, -0.0041119885,
+			-3.3072168827, 2.6093323231, -0.7034763098,
+			0.2307590544, -0.3411344290, 1.7068625689
+		};
+
+		// Convert RGB to LMS with gamma correction
+		float3 lmsA = pow(mul(kCONEtoLMS, colA), float3(1.0, 1.0, 1.0) / 3.0);
+		float3 lmsB = pow(mul(kCONEtoLMS, colB), float3(1.0, 1.0, 1.0) / 3.0);
+
+		// Linearly interpolate (lerp) between the LMS values
+		float3 lms = lerp(lmsA, lmsB, blend);
+
+		// Optional gain, uncomment if desired
+		// lms *= 1.0 + 0.2 * blend * (1.0 - blend);
+
+		// Convert back from LMS to RGB
+		return mul(kLMStoCONE, lms * lms * lms);
 	}
 
 
