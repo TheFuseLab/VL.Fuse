@@ -361,6 +361,28 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		return length( pa - ba*h )*.6;
 	}
 
+	// https://www.shadertoy.com/view/ftyBRd
+	float fHelix2( float3 p, float fr, float r1, float r2 )
+	{
+		float2  nline = float2(fr, 6.283185*r1 );
+		float2  pline = float2(nline.y, -nline.x);
+		float repeat = nline.x * nline.y;
+
+		float2  pc = float2(p.x,r1 * atan2(p.y,p.z));              // to cylindrical
+
+		float2  pp = float2( dot(pc,pline),                     // project to line
+						dot(pc,nline));
+		
+		pp.x = round(pp.x/repeat)*repeat;                   // repeat in x
+
+		float2 qc = (nline*pp.y+pline*pp.x)/dot(nline,nline); // un project to cylindrical
+		qc.y /= r1;
+		
+		float3 q = float3(qc.x, sin(qc.y)*r1, cos(qc.y)*r1 );   // to cartesian
+			
+		return length(p-q)-r2;
+	}
+
 	float fCapsule(float3 p, float r, float h)
 	{
   		p.y -= clamp( p.y, 0.0, h );
