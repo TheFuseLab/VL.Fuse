@@ -1,6 +1,7 @@
 ﻿using Stride.Graphics;
 using System;
 using System.Collections.Generic;
+using Fuse.compute;
 using VL.Core;
 using VL.Stride.Rendering.ComputeEffect;
 using Buffer = Stride.Graphics.Buffer;
@@ -44,7 +45,7 @@ namespace Fuse
             
             if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
-            
+
             /*
             if (typeof(T) == typeof(Buffer))
                 return new BufferGpuValueBuilder<T>() as IMonadBuilder<T, GpuValue<T>>;
