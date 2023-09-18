@@ -5,6 +5,8 @@ shader FuseSDFBakeSDF_ComputeFX : ComputeShaderBase, FuseSDFUtils
 {
     #define GRID_MARGIN 30
 
+    int GridMargin;
+
     StructuredBuffer<float3> PositionBuffer;
     StructuredBuffer<int> IndicesBuffer;
 
@@ -35,8 +37,8 @@ shader FuseSDFBakeSDF_ComputeFX : ComputeShaderBase, FuseSDFUtils
         float3 aabbMin = min(tri0, min(tri1, tri2)) - cellSize;
         float3 aabbMax = max(tri0, max(tri1, tri2)) + cellSize;
 
-        int3 gridMin = GetSdfCoordinates(aabbMin) - GRID_MARGIN;
-        int3 gridMax = GetSdfCoordinates(aabbMax) + GRID_MARGIN;
+        int3 gridMin = GetSdfCoordinates(aabbMin) - GridMargin;
+        int3 gridMax = GetSdfCoordinates(aabbMax) + GridMargin;
 
         gridMin.x = max(0, min(gridMin.x, cellCount.x - 1));
         gridMin.y = max(0, min(gridMin.y, cellCount.y - 1));
