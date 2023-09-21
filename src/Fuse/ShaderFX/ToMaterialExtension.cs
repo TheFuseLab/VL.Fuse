@@ -153,7 +153,6 @@ ${stageShading}
                 theGeometryStage,
                 theShading == null ? null : new ShadingStage(theShading)
             },
-            new List<string>(),
             new Dictionary<string, string>(),
             false,
             ShaderSource)

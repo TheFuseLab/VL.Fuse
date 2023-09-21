@@ -48,8 +48,7 @@ ${stageFX}
 };";
 
         public ToComputeFx(ShaderNode<T> theCompute) : base(
-            new List<AbstractStage>{new ComputeStage<T>(theCompute)}, 
-            new List<string>(),
+            new List<AbstractStage>{new ComputeStage<T>(theCompute)},
             new Dictionary<string, string>(),
             true,
             ShaderSource)

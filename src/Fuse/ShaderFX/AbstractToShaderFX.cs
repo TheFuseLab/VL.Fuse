@@ -50,8 +50,6 @@ namespace Fuse.ShaderFX
 
         public string ShaderName { get; private set; }
 
-        private readonly List<string> _definedStreams;
-
         private readonly List<AbstractStage> _stages;
 
         private readonly HashSet<string>_declarations = new();
@@ -69,7 +67,6 @@ namespace Fuse.ShaderFX
         
         protected AbstractToShaderFX(
             List<AbstractStage> theStages, 
-            List<string> theDefinedStreams, 
             Dictionary<string,string> theCustomTemplate, 
             bool theIsCompute,
             string theSource) 
@@ -78,7 +75,6 @@ namespace Fuse.ShaderFX
             _isCompute = theIsCompute;
             
             _stages = theStages;
-            _definedStreams = theDefinedStreams;
             _sourceTemplate = theSource;
 
             _stages = theStages;

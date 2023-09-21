@@ -35,7 +35,7 @@ ${sourceFX}
     {
 
         private const string ShaderSource = @"
-shader ${shaderID} : VS_PS_Base, Texturing, Compute${shaderType}${mixins}
+shader ${shaderID} : Compute${shaderType}${mixins}
 {
     rgroup PerMaterial{
 ${groupDeclarations}
@@ -60,8 +60,7 @@ ${stageFX}
 };";
 
         public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false) : base( 
-            new List<AbstractStage>{new ShaderFXStage<T>(theCompute)}, 
-            new List<string>(),
+            new List<AbstractStage>{new ShaderFXStage<T>(theCompute)},
             new Dictionary<string, string>(),
             theIsCompute,
             ShaderSource)
