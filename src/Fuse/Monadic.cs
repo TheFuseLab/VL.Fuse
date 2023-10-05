@@ -45,6 +45,12 @@ namespace Fuse
             
             if (typeof(T) == typeof(SamplerState))
                 return new SamplerStateGpuValueBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
+            
+            if (typeof(T) == typeof(GpuStruct))
+                return new GpuStructBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
+            
+            if (typeof(T) == typeof(GpuVoid))
+                return new GpuVoidBuilder(nodeContext) as IMonadBuilder<T, ShaderNode<T>>;
 
             /*
             if (typeof(T) == typeof(Buffer))
@@ -67,6 +73,36 @@ namespace Fuse
         public ShaderNode<T> Return(T value)
         {
             _valueInput.Value = value;
+            return _valueInput;
+        }
+    }
+    
+    internal sealed class GpuStructBuilder : IMonadBuilder<GpuStruct, ShaderNode<GpuStruct>>
+        
+    {
+        private readonly DynamicStruct<GpuStruct> _valueInput;
+        public GpuStructBuilder(NodeContext nodeContext)
+        {
+            _valueInput = new DynamicStruct<GpuStruct>(nodeContext, new Dictionary<string, AbstractShaderNode>(), null);
+        }
+
+        public ShaderNode<GpuStruct> Return(GpuStruct value)
+        {
+            return _valueInput;
+        }
+    }
+    
+    internal sealed class GpuVoidBuilder : IMonadBuilder<GpuVoid, ShaderNode<GpuVoid>>
+        
+    {
+        private readonly EmptyVoid _valueInput;
+        public GpuVoidBuilder(NodeContext nodeContext)
+        {
+            _valueInput = new EmptyVoid(nodeContext);
+        }
+
+        public ShaderNode<GpuVoid> Return(GpuVoid value)
+        {
             return _valueInput;
         }
     }

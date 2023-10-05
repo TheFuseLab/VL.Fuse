@@ -281,6 +281,14 @@ namespace Fuse{
          }
 
          public string TextureID => ID;
+
+         public void SetTexture(bool theUseRW, Texture theTexture)
+         {
+             TextureTypeTracker.SetUseRw(theUseRW);
+             TextureTypeTracker.CheckDeclaration(theTexture);
+             OnUpdateName();
+             Value = theTexture;
+         }
      }
      
      public class SamplerInput: ObjectInput<SamplerState>, IGpuInput 
