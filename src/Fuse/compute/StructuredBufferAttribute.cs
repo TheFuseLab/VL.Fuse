@@ -9,9 +9,7 @@ namespace Fuse.compute
     public enum StructuredBufferAttributeType
     {
         Attribute,
-        Resource,
-        Instance,
-        CreateInstance
+        Object
     }
 
     public interface IStructureBufferAttribute : IAttribute
@@ -23,7 +21,7 @@ namespace Fuse.compute
 
     public abstract class AbstractStructuredBufferAttribute<T> : Attribute<T>, IStructureBufferAttribute
     {
-        protected AbstractStructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, AttributeType theType) : base(nodeContext, theGroup, theName, theType)
+        protected AbstractStructuredBufferAttribute(NodeContext nodeContext, string theName, AttributeType theType) : base(nodeContext, theName, theType)
         {
         }
 
@@ -38,14 +36,12 @@ namespace Fuse.compute
 
         // public ShaderNode<T> Default;
 
-        public StructuredBufferAttribute(NodeContext nodeContext, string theGroup, string theName, bool theDefineSemantic = true, ShaderNode<GpuStruct> theOverrideInstance = null, ShaderNode<T> theDefault = null) : base(nodeContext, theGroup, theName, AttributeType.StructuredBuffer)
+        public StructuredBufferAttribute(NodeContext nodeContext, string theName, bool theDefineSemantic = true, ShaderNode<GpuStruct> theOverrideInstance = null, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
             var myFactory = new NodeSubContextFactory(nodeContext);
 
             Default = theDefault ?? ConstantHelper.FromFloat<T>( 0f);
             
-            
-
             if (theOverrideInstance != null)
             {
                 var getMember = new GetMember<GpuStruct, T>(myFactory.NextSubContext(), theOverrideInstance, theName);
@@ -67,28 +63,31 @@ namespace Fuse.compute
         }
     }
     
-    public abstract class AbstractStructuredBufferObject<T> : AbstractStructuredBufferAttribute<T>
+    public class StructuredBufferObject : AbstractStructuredBufferAttribute<Buffer>, IBufferInput<GpuStruct>
     {
-        private readonly StructuredBufferAttributeType _type;
-        public AbstractStructuredBufferObject(NodeContext nodeContext, StructuredBufferAttributeType theType, string theName) : base(nodeContext, theName, theName, AttributeType.StructuredBuffer)
+        public StructuredBufferObject(NodeContext nodeContext, string theName) : base(nodeContext, theName, AttributeType.StructuredBuffer)
         {
-            _type = theType;
             _group = theName;
             SetProperty("ComputeSystemAttribute", this);
         }
 
         public override StructuredBufferAttributeType StructuredBufferAttributeType()
         {
-            return _type;
+            return compute.StructuredBufferAttributeType.Object;
         }
         private readonly string _group;
-        public override string Group
+        public string Resource
         {
             get => _group;
             set { }
         }
+        
+        public BufferType BufferType {
+            set { }
+            get => BufferType.Normal;
+        }
     }
-    
+    /*
     public class StructuredBufferResource : AbstractStructuredBufferObject<Buffer>, IBufferInput<GpuStruct>
     {
         public StructuredBufferResource(NodeContext nodeContext, string theName) : base(nodeContext, compute.StructuredBufferAttributeType.Resource, theName)
@@ -109,13 +108,12 @@ namespace Fuse.compute
         }
     }
     
-    public class StructuredBufferCreateInstance : AbstractStructuredBufferAttribute<GpuStruct>, IStructureBufferAttribute
+    public class StructuredBufferCreateInstance : AbstractStructuredBufferObject<GpuStruct>, IStructureBufferAttribute
     {
 
-        public StructuredBufferCreateInstance(NodeContext nodeContext, string theName) : base(nodeContext, theName, theName, AttributeType.StructuredBuffer)
+        public StructuredBufferCreateInstance(NodeContext nodeContext, string theName) : base(nodeContext, compute.StructuredBufferAttributeType.CreateInstance, theName)
         {
             AddProperty("ComputeSystemAttribute", this);
-            _group = theName;
         }
 
         public override StructuredBufferAttributeType StructuredBufferAttributeType()
@@ -123,11 +121,6 @@ namespace Fuse.compute
             return compute.StructuredBufferAttributeType.CreateInstance;
         }
 
-        private readonly string _group;
-        public override string Group
-        {
-            get => _group;
-            set { }
-        }
-    }
+       
+    }*/
 }
