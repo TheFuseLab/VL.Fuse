@@ -50,6 +50,7 @@ namespace Fuse.compute
         public BufferSet(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<int> theIndex, ShaderNode<T> theValue) : base( nodeContext, "setBuffer")
         {
             _buffer = theBuffer;
+            _buffer.BufferType = BufferType.RW;
             _index = theIndex;
             _value = theValue;
             
