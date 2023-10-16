@@ -620,7 +620,7 @@ namespace Fuse
                 return "StructuredBuffer<" + theType + ">";
             }*/
             
-            public static string BufferTypeName(Buffer theBuffer,string theType, BufferType theBufferType, bool theReadWrite)
+            public static string BufferTypeName(Buffer theBuffer,string theType, BufferType theBufferType)
             {
                 switch (theBufferType)
                 {
@@ -634,7 +634,7 @@ namespace Fuse
                 
                 if (theBuffer == null)
                 {
-                    if (theReadWrite)
+                    if (theBufferType == BufferType.RW)
                     {
                         return "RWStructuredBuffer<" + theType + ">";
                     }

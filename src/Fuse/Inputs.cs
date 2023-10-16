@@ -318,7 +318,7 @@ namespace Fuse{
 
          protected override string DefineGpuType(Buffer value)
          {
-             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), BufferType, false);
+             return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(), BufferType);
          }
 
          protected override string DefineComputeGpuType(Buffer value)
@@ -331,7 +331,8 @@ namespace Fuse{
      {
          Append,
          Consume,
-         Normal
+         Normal,
+         RW
      }
 
      public class BufferInput<T>: ChangeableObjectInput<Buffer>, IBufferInput<T>
