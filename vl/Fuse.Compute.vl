@@ -22673,7 +22673,7 @@
             <Choice Kind="InterfaceTypeFlag" Name="IComputeGraph" />
           </TypeReference>
         </p:Interfaces>
-        <Patch Id="ORpXLJvQ8HOLnLP7uZV3ss" IsGeneric="true" ExplicitTypeParameters="TState">
+        <Patch Id="ORpXLJvQ8HOLnLP7uZV3ss" IsGeneric="true" ExplicitTypeParameters="TState,TIn,TOut">
           <Canvas Id="J5PIwOibOCHMBMqs7HpG8Q" CanvasType="Group">
             <ControlPoint Id="RzrEKc2VW6qNZUyRnFu78y" Bounds="274,555" />
             <Node Bounds="172,255,54,19" Id="QNW3KTWWpiWO0ELYDsLmxz">
@@ -22733,7 +22733,7 @@
             </Node>
             <Pad Id="IvOnRPikSRBLMciImuPG29" Bounds="180,439" />
             <Pad Id="HSm5QXWoCWvMrfbCvJ6P8Y" Bounds="258,296" />
-            <ControlPoint Id="NsZc4WT2C74P2c0jA3W2Hq" Bounds="278,454" />
+            <ControlPoint Id="NsZc4WT2C74P2c0jA3W2Hq" Bounds="312,458" />
             <Node Bounds="235,513,42,19" Id="BlOTVlct2QULeRdhCfoP3K">
               <p:NodeReference LastCategoryFullName="Primitive.Tuple (2 Items)" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -22771,6 +22771,8 @@
           <Link Id="GtCLeCoO0CtOyPI7xkMS8Q" Ids="SZcaxUExHj1OhK3YvEjMMz,BkuwxneW1LyOPfYqgv4oWG" />
           <Link Id="THYJT5gO2XuLfUyrE7gdWx" Ids="FCVSwraBmzWNKpeJRU6Tao,CO3VLQLGuYAO514Kjtyhju" />
           <Link Id="G93qRQI5eHpPg32jCnVz3Q" Ids="CtRbzpNGgAFMjqGJTB4uPh,RzrEKc2VW6qNZUyRnFu78y" />
+          <Link Id="LdaeGqAXnVTPnTiaouOboM" Ids="NsZc4WT2C74P2c0jA3W2Hq,JtEW18FNW61Pmjgzv6JxKl" />
+          <Link Id="TndHItwRIojQSXFFpWMlZm" Ids="RzrEKc2VW6qNZUyRnFu78y,RWEttmGpvnDPRfArnfV5pC" IsHidden="true" />
           <Patch Id="Uk9YOselWZlNkzX4bWrCwF" Name="Create" />
           <Patch Id="Gpsk9vQhUn1PyTHRl7yhNS" Name="Update" ManuallySortedPins="true">
             <Pin Id="SvWTlv024tPLpz8y7ildbt" Name="Create" Kind="InputPin" Bounds="-12,89" />
@@ -22778,20 +22780,27 @@
           </Patch>
           <Patch Id="Uvog1JA8evoNRHJUIcnS8T" Name="BuildGraph">
             <Pin Id="HNrWegnDGFfPEdsVrGlRuk" Name="Input Graph" Kind="InputPin">
-              <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastDependency="Fuse.Core.vl">
+              <p:TypeAnnotation LastCategoryFullName="Fuse" LastDependency="Fuse.Core.vl">
                 <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
-                    <Choice Kind="TypeFlag" Name="GpuVoid" />
+                    <Choice Kind="TypeFlag" Name="TIn" />
                   </TypeReference>
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="RWEttmGpvnDPRfArnfV5pC" Name="Output Graph" Kind="OutputPin" />
+            <Pin Id="RWEttmGpvnDPRfArnfV5pC" Name="Output Graph" Kind="OutputPin">
+              <p:TypeAnnotation LastCategoryFullName="Fuse" LastDependency="Fuse.Core.vl">
+                <Choice Kind="TypeFlag" Name="ShaderNode" />
+                <p:TypeArguments>
+                  <TypeReference>
+                    <Choice Kind="TypeFlag" Name="TOut" />
+                  </TypeReference>
+                </p:TypeArguments>
+              </p:TypeAnnotation>
+            </Pin>
           </Patch>
           <Patch Id="NA51EXwi1HzM4vWLgePrC9" Name="Dispose" ParticipatingElements="JmunQ0LZIFKQOTCXRsgrTd" />
-          <Link Id="LdaeGqAXnVTPnTiaouOboM" Ids="NsZc4WT2C74P2c0jA3W2Hq,JtEW18FNW61Pmjgzv6JxKl" />
-          <Link Id="TndHItwRIojQSXFFpWMlZm" Ids="RzrEKc2VW6qNZUyRnFu78y,RWEttmGpvnDPRfArnfV5pC" IsHidden="true" />
         </Patch>
       </Node>
       <Canvas Id="Rpf8hGpaN02NVhbeP9XiQ4" Name="Viewer" Position="61,515">
@@ -29975,43 +29984,47 @@
     ************************ IComputeGraph ************************
 
 -->
-      <Node Name="IComputeGraph" Aspects="Internal" Bounds="343,548" Id="GqTLwE0yxT7Pn0ToGFHndc">
+      <Node Name="IComputeGraph" Aspects="Advanced" Bounds="343,548" Id="GqTLwE0yxT7Pn0ToGFHndc">
         <p:NodeReference LastCategoryFullName="Primitive" LastDependency="Builtin">
           <Choice Kind="InterfaceDefinition" Name="Interface" />
         </p:NodeReference>
-        <Patch Id="DxKs46OGUKaMOglcCmalst">
+        <Patch Id="DxKs46OGUKaMOglcCmalst" IsGeneric="true" ExplicitTypeParameters="TIn,TOut">
           <Canvas Id="S3JVRzvMdxIPd4uas500Zc" CanvasType="Group">
-            <ControlPoint Id="HW80mVLffmDN02KlsPvcit" Bounds="339,151" />
+            <ControlPoint Id="HW80mVLffmDN02KlsPvcit" Bounds="338,151" />
             <ControlPoint Id="NhkUrSmrwtWOKTdSqMMdmU" Bounds="338,224" />
+            <Pad Id="BpreoK36BYYOEcy6WvkxNb" Bounds="338,169" />
+            <Pad Id="GgyOCm73pxOLOhvX1CueDl" Bounds="338,196" />
+            <Overlay Id="HfqPzXanRRcM9v9agXVZHr" Name="BuildGraph" Bounds="285,104,167,158" />
           </Canvas>
           <ProcessDefinition Id="Vpauaic56uHP4mB0OPXqUQ" IsHidden="true">
             <Fragment Id="MP7bzd3PBG1NlDGQHt7grE" Patch="Kuc4y1uonuANfZqqPzU3MO" />
           </ProcessDefinition>
           <Link Id="D1HAxFCmh2mMFExf6jGipB" Ids="KoXfqFk4677MhI66Y9hCuv,HW80mVLffmDN02KlsPvcit" IsHidden="true" />
           <Link Id="O89Iblzy6GpLs7f1h1nbqw" Ids="NhkUrSmrwtWOKTdSqMMdmU,JboBEIlgC7lN3Zfp1X8yMV" IsHidden="true" />
-          <Link Id="RY3hh0ZRUXaP2rL7RCAS0J" Ids="HW80mVLffmDN02KlsPvcit,NhkUrSmrwtWOKTdSqMMdmU" />
           <Patch Id="Kuc4y1uonuANfZqqPzU3MO" Name="BuildGraph">
             <Pin Id="KoXfqFk4677MhI66Y9hCuv" Name="Input Graph" Kind="InputPin">
-              <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastDependency="Fuse.Core.vl">
+              <p:TypeAnnotation LastCategoryFullName="Fuse" LastDependency="Fuse.Core.vl">
                 <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
-                    <Choice Kind="TypeFlag" Name="GpuVoid" />
+                    <Choice Kind="TypeFlag" Name="TIn" />
                   </TypeReference>
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
             <Pin Id="JboBEIlgC7lN3Zfp1X8yMV" Name="Output Graph" Kind="OutputPin">
-              <p:TypeAnnotation LastCategoryFullName="Fuse.Core.Implementation" LastDependency="Fuse.Core.vl">
+              <p:TypeAnnotation LastCategoryFullName="Fuse" LastDependency="Fuse.Core.vl">
                 <Choice Kind="TypeFlag" Name="ShaderNode" />
                 <p:TypeArguments>
                   <TypeReference>
-                    <Choice Kind="TypeFlag" Name="GpuVoid" />
+                    <Choice Kind="TypeFlag" Name="TOut" />
                   </TypeReference>
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
           </Patch>
+          <Link Id="KliLjbx4LD1PX2Z548ccmY" Ids="HW80mVLffmDN02KlsPvcit,BpreoK36BYYOEcy6WvkxNb" />
+          <Link Id="VPfZv2BZ4CmPfoGhlyoL8P" Ids="GgyOCm73pxOLOhvX1CueDl,NhkUrSmrwtWOKTdSqMMdmU" />
         </Patch>
       </Node>
       <!--
