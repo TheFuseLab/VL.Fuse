@@ -61,6 +61,32 @@ namespace Fuse
             });
         }
     }
+    
+    public class GetItemAbstract<TOut> : ResultNode<TOut> 
+    {
+        private readonly AbstractShaderNode _input;
+        private readonly ShaderNode<int> _index;
+        
+        public GetItemAbstract(NodeContext nodeContext, AbstractShaderNode theInput, ShaderNode<int> theIndex) : base( nodeContext, "GetItem")
+        {
+            _input = theInput;
+            _index = theIndex;
+
+            SetInputs(new List<AbstractShaderNode>{theInput,theIndex});
+            
+        }
+
+        protected override string ImplementationTemplate()
+        {
+            const string shaderCode = "${inputName}[${index}]";
+            
+            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            {
+                {"inputName", _input.ID},
+                {"index", _index.ID}
+            });
+        }
+    }
 
     public enum Reorder3DMode
     {
