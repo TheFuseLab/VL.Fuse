@@ -258,7 +258,7 @@ namespace Fuse{
                  value.Dimension switch
                  {
                      TextureDimension.Texture1D => "Texture1D",
-                     TextureDimension.Texture2D => "Texture2D",
+                     TextureDimension.Texture2D => value.ArraySize == 1 ?"Texture2D" : "Texture2DArray",
                      TextureDimension.Texture3D => "Texture3D",
                      TextureDimension.TextureCube => "TextureCube",
                      _ => "Texture2D"
