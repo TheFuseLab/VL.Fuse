@@ -343,7 +343,7 @@ namespace Fuse
         
         private bool _hasNullInput;
 
-        protected void SetInputs(IEnumerable<AbstractShaderNode> theIns)
+        public void SetInputs(IEnumerable<AbstractShaderNode> theIns)
         {
             if (Ins.SequenceEqual(theIns)) return;
             
