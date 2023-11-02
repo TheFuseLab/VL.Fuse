@@ -637,7 +637,7 @@ namespace Fuse
         }
     }
     
-    [Monadic(typeof(ShaderNodeMonadicFactory<>))]
+    [Monadic(typeof(ShaderNodeMonadicFactory<>), typeof(ShaderNodeMonadicTypeFilter))]
     public class ShaderNode<T> : AbstractShaderNode , IComputeValue<T>
     {
         // ReSharper disable once CollectionNeverQueried.Global
