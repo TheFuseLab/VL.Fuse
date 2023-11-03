@@ -3,11 +3,41 @@ using System;
 using System.Collections.Generic;
 using Fuse.compute;
 using VL.Core;
-using VL.Stride.Rendering.ComputeEffect;
 using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse
 {
+    internal sealed class ShaderNodeMonadicTypeFilter : IMonadicTypeFilter
+    {
+        public bool Accepts(TypeDescriptor typeDescriptor)
+        {
+            if (typeDescriptor.IsUnmanaged)
+                return true;
+
+            var type = typeDescriptor.ClrType;
+            if (type is null)
+                return false;
+
+            // Read: if (T is Buffer)
+            if (typeof(Buffer).IsAssignableFrom(type))
+                return true;
+
+            if (type == typeof(Texture))
+                return true;
+
+            if (type == typeof(SamplerState))
+                return true;
+
+            if (type == typeof(GpuStruct))
+                return true;
+
+            if (type == typeof(GpuVoid))
+                return true;
+
+            return false;
+        }
+    }
+
     public sealed class ShaderNodeMonadicFactory<T> : IMonadicFactory<T, ShaderNode<T>>
     {
         // This field is accessed by the target code
