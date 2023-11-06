@@ -1,10 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
 
     <!-- We do not want Stride to process this assembly as it would add unwanted runtime dependencies into our module ctor prevent the assembly from loading -->
     <StrideAssemblyProcessor>false</StrideAssemblyProcessor>
+    
+    <!-- Needed or we get crashes when compiling VL.CoreLib around a InterpolationMode enum from System.Drawing - system wants to load System.Drawing but can't find it it seems. Needs fix in vvvv. -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
@@ -13,7 +16,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="VL.TestFramework" Version="2023.5.2" />
+    <PackageReference Include="VL.TestFramework" Version="2023.5.3-0260-g05270d386c" />
   </ItemGroup>
   <ItemGroup>
     <PackageFile Include="*.vl" />
