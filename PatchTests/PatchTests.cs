@@ -52,6 +52,8 @@ namespace Fuse.Tests
 
                     if (f.PackagePath.Contains("R&D"))
                         continue;
+                    if (f.PackagePath.Contains("help obsolete"))
+                        continue;
 
                     var testCase = new TestCaseData(f.AbsolutePath)
                         .SetCategory(p.Identity.ToString())
