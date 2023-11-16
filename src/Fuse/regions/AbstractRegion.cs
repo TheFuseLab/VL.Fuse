@@ -97,7 +97,7 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
 
                     break;
                 default:
-                    var myInput = myInputs[i] ?? AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0);
+                    var myInput = myInputs[i] ?? AbstractCreation.AbstractConstant(outputs[i], 0);
                     var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
                     OptionalOutputs.Add(output);
 
