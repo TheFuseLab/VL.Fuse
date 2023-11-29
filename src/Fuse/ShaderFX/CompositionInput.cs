@@ -17,10 +17,10 @@ namespace Fuse.ShaderFX
     {
         IComputeValue<T> _value;
 
-        public CompositionInput(NodeContext nodeContext, IComputeValue<T> value)
+        public CompositionInput(NodeContext nodeContext, SetVar<T> value /* Should just be IComputeValue<T> */)
             : base(nodeContext, "compositionInput")
         {
-            _value = value;
+            _value = value?.Value ?? new VL.Stride.Shaders.ShaderFX.ComputeNode<T>();
 
             SetProperty(Compositions, this);
         }
@@ -29,19 +29,19 @@ namespace Fuse.ShaderFX
             new Dictionary<string, string>()
             {
                 { "compositionType", TypeHelpers.GetCompositionType<T>() },
-                { "compositionId", ID }
+                { "compositionId", CompositionName }
             });
 
         public IComputeNode ComputeNode => _value;
 
-        public string CompositionName => ID;
+        public string CompositionName => $"composition{ID}";
 
         protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${in}.Compute();",
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${compositionId}.Compute();",
                 new Dictionary<string, string>
                 {
-                    {"in", ID},
+                    {"compositionId", CompositionName},
                 });
         }
     }
