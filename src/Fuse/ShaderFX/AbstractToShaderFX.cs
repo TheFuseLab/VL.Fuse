@@ -292,15 +292,19 @@ namespace Fuse.ShaderFX
             }
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
-            var shaderClassString = new ShaderClassString(ShaderName, ShaderCode);
-
-            var mixin = new ShaderMixinSource();
-            mixin.Mixins.Add(shaderClassString);
+            var shaderSource = new ShaderMixinSource()
+            {
+                Name = ShaderName,
+                Mixins = 
+                {
+                    new ShaderClassString(ShaderName, ShaderCode)
+                }
+            };
 
             foreach (var composition in _compositions)
             {
                 var compositionSource = composition.ComputeNode.GenerateShaderSource(theContext, baseKeys);
-                mixin.AddComposition(composition.Name, compositionSource);
+                shaderSource.AddComposition(composition.CompositionName, compositionSource);
             }
 
             // _parameters = theContext.Parameters;
@@ -313,7 +317,7 @@ namespace Fuse.ShaderFX
            //MeasureProfiler.SaveData(ShaderName);
            //return result;
 
-            return mixin;
+            return shaderSource;
         }
     }
 }

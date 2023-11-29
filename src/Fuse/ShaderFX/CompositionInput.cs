@@ -1,47 +1,48 @@
 ﻿using System.Collections.Generic;
-using NuGet;
 using Stride.Rendering.Materials;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
 namespace Fuse.ShaderFX
 {
-
-    public class CompositionInput<T> : ShaderNode<T>
+    public interface IComposition
     {
-        protected const string DeclarationTemplate = @"
-        compose Compute${compositionType} ${compositionName};";
-        
-        public CompositionInput(NodeContext nodeContext, string theId, IComputeValue<T> theComposition) : base(nodeContext, theId, null)
-        {
-            
-            AddProperty(Compositions, this);
-        }
-        
-        protected override Dictionary<string, string> CreateTemplateMap()
-        {
-            var result =  new Dictionary<string, string>
-            {
-                {"compositionType", TypeHelpers.GetSignature<T>()},
-                {"compositionName", ID}
-            };
+        string Declaration { get; }
+        string CompositionName { get; }
+        IComputeNode ComputeNode { get; }
+    }
 
-            foreach (var template in base.CreateTemplateMap())
-            {
-                result.Add(template.Key, template.Value);
-            }
+    public class CompositionInput<T> : ShaderNode<T>, IComposition
+        where T : unmanaged
+    {
+        IComputeValue<T> _value;
 
-            return result;
+        public CompositionInput(NodeContext nodeContext, IComputeValue<T> value)
+            : base(nodeContext, "compositionInput")
+        {
+            _value = value;
+
+            SetProperty(Compositions, this);
         }
-        
+
+        public string Declaration => ShaderNodesUtil.Evaluate("compose ${compositionType} ${compositionId};",
+            new Dictionary<string, string>()
+            {
+                { "compositionType", TypeHelpers.GetCompositionType<T>() },
+                { "compositionId", ID }
+            });
+
+        public IComputeNode ComputeNode => _value;
+
+        public string CompositionName => ID;
+
         protected override string SourceTemplate()
         {
-            return "${resultType} ${resultName} = ${compositionName}.Compute();";
-        }
-        
-        public override void OnPassContext(ShaderGeneratorContext theContext)
-        {
-            ShaderNodesUtil.Evaluate(DeclarationTemplate,CreateTemplateMap());
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${in}.Compute();",
+                new Dictionary<string, string>
+                {
+                    {"in", ID},
+                });
         }
     }
 }

@@ -411,44 +411,4 @@ namespace Fuse{
             SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
     }
-
-    public interface IComposition
-    {
-        string Declaration { get; }
-        string Name { get; }
-        IComputeNode ComputeNode { get; }
-    }
-
-
-    public class CompositionInput<T> : ShaderNode<T>, IComposition
-        where T : unmanaged
-    {
-        IComputeValue<T> _value;
-
-        public CompositionInput(NodeContext nodeContext, IComputeValue<T> value)
-            : base(nodeContext, "compInput")
-        {
-            _value = value;
-
-            SetProperty(Compositions, this);
-        }
-
-        public string Declaration => ShaderNodesUtil.Evaluate("compose ${compositionType} ${compositionId};", 
-            new Dictionary<string, string>()
-            {
-                { "compositionType", TypeHelpers.GetCompositionType<T>() },
-                { "compositionId", ID }
-            });
-
-        public IComputeNode ComputeNode => _value;
-
-        protected override string SourceTemplate()
-        {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${in}.Compute();",
-                new Dictionary<string, string>
-                {
-                    {"in", ID},
-                });
-        }
-    }
 }

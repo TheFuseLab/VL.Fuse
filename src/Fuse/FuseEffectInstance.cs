@@ -1,4 +1,7 @@
 ﻿using Stride.Core;
+using Stride.Core.Diagnostics;
+using Stride.Engine.Design;
+using Stride.Games;
 using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Shaders;
@@ -6,9 +9,6 @@ using Stride.Shaders.Compiler;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Fuse
 {
@@ -38,15 +38,20 @@ namespace Fuse
         public void Initialize(IServiceRegistry services)
         {
             this.effectSystem = services.GetSafeServiceAs<EffectSystem>();
+
+            var gameSettings = services.GetSafeServiceAs<IGameSettingsService>().Settings;
+            EffectCompilerParameters.ApplyCompilationMode(gameSettings.CompilationMode);
+
+            var graphicsDevice = services.GetSafeServiceAs<IGraphicsDeviceService>().GraphicsDevice;
+            EffectCompilerParameters.Platform = GraphicsDevice.Platform;
+            EffectCompilerParameters.Profile = graphicsDevice.Features.RequestedProfile;
         }
 
         protected override void ChooseEffect(GraphicsDevice graphicsDevice)
         {
             var watch = Stopwatch.StartNew();
 
-            // TODO: Free previous descriptor sets and layouts?
-
-            // Looks like the effect changed, it needs a recompilation
+            // Setup compilation parameters
             var compilerParameters = new CompilerParameters
             {
                 EffectParameters = EffectCompilerParameters,
@@ -56,31 +61,38 @@ namespace Fuse
             {
                 if (effectParameterKey.Key.Type == ParameterKeyType.Permutation)
                 {
-                    // TODO GRAPHICS REFACTOR avoid direct access, esp. since permutation values might be separated from Objects at some point
                     compilerParameters.SetObject(effectParameterKey.Key, Parameters.ObjectValues[effectParameterKey.BindingSlot]);
                 }
             }
 
-            var effectCompiler = effectSystem.Compiler;
+            var compiler = effectSystem.Compiler;
 
-            // Setup compilation parameters
-            // GraphicsDevice might have been not valid until this point, which is why we compute platform and profile only at this point
-            compilerParameters.EffectParameters.Platform = GraphicsDevice.Platform;
-            compilerParameters.EffectParameters.Profile = /*graphicsDevice.ShaderProfile ?? */graphicsDevice.Features.RequestedProfile;
-            // Copy optimization/debug levels
-            //compilerParameters.EffectParameters.OptimizationLevel = ;
-            //compilerParameters.EffectParameters.Debug = effectCompilerParameters.Debug;
+            // Workaround for Stride effect compiler cache bug
+            ShaderNodesUtil.MakeInMemoryShadersAvailableToTheSourceManager(compiler, shaderSource);
 
-            // Get the compiled result
-            var compilerResult = effectCompiler.Compile(shaderSource, compilerParameters);
+            // Compile the shader
+            var compilerResult = compiler.Compile(shaderSource, compilerParameters);
+            CheckResult(compilerResult);
 
-            // Only take the sub-effect
-            var bytecodeTask = compilerResult.Bytecode;
-            var byteCode = bytecodeTask.WaitForResult().Bytecode;
+            var bytecodeResult = compilerResult.Bytecode.WaitForResult();
 
-            effect = new Effect(graphicsDevice, byteCode);
+            CheckResult(bytecodeResult.CompilationLog);
+
+            if (bytecodeResult.Bytecode is null)
+                throw new InvalidOperationException("EffectCompiler returned no shader and no compilation error.");
+
+            effect = new Effect(graphicsDevice, bytecodeResult.Bytecode);
 
             Console.WriteLine($"Compile Time: {watch.ElapsedMilliseconds} ms for Shader {shaderSource}");
+        }
+
+        private static void CheckResult(LoggerResult compilerResult)
+        {
+            // Check errors
+            if (compilerResult.HasErrors)
+            {
+                throw new InvalidOperationException("Could not compile shader. See error messages." + compilerResult.ToText());
+            }
         }
     }
 }

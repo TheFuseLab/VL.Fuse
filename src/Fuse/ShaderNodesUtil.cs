@@ -16,6 +16,7 @@ using Stride.Rendering.Materials;
 using Stride.Shaders;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
+using Stride.Shaders.Parser.Mixins;
 using VL.Core;
 using VL.Stride;
 using VL.Stride.Effects;
@@ -226,19 +227,8 @@ namespace Fuse
                 var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
                 if (game == null) return;
 
-                var effectSystem = game.EffectSystem;
-                var compiler = effectSystem.Compiler as EffectCompiler;
-                if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
-                    compiler = typeof(EffectCompilerChain)
-                        .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
-                        ?.GetValue(effectCompilerCache) as EffectCompiler;
-
-                if (compiler == null) return;
-
-                var getParserMethod =
-                    typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (getParserMethod == null) return;
-                if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
+                var parser = game.EffectSystem.Compiler.GetShaderMixinParser();
+                if (parser is null) return;
 
                 var sourceManager = parser.SourceManager;
                 sourceManager.AddShaderSource(type, sourceCode, sourcePath);
@@ -246,6 +236,49 @@ namespace Fuse
             catch (Exception)
             {
                 // ignored
+            }
+        }
+
+        public static ShaderMixinParser GetShaderMixinParser(this IEffectCompiler compiler)
+        {
+            var effectCompiler = compiler as EffectCompiler;
+            if (effectCompiler is null && compiler is EffectCompilerCache effectCompilerCache)
+                effectCompiler = typeof(EffectCompilerChain)
+                    .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(effectCompilerCache) as EffectCompiler;
+
+            if (effectCompiler is null) 
+                return null;
+
+            var getParserMethod = typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (getParserMethod is null) 
+                return null;
+
+            return (ShaderMixinParser)getParserMethod.Invoke(effectCompiler, null);
+        }
+
+        // Workaround for compiler cache: it assumes that all shaders are known to the source manager
+        public static void MakeInMemoryShadersAvailableToTheSourceManager(IEffectCompiler compiler, ShaderSource shaderSource)
+        {
+            var parser = compiler.GetShaderMixinParser();
+            if (parser is null)
+                return;
+
+            var sourceManager = parser.SourceManager;
+            if (sourceManager is null)
+                return;
+
+            Scan(sourceManager, shaderSource);
+
+            static void Scan(ShaderSourceManager sourceManager, ShaderSource shaderSource)
+            {
+                if (shaderSource is ShaderClassString shaderClassString)
+                    sourceManager.AddShaderSource(shaderClassString.ClassName, shaderClassString.ShaderSourceCode, null);
+                else if (shaderSource is ShaderMixinSource shaderMixinSource)
+                {
+                    foreach (var s in shaderMixinSource.Mixins)
+                        Scan(sourceManager, s);
+                }
             }
         }
 
@@ -293,10 +326,7 @@ namespace Fuse
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Stride.Core.Mathematics.Color.White);
             var shaderSource = theDrawShader.GenerateShaderSource(context,key);
 
-            var effectSource = new ShaderMixinGeneratorSource("DrawFXEffect");
-            parameters.Set(EffectNodeBaseKeys.EffectNodeBaseShader, shaderSource);
-
-            return new FuseEffectInstance(effectSource, parameters, subscriptions);
+            return new FuseEffectInstance(shaderSource, parameters, subscriptions);
         }
 
         // ReSharper disable once UnusedMember.Global
