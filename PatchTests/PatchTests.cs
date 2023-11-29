@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System;
+using NUnit.Framework;
 using NUnit.Framework.Internal;
 using System.Collections.Generic;
 using System.IO;
@@ -32,6 +33,7 @@ namespace Fuse.Tests
         private static TestEnvironment CreateEnvironment()
         {
             var vvvvExePath = Task.Run(() => TestEnvironmentLoader.DownloadEntryAssemblyAsync());
+            Console.WriteLine("YP" + vvvvExePath);
             return TestEnvironmentLoader.Load(vvvvExePath.Result, new[] { MainLibPath, RepositoriesPath });
         }
 

@@ -321,6 +321,69 @@ namespace Fuse
             }
             
             #endregion
+            
+            #region GetCompositionType
+            
+            private static readonly Dictionary<Type, string> KnownCompositionTypes = new()
+            {
+                {typeof(float), "ComputeFloat"},
+                {typeof(Vector2), "ComputeFloat2"},
+                {typeof(Vector3), "ComputeFloat3"},
+                {typeof(Vector4), "ComputeFloat4"},
+                {typeof(Color4), "ComputeFloat4"},
+                {typeof(Matrix), "ComputeMatrix"},
+                
+                {typeof(int), "ComputeInt"},
+                {typeof(Int2), "ComputeInt2"},
+                {typeof(Int3), "ComputeInt3"},
+                {typeof(Int4), "ComputeInt4"},
+                {typeof(uint), "ComputeUint"},
+                {typeof(bool), "ComputeBool"},
+                
+                {typeof(GpuStruct), "struct"},
+              
+                {typeof(Texture), "Texture"},
+                {typeof(SamplerState), "Sampler"},
+                
+                {typeof(GpuVoid), "ComputeVoid"}
+            };
+            
+            public static string GetCompositionType(AbstractShaderNode abstractShaderNode)
+            {
+                return abstractShaderNode switch
+                {
+                    ShaderNode<float> _ => "ComputeFloat",
+                    ShaderNode<Vector2> _ => "ComputeFloat2",
+                    ShaderNode<Vector3> _ => "ComputeFloat3",
+                    ShaderNode<Vector4> _ => "ComputeFloat4",
+                    ShaderNode<Color4> _ => "ComputeFloat4",
+                    ShaderNode<Matrix> _ => "ComputeMatrix",
+                    ShaderNode<bool> _ => "ComputeBool",
+                    ShaderNode<int> _ => "ComputeInt",
+                    ShaderNode<Int2> _ => "ComputeInt2",
+                    ShaderNode<Int3> _ => "ComputeInt3",
+                    ShaderNode<Int4> _ => "ComputeUint",
+                    ShaderNode<GpuVoid> _ => "ComputeVoid",
+                    _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
+                };
+            }
+
+            public static string GetCompositionType(Type type)
+            {
+                return KnownCompositionTypes.TryGetValue(type, out var result) ? result : ShaderNodesUtil.CleanVlClassName(type.Name);
+            }
+            
+            public static string GetCompositionType<T>()
+            {
+                return GetCompositionType(typeof(T));        
+            }
+            
+            public static string GetCompositionType<T>(ShaderNode<T> shaderNode)
+            {
+                return GetCompositionType<T>();
+            }
+            
+            #endregion
 
             #region GetDimension
             
@@ -559,11 +622,11 @@ namespace Fuse
             public static string TextureTypeName(Texture theTexture, bool theUseRW)
             {
                 if(theTexture == null)return "Texture2D<float4>";
-
+                
                 var textureType = theTexture.Dimension switch
                 {
                     TextureDimension.Texture1D => "Texture1D",
-                    TextureDimension.Texture2D => "Texture2D",
+                    TextureDimension.Texture2D => theTexture.ArraySize == 1 ?"Texture2D" : "Texture2DArray",
                     TextureDimension.Texture3D => "Texture3D",
                     TextureDimension.TextureCube => "TextureCube",
                     _ => "Texture2D"

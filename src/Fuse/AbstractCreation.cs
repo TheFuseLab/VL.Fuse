@@ -37,7 +37,7 @@ namespace Fuse
           
         }
         
-        public static AbstractShaderNode AbstractSetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMember, AbstractShaderNode theValue)
+       public static AbstractShaderNode AbstractSetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMember, AbstractShaderNode theValue)
         {
             //return CreateAbstract(theMember, typeof(AssignValueToMember<>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, theValue});
             
@@ -114,7 +114,7 @@ namespace Fuse
             return CreateAbstract(theTarget, typeof(AssignValue<>), new object[] {theSubContextFactory.NextSubContext(), theTarget, theSource});
         }
         
-        public static AbstractShaderNode AbstractConstant(NodeSubContextFactory theSubContextFactory, AbstractShaderNode theGpuValue, float theValue)
+        public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
         {
             return AbstractConstant(theGpuValue.GetType().BaseType,theValue);
         }
