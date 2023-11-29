@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Fuse.compute;
 using Stride.Graphics;
 using Stride.Rendering;
@@ -101,7 +102,9 @@ namespace Fuse{
         public bool IsResource { get; }
     }
 
-    public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T> where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
+    public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput
+        where TParameterKeyType : ParameterKey<T> 
+        where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
      {
          
          protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
@@ -408,30 +411,44 @@ namespace Fuse{
             SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
     }
-    /*
-    public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
+
+    public interface IComposition
     {
+        string Declaration { get; }
+        string Name { get; }
+        IComputeNode ComputeNode { get; }
+    }
 
-        public CompositionInput(SetVar<T> value): base("input", false, value)
+
+    public class CompositionInput<T> : ShaderNode<T>, IComposition
+        where T : unmanaged
+    {
+        IComputeValue<T> _value;
+
+        public CompositionInput(NodeContext nodeContext, IComputeValue<T> value)
+            : base(nodeContext, "compInput")
         {
+            _value = value;
+
+            SetProperty(Compositions, this);
         }
 
-        protected override PermutationParameterUpdater<IComputeNode> CreateUpdater()
-        {
-            return new PermutationParameterUpdater<IComputeNode>();
-        }
+        public string Declaration => ShaderNodesUtil.Evaluate("compose ${compositionType} ${compositionId};", 
+            new Dictionary<string, string>()
+            {
+                { "compositionType", TypeHelpers.GetCompositionType<T>() },
+                { "compositionId", ID }
+            });
 
-        protected override void OnPassContext(ShaderGeneratorContext nodeContext)
-        {
-            Updater.Track(nodeContext, ParameterKey);
-        }
+        public IComputeNode ComputeNode => _value;
 
-        protected override void OnGenerateCode(ShaderGeneratorContext nodeContext)
+        protected override string SourceTemplate()
         {
-            ParameterKey = new PermutationParameterKey<ShaderSource>(ID);
-            SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
+            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${in}.Compute();",
+                new Dictionary<string, string>
+                {
+                    {"in", ID},
+                });
         }
-        
-        
-    }*/
+    }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using JetBrains.Profiler.Api;
+using Stride.Core.Yaml.Tokens;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
@@ -58,7 +59,7 @@ namespace Fuse.ShaderFX
         private readonly HashSet<string>_constantArrays = new();
         private readonly HashSet<string>_streams = new();
         private readonly HashSet<string>_mixins = new();
-        private readonly HashSet<string>_compositions = new();
+        private readonly HashSet<IComposition>_compositions = new();
         private readonly Dictionary<string, string> _functionMap = new();
 
         private readonly string _sourceTemplate;
@@ -148,7 +149,7 @@ namespace Fuse.ShaderFX
             _mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
 
             var compositionBuilder = new StringBuilder();
-            _compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
+            _compositions.ForEach(composition => compositionBuilder.AppendLine(composition.Declaration));
             
             var functionBuilder = new StringBuilder();
             _functionMap?.ForEach(kv => functionBuilder.AppendLine(kv.Value));
@@ -212,11 +213,11 @@ namespace Fuse.ShaderFX
             _stopwatch.Restart();
             theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Mixins: {_stopwatch.ElapsedMilliseconds} ms");
-            /*
+
             _stopwatch.Restart();
             theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Compositions: {_stopwatch.ElapsedMilliseconds} ms");
-            */
+
             _stopwatch.Restart();
             theShaderInput.FunctionMap().ForEach(HandleFunction);
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Functions: {_stopwatch.ElapsedMilliseconds} ms");
@@ -291,18 +292,28 @@ namespace Fuse.ShaderFX
             }
             if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
-            _stopwatch.Restart();
-            ShaderNodesUtil.AddShaderSource( ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
-            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
-           // _parameters = theContext.Parameters;
-            
-           // _input.InputList().ForEach(input => input.AddParameters(_parameters));
-           var result = new ShaderClassSource(ShaderName);
-           _stopwatch.Stop();
+            var shaderClassString = new ShaderClassString(ShaderName, ShaderCode);
+
+            var mixin = new ShaderMixinSource();
+            mixin.Mixins.Add(shaderClassString);
+
+            foreach (var composition in _compositions)
+            {
+                var compositionSource = composition.ComputeNode.GenerateShaderSource(theContext, baseKeys);
+                mixin.AddComposition(composition.Name, compositionSource);
+            }
+
+            // _parameters = theContext.Parameters;
+
+            // _input.InputList().ForEach(input => input.AddParameters(_parameters));
+            //var result = new ShaderClassSource(ShaderName);
+            _stopwatch.Stop();
 
            if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"-> Execution Time: {watch.ElapsedMilliseconds} ms for Shader {ShaderName}");
            //MeasureProfiler.SaveData(ShaderName);
-           return result;
+           //return result;
+
+            return mixin;
         }
     }
 }

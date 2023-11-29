@@ -10,12 +10,15 @@ using System.Text.RegularExpressions;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
+using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
+using Stride.Shaders;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Core;
 using VL.Stride;
+using VL.Stride.Effects;
 using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
@@ -273,7 +276,7 @@ namespace Fuse
         }
         
         
-        public static DynamicEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
+        public static FuseEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
         {
             var watch = new Stopwatch();
             
@@ -281,16 +284,19 @@ namespace Fuse
             var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
-            var effectImageShader = new DynamicDrawEffectInstance("ShaderFXGraphEffect");
+            var parameters = new ParameterCollection();
+            var subscriptions = new CompositeDisposable();
             var method = typeof(ShaderGraph).GetMethod("NewShaderGeneratorContext", BindingFlags.Static | BindingFlags.NonPublic);
-            var context = method?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
+            var context = (ShaderGeneratorContext)method?.Invoke(null, new object[]{game.GraphicsDevice, parameters, subscriptions});
             
             //var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Stride.Core.Mathematics.Color.White);
-            theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
-            effectImageShader.EffectName = theDrawShader.ShaderName;
-            Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
-            return effectImageShader;
+            var shaderSource = theDrawShader.GenerateShaderSource(context,key);
+
+            var effectSource = new ShaderMixinGeneratorSource("DrawFXEffect");
+            parameters.Set(EffectNodeBaseKeys.EffectNodeBaseShader, shaderSource);
+
+            return new FuseEffectInstance(effectSource, parameters, subscriptions);
         }
 
         // ReSharper disable once UnusedMember.Global

@@ -605,9 +605,9 @@ namespace Fuse
             return PropertyForTree<IGpuInput>(Inputs);
         }
         
-        public List<string> CompositionList()
+        public List<IComposition> CompositionList()
         {
-            return PropertyForTree<string>(Compositions);
+            return PropertyForTree<IComposition>(Compositions);
         }
         
         public List<FieldDeclaration> DeclarationList()
