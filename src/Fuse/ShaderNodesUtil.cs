@@ -10,12 +10,16 @@ using System.Text.RegularExpressions;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
+using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
+using Stride.Shaders;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
+using Stride.Shaders.Parser.Mixins;
 using VL.Core;
 using VL.Stride;
+using VL.Stride.Effects;
 using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
@@ -223,19 +227,8 @@ namespace Fuse
                 var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
                 if (game == null) return;
 
-                var effectSystem = game.EffectSystem;
-                var compiler = effectSystem.Compiler as EffectCompiler;
-                if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
-                    compiler = typeof(EffectCompilerChain)
-                        .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
-                        ?.GetValue(effectCompilerCache) as EffectCompiler;
-
-                if (compiler == null) return;
-
-                var getParserMethod =
-                    typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (getParserMethod == null) return;
-                if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
+                var parser = game.EffectSystem.Compiler.GetShaderMixinParser();
+                if (parser is null) return;
 
                 var sourceManager = parser.SourceManager;
                 sourceManager.AddShaderSource(type, sourceCode, sourcePath);
@@ -243,6 +236,49 @@ namespace Fuse
             catch (Exception)
             {
                 // ignored
+            }
+        }
+
+        public static ShaderMixinParser GetShaderMixinParser(this IEffectCompiler compiler)
+        {
+            var effectCompiler = compiler as EffectCompiler;
+            if (effectCompiler is null && compiler is EffectCompilerCache effectCompilerCache)
+                effectCompiler = typeof(EffectCompilerChain)
+                    .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(effectCompilerCache) as EffectCompiler;
+
+            if (effectCompiler is null) 
+                return null;
+
+            var getParserMethod = typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (getParserMethod is null) 
+                return null;
+
+            return (ShaderMixinParser)getParserMethod.Invoke(effectCompiler, null);
+        }
+
+        // Workaround for compiler cache: it assumes that all shaders are known to the source manager
+        public static void MakeInMemoryShadersAvailableToTheSourceManager(IEffectCompiler compiler, ShaderSource shaderSource)
+        {
+            var parser = compiler.GetShaderMixinParser();
+            if (parser is null)
+                return;
+
+            var sourceManager = parser.SourceManager;
+            if (sourceManager is null)
+                return;
+
+            Scan(sourceManager, shaderSource);
+
+            static void Scan(ShaderSourceManager sourceManager, ShaderSource shaderSource)
+            {
+                if (shaderSource is ShaderClassString shaderClassString)
+                    sourceManager.AddShaderSource(shaderClassString.ClassName, shaderClassString.ShaderSourceCode, null);
+                else if (shaderSource is ShaderMixinSource shaderMixinSource)
+                {
+                    foreach (var s in shaderMixinSource.Mixins)
+                        Scan(sourceManager, s);
+                }
             }
         }
 
@@ -273,7 +309,7 @@ namespace Fuse
         }
         
         
-        public static DynamicEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
+        public static FuseEffectInstance RegisterDrawShader(ToDrawFX theDrawShader)
         {
             var watch = new Stopwatch();
             
@@ -281,16 +317,16 @@ namespace Fuse
             var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
-            var effectImageShader = new DynamicDrawEffectInstance("ShaderFXGraphEffect");
+            var parameters = new ParameterCollection();
+            var subscriptions = new CompositeDisposable();
             var method = typeof(ShaderGraph).GetMethod("NewShaderGeneratorContext", BindingFlags.Static | BindingFlags.NonPublic);
-            var context = method?.Invoke(null, new object[]{game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions});
+            var context = (ShaderGeneratorContext)method?.Invoke(null, new object[]{game.GraphicsDevice, parameters, subscriptions});
             
             //var context = ShaderGraph.NewShaderGeneratorContext(game.GraphicsDevice, effectImageShader.Parameters, effectImageShader.Subscriptions);
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Stride.Core.Mathematics.Color.White);
-            theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
-            effectImageShader.EffectName = theDrawShader.ShaderName;
-            Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
-            return effectImageShader;
+            var shaderSource = theDrawShader.GenerateShaderSource(context,key);
+
+            return new FuseEffectInstance(shaderSource, parameters, subscriptions);
         }
 
         // ReSharper disable once UnusedMember.Global

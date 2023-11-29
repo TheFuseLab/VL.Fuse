@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Fuse.compute;
 using Stride.Graphics;
 using Stride.Rendering;
@@ -101,7 +102,9 @@ namespace Fuse{
         public bool IsResource { get; }
     }
 
-    public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput where TParameterKeyType : ParameterKey<T> where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
+    public abstract class AbstractInput<T, TParameterKeyType, TParameterUpdaterType> : ShaderNode<T>, IGpuInput
+        where TParameterKeyType : ParameterKey<T> 
+        where TParameterUpdaterType : ParameterUpdater<T,TParameterKeyType>
      {
          
          protected readonly TParameterUpdaterType Updater;// = new ValueParameterUpdater<T>();
@@ -408,30 +411,4 @@ namespace Fuse{
             SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
     }
-    /*
-    public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
-    {
-
-        public CompositionInput(SetVar<T> value): base("input", false, value)
-        {
-        }
-
-        protected override PermutationParameterUpdater<IComputeNode> CreateUpdater()
-        {
-            return new PermutationParameterUpdater<IComputeNode>();
-        }
-
-        protected override void OnPassContext(ShaderGeneratorContext nodeContext)
-        {
-            Updater.Track(nodeContext, ParameterKey);
-        }
-
-        protected override void OnGenerateCode(ShaderGeneratorContext nodeContext)
-        {
-            ParameterKey = new PermutationParameterKey<ShaderSource>(ID);
-            SetFieldDeclaration(TypeHelpers.GetGpuTypeForType<T>());
-        }
-        
-        
-    }*/
 }
