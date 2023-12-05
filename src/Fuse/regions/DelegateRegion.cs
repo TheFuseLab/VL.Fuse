@@ -151,7 +151,7 @@ namespace Fuse.regions
                         break;
                     default:
                         var myInput = myInputs[i] ??
-                                      AbstractCreation.AbstractConstant(subContextFactory, outputs[i], 0);
+                                      AbstractCreation.AbstractConstant(outputs[i], 0);
                         var output = AbstractCreation.AbstractOutput(subContextFactory, this, myInput);
                         OptionalOutputs.Add(output);
 

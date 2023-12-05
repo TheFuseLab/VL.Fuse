@@ -559,11 +559,11 @@ namespace Fuse
             public static string TextureTypeName(Texture theTexture, bool theUseRW)
             {
                 if(theTexture == null)return "Texture2D<float4>";
-
+                
                 var textureType = theTexture.Dimension switch
                 {
                     TextureDimension.Texture1D => "Texture1D",
-                    TextureDimension.Texture2D => "Texture2D",
+                    TextureDimension.Texture2D => theTexture.ArraySize == 1 ?"Texture2D" : "Texture2DArray",
                     TextureDimension.Texture3D => "Texture3D",
                     TextureDimension.TextureCube => "TextureCube",
                     _ => "Texture2D"
