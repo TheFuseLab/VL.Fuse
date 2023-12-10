@@ -41,13 +41,14 @@ ${arrayContent}
             SetProperty(ConstantArrays, constantArrayString);
         }
         
-        public Array(NodeContext nodeContext, int theSize) : base(nodeContext, "Array")
+        public Array(NodeContext nodeContext, int theSize, bool theIsGroupShared=false) : base(nodeContext, "Array")
         {
             const string shaderCode = 
-                @"    ${arrayType} ${arrayName}[${arraySize}];" ;
+                @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];" ;
             
-            _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
+            _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
             {
+                {"groupshared",theIsGroupShared ? "groupshared" : ""},
                 {"arrayType", TypeHelpers.GetGpuType<T>()},
                 {"arrayName", ID},
                 {"arraySize", theSize.ToString()}

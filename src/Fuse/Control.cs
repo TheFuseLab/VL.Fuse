@@ -188,4 +188,14 @@ ${cases}
         {
         }
     }
+    
+    
+    
+    public class GroupMemoryBarrierWithGroupSync : SimpleKeyword
+    {
+    
+        public GroupMemoryBarrierWithGroupSync(NodeContext nodeContext) : base( nodeContext, "GroupMemoryBarrierWithGroupSync();")
+        {
+        }
+    }
 }

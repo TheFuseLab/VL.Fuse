@@ -1,0 +1,62 @@
+shader BSplineCommon : FuseCommonBuffer
+{
+    struct PointAttribute
+    {
+        float3 p;
+        float3 t;
+    };
+
+    // from InstanceNoodles(SplineBuffered)
+    PointAttribute BSplineCubic(float3 p1, float3 p2, float3 p3, float3 p4, float range) 
+    {
+        PointAttribute o = (PointAttribute)0;
+
+        float mu = frac(range);
+        float3 a0 = p4 - p3*3 + p2*3 - p1;
+        float3 a1 = p3*3 - p2*6 + p1*3;
+        float3 a2 = p3*3 - p1*3;
+        float3 a3 = p3 + p2*4 + p1;
+        
+        o.p = (a3+mu*(a2+mu*(a1+mu*a0)))/6.;
+        o.t = (mu*(2*a0*mu+a1)+mu*(a0*mu+a1)+a2)/6.;
+        return o;
+    }
+
+    PointAttribute SampleBSpline(StructuredBuffer<float3> CtrlPtBuffer, float t, 
+                                uint start, uint ctrlPtCount, bool Close)
+    {
+        float range = frac(t);
+        int t2 = round(t - range);
+
+        float3 p1,p2,p3,p4;
+
+        if(Close)
+        {
+            p1 = sbLoadRange(t2 - 1, CtrlPtBuffer, start, ctrlPtCount);
+            p2 = sbLoadRange(t2    , CtrlPtBuffer, start, ctrlPtCount);
+            p3 = sbLoadRange(t2 + 1, CtrlPtBuffer, start, ctrlPtCount);
+            p4 = sbLoadRange(t2 + 2, CtrlPtBuffer, start, ctrlPtCount);
+        }
+        else
+        {
+            p1 = sbLoadRange(max(t2 - 1, 0), CtrlPtBuffer, start, ctrlPtCount);
+            p2 = sbLoadRange(    t2,         CtrlPtBuffer, start, ctrlPtCount);
+            p3 = sbLoadRange(min(t2 + 1, ctrlPtCount - 1), CtrlPtBuffer, start, ctrlPtCount);
+            p4 = sbLoadRange(min(t2 + 2, ctrlPtCount - 1), CtrlPtBuffer, start, ctrlPtCount);
+        }
+
+        return BSplineCubic(p1, p2, p3, p4, range);
+    }
+
+    float3 sbLoadRange(int index, StructuredBuffer<float3> sBuffer, uint start, uint range, float3 defaultValue = 0.)
+	{
+		float3 value = defaultValue;
+		uint count = min(range, max(sbSize3(sBuffer)-start, 0));
+		if (count > 0)
+        {
+            index = index < 0 ? count - (abs(index) % count) : index % count;
+            value = sBuffer[index+start];
+        }
+		return value;
+	}
+};
