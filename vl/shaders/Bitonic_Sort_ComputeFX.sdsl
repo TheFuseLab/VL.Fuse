@@ -1,0 +1,39 @@
+shader Bitonic_Sort_ComputeFX : ComputeShaderBase
+{
+	#define BITONIC_BLOCK_SIZE 512
+
+    cbuffer cb
+    {
+        uint _Level;
+        uint _LevelMask;
+    };
+
+    RWStructuredBuffer<float2> Data0;
+
+    groupshared float2 shared_data[BITONIC_BLOCK_SIZE];
+
+    bool Compare(float2 left, float2 right) {
+        return left.x < right.x;
+    }
+
+    override void Compute()
+    {
+        uint3 DTid = streams.DispatchThreadId;
+        uint GI = streams.GroupIndex;
+        
+        // Load shared data
+	    shared_data[GI] = Data0[DTid.x];
+	    GroupMemoryBarrierWithGroupSync();
+
+	    // Sort the shared data
+	    for (uint j = _Level >> 1; j > 0; j >>= 1) {
+		    float2 result = Compare(shared_data[GI & ~j], shared_data[GI | j]) == (bool)(_LevelMask & DTid.x) ? shared_data[GI ^ j] : shared_data[GI];
+		    GroupMemoryBarrierWithGroupSync();
+		    shared_data[GI] = result;
+		    GroupMemoryBarrierWithGroupSync();
+	    }
+
+	    // Store shared data
+	    Data0[DTid.x] = float2(0.0,1.0)+ shared_data[GI];
+    }
+};
