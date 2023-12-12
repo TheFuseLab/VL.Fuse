@@ -54,10 +54,15 @@ namespace Fuse.Tests
                         continue;
                     if (f.PackagePath.Contains("help obsolete"))
                         continue;
+                    if (f.PackagePath.Contains("help_to_check"))
+                        continue;
 
                     var testCase = new TestCaseData(f.AbsolutePath)
                         .SetCategory(p.Identity.ToString())
                         .SetArgDisplayNames(f.PackagePath);
+
+                    if (f.PackagePath.Contains("Nodevember23"))
+                        testCase = testCase.Ignore("Needs Fuse.SketchBook");
 
                     yield return testCase;
                 }
