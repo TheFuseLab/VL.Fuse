@@ -39,6 +39,35 @@ namespace Fuse
         }
     }
     
+    public class SetAbstract : ShaderNode<GpuVoid>, IComputeVoid
+    {
+        private readonly AbstractShaderNode _target;
+        private readonly AbstractShaderNode _source;
+
+        public SetAbstract(NodeContext nodeContext, AbstractShaderNode theTarget, AbstractShaderNode theSource) : base(nodeContext, "Assign")
+        {
+            _target = theTarget;
+            _target.WriteCounter++;
+            _source = theSource;
+            SetInputs(new List<AbstractShaderNode>{_target,_source});
+        }
+        
+        protected override string GenerateDefaultSource()
+        {
+            return "";
+        }
+
+        protected override string SourceTemplate()
+        {
+            if(_target == null || _source == null)return "";
+            return ShaderNodesUtil.Evaluate("${target} = ${source};", new Dictionary<string, string>()
+            {
+                {"target", _target.ID}, 
+                {"source", _source.ID}
+            });
+        }
+    }
+    
     public class SetMember<T> : ShaderNode<GpuVoid>, IComputeVoid
     {
 
