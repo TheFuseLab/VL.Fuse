@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="M9xbQUo5eAQPqm5NqlhIG4" LanguageVersion="2023.5.3-0222-gc9b9f1b9c9" Version="0.128">
-  <NugetDependency Id="Qg9XmWBMiocNWySSrzNFd2" Location="VL.CoreLib" Version="2023.5.3-0222-gc9b9f1b9c9" />
+<Document xmlns:p="property" xmlns:r="reflection" Id="M9xbQUo5eAQPqm5NqlhIG4" LanguageVersion="2023.5.3-0396-g9e872581da" Version="0.128">
+  <NugetDependency Id="Qg9XmWBMiocNWySSrzNFd2" Location="VL.CoreLib" Version="2023.5.3-0396-g9e872581da" />
   <Patch Id="M3ivezWZOwzQNKDPNu6C2x">
     <Canvas Id="IJS0I5ttC9yP9wVsd85H3y" DefaultCategory="FuseParticles" CanvasType="FullCategory" />
     <!--
@@ -95,11 +95,6 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="J5sleYHccRpOj0iIwTxNXM" Comment="Noise Type" Bounds="891,243,93,15" ShowValueBox="true" isIOBox="true" Value="Simplex">
-            <p:TypeAnnotation LastCategoryFullName="Fuse.Common.Noise" LastDependency="VL.Fuse.vl">
-              <Choice Kind="TypeFlag" Name="NoiseType" />
-            </p:TypeAnnotation>
-          </Pad>
           <Node Bounds="711,542,89,19" Id="Q0T9SfvabKwO3A1UBRXEQJ">
             <p:NodeReference LastCategoryFullName="Fuse.Particles" LastDependency="VL.Fuse.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -119,7 +114,7 @@
             <Pin Id="LlKMaUIrD19Nr4rZHyal93" Name="Shader Code" Kind="OutputPin" IsHidden="true" />
           </Node>
           <Node Bounds="348,502,97,19" Id="SWW5ehJC692OQpEZ4NpsPs">
-            <p:NodeReference LastCategoryFullName="Fuse.Particles.Emitter" LastDependency="Fuse.Particles.vl">
+            <p:NodeReference LastCategoryFullName="Fuse.Compute.Emission" LastDependency="VL.Fuse.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ProbabilityEmitter" />
             </p:NodeReference>
@@ -430,6 +425,7 @@
             </p:NodeReference>
             <Pin Id="VNMNVYpRmH3PSpyo0KzOQa" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="VUuKqwZzdJqLjxoz57xmXU" Name="The Instance" Kind="InputPin" IsHidden="true" />
+            <Pin Id="GJHtMe7sIEjO4GrknTzteF" Name="Id" Kind="InputPin" IsHidden="true" />
             <Pin Id="BQoWWEhnggzNZPwK9UNakM" Name="Position" Kind="InputPin" />
             <Pin Id="VxjD6J1LVhcMaaylJJOk2j" Name="Velocity" Kind="InputPin" />
             <Pin Id="K28sFhvk8rDLloIlzvBs1P" Name="Force" Kind="InputPin" IsHidden="true" />
@@ -440,7 +436,6 @@
             <Pin Id="BtN7UWRBVZWL98YOSbXVTv" Name="Color" Kind="InputPin" />
             <Pin Id="VD5JDKBBWH2Or5K09Mazey" Name="Lifetime" Kind="InputPin" />
             <Pin Id="VwUfgdlUjZfQMleCLqsH8M" Name="Age" Kind="InputPin" IsHidden="true" />
-            <Pin Id="GJHtMe7sIEjO4GrknTzteF" Name="Id" Kind="InputPin" IsHidden="true" />
             <Pin Id="RU6SiC6RQj3NfnB8wbXW60" Name="Cycle Attribute Increment Enabled" Kind="InputPin" IsHidden="true" />
             <Pin Id="DAVbZjQXn93NVCnPzHzLhd" Name="Custom" Kind="InputPin" />
             <Pin Id="MTmSUagKyAJNZGxbriussf" Name="Enabled" Kind="InputPin" />
@@ -504,11 +499,6 @@
               </Node>
             </Patch>
           </Node>
-          <Pad Id="GOs74NI2YmAOQiuXv0BlUW" Comment="Step Size" Bounds="922,319,35,15" ShowValueBox="true" isIOBox="true" Value="0.07">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="Float32" />
-            </p:TypeAnnotation>
-          </Pad>
           <Pad Id="CFN6UimG0fHN4YLGF7kdaV" Comment="" Bounds="201,522,86,19" ShowValueBox="true" isIOBox="true" Value="100000">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Integer32" />
@@ -549,6 +539,11 @@
               <Choice Kind="TypeFlag" Name="PrimitiveType" />
             </p:TypeAnnotation>
           </Pad>
+          <Pad Id="KHwjSQdaWMMM3VqTo0mcVb" Comment="Noise Type" Bounds="890,241,88,15" ShowValueBox="true" isIOBox="true" Value="Simplex">
+            <p:TypeAnnotation LastCategoryFullName="Fuse.Noise" LastDependency="VL.Fuse.vl">
+              <Choice Kind="TypeFlag" Name="NoiseType" />
+            </p:TypeAnnotation>
+          </Pad>
         </Canvas>
         <Patch Id="Vh5zF5zZLlWNMNF0eEz2p1" Name="Create" />
         <Patch Id="TE7f66CesXYNYDA3tBIeZ9" Name="Update" />
@@ -563,7 +558,6 @@
         <Link Id="PkT84VfqQQoOboEqyBxoDS" Ids="O92tlwya7qfOw4nTVfgypi,Jc0Zkzm4BOmO69XmAqO7Bo" />
         <Link Id="EyQsDC4FHBcP2uVLaEnSak" Ids="STZuTHDDFh4L86LmZQJxyV,Brnxe5CXyl8NTnrBjWgrxA" />
         <Link Id="OAPYQe8uh2hQOeX3k9Ik1C" Ids="GDsGqoDsM0sQLrJmGjkmDz,BQm4dPyuUcZOJSQrSewFYY" />
-        <Link Id="DuIpbfVRSklLnTCvMKO03N" Ids="J5sleYHccRpOj0iIwTxNXM,FgZ5QJjXjQCMEFqAJknZ4P" />
         <Link Id="EKmbqYaLnaWLwhy9QX85lH" Ids="AMrQhdikQWPLeobsPSeEUO,JauAJ8fzWsuPPsom88M9nF" />
         <Link Id="RhXMHaSDViyLau64urtrVG" Ids="QZ1ppamxLLcLqn0p3KyQkI,AN5DSosThPAOVhD1xSoOPU" />
         <Link Id="A3ndnpzmJUsODvDEJ4ao6Z" Ids="VvbwW11B5yiQOt1MCid6Ng,HupRI9RVXr8LgoSpxRmL5A" />
@@ -610,11 +604,13 @@
         <Link Id="SpKeeUBwgmION8hGuzNjTq" Ids="GUZhh30wnEUMajEOE95qC4,MmWO69GUc2iM2uDTST2Z3k" />
         <Link Id="MCA7AV8BXqnLAsKWwuHhP1" Ids="Fx8JJkiGf8SNQ1nEgldHMz,L7wPPPC0XtkPSkXg4KHdFB" />
         <Link Id="HYOpd4qnXHSLKLK9a7dasF" Ids="JF3RVDoSvh3MgDMay5zsrs,Q0QEUjbIDI0MtRWjMY9jiw" />
+        <Link Id="J6wLBMUagdUNtjzWiz8ndS" Ids="KHwjSQdaWMMM3VqTo0mcVb,FgZ5QJjXjQCMEFqAJknZ4P" />
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="PqYonFcf6zgMtemJwPDJTs" Location="VL.Stride" Version="2023.5.3-0222-gc9b9f1b9c9" />
+  <NugetDependency Id="PqYonFcf6zgMtemJwPDJTs" Location="VL.Stride" Version="2023.5.3-0396-g9e872581da" />
   <NugetDependency Id="ERe8HcPz5gPP5XtWGnFX2d" Location="VL.Fuse" Version="0.0.0.0" />
-  <NugetDependency Id="EottoN6NWkiNqDrQCVCoKZ" Location="VL.Stride.Runtime" Version="2023.5.3-0222-gc9b9f1b9c9" />
+  <NugetDependency Id="EottoN6NWkiNqDrQCVCoKZ" Location="VL.Stride.Runtime" Version="2023.5.3-0396-g9e872581da" />
   <PlatformDependency Id="SKfRqP83K95NoI8W7Stc1I" Location="C:/Program Files/vvvv/vvvv_gamma_2021.4.0-0208-g006008faa3/lib/VL.Stride.Runtime.dll" />
+  <NugetDependency Id="LpbdFwbWSh6OxSYVZVcm4U" Location="VL.Stride.TextureFX" Version="2023.5.3-0396-g9e872581da" />
 </Document>
