@@ -330,7 +330,7 @@ namespace Fuse
                 {typeof(Vector2), "ComputeFloat2"},
                 {typeof(Vector3), "ComputeFloat3"},
                 {typeof(Vector4), "ComputeFloat4"},
-                {typeof(Color4), "ComputeFloat4"},
+                {typeof(Color4), "ComputeColor"},
                 {typeof(Matrix), "ComputeMatrix"},
                 
                 {typeof(int), "ComputeInt"},
@@ -356,7 +356,7 @@ namespace Fuse
                     ShaderNode<Vector2> _ => "ComputeFloat2",
                     ShaderNode<Vector3> _ => "ComputeFloat3",
                     ShaderNode<Vector4> _ => "ComputeFloat4",
-                    ShaderNode<Color4> _ => "ComputeFloat4",
+                    ShaderNode<Color4> _ => "ComputeColor",
                     ShaderNode<Matrix> _ => "ComputeMatrix",
                     ShaderNode<bool> _ => "ComputeBool",
                     ShaderNode<int> _ => "ComputeInt",
@@ -593,7 +593,7 @@ namespace Fuse
             #endregion
             public static List<string> GetDescription(AbstractShaderNode theValue)
             {
-                var keys = new List<string>() { "x", "y", "z", "w"};
+                var keys = new List<string> { "x", "y", "z", "w"};
                 var dimension = GetDimension(theValue);
                 var result = new List<string>();
                 if (dimension == 1)
