@@ -3584,12 +3584,6 @@
                     <ControlPoint Id="DLR0VuyrFo6PpgbHq1NVnB" Bounds="1032,659" Name="falloff" Alignment="Bottom" />
                     <ControlPoint Id="UnwVKYPMtUrPrLxHbZrRAq" Bounds="834,366" Name="amp" Alignment="Top" />
                     <ControlPoint Id="UDJ1mpC7sOLMAoTC0cpdjU" Bounds="835,659" Name="amp" Alignment="Bottom" />
-                    <Pin Id="D5wSREJ9vpvOoTEUltDRFZ" Name="Node Context" Kind="InputPin" IsHidden="true" />
-                    <Pin Id="EB9WBA6gABoLHMAUTnVgeB" Name="In Start" Kind="InputPin" />
-                    <Pin Id="CcBSXDd7Dw8MmENim5el9h" Name="End" Kind="InputPin" />
-                    <Pin Id="GejwGt1g3JIPID39JNAQU0" Name="Loop" Kind="InputPin" />
-                    <Pin Id="HPZdw3EaibtL88I1ajeVkh" Name="Unroll" Kind="InputPin" />
-                    <Pin Id="INSvAph4adxNvrdxNTikhS" Name="Unroll Loops" Kind="InputPin" />
                     <Patch Id="Ry7qgCP0uOYMVdacjOIQt6" ManuallySortedPins="true">
                       <Patch Id="KEGADtKU82jPhvp37gOzzK" Name="Create" ManuallySortedPins="true" />
                       <Patch Id="HxHdNMJ6bgWLEvahjU6NJ4" Name="Update" ParticipatingElements="VabINH0fKSbO2ayytcDLsq,Fs7fON6LCKnOLeu1xtWOmn,B3xvFpgr7AaOMYdmqvWShQ,SxuKJ97wPNXLEXlfnkkcmw,RIDo61pE8xmLjx0y3Qfyi4,CWlXL4iDnu8Og8Ljojb3fb" ManuallySortedPins="true" />
@@ -3716,6 +3710,12 @@
                       <ControlPoint Id="EHVArjdw7PJLS7qQAcor3U" Bounds="855,539" />
                       <ControlPoint Id="Hjnb6dSDup6PpmOvCr6s4T" Bounds="1031,484" />
                     </Patch>
+                    <Pin Id="D5wSREJ9vpvOoTEUltDRFZ" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                    <Pin Id="KwqkUt19mccPtVexsqbzOC" Name="In Start" Kind="InputPin" IsHidden="true" />
+                    <Pin Id="CcBSXDd7Dw8MmENim5el9h" Name="End" Kind="InputPin" />
+                    <Pin Id="Dv47RSvBQO5OtQSINEAMXZ" Name="Loop" Kind="InputPin" IsHidden="true" />
+                    <Pin Id="D2AgHaVk1wmMvBTXOCbB6X" Name="Unroll" Kind="InputPin" IsHidden="true" />
+                    <Pin Id="NERBG9ijn2xM9uejwgiHrn" Name="Unroll Loops" Kind="InputPin" IsHidden="true" />
                   </Node>
                   <ControlPoint Id="KSMrXDFkMxuOUWzasmkEUq" Bounds="663,948" />
                   <ControlPoint Id="UcNsh9A7HSCOKASnEhRW4h" Bounds="682,325" />
@@ -4205,6 +4205,11 @@
                       <Choice Kind="TypeFlag" Name="String" />
                     </p:TypeAnnotation>
                   </Pad>
+                  <Pad Id="NGM0R0z4x7OLnIPsQpX6pG" Comment="" Bounds="151,875,299,414" ShowValueBox="true" isIOBox="true" Value="// FBM&#xD;&#xA;${resultType} ${signature}(&#xD;&#xA;    ${argumentType} p,&#xD;&#xA;    float gain, &#xD;&#xA;    float lacunarity, &#xD;&#xA;    float octaves&#xD;&#xA;){&#xD;&#xA;    int iOctaves = int(floor(octaves)); &#xD;&#xA;    ${resultType} myResult = 0.;  &#xD;&#xA;    float myScale = 1;&#xD;&#xA;    float myFallOff = gain;&#xD;&#xA;    float myAmp = 0.;&#xD;&#xA;&#xD;&#xA;    for(int i = 0; i &lt; iOctaves;i++)&#xD;&#xA;    {&#xD;&#xA;        myResult += ${noise}(p) * myFallOff;&#xD;&#xA;        myAmp += myFallOff;&#xD;&#xA;        myFallOff *= gain;&#xD;&#xA;        p *= lacunarity;&#xD;&#xA;    }&#xD;&#xA;&#xD;&#xA;    float myBlend = octaves - float(iOctaves);&#xD;&#xA;    myResult += ${noise}(p * myScale) * myFallOff * myBlend;    &#xD;&#xA;    myAmp += myFallOff * myBlend;&#xD;&#xA;    if(myAmp &gt; 0.0) myResult /= myAmp;&#xD;&#xA;    return myResult;&#xD;&#xA;}">
+                    <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+                      <Choice Kind="TypeFlag" Name="String" />
+                    </p:TypeAnnotation>
+                  </Pad>
                 </Canvas>
                 <ProcessDefinition Id="RF4EYVFf1bwLBgJr4sp5Sn">
                   <Fragment Id="E63WEj5C7iDP0w7JtQDHhm" Patch="CaopqdFysWhPtl63rnAnQm" Enabled="true" />
@@ -4501,19 +4506,10 @@
                         <Pin Id="B4DUmW0ZVkBOpB9AeOvgWv" Name="Node Context" Kind="InputPin" IsHidden="true" />
                         <Pin Id="MgNTw5YiJ7NQAiTy9083hK" Name="Output" Kind="OutputPin" />
                       </Node>
-                      <Node Bounds="560,431,75,19" Id="CrXECjZrzt6LXL8UIthjSI">
-                        <p:NodeReference LastCategoryFullName="Fuse.Core.Value" LastDependency="Fuse.Core.vl">
-                          <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                          <Choice Kind="ProcessAppFlag" Name="DeclareValue" />
-                        </p:NodeReference>
-                        <Pin Id="JDQhfVqu0n7MKZ4elZprje" Name="Node Context" Kind="InputPin" IsHidden="true" />
-                        <Pin Id="J5y7j6naEvvPeEJpkWhYOi" Name="The Value" Kind="InputPin" />
-                        <Pin Id="G8IykkjRlbJNIhMIz9JdxN" Name="Output" Kind="OutputPin" />
-                      </Node>
                     </Patch>
                   </Node>
                   <ControlPoint Id="BclwDwpYd2oOmO4QjkfBQq" Bounds="642,783" />
-                  <ControlPoint Id="UEaOeaWWBBOPfbsp25c5CE" Bounds="682,325" />
+                  <ControlPoint Id="UEaOeaWWBBOPfbsp25c5CE" Bounds="584,340" />
                   <ControlPoint Id="U3B8wXuj5OTMyJIRTpc135" Bounds="531,210" />
                   <ControlPoint Id="FSZ87dZsApPQRIiHKOcweL" Bounds="552,294" />
                   <ControlPoint Id="JdNdGpQ23VhN1Yrck1BPQA" Bounds="1468,487" />
@@ -4536,14 +4532,6 @@
                     <Pin Id="D7r1vU07kW4P3s1RemEYxu" Name="x" Kind="InputPin" />
                     <Pin Id="My1GIVlCbyZMTqvsap4S9V" Name="Output" Kind="OutputPin" />
                     <Pin Id="SicQLURRMJiP19f6zbAH0Y" Name="Conversion" Kind="OutputPin" />
-                  </Node>
-                  <Node Bounds="660,209,40,19" Id="UzNI4VZLuc1QbT3nNOM85t">
-                    <p:NodeReference LastCategoryFullName="Fuse.Core.Math" LastDependency="Fuse.Core.vl">
-                      <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                      <Choice Kind="ProcessAppFlag" Name="ONE" />
-                    </p:NodeReference>
-                    <Pin Id="FRO2kkIH7OyOUxAs1PGtup" Name="Node Context" Kind="InputPin" IsHidden="true" />
-                    <Pin Id="AYLebGI3EKIL13OPQdUpW9" Name="Output" Kind="OutputPin" />
                   </Node>
                   <Node Bounds="529,231,101,19" Id="HtGIPrns55pLv5QWhSayoB">
                     <p:NodeReference LastCategoryFullName="Fuse.Core.Function" LastDependency="Fuse.Core.vl">
@@ -15902,7 +15890,7 @@
             </Pad>
             <ControlPoint Id="N8BNMonzZKmPyUYEH8gnK0" Bounds="98,334" />
             <ControlPoint Id="UF5RlTv6mNNPtZV1dfeN7x" Bounds="817,1377" />
-            <Node Bounds="96,459,1014,814" Id="MDaMnzRJtWQPj2q4RPzMjr">
+            <Node Bounds="249,459,861,814" Id="MDaMnzRJtWQPj2q4RPzMjr">
               <p:NodeReference LastCategoryFullName="Fuse.Control" LastDependency="Fuse.Core.vl">
                 <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="For (Fuse)" />
@@ -15913,8 +15901,8 @@
               <Pin Id="DXv3Z6kX7eLO3oJmPjRjl9" Name="Loop" Kind="InputPin" IsHidden="true" />
               <Pin Id="ApWBrCiZaGSMXyUg89pdPU" Name="Unroll" Kind="InputPin" IsHidden="true" />
               <Pin Id="E4c1MJanCvZLX99kkLhW38" Name="Unroll Loops" Kind="InputPin" IsHidden="true" />
-              <ControlPoint Id="VvWLyneDPp5N0berAixgLS" Bounds="110,465" Name="iter" Alignment="Top" />
-              <ControlPoint Id="VQywOS1MyFWOSxgNWdfywq" Bounds="110,1267" Name="iter" Alignment="Bottom" />
+              <ControlPoint Id="VvWLyneDPp5N0berAixgLS" Bounds="263,465" Name="iter" Alignment="Top" />
+              <ControlPoint Id="VQywOS1MyFWOSxgNWdfywq" Bounds="263,1267" Name="iter" Alignment="Bottom" />
               <ControlPoint Id="BxXB0maOJyXOzzmTSnymvX" Bounds="376,465" Name="pos" Alignment="Top" />
               <ControlPoint Id="MzchsoHH9TCNLqx3c2cZ4T" Bounds="376,1267" Name="pos" Alignment="Bottom" />
               <ControlPoint Id="CrUnAbGJ22qM2JiN3Kpd3L" Bounds="817,465" Name="sumOfValues" Alignment="Top" />
@@ -15964,7 +15952,7 @@
                   <Pin Id="LVo1ganeQ22PkwMAggOAmG" Name="Input" Kind="InputPin" />
                   <Pin Id="UA1LMMZc1kPNk0R3xmmUmt" Name="Output" Kind="OutputPin" />
                 </Node>
-                <Node Bounds="108,1234,25,19" Id="DVQouYX7SUXNMyCwqDRfrK">
+                <Node Bounds="261,1234,25,19" Id="DVQouYX7SUXNMyCwqDRfrK">
                   <p:NodeReference LastCategoryFullName="Fuse.Math" LastDependency="Fuse.Core.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <FullNameCategoryReference ID="Fuse.Math" />
@@ -16114,7 +16102,7 @@
                     <Choice Kind="ImmutableTypeFlag" Name="Float32" />
                   </p:TypeAnnotation>
                 </Pad>
-                <Pad Id="QqusOp66TgFMcdDJWEUpu1" Comment="" Bounds="130,1178,70,15" ShowValueBox="true" isIOBox="true" Value="1232.3999">
+                <Pad Id="QqusOp66TgFMcdDJWEUpu1" Comment="" Bounds="283,1178,70,15" ShowValueBox="true" isIOBox="true" Value="1232.3999">
                   <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                     <Choice Kind="TypeFlag" Name="Float32" />
                   </p:TypeAnnotation>
@@ -16123,7 +16111,7 @@
                     <p:stepsize p:Type="Single">0.01</p:stepsize>
                   </p:ValueBoxSettings>
                 </Pad>
-                <Node Bounds="128,1197,57,19" Id="NlGfWikk9jAPXkV7kDqAoz">
+                <Node Bounds="281,1197,57,19" Id="NlGfWikk9jAPXkV7kDqAoz">
                   <p:NodeReference LastCategoryFullName="Fuse.Value" LastDependency="Fuse.Core.vl">
                     <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                     <Choice Kind="ProcessAppFlag" Name="Constant" />
@@ -16281,7 +16269,7 @@
               <Pin Id="EuoZ9BgUqGxN4pdsKI30sO" Name="Node Context" Kind="InputPin" IsHidden="true" />
               <Pin Id="TdMVMGCAYIdNRaMHDqvf66" Name="Output" Kind="OutputPin" />
             </Node>
-            <Node Bounds="108,412,40,19" Id="IlvFFOL26FlPDtMLTucIJz">
+            <Node Bounds="261,412,40,19" Id="IlvFFOL26FlPDtMLTucIJz">
               <p:NodeReference LastCategoryFullName="Fuse.Math" LastDependency="Fuse.Core.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="ZERO" />
