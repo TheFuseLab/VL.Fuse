@@ -1,0 +1,22 @@
+shader GenerateVoxelVolume_ComputeFX : ComputeShaderBase, SDFInput, SDFVoxelVolume
+{
+    override void Compute()
+    {
+        uint3 voxelID = streams.DispatchThreadId;
+
+        if (IsOutOfVoxelVolumeBounds(voxelID))
+        {
+            return;
+        }
+
+        float3 worldPosition = VoxelVolumeToWorldSpace(VoxelToVoxelVolumeSpace(voxelID));
+        
+        float4 valueAndGradient;
+        valueAndGradient.x = SDF.Compute(worldPosition);
+        valueAndGradient.yzw = SDFNormal(worldPosition);
+
+        Voxel voxel = CreateVoxel(valueAndGradient);
+
+        SetVoxel(voxelID, voxel);
+    }
+};

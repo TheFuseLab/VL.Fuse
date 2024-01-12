@@ -1,0 +1,15 @@
+shader SDFInput
+{
+    // the signed distance field to bake
+    compose Float3ToFloat SDF;
+
+    // generate normals with central difference
+    float3 SDFNormal(float3 p, float e = 0.01)
+    {
+        float3 gradient = float3 (	(SDF.Compute(p + float3(e,0,0)) - SDF.Compute(p - float3(e,0,0))) / (2*e), 
+                                    (SDF.Compute(p + float3(0,e,0)) - SDF.Compute(p - float3(0,e,0))) / (2*e), 
+                                    (SDF.Compute(p + float3(0,0,e)) - SDF.Compute(p - float3(0,0,e))) / (2*e)	);
+
+        return normalize(gradient+0.0000001);
+    }
+};

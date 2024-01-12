@@ -1,0 +1,24 @@
+shader DCGenerateOuterCellVertices_ComputeFX : ComputeShaderBase, DualContouringUtils
+{
+    override void Compute()
+    {
+       uint3 cellID = streams.DispatchThreadId;
+
+       if (any(cellID > NumberOfVoxels - 2) || !IsOuterVoxel(cellID))
+       {
+           return;
+       }
+
+       CellVertexInfo cellVertexInfo = CreateCellVertexInfo();
+
+       CalculatePositionsAndNormals(cellID);
+
+       if (numberOfIntersections > 0)
+       {
+            cellVertexInfo.index = generatedVerticesCounter.IncrementCounter();
+            generatedVertices[cellVertexInfo.index] = CalculateCellVertex(cellID);
+       }
+
+       cellVertexInfoLookupTable[CalculateCellVertexInfoLookupTableIndex(cellID)] = cellVertexInfo;
+    }
+};

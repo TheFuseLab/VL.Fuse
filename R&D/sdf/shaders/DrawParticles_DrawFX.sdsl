@@ -1,0 +1,57 @@
+shader DrawParticles_DrawFX : VS_PS_Base, ShaderUtils, Transformation, Camera
+{
+    // PARTICLES BUFFERS
+    StructuredBuffer<float4> Buffer_P_PosSize; 
+
+    [Color]
+    float4 Color;
+    float SizeMult = 1;
+
+    // STREAMS ================================================================================
+    stream float2 TexCoord;
+    stream uint VertexID : SV_VertexID;
+    stream float Size;
+
+    // VS ================================================================================
+    override stage void VSMain()
+    {
+        uint pIndex = streams.InstanceID;
+
+        // READ PARTICLES BUFFERS
+        float4 P_PosSize = Buffer_P_PosSize[pIndex];
+        streams.PositionWS = float4(P_PosSize.xyz, 1);           
+        streams.Size = P_PosSize.w;
+    }
+
+
+    // GS ==============================================================================
+
+    [maxvertexcount(4)]
+    stage void GSMain(point Input input[1], inout TriangleStream<Output> triangleStream)
+    {
+        streams = input[0];
+        float4 center = mul(streams.PositionWS, View);
+
+        for(int i=0; i<4; i++)
+        {
+            streams.TexCoord  = (QuadUV[i].xy - 0.5) + 0.5;
+            
+            float4 pos = float4(0, 0, 0, 1);
+            pos.xyz = center.xyz + QuadPositions[i].xyz * streams.Size * SizeMult;
+            streams.ShadingPosition = mul(pos, Projection);
+            
+            triangleStream.Append(streams);
+        }
+    }
+
+    // PS ---------------------------------------------------------------------
+    override stage void PSMain() 
+    {
+        float2 tex = streams.TexCoord - 0.5f;
+        if (dot(tex, tex) > 0.25f) discard;
+        streams.ColorTarget = Color;
+    }
+
+};
+
+

@@ -1,0 +1,35 @@
+shader DCGenerateTriangles_ComputeFX : ComputeShaderBase, DualContouringUtils
+{
+    override void Compute()
+    {
+        uint3 cellID = streams.DispatchThreadId;
+        if (any(cellID > NumberOfVoxels - 3))
+        {
+            return;
+        }
+
+        CellVertexInfo cellVertexInfo = cellVertexInfoLookupTable[CalculateCellVertexInfoLookupTableIndex(cellID, cellStride)];
+
+        for (uint index = 0; index < 3; index++)
+        {
+            uint2 cellEdge = GetCellEdge(index);
+
+            Voxel sampleA = GetVoxel(cellID + cellCorners[cellEdge.x]);
+            Voxel sampleB = GetVoxel(cellID + cellCorners[cellEdge.y]);
+
+            if (IsSolid(sampleA) == IsSolid(sampleB))
+            {
+                continue;
+            }
+
+            GetNeighbourCellsVertexInfos(cellID, index);
+
+            for (uint triangleIndex = 0; triangleIndex < 2; triangleIndex++)
+            {
+                CellVertexInfo firstNeighbourCellVertexInfo = neighbourCellVertexInfos[GetValue(sampleB) < 0.0f ? triangleIndex : triangleIndex + 1];
+                CellVertexInfo secondNeighbourCellVertexInfo = neighbourCellVertexInfos[GetValue(sampleB) < 0.0f ? triangleIndex + 1 : triangleIndex];
+                GenerateTriangle(cellVertexInfo, firstNeighbourCellVertexInfo, secondNeighbourCellVertexInfo);
+            }
+        }
+    }
+};
