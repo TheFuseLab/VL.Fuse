@@ -587,6 +587,21 @@ namespace Fuse
 
         }
 
+        public List<TPropertyType> GetProperties<TPropertyType>()
+        {
+            List<TPropertyType> result = new ();
+        
+            Property.ForEach(kv =>
+            {
+                var values = kv.Value.OfType<TPropertyType>();
+                var tProperties = values as TPropertyType[] ?? values.ToArray();
+                if (tProperties.IsEmpty()) return;
+                tProperties.ForEach(v => result.Add(v));
+            });
+
+            return result;
+        }
+
         protected const string Mixins = "Mixins";
         protected const string Inputs = "Inputs";
         protected const string Compositions = "Compositions";
