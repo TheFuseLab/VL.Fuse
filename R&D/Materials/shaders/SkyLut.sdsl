@@ -1,0 +1,189 @@
+[Summary("Draws geometry in the given color.")]
+shader SkyLut 
+{
+
+    bool IntersectCircle(float ViewRadius, float CosAngle, out float StartDistance, out float EndDistance) {
+        float Offset = -ViewRadius * CosAngle;
+        float ViewRadius2 = ViewRadius * ViewRadius;
+        float Ray2Center2 = ViewRadius2 - Offset * Offset;
+        if (Ray2Center2 > TopRadius2) {
+            return false;
+        }
+        float TopHalfLength = sqrt(TopRadius2 - Ray2Center2);
+        EndDistance = TopHalfLength + Offset;
+        StartDistance = max(0.0, Offset - TopHalfLength);
+        return true;
+    }
+
+    void IntersectCircleInside(float ViewRadius, float CosAngle, out float TriangleHeight2, out float StartWidth, out float EndWidth) {
+        StartWidth = ViewRadius * CosAngle;
+        float ViewRadius2 = ViewRadius * ViewRadius;
+        TriangleHeight2 = ViewRadius2 - StartWidth * StartWidth;
+        EndWidth = sqrt(TopRadius2 - TriangleHeight2);
+    }
+
+    void IntersectDoubleCircle(float ViewRadius, float CosAngle, out float StartDistance, out float EndDistance) {
+        float Offset = -ViewRadius * CosAngle;
+        float ViewRadius2 = ViewRadius * ViewRadius;
+        float Ray2Center2 = ViewRadius2 - Offset * Offset;
+        float BottomHalfLength = sqrt(BottomRadius2 - Ray2Center2);
+        float TopHalfLength = sqrt(TopRadius2 - Ray2Center2);
+        StartDistance = max(0.0, Offset - TopHalfLength);
+        EndDistance = Offset - BottomHalfLength;
+    }
+
+    bool IntersectDoubleCircleInside(float ViewRadius, float CosAngle, out float EndDistance) {
+        float Offset = -ViewRadius * CosAngle;
+        float ViewRadius2 = ViewRadius * ViewRadius;
+        float Ray2Center2 = ViewRadius2 - Offset * Offset;
+        if (Ray2Center2 < BottomRadius2 && CosAngle < 0.0) {
+            float BottomHalfLength = sqrt(BottomRadius2 - Ray2Center2);
+            EndDistance = Offset - BottomHalfLength;
+            return true;
+        }
+        else {
+            float TopHalfLength = sqrt(TopRadius2 - Ray2Center2);
+            EndDistance = TopHalfLength + Offset; 
+            return false;
+        }
+    }
+
+    float3 GetDensity(float height) {
+        return float3(exp(-height / float2(rayleighScaleHeight, mieScaleHeight)), 1.0 - min(abs(height - ozoneCenter) / ozoneWidth, 1.0));
+    }
+
+    
+    float bla(float x){
+        return x;       
+    }
+
+    float3 Density2Extinction(float3 Density) {
+        return rayleighScatteringCoefficient * Density.x + mieExtinctionCoefficient * (Density.y + 0.0) + ozoneAbsorptionCoefficient * Density.z;
+    }
+
+    float3 Extinction2Transmittance(float3 Extinction, float SegmentLength) {
+        return exp(-Extinction * SegmentLength);
+    }
+
+    float distToExitAtmosphere(float mu, float r) {
+        float discriminant = r * r * (mu * mu - 1.0) + TopRadius2;
+        return max(-r * mu + sqrt(max(discriminant, 0.)), 0.);
+    }
+
+    float unitRange2texCoord(float x, float tex_size) {
+        return .5 / tex_size + x * (1. - 1. / tex_size);
+    }
+
+    float texCoord2unitRange(float u, float resolution) { 
+        return (u - 0.5f / resolution) * (resolution / (resolution - 1.0f)); 
+    }
+
+    void uv2muR(float2 uv, out float mu, out float r, float2 tex_size) {
+        float x_mu  = texCoord2unitRange(uv.x, tex_size.x);
+        float x_r   = texCoord2unitRange(uv.y, tex_size.y);
+        float rho = H * x_r;
+        r = sqrt(rho * rho + BottomRadius2);
+        float d_min = TopRadius - r;
+        float d_max = rho + H;
+        float d = d_min + x_mu * (d_max - d_min);
+        mu = d == 0.0 ? 1. : (H * H - rho * rho - d * d) / (2. * r * d);
+        mu = clamp(mu, -1., 1.);
+    }
+
+    float2 muR2uv(float mu, float r, float2 tex_size) {
+        float rho   = sqrt(r * r - BottomRadius2);
+        float d     = distToExitAtmosphere(mu, r);
+        float d_min = TopRadius - r;
+        float d_max = rho + H;
+        float x_mu  = (d - d_min) / (d_max - d_min);
+        float x_r   = rho / H;
+            
+        return float2(
+            unitRange2texCoord(x_mu, tex_size.x),
+            unitRange2texCoord(x_r, tex_size.y)
+        );
+    }
+
+    const int SampleCount = 32;
+
+    vec3 ComputeTransmittanceLut(float mu, float r) {
+        float TriangleHeight2, StartWidth, EndWidth;
+        IntersectCircleInside(r, mu, TriangleHeight2, StartWidth, EndWidth);
+        float SampleLength = (EndWidth - StartWidth) / float(SampleCount);
+        float TriangleWidth = StartWidth + SampleLength * 0.5;
+        vec3 TotalDensity = vec3(0.0);
+        for (int i = 0; i < SampleCount; i++) {
+            float SampleRadius = sqrt(TriangleHeight2 + TriangleWidth * TriangleWidth);
+            float SampleHeight = SampleRadius - BottomRadius;
+            TotalDensity += GetDensity(SampleHeight);
+            TriangleWidth += SampleLength;
+        }
+        vec3 TotalExtinction = Density2Extinction(TotalDensity);
+        return Extinction2Transmittance(TotalExtinction, SampleLength);
+    }
+
+    const int SqrtRayCount = 8;
+const int RayCount = SqrtRayCount * SqrtRayCount;
+const int SampleCount = 32;
+
+vec3 TransmittanceFromTexture(float radius, float angle) {
+    vec2 uv = muR2uv(angle, radius, iResolution.xy);
+    return texture(iChannel0, uv).xyz;
+}
+
+    vec3 ComputeMultipleScatteringLut(float CosSunUp, float ViewRadius) {
+        vec3 RayOrigin = vec3(0.0, ViewRadius, 0.0);
+        vec3 SunDirection = vec3(sqrt(1.0 - CosSunUp * CosSunUp), CosSunUp, 0.0);
+        vec3 Luminance = vec3(0.0);
+        vec3 TransferFactor = vec3(0.0);
+        float UniformPhase = 1.0 / (4.0 * pi);
+        for (int i = 0; i < RayCount; i++) {
+
+            float z = (float(i) + 0.5) / float(RayCount);
+            float xyLength = sqrt(1.0 - z * z);
+            float Longitude = z * float(SqrtRayCount) * pi * 2.0;
+            vec3 RayDirection = vec3(sin(Longitude) * xyLength, cos(Longitude) * xyLength, z);
+
+            float EndDistance, SampleCosSunUp;
+            bool HitGround = IntersectDoubleCircleInside(ViewRadius, RayDirection.y, EndDistance);
+            float SampleLength = EndDistance / float(SampleCount);
+            float CurrentDistance = SampleLength * 0.5;
+            vec3 RayLight, RayLightTransferFactor, SunTransmittance, SampleUp = vec3(0.0);
+            vec3 ViewTransmittance = vec3(1.0);
+            for (int j = 0; j < SampleCount; j++) {
+                vec3 SamplePosition = RayOrigin + CurrentDistance * RayDirection;
+                float SampleRadius = length(SamplePosition);
+                float SampleHeight = SampleRadius - BottomRadius;
+                vec3 SampleDensity = GetDensity(SampleHeight);
+
+                SampleUp = SamplePosition / SampleRadius;
+                SampleCosSunUp = dot(SampleUp, SunDirection);
+                SunTransmittance = TransmittanceFromTexture(SampleRadius, SampleCosSunUp);
+                vec3 SampleScattering = rayleighScatteringCoefficient * SampleDensity.x + mieScatteringCoefficient * SampleDensity.y;
+                vec3 Inscattering = SunTransmittance * SampleScattering * UniformPhase;
+
+                vec3 SampleExtinction = Density2Extinction(SampleDensity);
+                vec3 SampleTransmittance = Extinction2Transmittance(SampleExtinction, SampleLength);
+                vec3 NextViewTransmittance = ViewTransmittance * SampleTransmittance;
+                vec3 IntegralViewTransmittance = (ViewTransmittance - NextViewTransmittance) / SampleExtinction;
+
+                RayLight += IntegralViewTransmittance * Inscattering;
+                RayLightTransferFactor += IntegralViewTransmittance * SampleScattering;
+                CurrentDistance += SampleLength;
+                ViewTransmittance = NextViewTransmittance;
+            }
+            Luminance += RayLight;
+            TransferFactor += RayLightTransferFactor;
+            if (HitGround) {
+                    Luminance += ViewTransmittance * SunTransmittance * (earthAlbedo / pi) * SampleCosSunUp;
+                }
+
+        }
+        //Luminance = Luminance * IsotropicPhase / float(RayCount);
+        //TransferFactor = TransferFactor * IsotropicPhase / float(RayCount);
+        //vec3 Color = Luminance / (1 - TransferFactor);
+        //sum of geometric sequence
+        vec3 Color = Luminance / (float(RayCount) - TransferFactor); 
+        return Color;
+    }
+};
