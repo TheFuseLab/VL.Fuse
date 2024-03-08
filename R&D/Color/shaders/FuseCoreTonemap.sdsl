@@ -1,0 +1,148 @@
+shader FuseCoreTonemap
+{
+
+	
+
+	// Tone mapping functions assuming gamma correction is applied elsewhere
+
+	// Linear tone mapping (unoptimized for reference)
+	float3 LinearToneMapping(float3 color)
+	{
+		float exposure = 1.0;
+		return clamp(color * exposure, 0.0f, 1.0f);
+	}
+
+	// Simple Reinhard tone mapping
+	float3 SimpleReinhardToneMapping(float3 color)
+	{
+		float exposure = 1.5;
+		return color * exposure / (1.0f + exposure / dot(color, float3(0.2126, 0.7152, 0.0722)));
+	}
+
+
+
+	// Optimized Reinhard tone mapping based on luma
+	float3 LumaBasedReinhardToneMapping(float3 color)
+	{
+		const float gamma = 2.2;
+		float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
+		float3 invLuma = 1.0f / luma;
+		return color * (luma / (1.0f + luma)) * pow(color, float3(invLuma / gamma));
+	}
+
+	// Optimized white-preserving Reinhard tone mapping
+	float3 WhitePreservingLumaBasedReinhardToneMapping(float3 color)
+	{
+		float white = 2.0;
+		float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
+		float invLuma = 1.0f / luma;
+		float factor = luma * (1.0f + luma / (white * white)) / (1.0f + luma);
+		return color * factor * pow(color, float3(invLuma / gamma));
+	}
+
+	// Rom-Bin-Da-House tone mapping (faster approximation of filmic tone mapping)
+	float3 RomBinDaHouseToneMapping(float3 color)
+	{
+		return exp(-1.0f / (2.72f * color + 0.15f)) * pow(color, float3(1.0f / gamma));
+	}
+
+	// Filmic tone mapping (optimized but may not be as accurate for all cases)
+	float3 FilmicToneMapping(float3 color)
+	{
+		return max(float3(0.0f), color - float3(0.004f)) * (color * (float3(6.2f, 6.2f, 6.2f) * color + float3(0.5f, 0.5f, 0.5f))) / 
+			(color * (float3(6.2f, 6.2f, 6.2f) * color + float3(1.7f, 1.7f, 1.7f)) + float3(0.06f, 0.06f, 0.06f));
+	}
+
+	// Uncharted 2 tone mapping (complex and not optimized for performance)
+	float3 Uncharted2ToneMapping(float3 color)
+	{
+		const float A = 0.15f;
+		const float B = 0.50f;
+		const float C = 0.10f;
+		const float D = 0.20f;
+		const float E = 0.02f;
+		const float F = 0.30f;
+		const float W = 11.2f;
+
+		float exposure = 2.0;
+		color *= exposure;
+	
+		float3 numerator = color * (float3(A, A, A) * color * color + float3(C, C, C) * B) + float3(D, D, D) * E;
+		float3 denominator = color * (float3(A, A, A) * color + B) + float3(D, D, D) * F;
+		color = (numerator / denominator) - E / F;
+
+		float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
+		color /= white;
+		return pow(color, float3(1.0f / gamma));
+	}
+
+	float3 Tonemap_ACES(float3 x) {
+    	// Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
+    	const float a = 2.51;
+    	const float b = 0.03;
+    	const float c = 2.43;
+    	const float d = 0.59;
+    	const float e = 0.14;
+    	return (x * (a * x + b)) / (x * (c * x + d) + e);
+	}
+
+	float3 Tonemap_Unreal(float3 x) {
+		// Unreal 3, Documentation: "Color Grading"
+		// Adapted to be close to Tonemap_ACES, with similar range
+		// Gamma 2.2 correction is baked in, don't use with sRGB conversion!
+		return x / (x + 0.155) * 1.019;
+	}
+
+float3 Tonemap_Uchimura(float3 x, float P, float a, float m, float l, float c, float b) {
+    // Uchimura 2017, "HDR theory and practice"
+    // Math: https://www.desmos.com/calculator/gslcdxvipg
+    // Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
+    float l0 = ((P - m) * l) / a;
+    float L0 = m - m / a;
+    float L1 = m + (1.0 - m) / a;
+    float S0 = m + l0;
+    float S1 = m + a * l0;
+    float C2 = (a * P) / (P - S1);
+    float CP = -C2 / P;
+
+    float w0 = 1.0 - smoothstep(0.0, m, x);
+    float w2 = step(m + l0, x);
+    float w1 = 1.0 - w0 - w2;
+
+    float T = m * pow(x / m, c) + b;
+    float S = P - (P - S1) * exp(CP * (x - S0));
+    float L = m + a * (x - m);
+
+    return T * w0 + L * w1 + S * w2;
+}
+
+float3 Tonemap_Uchimura(float3 x) {
+    const float P = 1.0;  // max display brightness
+    const float a = 1.0;  // contrast
+    const float m = 0.22; // linear section start
+    const float l = 0.4;  // linear section length
+    const float c = 1.33; // black
+    const float b = 0.0;  // pedestal
+    return Tonemap_Uchimura(x, P, a, m, l, c, b);
+}
+
+float3 Tonemap_Lottes(float3 x) {
+    // Lottes 2016, "Advanced Techniques and Optimization of HDR Color Pipelines"
+    const float a = 1.6;
+    const float d = 0.977;
+    const float hdrMax = 8.0;
+    const float midIn = 0.18;
+    const float midOut = 0.267;
+
+    // Can be precomputed
+    const float b =
+        (-pow(midIn, a) + pow(hdrMax, a) * midOut) /
+        ((pow(hdrMax, a * d) - pow(midIn, a * d)) * midOut);
+    const float c =
+        (pow(hdrMax, a * d) * pow(midIn, a) - pow(hdrMax, a) * pow(midIn, a * d) * midOut) /
+        ((pow(hdrMax, a * d) - pow(midIn, a * d)) * midOut);
+
+    return pow(x, a) / (pow(x, a * d) * b + c);
+}
+
+};
