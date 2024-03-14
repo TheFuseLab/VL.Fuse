@@ -2,70 +2,109 @@
 
 namespace Main;
 
+public enum ShaderArgumentModifier
+{
+    In,
+    Out,
+    InOut
+}
+
+public class ShaderFunctionInfo
+{
+    public string ReturnType { get; set; }
+    public string FunctionName { get; set; }
+    public List<ShaderArgument> Arguments { get; set; } = new List<ShaderArgument>();
+
+    public ShaderFunctionInfo(string returnType, string functionName)
+    {
+        ReturnType = returnType;
+        FunctionName = functionName;
+    }
+
+    public void AddArgument(string type, string name, ShaderArgumentModifier modifier = ShaderArgumentModifier.In)
+    {
+        Arguments.Add(new ShaderArgument(type, name, modifier));
+    }
+}
+
+public class ShaderArgument
+{
+    public string Type { get; set; }
+    public string Name { get; set; }
+    public ShaderArgumentModifier Modifier { get; set; } = ShaderArgumentModifier.In; // Default value
+
+    public ShaderArgument(string type, string name, ShaderArgumentModifier modifier = ShaderArgumentModifier.In)
+    {
+        Type = type;
+        Name = name;
+        Modifier = modifier;
+    }
+}
+
 public class ShaderGraphParser
 {
-    private string codeSnippet;
-    private Dictionary<string, string> variableReplacements = new Dictionary<string, string>();
-    private HashSet<string> functionNames = new HashSet<string> { "abs", "clamp", "length" }; // Predefined function names
-
-    public ShaderGraphParser(string code)
+    
+    public ShaderFunctionInfo ProcessShaderFunction(string shaderFunction)
     {
-        this.codeSnippet = code;
-    }
+        // Extract return type
+        string returnType = Regex.Match(shaderFunction, @"^\s*\w+").Value.Trim();
 
-    public void Parse()
-    {
-        // Regex pattern to match variable declarations and usages, excluding function calls
-        string pattern = @"(\bfloat\b|\bvec3\b)\s+(\w+)|\b(\w+)\b(?!\s*\()";
-        MatchCollection matches = Regex.Matches(codeSnippet, pattern);
+        // Extract function name
+        string functionName = Regex.Match(shaderFunction, @"\w+\s*\(").Value.Trim('(').Trim();
 
-        foreach (Match match in matches)
+        // Initialize ShaderFunctionInfo with extracted returnType and functionName
+        ShaderFunctionInfo functionInfo = new ShaderFunctionInfo(returnType, functionName);
+
+
+        // Updated code to extract arguments with modifiers
+        string argumentsString = Regex.Match(shaderFunction, @"\(([^)]+)\)").Groups[1].Value;
+        var arguments = argumentsString.Split(',');
+        foreach (var argument in arguments)
         {
-            if (match.Groups[1].Success) // Variable declaration
+            var parts = Regex.Split(argument.Trim(), @"\s+"); // Split by whitespace, accounting for multiple spaces
+            if (parts.Length >= 2)
             {
-                string varType = match.Groups[1].Value;
-                string varName = match.Groups[2].Value;
+                ShaderArgumentModifier modifier = ShaderArgumentModifier.In; // Default modifier
+                int typeIndex = 0; // Index of the type in parts[]
 
-                // Generate a unique identifier for the declared variable
-                string uniqueName = GenerateUniqueName(varName);
-                variableReplacements[varName] = uniqueName;
-            }
-            else if (match.Groups[3].Success) // Variable usage
-            {
-                string varName = match.Groups[3].Value;
-
-                if (!functionNames.Contains(varName) && !variableReplacements.ContainsKey(varName)) // Not a function and not already replaced
+                // Check for modifier and adjust typeIndex accordingly
+                if (parts[0].Equals("in", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Generate a unique identifier for the input variable
-                    string uniqueName = GenerateUniqueName(varName);
-                    variableReplacements[varName] = uniqueName;
+                    modifier = ShaderArgumentModifier.In;
+                    typeIndex = 1;
                 }
+                else if (parts[0].Equals("out", StringComparison.OrdinalIgnoreCase))
+                {
+                    modifier = ShaderArgumentModifier.Out;
+                    typeIndex = 1;
+                }
+                else if (parts[0].Equals("inout", StringComparison.OrdinalIgnoreCase))
+                {
+                    modifier = ShaderArgumentModifier.InOut;
+                    typeIndex = 1;
+                }
+
+                // Assuming the last part is always the name
+                var argType = parts[typeIndex];
+                string argName = parts[parts.Length - 1];
+                functionInfo.AddArgument(argType, argName, modifier); // Updated to include modifier
             }
         }
-    }
 
-    private string GenerateUniqueName(string baseName)
-    {
-        // Simplistic unique identifier generation for demonstration
-        return $"{baseName}_{new Random().Next(10000, 99999)}";
+        return functionInfo;
     }
+    
+   /*
+    * / Example of replacing function name - demonstration purpose
+        string newFunctionName = "newFunctionName";
+        string newFunctionDeclaration = shaderFunction.Replace(functionName, newFunctionName);
+        
+        Console.WriteLine($"Modified Function Name: {newFunctionDeclaration}");
+    */
+    
 
-    public string GenerateModifiedCode()
+    public static ShaderFunctionInfo ParseExpression(string theExpression)
     {
-        string modifiedCode = codeSnippet;
-        // Replace variables with their unique identifiers, carefully handling property access
-        foreach (var replacement in variableReplacements)
-        {
-            // Use a regex pattern that replaces the variable name, ensuring property accesses are correctly associated
-            modifiedCode = Regex.Replace(modifiedCode, $@"\b{replacement.Key}\b(?!\.\w+)", replacement.Value);
-        }
-        return modifiedCode;
-    }
-
-    public static ShaderGraphParser ParseExpression(string theExpression)
-    {
-        var parser = new ShaderGraphParser(theExpression);
-        parser.Parse();
-        return parser;
+        return new ShaderGraphParser().ProcessShaderFunction(theExpression);
     }
 }
