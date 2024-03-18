@@ -49,7 +49,7 @@ namespace Fuse
     
     public class ConstantValue<T>: ShaderNode<T>
     {
-        public ConstantValue(T theValue) : base(NodeContext.Default, "constant", null, false)
+        public ConstantValue(T theValue) : base(NodeContext.CurrentRoot, "constant", null, false)
         {
             Value = theValue;
             HasFixedName = true;

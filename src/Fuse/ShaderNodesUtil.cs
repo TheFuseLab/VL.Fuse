@@ -397,7 +397,7 @@ namespace Fuse
         
         public NodeContext NextSubContext()
         {
-            if(_context == null)return NodeContext.Default;
+            if(_context == null)return NodeContext.CurrentRoot;
             
             var result = _context.CreateSubContext(new UniqueId("Fuse", _subContextId.ToString()));
             _subContextId++;

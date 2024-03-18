@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using Fuse.compute;
 using Fuse.function;
 using Fuse.ShaderFX;
+using Stride.Graphics;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
@@ -652,8 +654,8 @@ namespace Fuse
         }
     }
     
-    [Monadic(typeof(ShaderNodeMonadicFactory<>), typeof(ShaderNodeMonadicTypeFilter))]
-    public class ShaderNode<T> : AbstractShaderNode , IComputeValue<T>
+    [MonadicTypeFilter(typeof(ShaderNodeMonadicTypeFilter))]
+    public class ShaderNode<T> : AbstractShaderNode, IComputeValue<T>, IMonadicValue<T>
     {
         // ReSharper disable once CollectionNeverQueried.Global
         // ReSharper disable once MemberCanBeProtected.Global
@@ -712,7 +714,63 @@ namespace Fuse
         {
             return TypeHelpers.GetDimension<T>();
         }
+
         public override string ID => Name + "_" + HashCode;
+
+        static IMonadicValue<T> IMonadicValue<T>.Create(NodeContext nodeContext, T value)
+        {
+            var m = (IMonadicValue<T>)Create_NonGeneric(nodeContext);
+            return m.SetValue(value);
+
+            static AbstractShaderNode Create_NonGeneric(NodeContext nodeContext)
+            {
+                // Can't call the constructor directly due to value type constraint
+                if (typeof(T).IsValueType)
+                {
+                    return (AbstractShaderNode)Activator.CreateInstance(typeof(ValueInput<>).MakeGenericType(typeof(T)), nodeContext);
+                }
+
+                // Read: if (T is Buffer)
+                if (typeof(Buffer).IsAssignableFrom(typeof(T)))
+                {
+                    // Can't call the constructor directly due to value type constraint
+                    var builderType = typeof(DelegatingBufferInput<>);
+                    return (AbstractShaderNode)Activator.CreateInstance(builderType.MakeGenericType(typeof(T)), nodeContext);
+                }
+
+                if (typeof(T) == typeof(Texture))
+                    return new DelegatingTextureInput(nodeContext);
+
+                if (typeof(T) == typeof(SamplerState))
+                    return new SamplerInput(nodeContext);
+
+                if (typeof(T) == typeof(GpuStruct))
+                    return new DynamicStruct<GpuStruct>(nodeContext, new Dictionary<string, AbstractShaderNode>(), null);
+
+                if (typeof(T) == typeof(GpuVoid))
+                    return new EmptyVoid(nodeContext);
+
+                /*
+                if (typeof(T) == typeof(Buffer))
+                    return new BufferGpuValueBuilder<T>() as IMonadBuilder<T, GpuValue<T>>;
+                */
+                throw new NotImplementedException(typeof(T).FullName + "Not Implemented");
+            }
+        }
+
+        bool IMonadicValue.HasValue => HasValue();
+
+        bool IMonadicValue.AcceptsValue => true;
+
+        T IMonadicValue<T>.Value => GetValue();
+
+        IMonadicValue<T> IMonadicValue<T>.SetValue(T value) => SetValue(value);
+
+        protected virtual T GetValue() => default;
+
+        protected virtual ShaderNode<T> SetValue(T value) => this;
+
+        protected virtual bool HasValue() => false;
     }
 
     public abstract class ResultNode<T> : ShaderNode<T>
