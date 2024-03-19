@@ -50,15 +50,15 @@ public class InterlockedBuffer : ShaderNode<GpuVoid>, IComputeVoid
     }
 }
 
-public class InterlockedTexture : ShaderNode<GpuVoid>, IComputeVoid
+public class InterlockedTexture<TIndex> : ShaderNode<GpuVoid>, IComputeVoid
 {
     private readonly ITextureInput _texture;
-    private readonly ShaderNode<int> _index;
+    private readonly ShaderNode<TIndex> _index;
     private readonly ShaderNode<int> _value;
     private readonly ShaderNode<int> _lastValue;
     private readonly string _function;
     
-    public InterlockedTexture(NodeContext nodeContext, string theFunction, ITextureInput theTexture, ShaderNode<int> theIndex, ShaderNode<int> theValue) : base( nodeContext, "interlocked")
+    public InterlockedTexture(NodeContext nodeContext, string theFunction, ITextureInput theTexture, ShaderNode<TIndex> theIndex, ShaderNode<int> theValue) : base( nodeContext, "interlocked")
     {
         var factory = new NodeSubContextFactory(NodeContext);
         _lastValue = new DeclareValue<int>(factory.NextSubContext());

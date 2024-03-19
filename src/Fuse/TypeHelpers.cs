@@ -634,6 +634,12 @@ namespace Fuse
 
                 var textureDataType = theTexture.Format switch
                 {
+                    PixelFormat.R32_UInt => "uint",
+                    PixelFormat.R32_SInt => "int",
+                    PixelFormat.R32G32_UInt => "uint2",
+                    PixelFormat.R32G32_SInt => "int2",
+                    PixelFormat.R32G32B32A32_UInt => "uint4",
+                    PixelFormat.R32G32B32A32_SInt => "int4",
                     PixelFormat.R16_Float => "half",
                     PixelFormat.R16G16_Float => "half2",
                     PixelFormat.R16G16B16A16_Float => "half4",
