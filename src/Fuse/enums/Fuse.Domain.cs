@@ -5,4 +5,11 @@
     public enum DomainRepeat2D { WrapXY, MirrorXY, GridXY, WrapX, MirrorX, WrapY, MirrorY, PolarXY };
 
     public enum DomainRepeat3D { WrapX, WrapY, WrapZ, MirrorX, MirrorY, MirrorZ, WrapXY, WrapXZ, WrapYZ, MirrorXY, MirrorXZ, MirrorYZ, WrapXYZ, PolarXY, PolarXZ, PolarYZ };
+
+    public enum DomainAlignment
+    {
+        Start,
+        Center,
+        End
+    }
 }
