@@ -29,7 +29,7 @@ namespace Fuse.compute
     public class VertexIdIndexProvider : IIndexProvider{
         public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
         {
-            var vertexId =  new Semantic<int>(NodeContext.Default, "VertexId");
+            var vertexId =  new Semantic<int>(NodeContext.CurrentRoot, "VertexId");
             var join = new Int3Join(nodeContext, vertexId, new ConstantValue<int>(0), new ConstantValue<int>(0));
             theReadIndex = theWriteIndex = join;
         }

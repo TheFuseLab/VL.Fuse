@@ -146,9 +146,17 @@ namespace Fuse{
              }
          }
 
-         
-         
-         
+
+        // Called by IMonadicValue<T>
+        protected override T GetValue() => Value;
+
+        // Called by IMonadicValue<T>
+        protected override ShaderNode<T> SetValue(T value)
+        {
+            Value = value;
+            return this;
+        }
+
 
          protected void SetFieldDeclaration(string theTypeName, string theComputeTypeName)
          {
@@ -363,12 +371,12 @@ namespace Fuse{
              _typeTracker = theTypeTracker; 
              Value = null;
              Type = theType;
-             
+
              SetInputs( new List<AbstractShaderNode>{Type});
          }
 
      }
-     
+
     public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>> where T : struct 
     {
 
@@ -407,6 +415,9 @@ namespace Fuse{
             ParameterKey = new ValueParameterKey<T>(ID);
             SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
         }
+
+        // Called by IMonadicValue
+        protected override bool HasValue() => true;
     }
     /*
     public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
