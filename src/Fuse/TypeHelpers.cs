@@ -107,6 +107,7 @@ namespace Fuse
                 {typeof(Int3), "int3(0, 0, 0)"},
                 {typeof(Int4), "int4(0, 0, 0, 0)"},
                 {typeof(uint), "0"},
+                {typeof(ushort), "0"},
                 {typeof(bool), "true"},
             };
             
@@ -137,6 +138,8 @@ namespace Fuse
                 }
                 
                 if (typeof(T) == typeof(int)) return theValue.ToString();
+                
+                if (typeof(T) == typeof(ushort)) return theValue.ToString();
                 
                 if (typeof(T) == typeof(Int2))
                 {
@@ -204,6 +207,7 @@ namespace Fuse
                 {typeof(Int3), "Int3"},
                 {typeof(Int4), "Int4"},
                 {typeof(uint), "UInt"},
+                {typeof(ushort), "UShort"},
                 {typeof(bool), "Bool"},
                 
                 {typeof(GpuStruct), "Struct"},
@@ -225,6 +229,8 @@ namespace Fuse
                     ShaderNode<Color4> _ => "Float4",
                     ShaderNode<bool> _ => "Bool",
                     ShaderNode<int> _ => "Int",
+                    ShaderNode<uint> _ => "UInt",
+                    ShaderNode<ushort> _ => "UShort",
                     ShaderNode<Int2> _ => "Int2",
                     ShaderNode<Int3> _ => "Int3",
                     ShaderNode<Int4> _ => "Int4",
@@ -273,6 +279,7 @@ namespace Fuse
                 {typeof(Int3), "int3"},
                 {typeof(Int4), "int4"},
                 {typeof(uint), "uint"},
+                {typeof(ushort), "ushort"},
                 {typeof(bool), "bool"},
                 
                 {typeof(GpuStruct), "struct"},
@@ -297,6 +304,8 @@ namespace Fuse
                     ShaderNode<Matrix2> _ => "float2x2",
                     ShaderNode<bool> _ => "bool",
                     ShaderNode<int> _ => "int",
+                    ShaderNode<uint> _ => "uint",
+                    ShaderNode<ushort> _ => "ushort",
                     ShaderNode<Int2> _ => "int2",
                     ShaderNode<Int3> _ => "int3",
                     ShaderNode<Int4> _ => "int4",
@@ -338,6 +347,7 @@ namespace Fuse
                 {typeof(Int3), "ComputeInt3"},
                 {typeof(Int4), "ComputeInt4"},
                 {typeof(uint), "ComputeUint"},
+                {typeof(ushort), "ComputeUShort"},
                 {typeof(bool), "ComputeBool"},
                 
                 {typeof(GpuStruct), "struct"},
@@ -360,6 +370,8 @@ namespace Fuse
                     ShaderNode<Matrix> _ => "ComputeMatrix",
                     ShaderNode<bool> _ => "ComputeBool",
                     ShaderNode<int> _ => "ComputeInt",
+                    ShaderNode<uint> _ => "ComputeUInt",
+                    ShaderNode<ushort> _ => "ComputeUShort",
                     ShaderNode<Int2> _ => "ComputeInt2",
                     ShaderNode<Int3> _ => "ComputeInt3",
                     ShaderNode<Int4> _ => "ComputeUint",
@@ -403,6 +415,7 @@ namespace Fuse
                 {typeof(Int3), 3},
                 {typeof(Int4), 4},
                 {typeof(uint), 1},
+                {typeof(ushort), 1},
                 {typeof(bool), 1},
                 
                 {typeof(GpuStruct), 1},
@@ -424,6 +437,8 @@ namespace Fuse
                     ShaderNode<Color4> _ => 4,
                     ShaderNode<bool> _ => 1,
                     ShaderNode<int> _ => 1,
+                    ShaderNode<uint> _ => 1,
+                    ShaderNode<ushort> _ => 1,
                     ShaderNode<Int2> _ => 2,
                     ShaderNode<Int3> _ => 3,
                     ShaderNode<Int4> _ => 4,
@@ -472,6 +487,7 @@ namespace Fuse
                 {typeof(Int3), 3 * 4},
                 {typeof(Int4), 4 * 4},
                 {typeof(uint), 1 * 4},
+                {typeof(ushort), 1 * 2},
                 {typeof(bool), 1},
                 
                 {typeof(GpuVoid), 0}
@@ -491,6 +507,8 @@ namespace Fuse
                     ShaderNode<Matrix2> _ => 2 * 2 * 4,
                     ShaderNode<bool> _ => 1,
                     ShaderNode<int> _ => 4,
+                    ShaderNode<uint> _ => 4,
+                    ShaderNode<ushort> _ => 4,
                     ShaderNode<Int2> _ => 2 * 4,
                     ShaderNode<Int3> _ => 3 * 4,
                     ShaderNode<Int4> _ => 4 * 4,
@@ -531,6 +549,7 @@ namespace Fuse
                 {typeof(Int3), PixelFormat.R32G32B32_SInt},
                 {typeof(Int4), PixelFormat.R32G32B32A32_SInt},
                 {typeof(uint), PixelFormat.R32_UInt},
+                {typeof(ushort), PixelFormat.R16_UInt},
                 {typeof(bool), PixelFormat.R1_UNorm},
                 
                 {typeof(GpuVoid), 0}
@@ -550,7 +569,8 @@ namespace Fuse
                     ShaderNode<Int2> _ => PixelFormat.R32G32_SInt,
                     ShaderNode<Int3> _ => PixelFormat.R32G32B32_SInt,
                     ShaderNode<Int4> _ => PixelFormat.R32G32B32A32_SInt,
-                    ShaderNode<uint> _ => PixelFormat.R32G32B32A32_SInt,
+                    ShaderNode<uint> _ => PixelFormat.R32_UInt,
+                    ShaderNode<ushort> _ => PixelFormat.R16_UInt,
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
             }
@@ -571,11 +591,58 @@ namespace Fuse
             }
             
             #endregion
+            
+            #region FromPixelFormat
+            
+            private static readonly Dictionary<PixelFormat,Type> PixelFormatTypes = new()
+            {
+                {PixelFormat.R32_Float, typeof(float)},
+                {PixelFormat.R32G32_Float, typeof(Vector2)},
+                {PixelFormat.R32G32B32_Float,typeof(Vector3)},
+                {PixelFormat.R32G32B32A32_Float, typeof(Vector4)},
+                
+                {PixelFormat.R32_SInt, typeof(int)},
+                {PixelFormat.R32G32_SInt, typeof(Int2)},
+                {PixelFormat.R32G32B32_SInt, typeof(Int3)},
+                {PixelFormat.R32G32B32A32_SInt, typeof(Int4)},
+                {PixelFormat.R32_UInt, typeof(uint)},
+                {PixelFormat.R16_UInt, typeof(ushort)},
+                {PixelFormat.R1_UNorm, typeof(bool)}
+            };
+            /*
+            public static Type GetShaderNode(PixelFormat format)
+            {
+                return format switch
+                {
+                    PixelFormat.R32_Float _ => ShaderNode<float>,
+                    PixelFormat.R32G32_Float _ => ShaderNode<Vector2>,
+                    ShaderNode<Vector3> _ => PixelFormat.R32G32B32_Float,
+                    ShaderNode<Vector4> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<Color4> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<bool> _ => PixelFormat.R1_UNorm,
+                    ShaderNode<int> _ => PixelFormat.R32_SInt,
+                    ShaderNode<Int2> _ => PixelFormat.R32G32_SInt,
+                    ShaderNode<Int3> _ => PixelFormat.R32G32B32_SInt,
+                    ShaderNode<Int4> _ => PixelFormat.R32G32B32A32_SInt,
+                    ShaderNode<uint> _ => PixelFormat.R32_UInt,
+                    ShaderNode<ushort> _ => PixelFormat.R16_UInt,
+                    _ => throw new NotImplementedException("No name defined for format: " + format)
+                };
+            }*/
+
+            public  static Type  GetType(PixelFormat format)
+            {
+                return PixelFormatTypes.TryGetValue(format, out var result) ? result : typeof(float);
+            }
+
+            #endregion
 
             #region IsIntType
             public static bool IsIntType(Type type)
             {
                 return type == typeof(int) 
+                       || type == typeof(uint) 
+                       || type == typeof(ushort) 
                        || type == typeof(Int2) 
                        || type == typeof(Int3) 
                        || type == typeof(Int4);

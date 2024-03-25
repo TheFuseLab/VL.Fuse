@@ -157,7 +157,7 @@ namespace Fuse
     
     public sealed class CustomFunction<T>: AbstractFunction<T>
     {
-        private readonly Dictionary<string, IDelegate> _delegates;
+        private readonly IDictionary<string, IDelegate> _delegates;
 
         private readonly string _codeTemplate;
 
@@ -171,7 +171,7 @@ namespace Fuse
             string theCodeTemplate,
             ShaderNode<T> theDefault,
             IEnumerable<AbstractShaderNode> theArguments, 
-            Dictionary<string, IDelegate> theDelegates,
+            IDictionary<string, IDelegate> theDelegates,
             IEnumerable<string> theMixins = null,
             IDictionary<string, string> theFunctionValues = null,
             bool theIsGroupable = false,
@@ -220,7 +220,7 @@ namespace Fuse
         }
 
         
-        private void HandleDelegates(Dictionary<string,IDelegate> theDelegates, IDictionary<string, string> theFunctionValueMap)
+        private void HandleDelegates(IDictionary<string,IDelegate> theDelegates, IDictionary<string, string> theFunctionValueMap)
         {
             if (theDelegates == null) return;
 
