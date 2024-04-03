@@ -289,7 +289,7 @@ namespace Fuse
             var key = new MaterialComputeColorKeys(MaterialKeys.DiffuseMap, MaterialKeys.DiffuseValue, Stride.Core.Mathematics.Color.White);
             theDrawShader.GenerateShaderSource((ShaderGeneratorContext) context,key);
             effectImageShader.EffectName = theDrawShader.ShaderName;
-            Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
+            if(DebugShaderGeneration)Console.WriteLine($"Register Time: {watch.ElapsedMilliseconds} ms for Shader {theDrawShader.ShaderName}");
             return effectImageShader;
         }
 
