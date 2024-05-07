@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="MblF8iQm1BnMbmYIeBwSyU" LanguageVersion="2024.6.0" Version="0.128">
+<Document xmlns:p="property" xmlns:r="reflection" Id="MblF8iQm1BnMbmYIeBwSyU" LanguageVersion="2024.6.3-0013-g81d8e82257" Version="0.128">
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Material" CanvasType="FullCategory">
       <!--
@@ -4062,14 +4062,51 @@
             <ControlPoint Id="Cv7F51uLEbBLBLPRSYDRWI" Bounds="634,834" />
             <Pad Id="L0dS1qP1cW9OEukvx9ARpM" SlotId="II8UR3hL17KMiFZMSPsifO" Bounds="1178,626" />
             <ControlPoint Id="BIYAFx0ECUkOeZclVtRldo" Bounds="1178,670" />
-            <Pad Id="MQX9Uln8quLP4TjdMhxf2k" Comment="Shader Code" Bounds="849,822,578,844" ShowValueBox="true" isIOBox="true" />
+            <!--
+
+    ************************ CreateDefault ************************
+
+-->
+            <Node Name="CreateDefault" Bounds="441,446,111,90" Id="JUSPmQ34JesPp7DlOjxnLZ">
+              <p:NodeReference>
+                <Choice Kind="OperationDefinition" />
+              </p:NodeReference>
+              <Patch Id="OqdahBLAAGLP0qKOK3j6WC">
+                <Pin Id="CPbINrgRMHLOnYx1gow10r" Name="Output" Kind="OutputPin">
+                  <p:TypeAnnotation LastCategoryFullName="Fuse.Material" LastDependency="Fuse.Material.vl">
+                    <Choice Kind="TypeFlag" Name="Material (Fuse)" />
+                  </p:TypeAnnotation>
+                </Pin>
+                <ControlPoint Id="EL3bnaxUyEbNI5jen7mdeJ" Bounds="456,519" />
+                <Link Id="MfUclMZRl1VO4kFCGQmW4F" Ids="EL3bnaxUyEbNI5jen7mdeJ,CPbINrgRMHLOnYx1gow10r" IsHidden="true" />
+                <Node Bounds="453,478,40,19" Id="EGPFNFrPQPPMmAraa868Ei">
+                  <p:NodeReference LastCategoryFullName="Primitive.Object" LastDependency="VL.CoreLib.vl">
+                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                    <CategoryReference Kind="ClassType" Name="Object" NeedsToBeDirectParent="true" />
+                    <Choice Kind="OperationCallFlag" Name="NULL" />
+                  </p:NodeReference>
+                  <Pin Id="SQgO7kwYemYPCmVBj8rhyD" Name="Result" Kind="OutputPin" />
+                </Node>
+                <Node Bounds="472,469,68,26" Id="RkDP11utfVZLOfSBaiACTH">
+                  <p:NodeReference LastCategoryFullName="Fuse.Material.Material (Fuse)" LastDependency="Fuse.Material.vl">
+                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                    <CategoryReference Kind="ClassType" Name="Material (Fuse)" />
+                    <Choice Kind="OperationCallFlag" Name="Create" />
+                  </p:NodeReference>
+                  <Pin Id="KEMAH6eog4UM617EWDeVlb" Name="Output" Kind="StateOutputPin" />
+                  <Pin Id="AlPXfQQmEI2OQIT9wRsgQa" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                </Node>
+                <Link Id="UUHXXv0hUJ1NdHWmH3iGqH" Ids="KEMAH6eog4UM617EWDeVlb,EL3bnaxUyEbNI5jen7mdeJ" />
+              </Patch>
+            </Node>
           </Canvas>
           <Patch Id="PIV2vLjowE4MMo47cf44jQ" Name="Create" />
           <ProcessDefinition Id="AjHsO5ax8L6LXe2cm5wYmf" HasStateOut="true">
             <Fragment Id="CJmwyvn6SLSO0ZmX9GoRsc" Patch="PIV2vLjowE4MMo47cf44jQ" Enabled="true" />
-            <Fragment Id="OQVLnTincIjOXO5adBcUsZ" Patch="TErZcZ94m6wLZKDPd70hjG" Enabled="true" />
+            <Fragment Id="PVp6C4BbN3IPnJQOXYQUHE" Patch="JUSPmQ34JesPp7DlOjxnLZ" />
             <Fragment Id="JLgQqfHb8RAQWjkvn0iUK5" Patch="NphGfDe4eiXMYxobPOxS6b" />
             <Fragment Id="BxuG7kycrEjNbOXFsJParp" Patch="JIUWPmSt5j3L9otkJkOuKf" />
+            <Fragment Id="OQVLnTincIjOXO5adBcUsZ" Patch="TErZcZ94m6wLZKDPd70hjG" Enabled="true" />
           </ProcessDefinition>
           <Slot Id="VdMp7q7NKw6QaGdAVi715a" Name="Semantics" />
           <Link Id="TXVqNQ2EOGiP3hqzREku5V" Ids="Ac5qx3575eDQJ2iHUMnYAQ,UMImqr9evnTLEdZtnSHpxo" />
@@ -4108,7 +4145,6 @@
           <Patch Id="JIUWPmSt5j3L9otkJkOuKf" Name="GetMaterial" ParticipatingElements="V0CtP8yZChnNY1XMPkhVfV">
             <Pin Id="RPHcBcjynJXMlLZzTBQU4f" Name="Material" Kind="OutputPin" />
           </Patch>
-          <Link Id="FisqbbSPCZiOhKZV6qRpFW" Ids="IxMVYJzi3xRMOpuYzSadkM,MQX9Uln8quLP4TjdMhxf2k" />
         </Patch>
       </Node>
       <Canvas Id="TzTklVnA1u9QORFugfKNDu" Name="GeometryAttributes" Position="63,128">
@@ -5875,6 +5911,7 @@
                     <Pin Id="VSTALTZgA7NNWycTrayN7q" Name="Enabled" Kind="InputPin" />
                     <Pin Id="DRGwajAX8gvOhxDN20hSfq" Name="Output" Kind="OutputPin" />
                   </Node>
+                  <Patch Id="Tb5VQO5POd2P4om5f49Yns" Name="Dispose" />
                 </Patch>
               </Node>
               <Node Bounds="780,257,28,19" Id="P7swfKt7WOPPFhXFOckAyU">
@@ -9136,11 +9173,11 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="OqhCsK9zmC7P7weNrTG6VP" Location="VL.CoreLib" IsFriend="true" Version="2024.6.0" />
-  <NugetDependency Id="TKrKQOZwJkePUZ9eqcED7u" Location="VL.Stride" IsFriend="true" Version="2024.6.0" />
+  <NugetDependency Id="OqhCsK9zmC7P7weNrTG6VP" Location="VL.CoreLib" IsFriend="true" Version="2024.6.3-0013-g81d8e82257" />
+  <NugetDependency Id="TKrKQOZwJkePUZ9eqcED7u" Location="VL.Stride" IsFriend="true" Version="2024.6.3-0013-g81d8e82257" />
   <DocumentDependency Id="MisF0IS1HE0L21HH2MZxvw" Location="./Fuse.Core.vl" IsFriend="true" />
   <DocumentDependency Id="Dgri6t3ivFUQEGfpZMKOyV" Location="./Fuse.Calculus.vl" />
-  <NugetDependency Id="TCVKJu12B2OL6N694lkd0C" Location="VL.Stride.TextureFX" Version="2024.6.0" />
+  <NugetDependency Id="TCVKJu12B2OL6N694lkd0C" Location="VL.Stride.TextureFX" Version="2024.6.3-0013-g81d8e82257" />
   <NugetDependency Id="BtkHMGS6JQuP9FKgtsEhQO" Location="VL.Fuse" Version="0.0.0.0" />
-  <NugetDependency Id="EOyIFQt7lvYNYPMBrLo7qq" Location="VL.Stride.Runtime" Version="2024.6.0" />
+  <NugetDependency Id="EOyIFQt7lvYNYPMBrLo7qq" Location="VL.Stride.Runtime" Version="2024.6.3-0013-g81d8e82257" />
 </Document>
