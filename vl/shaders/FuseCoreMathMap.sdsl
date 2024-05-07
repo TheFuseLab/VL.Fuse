@@ -48,9 +48,15 @@ shader FuseCoreMathMap: FuseCoreMath
 
 	float gain(float x, float control = 0.5)
 	{
-		if (control > 0)
-		{if(x < 0.5)     return bias(x * 2.0,control)/2.0;   else  return bias(x * 2.0 - 1.0,1.0 - control)/2.0 + 0.5; }
-		else if(x < 0.5)     return 1-(bias(x * 2.0,-control)/2.0);   else  return 1-(bias(x * 2.0 - 1.0,1.0 + control)/2.0 + 0.5); 
+		if (control > 0){
+			if(x < 0.5)
+				return bias(x * 2.0,control)/2.0;
+			else
+				return bias(x * 2.0 - 1.0,1.0 - control)/2.0 + 0.5;
+		}
+		else 
+			if(x < 0.5)
+				return 1-(bias(x * 2.0,-control)/2.0);   else  return 1-(bias(x * 2.0 - 1.0,1.0 + control)/2.0 + 0.5); 
 	} 
 
 	float2 gain(float2 x, float2 control = 0.5)
@@ -107,7 +113,7 @@ shader FuseCoreMathMap: FuseCoreMath
 						smoothstep2(input.w, onMin.w, onMax.w, offMin.w, offMax.w));
 	 }
 
-
+// adaptivley patched in fuse
 	float pulse(float input, float center, float slopeWidth, float centerWidth = 0.0)
 	{
 		centerWidth *= 0.5;
@@ -513,7 +519,77 @@ shader FuseCoreMathMap: FuseCoreMath
 		return sin(t * HALFPI);
 	}
 
+	// Function to perform trilinear interpolation with derivatives
+	// Parameters a-h are the values for the eight vertices of the cube
+	// Parameter u is the interpolation factor
+	// Parameter du is the gradient of u
+	// Returns a float4 containing the interpolated value and its derivatives
+	float4 lerp3dDerivatives(float a, float b, float c, float d, float e, float f, float g, float h, float3 u, float3 du)
+	{
+		// Calculate coefficients
+		float k0 = a;
+		float k1 = b - a;
+		float k2 = c - a;
+		float k3 = e - a;
+		float k4 = a - b - c + d;
+		float k5 = a - c - e + g;
+		float k6 = a - b - e + f;
+		float k7 = -a + b + c - d + e - f - g + h;
 
+		// Perform interpolation and calculate derivatives
+		float interpolatedValue = k0 + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z;
+		float3 interpolatedDerivatives = du * float3(
+			k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, // derivative x
+			k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, // derivative y
+			k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y   // derivative z
+		);
 
+		return float4(interpolatedValue, interpolatedDerivatives);
+	}
+
+	// Function to perform linear interpolation with derivatives in 1D using coefficients k
+	// Parameters a and b are the input values at the endpoints
+	// Parameter u is the interpolation factor
+	// Parameter du is the gradient of u
+	// Returns a float2 containing the interpolated value and its derivative
+	float2 lerp1dDerivatives(float a, float b, float u, float du)
+	{
+		// Calculate coefficients
+		float k0 = a;
+		float k1 = b - a;
+
+		// Perform interpolation and calculate derivative
+		float interpolatedValue = k0 + k1 * u;
+		float interpolatedDerivative = du * k1;
+
+		return float2(interpolatedValue, interpolatedDerivative);
+	}
+
+	// Function to perform bilinear interpolation with derivatives in 2D using coefficients k
+	// Parameters a, b, c, and d are the input values at the corners of the square
+	// Parameter u is the interpolation factor along the x-axis
+	// Parameter v is the interpolation factor along the y-axis
+	// Parameter du and dv are the gradients of u and v, respectively
+	// Returns a float3 containing the interpolated value and its derivatives
+	float3 lerp2dDerivatives(float a, float b, float c, float d, float2 u, float2 du)
+	{
+		// Calculate coefficients
+		float k0 = a;
+		float k1 = b - a;
+		float k2 = c - a;
+		float k3 = a - b - c + d;
+
+		// Perform interpolation and calculate derivatives
+		float interpolatedValue = k0 + k1 * u.x + k2 * u.y + k3 * u.x * u.y;
+		float2 interpolatedDerivatives = float2(
+			k1 + k3 * u.y, // derivative x
+			k2 + k3 * u.x  // derivative y
+		);
+
+		// Scale derivatives with respect to input gradients
+		interpolatedDerivatives *= du;
+
+		return float3(interpolatedValue, interpolatedDerivatives);
+	}
 
 };
