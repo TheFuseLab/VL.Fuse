@@ -21,6 +21,8 @@ public class Delegate<T> : ShaderNode<T>, IDelegate
             
         if (theDelegate == null) return;
 
+        FunctionName = Name + "_" + HashCode;
+
         BuildFunction(theDelegate);
     }
         
@@ -84,8 +86,7 @@ public class Delegate<T> : ShaderNode<T>, IDelegate
         var stringBuilder = new StringBuilder();
         inputs.ForEach(input =>
         {
-            if (usedIDs.Contains(input.ID)) return;
-            usedIDs.Add(input.ID);
+            if (!usedIDs.Add(input.ID)) return;
             stringBuilder.Append(input.ModifierString());
             stringBuilder.Append(' ');
             stringBuilder.Append(input.TypeName());
@@ -109,7 +110,7 @@ public class Delegate<T> : ShaderNode<T>, IDelegate
         return "";
     }
 
-    public virtual string FunctionName => Name + "_" + HashCode;
+    public virtual string FunctionName { get; }
 }
 
 public class Delegate1In1Out<TIn, TOut> :Delegate<TOut>
