@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fuse.compute;
+using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
-using Stride.Shaders;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 using Buffer = Stride.Graphics.Buffer;
@@ -279,7 +279,7 @@ namespace Fuse{
          }
      }
 
-     public class TextureInput : ChangeableObjectInput<Texture>, ITextureInput
+     public class TextureInput : ChangeableObjectInput<Texture>, ITextureInput, ITextureInputProvider
      {
          public TextureTypeTracker TextureTypeTracker { get; }
          
@@ -288,14 +288,27 @@ namespace Fuse{
              TextureTypeTracker = theTypeTracker;
          }
 
-         public string TextureID => ID;
-
          public void SetTexture(bool theUseRW, Texture theTexture)
          {
              TextureTypeTracker.SetUseRw(theUseRW);
              TextureTypeTracker.CheckDeclaration(theTexture);
              OnUpdateName();
              Value = theTexture;
+         }
+
+         public string TextureID()
+         {
+             return ID;
+         }
+
+         public Int3 TextureSize()
+         {
+             return Value == null?new Int3(1,1,1):new Int3(Value.Width, Value.Height, Value.Depth);
+         }
+
+         public ITextureInput GetTextureInput()
+         {
+             return this;
          }
      }
      

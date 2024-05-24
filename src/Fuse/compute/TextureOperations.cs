@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Stride.Graphics;
+﻿using System.Collections.Generic;
 using VL.Core;
 using VL.Stride.Shaders.ShaderFX;
 
@@ -14,11 +11,15 @@ namespace Fuse.compute
         private readonly ShaderNode<TIndex> _index;
         
         
-        public ComputeTextureGet(NodeContext nodeContext, ITextureInput theTexture, ShaderNode<TIndex> theIndex, ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
+        public ComputeTextureGet(
+            NodeContext nodeContext, 
+            ITextureInputProvider theTextureProvider, 
+            ShaderNode<TIndex> theIndex, 
+            ShaderNode<T> theDefault = null) : base( nodeContext,"getTextureValue",  theDefault)
         {
-            _texture = theTexture as ITextureInput;
+            _texture = theTextureProvider?.GetTextureInput();
             _index = theIndex;
-            SetInputs(new List<AbstractShaderNode>{theTexture as AbstractShaderNode,theIndex});
+            SetInputs(new List<AbstractShaderNode>{_texture as AbstractShaderNode,theIndex});
         }
 
         protected override string SourceTemplate()
@@ -26,7 +27,7 @@ namespace Fuse.compute
             const string shaderCode = "${resultType} ${resultName} = ${textureName}[${index}];";
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
             {
-                {"textureName", _texture.TextureID},
+                {"textureName", _texture.TextureID()},
                 {"index", _index.ID}
             });
         }
@@ -45,15 +46,15 @@ namespace Fuse.compute
         
         public ComputeTextureSet(
             NodeContext nodeContext,
-            ITextureInput theTexture, 
+            ITextureInputProvider theTextureProvider, 
             ShaderNode<TIndex> theIndex, 
             ShaderNode<T> theValue) : base( nodeContext, "setTextureValue")
         {
-            _texture = theTexture as ITextureInput;
+            _texture = theTextureProvider?.GetTextureInput();
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)_texture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -76,7 +77,7 @@ namespace Fuse.compute
             const string shaderCode = "${textureName}[${index}] = ${value};";
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
-                {"textureName", _texture.TextureID},
+                {"textureName", _texture.TextureID()},
                 {"index", _index.ID},
                 {"value", _value.ID}
             });
@@ -91,15 +92,15 @@ namespace Fuse.compute
     
         public ComputeTextureAbstractSet(
             NodeContext nodeContext,
-            ITextureInput theTexture, 
+            ITextureInputProvider theTextureProvider,
             AbstractShaderNode theIndex,
             AbstractShaderNode theValue) : base( nodeContext, "setTextureValue")
         {
-            _texture = theTexture as ITextureInput;
+            _texture = theTextureProvider?.GetTextureInput();
             _index = theIndex;
             _value = theValue;
             
-            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)theTexture,theIndex,theValue});
+            SetInputs(new List<AbstractShaderNode>{(AbstractShaderNode)_texture,theIndex,theValue});
         }
         
         protected override Dictionary<string, string> CreateTemplateMap()
@@ -117,7 +118,7 @@ namespace Fuse.compute
             const string shaderCode = "${textureName}[${index}] = ${value};";
             return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
             {
-                {"textureName", _texture.TextureID},
+                {"textureName", _texture.TextureID()},
                 {"index", _index.ID},
                 {"value", _value.ID}
             });

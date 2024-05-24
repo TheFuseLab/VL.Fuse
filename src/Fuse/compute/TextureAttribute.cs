@@ -1,6 +1,5 @@
 ﻿using Fuse.ComputeSystem;
 using Stride.Core.Mathematics;
-using Stride.Core.Shaders.Ast;
 using Stride.Graphics;
 using VL.Core;
 
@@ -21,14 +20,20 @@ namespace Fuse.compute
         }
     }
 
-    public abstract class ITextureAttributeNode<T> : Attribute<T>, ITextureInput
+    public abstract class ITextureAttributeNode<T> : Attribute<T>, ITextureInput, ITextureInputProvider
     {
-        
 
-        public abstract string TextureID { get; }
+
+        public abstract string TextureID();
+        public abstract Int3 TextureSize();
 
         protected ITextureAttributeNode(NodeContext nodeContext, string theName, AttributeType theType, AbstractShaderNode theValue = null) : base(nodeContext, theName, theType, theValue)
         {
+        }
+
+        public ITextureInput GetTextureInput()
+        {
+            return this;
         }
     }
 
@@ -61,20 +66,29 @@ namespace Fuse.compute
             SetProperty("ComputeSystemAttribute", this);
         }
         
-        public void OverRideByTexture(ShaderNode<Texture> theInstance, ShaderNode<TIndex> theIndex)
+        public void OverRideByTexture(ITextureInputProvider theInstance, ShaderNode<TIndex> theIndex)
         {
             if (theInstance == null) {
                 SetProperty("ComputeSystemAttribute", this);
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance as ITextureInput, theIndex);
+                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance, theIndex);
                 SetInput(textureGet);
                 RemoveProperty("ComputeSystemAttribute");
             }
         }
 
         public override Int3 Resolution => TextureInput?.Value == null ? new Int3(1) : new Int3(TextureInput.Value.Width, TextureInput.Value.Height, TextureInput.Value.Depth);
-        public override string TextureID => TextureInput?.ID;
+       
+        public override string TextureID()
+        {
+            return TextureInput?.ID;
+        }
+
+        public override Int3 TextureSize()
+        {
+            return Resolution;
+        }
     }
 
 }

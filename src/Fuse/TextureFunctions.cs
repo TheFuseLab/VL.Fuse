@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Fuse.compute;
+using Stride.Core.Mathematics;
 using Stride.Graphics;
 using VL.Core;
 
@@ -9,7 +10,14 @@ namespace Fuse
 
     public interface ITextureInput
     {
-        public string TextureID { get; }
+        public string TextureID();
+
+        public Int3 TextureSize();
+    }
+
+    public interface ITextureInputProvider
+    {
+        public ITextureInput GetTextureInput();
     }
 
     public class TextureGetDimensions : ShaderNode<GpuVoid>
@@ -17,15 +25,15 @@ namespace Fuse
         private readonly ITextureInput _texture;
         private readonly List<AbstractShaderNode> _arguments;
 
-        public TextureGetDimensions(NodeContext nodeContext, int dimension, ITextureInput theTexture, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
+        public TextureGetDimensions(NodeContext nodeContext, int dimension, ITextureInputProvider theTextureProvider, ShaderNode<int> mipLevel) : base(nodeContext, "textureGetDimension")
         {
-            OptionalOutputs = new List<AbstractShaderNode>();
+            OptionalOutputs = [];
             
-            _texture = theTexture as ITextureInput;
+            _texture = theTextureProvider?.GetTextureInput();
 
             OptionalOutputs.Clear();
 
-            _arguments = new List<AbstractShaderNode> { mipLevel };
+            _arguments = [mipLevel];
             var myInputs = new List<AbstractShaderNode> {_texture as AbstractShaderNode, mipLevel};
             var factory = new NodeSubContextFactory(NodeContext);
             for (var i = 0; i < dimension + 1; i++)
@@ -43,7 +51,7 @@ namespace Fuse
         {
             var result = new Dictionary<string, string>()
                 { { "arguments", ShaderNodesUtil.BuildArguments(_arguments) } };
-            if (_texture != null) result["texture"] = _texture.TextureID;
+            if (_texture != null) result["texture"] = _texture.TextureID();
 
             return ShaderNodesUtil.Evaluate("${texture}.GetDimensions(${arguments});", result);
         }
@@ -58,15 +66,15 @@ namespace Fuse
         public TextureFunction(
             NodeContext nodeContext, 
             string theFunction,
-            ITextureInput theTexture,
+            ITextureInputProvider theTextureProvider,
             IEnumerable<AbstractShaderNode> theArguments,
             ShaderNode<T> theDefault) : base(nodeContext, "textureNode", theDefault)
         {
             _functionName = theFunction;
-            _texture = theTexture as ITextureInput;
+            _texture = theTextureProvider?.GetTextureInput();
             _arguments = theArguments.ToList();
 
-            var ins = new List<AbstractShaderNode> { theTexture as AbstractShaderNode };
+            var ins = new List<AbstractShaderNode> { _texture as AbstractShaderNode };
             ins.AddRange(_arguments);
             SetInputs(ins);
         }
@@ -81,7 +89,7 @@ namespace Fuse
             return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${texture}.${function}(${arguments});",
                 new Dictionary<string, string>
                 {
-                    {"texture", _texture.TextureID}
+                    {"texture", _texture.TextureID()}
                 });
         }
 
@@ -95,7 +103,7 @@ namespace Fuse
                 {"arguments", ShaderNodesUtil.BuildArguments(_arguments)},
                 {"default", Default == null ? "" : Default.ID}
             };
-            if (_texture != null) result["texture"] = _texture.TextureID;
+            if (_texture != null) result["texture"] = _texture.TextureID();
 
             return result;
         }
