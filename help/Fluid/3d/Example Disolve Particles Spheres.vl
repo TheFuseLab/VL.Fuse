@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="JY1LiBvoMvkMp6LxKo1tzx" LanguageVersion="2024.6.0" Version="0.128">
-  <NugetDependency Id="BGYFoYs1qQvQXaQCA0vnFN" Location="VL.CoreLib" Version="2024.6.0" />
+<Document xmlns:p="property" xmlns:r="reflection" Id="JY1LiBvoMvkMp6LxKo1tzx" LanguageVersion="2024.6.3" Version="0.128">
+  <NugetDependency Id="BGYFoYs1qQvQXaQCA0vnFN" Location="VL.CoreLib" Version="2024.6.3" />
   <Patch Id="Fzh4zZ6J3eqP9Gg6FfVWXn">
     <Canvas Id="OQB2elhuTeyQNoS6zj7eju" DefaultCategory="Main" CanvasType="FullCategory" />
     <!--
@@ -164,8 +164,6 @@
             <Pin Id="Epo4ASbzpkROlmXrx5diR0" Name="Apply to Velocity" Kind="InputPin" />
             <Pin Id="Mp3L7BD3YBXMlwxQlq3IV0" Name="Additive Velocity" Kind="InputPin" />
             <Pin Id="PEbn9Fm3LmcPwSAhzMk5N8" Name="Enabled" Kind="InputPin" />
-            <Pin Id="MqLGIspboB3OXRXR3CFp0C" Name="Helper Enabled" Kind="InputPin" />
-            <Pin Id="INnGHwee4TiN7U4XdtRcFV" Name="Helper Texture Enabled" Kind="InputPin" />
             <Pin Id="UDYzq910obVMQQZpKsUbRH" Name="Output" Kind="OutputPin" />
             <Pin Id="CGfkvuvEYliMHY88mW6fIF" Name="Vector" Kind="OutputPin" />
           </Node>
@@ -218,6 +216,7 @@
             <Pin Id="I2KOZFgEUF8MmPmDH5I5y5" Name="Resource" Kind="InputPin" />
             <Pin Id="IRQAw6X5uE3Ldb4cVhvZsG" Name="Attribute" Kind="InputPin" />
             <Pin Id="OkUSgbwZp9AMIQ6ahUv29w" Name="Texture" Kind="OutputPin" />
+            <Pin Id="KTmwxYKtZ3dOkmqvM3GETo" Name="TextureIn" Kind="OutputPin" />
           </Node>
           <Node Bounds="570,988,52,19" Id="R3HTiB686DNOfdYIQd7Oxp">
             <p:NodeReference LastCategoryFullName="Fuse.Simulation.Fluid.3D" LastDependency="Fuse.Simulation.vl">
@@ -554,6 +553,7 @@
             <Pin Id="TfFjtIIv4CpLIlVULvp361" Name="Off Min" Kind="InputPin" />
             <Pin Id="Kw1fmWALq0iN7cg6xi0pEE" Name="Off Max" Kind="InputPin" />
             <Pin Id="PaV9I0G9eidMLFm2sAlK2a" Name="Output" Kind="OutputPin" />
+            <Pin Id="NY8orV9RNPPPfxKiq9iKgp" Name="Curves" Kind="OutputPin" />
           </Node>
           <Pad Id="CNuhyKTLvH6PQPpzyrpyj0" Comment="Off Max" Bounds="1055,1512,35,15" ShowValueBox="true" isIOBox="true" Value="1">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -1780,7 +1780,7 @@
           <Node Bounds="827,331,209,142" Id="QbMRiPuoGi2LXkd4u1tfRW">
             <p:NodeReference LastCategoryFullName="Fuse.Control" LastDependency="VL.Fuse.vl">
               <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="StatefulRegion (2-&gt;1)" />
+              <Choice Kind="ProcessAppFlag" Name="Region (2-&gt;1)" />
             </p:NodeReference>
             <Patch Id="JAAcHxHRau2MBVLCQq6qGe" ManuallySortedPins="true">
               <Patch Id="PqI4Trpivn2Nw5EMD8gVBf" Name="Create" ManuallySortedPins="true" />
@@ -2287,7 +2287,6 @@
         <Link Id="NeDsFRV1o9hPUOb9ugGELi" Ids="L0S08n3lSjgM1RxobqhYo2,D2MonLzzh89LRvf7NP9z7a" />
         <Link Id="E0kwu3QzKpiOaGybMEE6M0" Ids="G9PfDCPW2NMLb7kSWaveNR,T0Y8qAlHaupLaaxmqKwXdW" />
         <Slot Id="Vrfcc0t4K37OR5OYtKuNTW" Name="Velocity Texture" />
-        <Link Id="FQsP43mYuFbOW4omiSzLfl" Ids="OkUSgbwZp9AMIQ6ahUv29w,StmUd5FWpknOgp8MStgkym" />
         <Link Id="TbH4sHcDc19OZyw7MgBzFJ" Ids="PDqTA8lTYNONhnIDTCVbLB,HJYJJp3812pL42jh988WGw" />
         <Link Id="CFZ1l1RTH8NOuxZxDxxlHA" Ids="Aws1mlBekydMjeKDCZGKIy,VJWCtUdrULcOPP05RwYUQY" />
         <Link Id="NHR8WbUjKcXLuTxAM5ypMP" Ids="UKiC9nKsdqCMdI8GVsSy5M,Ga1BML2LKtYMaxVm9ixorz" />
@@ -2466,11 +2465,12 @@
         <Link Id="D8Anxd1lWj1QPH1tyPTPsH" Ids="VgAKznQNztdOQ60o8M9dPM,FyFdb6RRdNgPT06Wjpd74X" />
         <Link Id="CoNTGYBUXOdL3y8Wb1V2rJ" Ids="HAAO23PACTVMPUdbHKOLBv,DMySMz0ljthLDWvxIePilu" />
         <Link Id="Jf71UwwpsWRPhezru2eCEH" Ids="L0EktWfpcLIOHg2k6ssWJD,EXfizhTnqUxOO20et9qMnf" />
+        <Link Id="VoWPsEj8cKcMnTqDLr9YcD" Ids="KTmwxYKtZ3dOkmqvM3GETo,StmUd5FWpknOgp8MStgkym" />
       </Patch>
     </Node>
   </Patch>
   <NugetDependency Id="TasLFY0gaszPV6QcAihwHH" Location="VL.Fuse" Version="0.0.0" />
-  <NugetDependency Id="P9W1xthq571LEm7LbctEDA" Location="VL.Stride" Version="2024.6.0" />
-  <NugetDependency Id="QnpBVmZpwVkL74x50UEJeg" Location="VL.Stride.Runtime" Version="2024.6.0" />
-  <NugetDependency Id="OgfAD6MGs8GLZ9h0ayhJiB" Location="VL.Stride.TextureFX" Version="2024.6.0" />
+  <NugetDependency Id="P9W1xthq571LEm7LbctEDA" Location="VL.Stride" Version="2024.6.3" />
+  <NugetDependency Id="QnpBVmZpwVkL74x50UEJeg" Location="VL.Stride.Runtime" Version="2024.6.3" />
+  <NugetDependency Id="OgfAD6MGs8GLZ9h0ayhJiB" Location="VL.Stride.TextureFX" Version="2024.6.3" />
 </Document>

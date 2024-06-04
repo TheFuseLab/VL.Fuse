@@ -219,20 +219,15 @@ namespace Fuse
         {
             
             if (node.HasFixedName) return;
+
+            if (_hashInstances.TryAdd(node.HashCode, 1)) return;
             
-            if (_hashInstances.ContainsKey(node.HashCode))
+            _hashInstances[node.HashCode]++;
+            if (node.Name.EndsWith("_" + _hashInstances[node.HashCode])) return;
+            node.Name += "_" +_hashInstances[node.HashCode];
+            if (node is IGpuInput input)
             {
-                _hashInstances[node.HashCode]++;
-                if (node.Name.EndsWith("_" + _hashInstances[node.HashCode])) return;
-                node.Name += "_" +_hashInstances[node.HashCode];
-                if (node is IGpuInput input)
-                {
-                    input.OnUpdateName();
-                }
-            }
-            else
-            {
-                _hashInstances[node.HashCode] = 1;
+                input.OnUpdateName();
             }
         }
     }

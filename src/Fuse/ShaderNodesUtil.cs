@@ -7,6 +7,7 @@ using System.Reactive.Disposables;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Fuse.ShaderFX;
 using Stride.Core;
 using Stride.Core.Mathematics;
@@ -361,17 +362,47 @@ namespace Fuse
                 return hash1 + (hash2*1566083941);
             }
         }
-        
-        public static uint GetHashCode(NodeContext nodeContext)
-        {
-            unchecked{
-                return (uint)GetStableHashCode(nodeContext.Path.ToString());
-            }
-        }
 
         public  static Matrix GetParentTransform(RenderDrawContext renderDrawContext)
         {
             return renderDrawContext.RenderContext.Tags.Get(EntityRendererRenderFeature.CurrentParentTransformation);
+        }
+        
+        [ThreadStatic]
+        private static NodeContext _sCurrentParentContext;
+
+        public readonly struct NodeContextOverride : IDisposable
+        {
+            private readonly NodeContext _previous;
+
+            internal NodeContextOverride(NodeContext nodeContext)
+            {
+                _previous = Interlocked.Exchange(ref _sCurrentParentContext, nodeContext);
+            }
+
+            public void Dispose()
+            {
+                Interlocked.Exchange(ref _sCurrentParentContext, _previous);
+            }
+        }
+
+        // Use this with a Using region. For example
+        // using (SetParentContext(myContext))
+        // {
+        //    InvokeUpstream(..)
+        // }
+        public static NodeContextOverride SetParentContext(NodeContext nodeContext) => new NodeContextOverride(nodeContext);
+        
+        public static uint GetHashCode(NodeContext nodeContext)
+        {
+           var s = nodeContext.Path.ToString();
+           /*    if (_sCurrentParentContext != null)
+                  s += _sCurrentParentContext.Path.ToString();
+  */
+            unchecked
+            {
+                return (uint)GetStableHashCode(s);
+            }
         }
     }
 

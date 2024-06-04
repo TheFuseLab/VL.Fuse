@@ -43,6 +43,7 @@ namespace Fuse.ComputeSystem
             WriteCall = new EmptyVoid(new NodeSubContextFactory(nodeContext).NextSubContext());
             ShaderNode = new ShaderNode<T>(new NodeSubContextFactory(nodeContext).NextSubContext(),theName);
             IsOverridden = false;
+            HasFixedName = true;
         }
         public AttributeType AttributeType { get; set; }
         public AbstractShaderNode ShaderNode { get; }
