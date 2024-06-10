@@ -17,7 +17,7 @@ public class Delegate<T> : ShaderNode<T>, IDelegate
 
     public Delegate(NodeContext nodeContext, AbstractShaderNode theDelegate, List<IFunctionParameter> theParameters, string theId = "Function", ShaderNode<T> theDefault = null) : base(nodeContext, theId, theDefault)
     {
-        Parameters = theParameters ?? new List<IFunctionParameter>();
+        Parameters = theParameters ?? [];
             
         if (theDelegate == null) return;
 
@@ -151,7 +151,7 @@ public class Delegate4In1Out<TIn0, TIn1, TIn2, TIn3, TOut> :Delegate<TOut>
         FunctionParameter<TIn2> theParam2, 
         FunctionParameter<TIn3> theParam3, 
         string theId = "Function", ShaderNode<TOut> theDefault = null
-        ) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theParam1, theParam2}, theId, theDefault)
+        ) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theParam1, theParam2, theParam3}, theId, theDefault)
     {
     }
 }
@@ -168,7 +168,7 @@ public class Delegate5In1Out<TIn0, TIn1, TIn2, TIn3, TIn4, TOut> :Delegate<TOut>
         FunctionParameter<TIn4> theParam4, 
         string theId = "Function", 
         ShaderNode<TOut> theDefault = null
-        ) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theParam1, theParam2}, theId, theDefault)
+        ) : base(nodeContext, theDelegate, new List<IFunctionParameter>{theParam0, theParam1, theParam2, theParam3, theParam4}, theId, theDefault)
     {
     }
 }
