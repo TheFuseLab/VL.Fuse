@@ -13,5 +13,20 @@ namespace Fuse.Color
         SpectralZucconi,
         SpectralSpektre
     }
+    
+    public enum Tonemap
+    {
+        Linear,
+        SimpleReinhard,
+        LumaBasedReinhard,
+        WhitePreservingLumaBasedReinhard,
+        RomBinDaHouse,
+        Filmic,
+        Uncharted2,
+        ACESFitted,
+        Drago,
+        Ward,
+        Unreal
+    }
 
 }
