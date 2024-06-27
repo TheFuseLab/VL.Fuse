@@ -581,4 +581,120 @@ shader FuseCoreColor
 
 		return color / 255.0; // Normalize to 0.0 - 1.0
 	}
+
+	float3 LinearToneMapping(float3 color)
+	{
+		float exposure = 1.0;
+		color = clamp(exposure * color, 0.0, 1.0);
+		return color;
+	}
+
+	float3 SimpleReinhardToneMapping(float3 color)
+	{
+		float exposure = 1.5;
+		color *= exposure / (1.0 + color / exposure);
+		return color;
+	}
+
+	float3 LumaBasedReinhardToneMapping(float3 color)
+	{
+		float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
+		float luma = dot(color, lumaWeights);
+		float toneMappedLuma = luma / (1.0 + luma);
+		color *= toneMappedLuma / luma;
+		return color;
+	}
+
+	float3 WhitePreservingLumaBasedReinhardToneMapping(float3 color)
+	{
+		float white = 2.0;
+		float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
+		float luma = dot(color, lumaWeights);
+		float toneMappedLuma = luma * (1.0 + luma / (white * white)) / (1.0 + luma);
+		color *= toneMappedLuma / luma;
+		return color;
+	}
+
+	float3 RomBinDaHouseToneMapping(float3 color)
+	{
+		color = exp(-1.0 / (2.72 * color + 0.15));
+		return color;
+	}
+
+	float3 FilmicToneMapping(float3 color)
+	{
+		color = max(float3(0.0,0.0,0.0), color - float3(0.004,0.004,0.004));
+		color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06);
+		return SRGBToLinear(color);
+	}
+
+	float3 Uncharted2ToneMapping(float3 color)
+	{
+		float A = 0.15;
+		float B = 0.50;
+		float C = 0.10;
+		float D = 0.20;
+		float E = 0.02;
+		float F = 0.30;
+		float W = 11.2;
+		float exposure = 2.0;
+		color *= exposure;
+		color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
+		float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
+		color /= white;
+		return color;
+	}
+
+	// Drago Tone Mapping Operator
+	float DragoToneMapping(float L, float bias) {
+		return log(1.0 + bias * L) / log(1.0 + L);
+	}
+
+	// Tone mapping function for RGB color
+	float3 DragoToneMapping(float3 color, float bias) {
+		// Compute the luminance of the input color
+		float L = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+
+		// Apply Drago tone mapping to the luminance
+		float Ld = DragoToneMapping(L, bias);
+
+		// Preserve color ratios by scaling the input color by the ratio of Ld to L
+		float3 mappedColor = color * (Ld / L);
+
+		return mappedColor;
+	}
+
+	// Ward Tone Mapping Operator
+	float3 WardToneMapping(float3 color) {
+		// Compute the luminance of the input color
+		float L = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+
+		// Apply Ward tone mapping
+		float Ld = L / (1.0 + L);
+
+		// Preserve color ratios
+		float3 mappedColor = color * (Ld / L);
+
+		return mappedColor;
+	}
+
+	// Unreal Tone Mapping Operator
+	float Tonemap_Unreal(float x) {
+		// Apply the Unreal tone mapping formula
+		return (x / (x + 0.155)) * 1.019;
+	}
+
+	// Tone mapping function for RGB color
+	float3 Tonemap_Unreal(float3 color) {
+		// Compute the luminance of the input color
+		float L = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+
+		// Apply the Unreal tone mapping to the luminance
+		float Ld = Tonemap_Unreal(L);
+
+		// Preserve color ratios by scaling the input color by the ratio of Ld to L
+		float3 mappedColor = color * (Ld / L);
+
+		return mappedColor;
+	}
 };
