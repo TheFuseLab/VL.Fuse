@@ -8,6 +8,8 @@ public interface IFunctionParameter : IComputeNode
 
     string ID { get; }
 
+    string PinName { get; }
+
     InputModifier Modifier { get; }
 
     string ModifierString();
