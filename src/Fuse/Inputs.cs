@@ -390,7 +390,7 @@ namespace Fuse{
 
      }
 
-    public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>> where T : struct 
+    public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>>, AbstractSetValueInput where T : struct 
     {
 
         public ValueInput(NodeContext nodeContext): base(nodeContext, "input", false)
@@ -417,7 +417,12 @@ namespace Fuse{
             }
             
         }
-        
+
+        public void SetAbstractValue(object Value)
+        {
+            this.SetValue((T)Value);
+        }
+
         public override void SetParameterValue(ParameterCollection theCollection)
         {
             theCollection.Set(ParameterKey, Value);
@@ -432,6 +437,12 @@ namespace Fuse{
         // Called by IMonadicValue
         protected override bool HasValue() => true;
     }
+
+    public interface AbstractSetValueInput
+    {
+        void SetAbstractValue(object Value);
+    }
+
     /*
     public class CompositionInput<T> : AbstractInput<IComputeNode,PermutationParameterKey<T>, PermutationParameterUpdater<T>> where T : IComputeNode
     {
