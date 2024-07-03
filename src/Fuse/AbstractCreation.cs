@@ -62,8 +62,16 @@ namespace Fuse
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember.Name, null) as AbstractShaderNode;
           
         }
-        
-       public static AbstractShaderNode AbstractSetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMember, AbstractShaderNode theValue)
+
+        public static AbstractShaderNode AbstractGetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMemberName, Type theMemberGenericType )
+        {
+            var getMemberBaseType = typeof(GetMember<,>);
+            var dataType = new[] { typeof(T), theMemberGenericType };
+            var getType = getMemberBaseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMemberName, null) as AbstractShaderNode;
+        }
+
+        public static AbstractShaderNode AbstractSetMember<T>(NodeSubContextFactory theSubContextFactory, ShaderNode<T> theStruct, string theMember, AbstractShaderNode theValue)
         {
             //return CreateAbstract(theMember, typeof(AssignValueToMember<>), new object[]{theSubContextFactory.NextSubContext(), theStruct, theMember.Name, theValue});
             
@@ -156,6 +164,33 @@ namespace Fuse
             var dataType = new[] { theParameterType.GetGenericArguments()[0] };
             var getType = baseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext()) as AbstractShaderNode;
+        }
+
+        public static AbstractShaderNode AbstractValueInputGeneric(NodeSubContextFactory theSubContextFactory, Type theGenericType)
+        {
+            var baseType = typeof(ValueInput<>);
+            var dataType = new[] { theGenericType };
+            var getType = baseType.MakeGenericType(dataType);
+            return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext()) as AbstractShaderNode;
+        }
+
+        public static AbstractShaderNode AbstractValueInput(NodeSubContextFactory theSubContextFactory, object Value)
+        {
+            if (Value != null && TypeHelpers.IsGpuType(Value.GetType()))
+            {
+                var baseType = typeof(ValueInput<>);
+                var dataType = new[] { Value.GetType() };
+                var getType = baseType.MakeGenericType(dataType);
+                var abstractValueInput =  Activator.CreateInstance(getType, theSubContextFactory.NextSubContext()) as AbstractShaderNode;
+                ((AbstractSetValueInput)abstractValueInput).SetAbstractValue(Value);
+                return abstractValueInput;
+            }
+            return null;
+        }
+
+        public static void AbstractSetValueInput(this AbstractShaderNode ValueInput, object Value)
+        {
+            ((AbstractSetValueInput)ValueInput).SetAbstractValue(Value);
         }
 
         public static AbstractShaderNode AbstractConstant(AbstractShaderNode theGpuValue, float theValue)
