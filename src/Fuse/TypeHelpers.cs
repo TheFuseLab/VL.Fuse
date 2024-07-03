@@ -314,6 +314,11 @@ namespace Fuse
                 };
             }
 
+            public static bool IsGpuType(Type type)
+            {
+                return KnownGpuTypes.ContainsKey(type);
+            }
+
             public static string GetGpuType(Type type)
             {
                 return KnownGpuTypes.TryGetValue(type, out var result) ? result : ShaderNodesUtil.CleanVlClassName(type.Name);
