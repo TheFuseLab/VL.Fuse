@@ -37,7 +37,7 @@ namespace Fuse.compute
         }
     }
 
-    public class TextureAttribute<TIndex,T> : ITextureAttributeNode<T>, ITextureAttribute where T : struct
+    public class TextureAttribute<T> : ITextureAttributeNode<T>, ITextureAttribute where T : struct
     {
        // public ShaderNode<T> Default;
         public TextureAttribute(NodeContext nodeContext, string theName, bool theIsDoubleBuffered, ShaderNode<T> theDefault = null) : base(nodeContext, theName, AttributeType.Texture)
@@ -66,13 +66,25 @@ namespace Fuse.compute
             SetProperty("ComputeSystemAttribute", this);
         }
         
-        public void OverRideByTexture(ITextureInputProvider theInstance, ShaderNode<TIndex> theIndex)
+        public void OverRideByTexture(ITextureInputProvider theInstance, AbstractShaderNode theIndex)
         {
             if (theInstance == null) {
                 SetProperty("ComputeSystemAttribute", this);
             }else{
                 var myFactory = new NodeSubContextFactory(NodeContext,1);
-                var textureGet = new ComputeTextureGet<TIndex, T>(myFactory.NextSubContext(),theInstance, theIndex);
+
+                var dim = theInstance.GetTextureInput().TextureSize();
+
+                AbstractShaderNode textureGet = TypeHelpers.GetDimensionFromInt3(dim) switch
+                {
+                    1 => new ComputeTextureGet<int, T>(myFactory.NextSubContext(), theInstance,
+                        (ShaderNode<int>)theIndex),
+                    2 => new ComputeTextureGet<Int2, T>(myFactory.NextSubContext(), theInstance,
+                        (ShaderNode<Int2>)theIndex),
+                    3 => new ComputeTextureGet<Int3, T>(myFactory.NextSubContext(), theInstance,
+                        (ShaderNode<Int3>)theIndex),
+                    _ => null
+                };
                 SetInput(textureGet);
                 RemoveProperty("ComputeSystemAttribute");
             }
