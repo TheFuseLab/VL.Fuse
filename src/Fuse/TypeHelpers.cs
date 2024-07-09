@@ -471,6 +471,20 @@ namespace Fuse
             {
                 return GetDimension(typeof(T));
             }
+
+            public static int GetDimensionFromInt3(Int3 dimension)
+            {
+                if (dimension is { Y: 1, Z: 1 })
+                {
+                    return 1;
+                }
+                if (dimension.Z == 1)
+                {
+                    return 2;
+                }
+
+                return 3;
+            }
             
             #endregion
             
