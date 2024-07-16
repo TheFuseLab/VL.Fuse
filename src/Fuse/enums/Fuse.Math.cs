@@ -74,4 +74,19 @@
         Quintic,
         General
     }
+
+    public enum SplineMode
+    {
+        Cubic,
+        Hermite,
+        Seiler
+    }
+    
+    public enum NeighborSplineMode
+    {
+        CatmullRom,
+        BSpline,
+        Cardinal,
+        KochanekBartels
+    }
 }
