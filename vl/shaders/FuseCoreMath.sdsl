@@ -210,4 +210,51 @@ shader FuseCoreMath{
 	#define mod(x, y) (x - y * floor((x) / y))
 	#endif
 
+	// Function to compute an approximation of the square root using the Quake III Fast Inverse Square Root algorithm
+	float fastSqrt(float x) {
+		// Approximate the inverse square root (1/sqrt(x))
+		float halfX = 0.5f * x;
+		int i = asint(x);            // Interpret the float bits as an integer
+		i = 0x5f3759df - (i >> 1);   // Initial approximation of the inverse square root
+		float y = asfloat(i);        // Convert the bits back to a float
+		y = y * (1.5f - (halfX * y * y)); // First iteration of Newton-Raphson method
+		//y = y * (1.5f - (halfX * y * y)); // Second iteration (optional, can be omitted for higher speed)
+
+		// Multiply by x to get the approximation of sqrt(x)
+		return x * y;
+	}
+
+	float2 fastSqrt(float2 x) {
+		float2 halfX = 0.5f * x;
+		int2 i = asint(x);             // Interpret the float bits as integers
+		i = 0x5f3759df - (i >> 1);     // Initial approximation of the inverse square root
+		float2 y = asfloat(i);         // Convert the bits back to floats
+		y = y * (1.5f - (halfX * y * y)); // First iteration of Newton-Raphson method
+
+		// Multiply by x to get the approximation of sqrt(x)
+		return x * y;
+	}
+
+	float3 fastSqrt(float3 x) {
+		float3 halfX = 0.5f * x;
+		int3 i = asint(x);             // Interpret the float bits as integers
+		i = 0x5f3759df - (i >> 1);     // Initial approximation of the inverse square root
+		float3 y = asfloat(i);         // Convert the bits back to floats
+		y = y * (1.5f - (halfX * y * y)); // First iteration of Newton-Raphson method
+
+		// Multiply by x to get the approximation of sqrt(x)
+		return x * y;
+	}
+
+	float4 fastSqrt(float4 x) {
+		float4 halfX = 0.5f * x;
+		int4 i = asint(x);             // Interpret the float bits as integers
+		i = 0x5f3759df - (i >> 1);     // Initial approximation of the inverse square root
+		float4 y = asfloat(i);         // Convert the bits back to floats
+		y = y * (1.5f - (halfX * y * y)); // First iteration of Newton-Raphson method
+
+		// Multiply by x to get the approximation of sqrt(x)
+		return x * y;
+	}
+
 };
