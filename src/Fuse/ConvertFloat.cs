@@ -227,7 +227,7 @@ namespace Fuse
             
             _x = x ?? @default;
             
-            SetInputs(new List<AbstractShaderNode>{x});
+            SetInputs(new List<AbstractShaderNode>{_x});
         }
 
         protected override string ImplementationTemplate()
@@ -294,7 +294,7 @@ namespace Fuse
             
             _x = x ?? @default;
             
-            SetInputs(new List<AbstractShaderNode>{x});
+            SetInputs(new List<AbstractShaderNode>{_x});
         }
 
         protected override string ImplementationTemplate()
