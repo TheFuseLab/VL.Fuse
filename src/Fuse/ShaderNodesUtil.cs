@@ -20,7 +20,6 @@ using VL.Stride;
 using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
-using ServiceRegistry = VL.Core.ServiceRegistry;
 
 namespace Fuse
 {
@@ -221,7 +220,7 @@ namespace Fuse
         {
             try
             {
-                var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+                var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
                 if (game == null) return;
 
                 var effectSystem = game.EffectSystem;
@@ -251,7 +250,7 @@ namespace Fuse
         // accessed from vl
         public static VLComputeEffectShader RegisterComputeShader<T>( ToComputeFx<T> theComputeFx)
         {
-            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
@@ -279,7 +278,7 @@ namespace Fuse
             var watch = new Stopwatch();
             
             watch.Start();
-            var game = ServiceRegistry.Current.GetGameProvider().GetHandle().Resource;
+            var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
             var effectImageShader = new DynamicDrawEffectInstance("ShaderFXGraphEffect");
