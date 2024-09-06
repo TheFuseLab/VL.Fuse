@@ -64,6 +64,38 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float a2 = r.x * r.x;
 		float b2 = r.y * r.y;
 		return (b2 * p.x * p.x + a2 * p.y * p.y - a2 * b2) / (a2 * b2) * .5;  // not sure if the .5 factor is safe
+	}	
+
+	float fUnevenEggSegment(float2 p, float2 segmentStart, float2 segmentEnd, float radiusStart, float radiusEnd, float taperControl) 
+	{    
+		p -= segmentStart; 
+		segmentEnd -= segmentStart;
+		float segmentLength = length(segmentEnd);
+		float2x2 rotationMatrix = float2x2(segmentEnd.y, -segmentEnd.x, segmentEnd.x, segmentEnd.y) / segmentLength;
+		p = mul(p, rotationMatrix);
+		segmentEnd = float2(0, segmentLength);    
+		p.x = abs(p.x); 
+		float radiusDifference = radiusStart - radiusEnd;
+		
+		if (segmentLength <= abs(radiusDifference)) 
+			return min(length(p) - radiusStart, length(p - segmentEnd) - radiusEnd); 
+		
+		float angle = lerp(asin(radiusDifference / segmentLength) + 0.001, 1.570796, taperControl);
+		float2 directionAtAngle = float2(cos(angle), sin(angle));
+		float2 ellipseCenter = segmentEnd + radiusEnd * directionAtAngle;   
+		float2 scaledEllipseCenter = ellipseCenter - radiusStart * directionAtAngle;  
+		float2 ellipseSegment = ellipseCenter - segmentEnd;
+		float t = dot(ellipseCenter - scaledEllipseCenter * 0.5, scaledEllipseCenter) / dot(ellipseSegment, scaledEllipseCenter);
+		float2 closestPointOnEllipse = ellipseCenter - ellipseSegment * t;
+		float k = dot(p, float2(closestPointOnEllipse.y, -closestPointOnEllipse.x));
+		
+		if (k < 0.0)          
+			return length(p) - radiusStart;  
+		
+		if (k > segmentLength * (p.x - closestPointOnEllipse.x)) 
+			return length(p - segmentEnd) - radiusEnd;  
+		
+		return length(p - closestPointOnEllipse) - radiusEnd * abs(t);
 	}
 
 	// Cheap Box: distance to corners is overestimated
