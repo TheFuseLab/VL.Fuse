@@ -345,7 +345,7 @@ namespace Fuse
             if (Ins.SequenceEqual(theIns)) return;
             
             _hasNullInput = false;
-            Ins = new List<AbstractShaderNode>();
+            Ins = [];
             theIns.ForEach(input =>
             {
                 switch (NullInputMode)
@@ -483,15 +483,15 @@ namespace Fuse
         public void PrintVisitTree()
         {
             // Start visiting the nodes from the root node
-            PreOrderVisit(new PrintShaderNodeVisitor(), new HashSet<AbstractShaderNode>());
+            PreOrderVisit(new PrintShaderNodeVisitor(), []);
         }
         
         public void CheckHashCodes()
         {
-            PreOrderVisit(new CheckIdsVisitor(), new HashSet<AbstractShaderNode>());
+            PreOrderVisit(new CheckIdsVisitor(), []);
         }
 
-        private readonly HashSet<ShaderGeneratorContext> _contexts = new();
+        private readonly HashSet<ShaderGeneratorContext> _contexts = [];
 
         public void CheckContext(ShaderGeneratorContext theContext)
         {
