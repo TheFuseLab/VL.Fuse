@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-using Stride.Core.Extensions;
 using VL.Core;
-using VL.Lib.Adaptive;
 
 namespace Fuse.compute
 {
@@ -46,15 +45,24 @@ ${structMembers}
 
         private string _sourceTemplate = "";
         
-        public DynamicStruct(NodeContext nodeContext,Dictionary<string,AbstractShaderNode> theInputs, T instance) : base(nodeContext, "GPUAttributeStruct")
+        public DynamicStruct(NodeContext nodeContext,Dictionary<string,AbstractShaderNode> theInputs, T instance, bool AddTypesToName = false) : base(nodeContext, "GPUAttributeStruct")
         {
-            _structName = TypeHelpers.GetGpuType<T>();
-            Name = ShaderNodesUtil.FirstLetterToLower(_structName);
+            var _name  = TypeHelpers.GetGpuType<T>();
+            Name = ShaderNodesUtil.FirstLetterToLower(_name);
+
+            if (AddTypesToName)
+            {
+                _name = theInputs.Aggregate(_name, (current, input) => current + TypeHelpers.GetGpuType(input.Value));
+            }
+
+            _structName = _name;
             
             const string shaderCode = 
-                @"    struct ${structName}{
-${structMembers}
-    };" ;
+                """
+                    struct ${structName}{
+                ${structMembers}
+                    };
+                """ ;
             
             var myStride = 0;
             var call = new StringBuilder();
