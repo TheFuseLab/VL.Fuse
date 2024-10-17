@@ -239,7 +239,8 @@ namespace Fuse{
 
          public override void OnUpdateName()
          {
-             SetFieldDeclaration(TypeTracker.GpuType, TypeTracker.ComputeGpuType);
+            ParameterKey = new ObjectParameterKey<T>(ID);
+            SetFieldDeclaration(TypeTracker.GpuType, TypeTracker.ComputeGpuType);
          }
      }
      
@@ -321,7 +322,8 @@ namespace Fuse{
 
          public override void OnUpdateName()
          {
-             SetFieldDeclaration("SamplerState", "SamplerState");
+            ParameterKey = new ObjectParameterKey<SamplerState>(ID);
+            SetFieldDeclaration("SamplerState", "SamplerState");
          }
      }
 
@@ -388,7 +390,7 @@ namespace Fuse{
              SetInputs( new List<AbstractShaderNode>{Type});
          }
 
-     }
+    }
 
     public class ValueInput<T> : AbstractInput<T,ValueParameterKey<T>, ValueParameterUpdater<T>>, AbstractSetValueInput where T : struct 
     {
