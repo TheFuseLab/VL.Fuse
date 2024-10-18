@@ -1,0 +1,42 @@
+[TextureSource]
+[Summary("Generates pixel noise from a value")]
+shader MyNoise_TextureFX : TextureFX
+{
+	Texture2D colors;
+	float3 Eye;
+	float Aspect;
+	float fov;
+
+	float3x3 TBN(float3 N) {
+		//Returns the simple tangent space matrix
+		float3 Nb,Nt;
+		if (abs(N.y)>0.999) {
+			Nb = float3(1.,0.,0.);
+			Nt = float3(0.,0.,1.);
+		} else {
+			Nb = normalize(cross(N,float3(0.,1.,0.)));
+			Nt = normalize(cross(Nb,N));
+		}
+		return float3x3(Nb.x,Nt.x,N.x,Nb.y,Nt.y,N.y,Nb.z,Nt.z,N.z);
+	}
+
+	float3 TBN(float3 N, out float3 O) {
+		//Returns the simple tangent space directions
+		if (abs(N.y)>0.999) {
+			O = float3(1.,0.,0.);
+			return float3(0.,0.,1.);
+		} else {
+			O = normalize(cross(N,float3(0.,1.,0.)));
+			return normalize(cross(O,N));
+		}
+	}
+
+	stage override float4 Shading()
+	{
+		float3 Tan; float3 Bit = TBN(Eye,Tan);
+        float3x3 EyeMat = TBN(Eye);
+        float3 Dir = normalize(float3((streams.TexCoord*2.-1.)*(Aspect*fov),1.)*EyeMat);
+
+		return float4(Dir,1.0);//colors.SampleLevel(Sampler0,streams.TexCoord,0.0);
+	}
+};
