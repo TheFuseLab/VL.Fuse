@@ -89,4 +89,24 @@
         Cardinal,
         KochanekBartels
     }
+
+    public enum AxisMode
+    {
+        XPositive,
+        YPositive,
+        ZPositive,
+        XNegative,
+        YNegative,
+        ZNegative
+    }
+
+    public enum Space
+    {
+        World,
+        Object,
+        Tangent,
+        View,
+        AbsoluteWorld,
+        Screen
+    }
 }

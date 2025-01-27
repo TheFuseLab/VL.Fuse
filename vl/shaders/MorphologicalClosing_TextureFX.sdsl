@@ -1,0 +1,38 @@
+[Category("Fuse.TextureFX")]
+shader MorphologicalClosing_TextureFX : TextureFX
+{
+
+	[Summary("typically 2")]
+    int Radius;
+
+	stage override float4 Shading()
+	{
+		float4 maxColor = float4(0, 0, 0, 0);
+    
+		// Dilation
+		for (int x = -Radius; x <= Radius; x++)
+		{
+			for (int y = -Radius; y <= Radius; y++)
+			{
+				float2 offset = float2(x, y) / ViewSize;
+				float4 sampleColor = Texture0.Sample(LinearSampler, streams.TexCoord + offset);
+				maxColor = max(maxColor, sampleColor);
+			}
+		}
+		
+		// Erosion
+		float4 minColor = float4(1, 1, 1, 1);
+		for (int x = -Radius; x <= Radius; x++)
+		{
+			for (int y = -Radius; y <= Radius; y++)
+			{
+				float2 offset = float2(x, y) / ViewSize;
+				float4 sampleColor = Texture0.Sample(LinearSampler, streams.TexCoord + offset);
+				minColor = min(minColor, sampleColor);
+			}
+		}
+		
+		return (maxColor + minColor) * 0.5;
+	}
+
+};

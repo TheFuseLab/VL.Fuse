@@ -229,6 +229,46 @@ shader FuseCoreColor
 		return mul(kLMStoCONE, lms * lms * lms);
 	}
 
+	float3 GammaBlend(float3 colA, float3 colB, float t, float gamma)
+	{
+		// Avoid zero or negative gamma. 
+		gamma = max(gamma, 1e-5);
+
+		// 1) “Un-gamma” both colors
+		float invGamma = 1.0 / gamma;
+		float3 A = pow(colA, float3(invGamma, invGamma, invGamma));
+		float3 B = pow(colB, float3(invGamma, invGamma, invGamma));
+
+		// 2) Lerp in that gamma-flattened space
+		float3 mixed = lerp(A, B, t);
+
+		// 3) “Re-gamma” the result
+		return pow(mixed, float3(gamma, gamma, gamma));
+	}
+
+	float3 HSVBlend(float3 colA, float3 colB, float t)
+	{
+		// 1) Convert to HSV
+		float3 hsvA = RGBtoHSV(colA);
+		float3 hsvB = RGBtoHSV(colB);
+
+		// 2) Lerp in HSV space
+		float3 hsvMixed = lerp(hsvA, hsvB, t);
+
+		// 3) Convert back to RGB
+		return HSVtoRGB_smooth(hsvMixed);
+	}
+
+	float sabs(float x,float k) {float a = (.5/k)*x*x+k*.5; float b = abs(x); return b<k ? a : b;}
+
+	float3 pow_mix(float3 colA, float3 colB, float h, float baseg){
+  		float f = sabs(h-.5,.1)*2.;
+  		float3 gamma=float3(baseg,baseg,baseg)-f*(baseg-1.);
+  		colA=pow(colA, 1./gamma);
+  		colB=pow(colB, 1./gamma);
+  		return pow(lerp(colA, colB, h), gamma*(.5+f*.5));
+	}
+
 
 	////////////////////////////////////////////////////////////////
 	//

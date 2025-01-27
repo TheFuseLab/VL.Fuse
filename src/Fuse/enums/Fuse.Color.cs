@@ -29,4 +29,11 @@ namespace Fuse.Color
         Unreal
     }
 
+    public enum CuttoffAttenuationMode
+    {
+        Smoothstep,
+        Disney,
+        Unreal
+    }
+
 }

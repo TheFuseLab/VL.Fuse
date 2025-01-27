@@ -128,43 +128,6 @@ shader FuseCoreMath{
 	float4 pows(float4 a, float b) {return pow(abs(a),b)*sign(a);}
 	float4 pows(float4 a, float4 b) {return pow(abs(a),b)*sign(a);}
 
-	////////////////////////////////////////////////////////////////
-	//
-	//             Vector Min/Max
-	//
-	////////////////////////////////////////////////////////////////
-
-	// same as sumComponent functions
-	
-	float vmax(float2 v) 
-	{
-		return max(v.x, v.y);
-	}
-
-	float vmax(float3 v) 
-	{
-		return max(max(v.x, v.y), v.z);
-	}
-
-	float vmax(float4 v) 
-	{
-		return max(max(v.x, v.y), max(v.z, v.w));
-	}
-
-	float vmin(float2 v) 
-	{
-		return min(v.x, v.y);
-	}
-
-	float vmin(float3 v) 
-	{
-		return min(min(v.x, v.y), v.z);
-	}
-
-	float vmin(float4 v) {
-		return min(min(v.x, v.y), min(v.z, v.w));
-	}
-
 
 	////////////////////////////////////////////////////////////////
 	//
@@ -255,6 +218,27 @@ shader FuseCoreMath{
 
 		// Multiply by x to get the approximation of sqrt(x)
 		return x * y;
+	}
+
+	float3 FibonacciSpherePoint(int i, int numPoints, float radius){
+		// Define phi (golden angle) as a constant
+		const float phi = 3.14159265359 * (3.0 - sqrt(5.0));  // PI * (3 - sqrt(5))
+
+		// Calculate y, which is the vertical position of the point along the sphere's axis (from 1 to -1)
+		float y = 1.0 - (i / (float)(numPoints - 1)) * 2.0;  // y goes from 1 to -1
+
+		// Calculate the radius of the circle at the current y position
+		float radiusAtY = sqrt(1.0 - y * y);  // radius at the current height (x^2 + z^2 = 1 - y^2)
+
+		// Compute the angle theta by multiplying the index by the golden angle phi
+		float theta = phi * i;
+
+		// Compute the x and z coordinates for the point
+		float x = cos(theta) * radiusAtY;
+		float z = sin(theta) * radiusAtY;
+
+		// Return the 3D point on the surface of the sphere, scaled by the given radius
+		return float3(x, y, z) * radius;
 	}
 
 };

@@ -1,0 +1,49 @@
+[Category("Fuse.TextureFX")]
+shader Bilateral_TextureFX : TextureFX
+{
+	[Summary("typically 3.0-10.0")]
+    float BilateralSigmaSpace;
+	[Summary("typically 0.1-0.3")]
+    float BilateralSigmaColor;
+	[Summary("typically 4")]
+    float Radius;
+	[Summary("typically 1")]
+    float Amp;
+
+	bool applyThreshold;
+
+	float BilateralWeight(float2 pixelDist, float intensityDist){
+		float spaceFactor = exp(-dot(pixelDist, pixelDist) / (2.0 * BilateralSigmaSpace * BilateralSigmaSpace));
+		float colorFactor = exp(-(intensityDist * intensityDist) / (2.0 * BilateralSigmaColor * BilateralSigmaColor));
+		return spaceFactor * colorFactor;
+	}
+
+	stage override float4 Shading()
+	{
+		float2 TexelSize = float2(1.0,1.0) / ViewSize;
+		float4 centerColor = Texture0.Sample(LinearSampler, streams.TexCoord);
+		float4 result = float4(0, 0, 0, 0);
+		float weightSum = 0;
+		
+		for (int x = -Radius; x <= Radius; x++)
+		{
+			for (int y = -Radius; y <= Radius; y++)
+			{
+				float2 offset = float2(x, y) * TexelSize;
+				float2 sampleUV = streams.TexCoord + offset;
+				float4 sampleColor = Texture0.Sample(LinearSampler, sampleUV);
+				
+				float w = BilateralWeight(float2(x, y), length(sampleColor.rgb - centerColor.rgb));
+				result += sampleColor * w;
+				weightSum += w;
+			}
+		}
+		
+		result = saturate(result / weightSum * Amp);
+		if(applyThreshold){
+			result = step(0.1,result);
+		}
+		return result;
+	}
+
+};

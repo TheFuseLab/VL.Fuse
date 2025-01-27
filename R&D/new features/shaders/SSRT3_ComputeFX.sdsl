@@ -1,0 +1,425 @@
+
+shader SSRT3_ComputeFX : ComputeShaderBase
+{
+	float Increment = 0.01;
+	RWBuffer<float> Values;
+
+    
+
+    // Internal parameters
+    float _HalfProjScale;
+    float _TemporalOffsets;
+    float _TemporalDirections;
+
+    // Sampling properties
+    int _RotationCount;
+    uint _StepCount;
+    float _Radius;
+    float _ExpFactor;
+    int _JitterSamples;
+    int _ScreenSpaceSampling;
+    int _MipOptimization;
+
+    // GI properties
+    float _GIIntensity;
+    float _MultiBounceGI;
+    float _BackfaceLighting;
+
+    // Occlusion properties
+    float _AOIntensity;
+    float _Thickness;
+    int _LinearThickness;
+    float _DirectLightingAO;
+
+    #define MAX_RAY 32
+
+    // Fallback properties
+    float _FallbackIntensity;
+    float _FallbackPower;
+    uint _FallbackSampleCount;
+
+    // Transformation matrices
+    float4x4 _CameraToWorldMatrix;
+    float4x4 _InverseProjectionMatrix;
+
+    RWTexture2D<float4> _GIOcclusionTexture;
+    Texture2D<float4> _LightPyramidTexture;
+    Texture2D<float> _DepthPyramidTexture;     // Assuming depth data is single-channel (float)
+    Texture2D<float4> _NormalPyramidTexture;
+
+    #define TILE_SIZE 8
+
+    inline float GetLinearDepth(float2 uv, float lod)
+    {
+        float logDepth = SAMPLE_TEXTURE2D_X_LOD(_DepthPyramidTexture, s_point_clamp_sampler, uv, lod).r;
+        return LinearEyeDepth(logDepth, _ZBufferParams);
+    }
+
+    inline float3 PositionSSToVS(float2 uv, float lod) 
+    {
+        float linearDepth = GetLinearDepth(uv, lod);
+        
+        float3 posVS;
+        posVS.xy = uv * 2 - 1;  // Scale from screen [0, 1] to clip [-1, 1]
+        posVS.xy = mul((float2x2)_InverseProjectionMatrix, posVS.xy) * linearDepth; // Apply inverse scale/offset, remove w division
+        posVS.z = linearDepth;
+        
+        return posVS;
+    }
+
+    inline float3 GetNormalWS(uint2 positionSS)
+    {
+        NormalData normalData;
+        const float4 normalBuffer = LOAD_TEXTURE2D_X(_NormalBufferTexture, positionSS);
+        DecodeFromNormalBuffer(normalBuffer, positionSS, normalData);
+        return normalData.normalWS;
+    }
+
+    inline float3 GetNormalVS(uint2 positionSS)
+    {
+        float3 normalWS = GetNormalWS(positionSS);
+        float3 normalVS = normalize(mul((float3x3)UNITY_MATRIX_V, normalWS));
+        return float3(normalVS.xy, -normalVS.z);
+    }
+
+    // Spheremap transform encoding from https://aras-p.info/texts/CompactNormalStorage.html
+    inline float3 GetNormalPyramidWS(float2 uv, float lod)
+    {
+        float2 fenc = SAMPLE_TEXTURE2D_X_LOD(_NormalPyramidTexture, s_point_clamp_sampler, uv, lod).xy*4-2;
+        float f = dot(fenc,fenc);
+        float g = sqrt(1-f/4);
+        float3 n;
+        n.xy = fenc*g;
+        n.z = 1-f/2;
+
+        return n;
+    }
+
+    inline float3 GetNormalPyramidVS(float2 uv, float lod)
+    {
+        float3 normalWS = GetNormalPyramidWS(uv, lod);
+        float3 normalVS = normalize(mul((float3x3)UNITY_MATRIX_V, normalWS));
+        return float3(normalVS.xy, -normalVS.z);
+    }
+
+    // From Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+    inline float SpatialOffsets(int2 position)
+    {
+        return 0.25 * (float)((position.y - position.x) & 3);
+    }
+
+    // Interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+    inline float GradientNoise(float2 position)
+    {
+        return frac(52.9829189 * frac(dot(position, float2( 0.06711056, 0.00583715))));
+    }
+
+    // From http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
+    inline float rand(float2 co)
+    {
+        float a = 12.9898;
+        float b = 78.233;
+        float c = 43758.5453;
+        float dt = dot(co.xy, float2(a, b));
+        float sn = fmod(dt, 3.14);
+        return frac(sin(sn) * c);
+    }
+
+    float2 GTAOFastAcos(float2 x)
+    {
+        float2 outVal = -0.156583 * abs(x) + HALF_PI;
+        outVal *= sqrt(1.0 - abs(x));
+        return x >= 0 ? outVal : PI - outVal;
+    }
+
+    float GTAOFastAcos(float x)
+    {
+        float outVal = -0.156583 * abs(x) + HALF_PI;
+        outVal *= sqrt(1.0 - abs(x));
+        return x >= 0 ? outVal : PI - outVal;
+    }
+
+    // From https://patapom.com/blog/BRDF/PreIntegration/
+    float MipLevelFromConeAngle(float theta, float cubemapSize)
+    {
+        float N = log2(cubemapSize);
+        float u = cos(theta/2.0);
+        return N + 0.5 * log2(1.0/Sq(u) - 1.0);
+    }
+
+    // Taken from ScreenSpaceGlobalIllumination.compute
+    void TraceReflectionProbes(PositionInputs posInput, float3 normalWS, float3 rayDirection, inout float totalWeight, inout float3 result, float ambientMip)
+    {
+        uint envLightStart, envLightCount;
+        GetCountAndStart(posInput, LIGHTCATEGORY_ENV, envLightStart, envLightCount); 
+        totalWeight = 0.0f;
+
+        uint envStartFirstLane;
+        bool fastPath = IsFastPath(envLightStart, envStartFirstLane);
+
+        if (fastPath)
+            envLightStart = envStartFirstLane;
+
+        // Scalarized loop, same rationale of the punctual light version
+        uint v_envLightListOffset = 0;
+        uint v_envLightIdx = envLightStart;
+        while (v_envLightListOffset < envLightCount)
+        {
+            v_envLightIdx = FetchIndex(envLightStart, v_envLightListOffset);
+            uint s_envLightIdx = ScalarizeElementIndex(v_envLightIdx, fastPath);
+            if (s_envLightIdx == -1)
+                break;
+
+            // Compiler has a tendency to bypass the scalarization, we force it again here.
+            #ifdef PLATFORM_SUPPORTS_WAVE_INTRINSICS
+            s_envLightIdx = WaveReadLaneFirst(s_envLightIdx);
+            #endif
+
+            EnvLightData envLightData = FetchEnvLight(s_envLightIdx);    // Scalar load.
+
+            // If current scalar and vector light index match, we process the light. The v_envLightListOffset for current thread is increased.
+            // Note that the following should really be ==, however, since helper lanes are not considered by WaveActiveMin, such helper lanes could
+            // end up with a unique v_envLightIdx value that is smaller than s_envLightIdx hence being stuck in a loop. All the active lanes will not have this problem.
+            if (s_envLightIdx >= v_envLightIdx)
+            {
+                v_envLightListOffset++;
+                if (IsEnvIndexCubemap(envLightData.envIndex) && totalWeight < 1.0)
+                {
+                    float3 R = rayDirection;
+                    float weight = 1.0f;
+                    float intersectionDistance = EvaluateLight_EnvIntersection(posInput.positionWS, normalWS, envLightData, envLightData.influenceShapeType, R, weight);
+
+                    int index = abs(envLightData.envIndex) - 1;
+    #ifdef REFL_ATLAS_TEXEL_SIZE // Support for 2022.2
+                    float2 atlasCoords = GetReflectionAtlasCoordsCube(_CubeScaleOffset[index], R, 0);
+                    float3 probeResult = SAMPLE_TEXTURE2D_ARRAY_LOD(_ReflectionAtlas, s_trilinear_clamp_sampler, atlasCoords, 0, ambientMip).rgb * envLightData.rangeCompressionFactorCompensation;
+    #else
+                    float3 probeResult = SAMPLE_TEXTURECUBE_ARRAY_LOD_ABSTRACT(_EnvCubemapTextures, s_trilinear_clamp_sampler, R, _EnvSliceSize * index, ambientMip).rgb * envLightData.rangeCompressionFactorCompensation;
+    #endif    
+                    probeResult = ClampToFloat16Max(probeResult);
+
+                    UpdateLightingHierarchyWeights(totalWeight, weight);
+                    result += weight * probeResult * envLightData.multiplier;
+                }
+            }
+        }
+        totalWeight = saturate(totalWeight);
+    }
+
+    inline uint ComputeOccludedBitfield(float minHorizon, float maxHorizon, inout uint globalOccludedBitfield, out uint numOccludedZones)
+    {
+        uint startHorizonInt = minHorizon * MAX_RAY;
+        uint angleHorizonInt = ceil(saturate(maxHorizon-minHorizon) * MAX_RAY);
+        uint angleHorizonBitfield = angleHorizonInt > 0 ? (0xFFFFFFFF >> ((32-MAX_RAY)+(MAX_RAY-angleHorizonInt))) : 0;
+        uint currentOccludedBitfield = angleHorizonBitfield << startHorizonInt;
+        currentOccludedBitfield = currentOccludedBitfield & (~globalOccludedBitfield);
+        globalOccludedBitfield = globalOccludedBitfield | currentOccludedBitfield;
+        numOccludedZones = countbits(currentOccludedBitfield);
+        return currentOccludedBitfield;
+    }
+
+    inline float3 HorizonSampling(bool directionIsRight, float radius, float3 posVS, float2 slideDir_TexelSize, float initialRayStep, 
+        float2 uv, float3 viewDir, float3 normalVS, float n, inout uint globalOccludedBitfield, float3 planeNormal)
+    {
+        float stepRadius = _ScreenSpaceSampling ? (radius * (_ScreenSize.x / 2)) / (float)_StepCount : max((radius * _HalfProjScale) / posVS.z, (float)_StepCount);
+        stepRadius /= ((float)_StepCount + 1);
+        float radiusVS = max(1, float(_StepCount-1)) * stepRadius;
+        float samplingDirection = directionIsRight ? 1 : -1;
+        float3 col = 0;
+        float3 lastSamplePosVS = posVS;
+            
+        for (uint j = 0; j < _StepCount; j++)
+        {
+            float offset = pow(abs((stepRadius * (j + initialRayStep)) / radiusVS), _ExpFactor) * radiusVS;
+            float2 uvOffset = slideDir_TexelSize * max(offset, 1 + j);
+            float2 sampleUV = uv + uvOffset * samplingDirection;
+            
+            if(sampleUV.x <= 0 || sampleUV.y <= 0 || sampleUV.x >= 1 || sampleUV.y >= 1)
+                break;
+            
+            int mipLevelOffset = _MipOptimization ? min((j + 1) / 2, 4) : 0;
+            float3 samplePosVS = PositionSSToVS(sampleUV, mipLevelOffset);
+            float3 pixelToSample = normalize(samplePosVS - posVS);
+            float linearThicknessMultiplier = _LinearThickness ? saturate(samplePosVS.z / _ProjectionParams.z) * 100 : 1;
+            float3 pixelToSampleBackface = normalize((samplePosVS - (linearThicknessMultiplier * viewDir * _Thickness )) - posVS);
+            
+            float2 frontBackHorizon = float2(dot(pixelToSample, viewDir), dot(pixelToSampleBackface, viewDir));
+            frontBackHorizon = GTAOFastAcos(clamp(frontBackHorizon, -1, 1));
+            frontBackHorizon = saturate(((samplingDirection * -frontBackHorizon) - n + HALF_PI) / PI);
+            //frontBackHorizon = saturate(frontBackHorizon*(1.0+1.5*PI/MAX_RAY)-1.5*HALF_PI/MAX_RAY); // Remamp bitfield on one sector narrower hemisphere
+            frontBackHorizon = directionIsRight ? frontBackHorizon.yx : frontBackHorizon.xy; // Front/Back get inverted depending on angle
+            
+            uint numOccludedZones;
+            ComputeOccludedBitfield(frontBackHorizon.x, frontBackHorizon.y, globalOccludedBitfield, numOccludedZones);
+            
+            float3 lightNormalVS = 0;
+            if(numOccludedZones > 0) // If a ray hit the sample, that sample is visible from shading point
+            {
+                float3 lightColor = SAMPLE_TEXTURE2D_X_LOD(_LightPyramidTexture, s_point_clamp_sampler, sampleUV, mipLevelOffset).rgb;
+                if(Luminance(lightColor) > 0.001) // Continue if there is light at that location (intensity > 0)
+                {
+                    float3 lightDirectionVS = normalize(pixelToSample);
+                    float normalDotLightDirection = saturate(dot(normalVS, lightDirectionVS));
+
+                    if (normalDotLightDirection > 0.001) // Continue if light is facing surface normal
+                    {
+                        #ifdef NORMAL_APPROXIMATION
+                        lightNormalVS = -samplingDirection * cross(normalize(samplePosVS-lastSamplePosVS), planeNormal);
+                        #else
+                        lightNormalVS = GetNormalPyramidVS(sampleUV, mipLevelOffset); //GetNormalVS(sampleUV * _ScreenParams.xy);
+                        #endif
+                        
+                        // Intensity of outgoing light in the direction of the shading point
+                        float lightNormalDotLightDirection = dot(lightNormalVS, -lightDirectionVS);
+                        lightNormalDotLightDirection = _BackfaceLighting > 0 && dot(lightNormalVS, viewDir) > 0 ? 
+                            (sign(lightNormalDotLightDirection) < 0 ? abs(lightNormalDotLightDirection) * _BackfaceLighting : abs(lightNormalDotLightDirection)) : 
+                            saturate(lightNormalDotLightDirection);
+                        
+                        col.xyz += (float(numOccludedZones)/float(MAX_RAY)) * lightColor * normalDotLightDirection * lightNormalDotLightDirection;
+                    }
+                }
+            }
+            lastSamplePosVS = samplePosVS;
+        }
+        
+        return col;
+    }                                                                                                                                                               
+
+override void Compute()
+    {
+        uint index = streams.DispatchThreadId.x;
+        
+        float value = Values[index];
+
+        value += Increment + (index / 10.0);
+
+        Values[index] = value;
+    }
+
+    override void Compute(){
+        uint2 inputCoord = streams.DispatchThreadId.xy;
+        float2 uv = (float2(streams.DispatchThreadId.xy)+0.5) * _ScreenSize.zw * _RTHandleScale.xy;
+
+        float deviceDepth = SAMPLE_TEXTURE2D_X_LOD(_DepthPyramidTexture, s_point_clamp_sampler, uv, 0).r;
+
+        if (deviceDepth <= 1e-7)
+        {
+            _GIOcclusionTexture[COORD_TEXTURE2D_X(inputCoord.xy)] = float4(0, 0, 0, 1);
+            return;
+        }
+
+        uint2 tileIndex = uint2(inputCoord) / GetTileSize();
+        PositionInputs posInput = GetPositionInput(inputCoord, _ScreenSize.zw, deviceDepth, UNITY_MATRIX_I_VP, GetWorldToViewMatrix(), tileIndex);
+
+        float3 posVS = PositionSSToVS(uv, 0);
+        float4 posWorld = mul(_CameraToWorldMatrix, float4(posVS.rg, -posVS.b, 1));
+
+        NormalData normalData;
+        const float4 normalBuffer = LOAD_TEXTURE2D_X(_NormalBufferTexture, inputCoord);
+        DecodeFromNormalBuffer(normalBuffer, inputCoord, normalData);
+        float3 normalWS = normalData.normalWS;
+        float3 normalVS = normalize(mul((float3x3)UNITY_MATRIX_V, normalWS));
+        normalVS = float3(normalVS.xy, -normalVS.z);
+        
+        float3 viewDir = normalize(-posVS);
+        
+        float radius = _Radius;
+        float noiseOffset = SpatialOffsets(inputCoord.xy);
+        float noiseDirection = GradientNoise(inputCoord.xy);
+        float initialRayStep = frac(noiseOffset + _TemporalOffsets) + (rand(uv) * 2.0 - 1.0) * 1.0 * float(_JitterSamples);
+
+        float ambientConeAngle = (PI / _FallbackSampleCount);
+        float ambientMip = 3;//clamp(MipLevelFromConeAngle(ambientConeAngle, 256), 0, 6);
+
+        float ao;
+        float3 col = 0;
+        float3 fallbackColor = 0;
+
+        for (int i = 0; i < _RotationCount; i++)
+        {
+            float rotationAngle = (i + noiseDirection + _TemporalDirections) * (PI / (float)_RotationCount);
+            float3 sliceDir = float3(float2(cos(rotationAngle), sin(rotationAngle)), 0);
+            float2 slideDir_TexelSize = sliceDir.xy * (1.0 / _ScreenParams.xy);
+            uint globalOccludedBitfield = 0;
+            
+            float3 planeNormal = normalize(cross(sliceDir, viewDir));
+            float3 tangent = cross(viewDir, planeNormal);
+            float3 projectedNormal = normalVS - planeNormal * dot(normalVS, planeNormal);
+            float3 projectedNormalNormalized = normalize(projectedNormal);
+            float3 realTangent = cross(projectedNormalNormalized, planeNormal);
+            
+            float cos_n = clamp(dot(projectedNormalNormalized, viewDir), -1, 1);
+            float n = -sign(dot(projectedNormal, tangent)) * acos(cos_n);
+            
+            col += HorizonSampling(true, radius, posVS, slideDir_TexelSize, initialRayStep, uv, viewDir, normalVS, n, globalOccludedBitfield, planeNormal);
+            col += HorizonSampling(false, radius, posVS, slideDir_TexelSize, initialRayStep, uv, viewDir, normalVS, n, globalOccludedBitfield, planeNormal);
+            
+            ao += float(countbits(globalOccludedBitfield)) / float(MAX_RAY);
+
+            uint globalOccludedBitfieldCopy = globalOccludedBitfield;
+            for (uint j = 0; j < _FallbackSampleCount; j++)
+            {
+                uint maskSize = MAX_RAY/_FallbackSampleCount;
+                //uint mask = uint(exp2(maskSize)-1);
+                uint mask = 0xFFFFFFFF >> (MAX_RAY - maskSize);
+                uint hitCount = countbits(globalOccludedBitfieldCopy & mask);
+                
+                float cosine = (1.0 - ((float(j)+0.5) / _FallbackSampleCount)) * 2.0 - 1.0;
+                float angleCosine = GTAOFastAcos(cosine);
+                float3 rayDir = normalize(realTangent * cos(angleCosine) + normalVS * sin(angleCosine));
+
+                rayDir = normalize(rayDir - planeNormal * dot(rayDir, planeNormal));
+                float3 rayDirWS = mul((float3x3)_CameraToWorldMatrix, float3(rayDir.xy, -rayDir.z));
+                float3 cubemapColor = 0;
+                
+                #if defined(FALLBACK_APV) && (defined(PROBE_VOLUMES_L1) || defined(PROBE_VOLUMES_L2))
+                if(_EnableProbeVolumes)
+                {
+                    BuiltinData apvBuiltinData;
+                    ZERO_INITIALIZE(BuiltinData, apvBuiltinData);
+                    EvaluateAdaptiveProbeVolume(GetAbsolutePositionWS(posInput.positionWS),
+                        rayDirWS,
+                        -rayDirWS, // Not used
+                        GetWorldSpaceNormalizeViewDir(posInput.positionWS),
+                        posInput.positionSS,
+                        apvBuiltinData.bakeDiffuseLighting,
+                        apvBuiltinData.backBakeDiffuseLighting); // Not used
+                    cubemapColor = apvBuiltinData.bakeDiffuseLighting;  
+                }
+                #endif
+                #if defined(FALLBACK_REFLECTION_PROBE)
+                float weight = 0.0f;
+                TraceReflectionProbes(posInput, normalWS, rayDirWS, weight, cubemapColor, ambientMip); 
+                #if defined(REFLECT_SKY)
+                if(weight < 1.0f)
+                {
+                    cubemapColor += SAMPLE_TEXTURECUBE_ARRAY_LOD(_SkyTexture, s_trilinear_clamp_sampler, rayDirWS , 0.0, ambientMip).xyz * (1.0 - weight); 
+                    weight = 1.0;
+                }
+                #endif
+                #endif
+
+                fallbackColor += cubemapColor * saturate(float(maskSize - hitCount) / float(MAX_RAY)) * GetCurrentExposureMultiplier();
+                
+                globalOccludedBitfieldCopy >>= maskSize;
+            }
+        }
+
+        ao /= _RotationCount;
+        ao = saturate(pow(1.0-saturate(ao), _AOIntensity));
+
+        fallbackColor /= _RotationCount;
+        fallbackColor = saturate(pow(abs(fallbackColor), _FallbackPower) * _FallbackIntensity);
+
+        col /= _RotationCount;
+
+        col = fallbackColor + col * _GIIntensity;
+        col = RgbToHsv(col);
+        // Expose and clamp the final color
+        col.z = clamp(col.z, 0.0, 7); 
+        // Convert back to HSV space
+        col = HsvToRgb(col);
+        
+        _GIOcclusionTexture[COORD_TEXTURE2D_X(inputCoord.xy)] = float4(col, ao);     
+    }
+};

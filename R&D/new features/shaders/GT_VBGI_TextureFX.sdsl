@@ -1,0 +1,355 @@
+// SSILVB (Screen-Space Illumination via Bitmasking) Shader
+// This shader uses bitmasking and screen-space sampling to approximate indirect lighting and occlusion effects.
+
+[TextureSource]
+[Summary("Generates pixel noise from a value")]
+shader GT_VBGI_TextureFX : TextureFX {
+
+    
+    float2 Resolution;
+    float4x4 ViewProjectionInv;
+    float4x4 ProjectionInv;
+    float4x4 ViewProjection;
+    float4x4 View;
+    float NearZ;
+
+    // Screen-space textures containing scene data at each pixel
+    Texture2D AlbedoBuffer ;   // Stores world position of each fragment
+    Texture2D NormalBuffer ;     // Stores normal vectors for each fragment
+    Texture2D SceneBuffer ;      // Stores lighting information at each fragment
+    Texture2D screenDepth;      // Stores Depth information at each fragment
+    Texture2D BlueNoiseTexture;      // Stores Depth information at each fragment
+
+float3 WorldToScreenPosition(float3 worldPos)
+{
+    // Transform world position to homogeneous clip space
+    float4 clipPos = mul(float4(worldPos, 1.0f), ViewProjection);
+    
+    // Perspective divide to get NDC coordinates
+    float3 ndcPos = clipPos.xyz / clipPos.w;
+    
+    // Convert NDC to screen space UV coordinates (0 to Resolution)
+    // Note: NDC is [-1,1] for XY, convert to [0,1] then multiply by resolution
+    float2 screenPos = (ndcPos.xy * 0.5f + 0.5f) * Resolution;
+    
+    // Return screen space position (xy) and preserve z for depth
+    return float3(screenPos, clipPos.z);
+}
+
+// Constants for blue noise
+static const uint BLUE_NOISE_RESOLUTION = 1024;
+static const uint rPhi1 = 0x9E3779B9; // Golden ratio in 32-bit
+static const uint2 rPhi2 = uint2(0x9E3779B9, 0x243F6A88); // Golden ratio in 2D
+
+static const float PI = 3.14159265359;
+
+static const float RAYMARCHING_SAMPLE_COUNT = 32.0;
+static const float RAYMARCHING_WIDTH = 512.0;
+static const float THICKNESS = 0.5;
+
+// Increases bit depth of 8 bit per channel blue noise texture
+float4 MixBlueNoiseBits(float4 bnoise)
+{
+    static const float4 a = float4(1.0f, 1.0f/256.0f, 1.0f/65536.0f, 1.0f/16777216.0f); // exp2 of (0, -8, -16, -24)
+    static const float4 b = a / (a.x + a.y + a.z + a.w);
+    
+    return float4(
+        dot(bnoise.xyzw, b),
+        dot(bnoise.yzwx, b),
+        dot(bnoise.zwxy, b),
+        dot(bnoise.wxyz, b)
+    );
+}
+
+// Blue noise randomized via UV jittering
+float4 BlueNoise01x4(uint2 uv, uint n)
+{
+    const uint res = BLUE_NOISE_RESOLUTION;
+    // Need rPhi2 constant here
+    int2 uvi = int2((uv + (rPhi2 * n)) & (res - 1));
+    return MixBlueNoiseBits(BlueNoiseTexture.Load(int3(uvi, 0)));
+}
+
+float Float01(uint x) { return float(    x ) * (1.0 / 4294967296.0); }
+
+// Blue noise randomized via value jittering
+float BlueNoise01(uint2 uv, uint n)
+{
+    const uint res = BLUE_NOISE_RESOLUTION;
+    int2 uvi = int2(uv & (res - 1));
+    float rnd01 = MixBlueNoiseBits(BlueNoiseTexture.Load(int3(uvi, 0))).r;
+    // Need Float01 and rPhi1 here
+    return Float01(uint(rnd01 * 4294967295.0f) + rPhi1 * n);
+}
+
+// Main random number generation for VBGI
+float4 Rnd01x4(float2 uv, uint n)
+{
+    uint2 uvu = uint2(uv);
+    float4 rnd01 = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    rnd01.x = BlueNoise01(uvu, n);
+    rnd01.zw = BlueNoise01x4(uvu, n).zw;
+    
+    return rnd01;
+}
+
+float4 GetQuaternion(float3 to)
+{
+    // Original from vector was (0, 0, 1), so we can optimize the cross and dot product
+    float3 xyz = float3(-to.y, to.x, 0.0f); // cross((0,0,1), to) simplified
+    float s = to.z;                         // dot((0,0,1), to) simplified
+    
+    // Calculate reciprocal of cosine half-angle formula
+    float u = rsqrt(max(0.0f, s * 0.5f + 0.5f));
+    
+    // Calculate quaternion components
+    s = 1.0f / u;
+    xyz *= u * 0.5f;
+    
+    return float4(xyz, s);
+}
+
+// Transform a 2D vector (assumed Z=0) by a quaternion (assumed Z=0)
+float3 Transform_Vz0Qz0(float2 v, float4 q)
+{
+    // Calculate intermediate terms
+    float o = q.x * v.y;
+    float c = q.y * v.x;
+    
+    // Build the transformation vector
+    float3 b = float3(
+        o - c,   // x component
+        -o + c,  // y component
+        o - c    // z component
+    );
+    
+    // Perform the quaternion transformation
+    // Original vector with z=0 plus the scaled transformation
+    return float3(v, 0.0f) + 2.0f * (b * float3(q.y, q.x, q.w));
+}
+
+float NonLinearizeDepth(float linearDepth)
+{
+        
+    return 1.0f - NearZ / linearDepth;
+}
+
+float3 ScreenToViewPosition(float3 screenPos)
+{
+    // Convert screen space coordinates to NDC space [-1,1]
+    float2 uv = screenPos.xy / Resolution;
+    float2 ndc = uv * 2.0f - 1.0f;
+    
+    // Convert depth to non-linear format
+    float nonLinearDepth = NonLinearizeDepth(screenPos.z);
+    
+    // Construct position in clip space
+    float4 clipPos = float4(ndc, nonLinearDepth, 1.0f);
+    
+    // Transform to view space using inverse projection matrix
+    float4 viewPos = mul(clipPos, ProjectionInv);
+    
+    // Perspective divide
+    return viewPos.xyz / viewPos.w;
+}
+
+// Count bits set in parallel - based on Stanford bit hacks
+// https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+uint CountBits(uint v)
+{
+    v = v - ((v >> 1) & 0x55555555);                    // Put count of each 2 bits into those 2 bits
+    v = (v & 0x33333333) + ((v >> 2) & 0x33333333);   // Put count of each 4 bits into those 4 bits
+    return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;  // Return total bit count
+}
+
+float4 HemiGTVBGI(float2 uv0, float3 worldPos, float3 worldNormal, uint dirCount)
+{
+    // Transform positions to view space
+    float3 positionVS = mul(float4(worldPos, 1.0f), View).xyz;
+    float3 normalVS = mul(float4(worldNormal, 0.0f), View).xyz;
+    
+    // Calculate view vector
+    float3 V = -normalize(positionVS);
+    
+    // Get ray start position in screen space
+    float2 rayStart = WorldToScreenPosition(worldPos).xy;
+
+    uint frame = 0;//RootConstants.UseTemporalAccumulation ? RootConstants.FrameCount : 0;
+    
+    float ao = 0.0f;
+    float3 gi = float3(0.0f, 0.0f, 0.0f);
+    
+    [loop]
+    for(uint i = 0; i < dirCount; ++i)
+    {
+        uint n = frame * dirCount + i;
+        float4 rnd01 = Rnd01x4(uv0, n); // Need this function
+
+        // Slice direction sampling
+        float3 smplDirVS;
+        float2 dir;
+        {
+            dir = float2(cos(rnd01.x * PI), sin(rnd01.x * PI));
+            smplDirVS = float3(dir, 0.0f);
+
+            
+            float4 Q_toV = GetQuaternion(V); // Need this function
+            smplDirVS = Transform_Vz0Qz0(dir, Q_toV); // Need this function
+
+            float3 rayStart = WorldToScreenPosition(worldPos);
+            float3 rayEnd = WorldToScreenPosition(worldPos + mul(float4(smplDirVS * (NearZ * 0.5f), 0.0f), View).xyz);
+
+            float3 rayDir = rayEnd - rayStart;
+            rayDir.xy /= length(rayDir.xy);
+            dir = rayDir.xy;
+        }
+
+        // Construct slice
+        float3 sliceN, projN, T;
+        float cosN, sinN, projNRcpLen;
+        {
+            sliceN = cross(V, smplDirVS);
+            projN = normalVS - sliceN * dot(normalVS, sliceN);
+
+            float projNSqrLen = dot(projN, projN);
+            if(projNSqrLen == 0.0f) 
+                return float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+            T = cross(sliceN, projN);
+            projNRcpLen = rsqrt(projNSqrLen);
+            
+            cosN = dot(projN, V) * projNRcpLen;
+            sinN = dot(T, V) * projNRcpLen;
+        }
+
+        // Find horizons
+        float3 gi0 = float3(0.0f, 0.0f, 0.0f);
+        uint occBits = 0;
+        
+        [loop]
+        for(float d = -1.0f; d <= 1.0f; d += 2.0f)
+        {
+            float2 rayDir = dir * d;
+            float s = pow(RAYMARCHING_WIDTH, 1.0f/RAYMARCHING_SAMPLE_COUNT);
+            float t = pow(s, rnd01.z); // init t: [1, s]
+            
+            rnd01.z = 1.0f - rnd01.z;
+            
+            [loop]
+            for(float i = 0.0f; i < RAYMARCHING_SAMPLE_COUNT; ++i)
+            {
+                float2 samplePos = rayStart + rayDir * t;
+                t *= s;
+                
+                // Handle out of bounds
+                if(any(samplePos < 0.0f) || any(samplePos >= Resolution)) 
+                    break;
+                
+                float2 sampleUV = samplePos / Resolution;
+                float4 sampleRad = SceneBuffer.SampleLevel(Sampler0, sampleUV, 0).rgb;
+                float sampleDepth = screenDepth.SampleLevel(Sampler0, sampleUV, 0).r;
+                
+                float3 samplePosVS = ScreenToViewPosition(float3(samplePos, sampleDepth));
+                
+                float3 deltaPosFront = samplePosVS - positionVS;
+                float3 deltaPosBack = deltaPosFront - V * THICKNESS;
+                
+                deltaPosBack = ScreenToViewPosition(float3(samplePos, sampleDepth + THICKNESS)) - positionVS;
+                
+
+                // Project samples onto unit circle and compute angles relative to V
+                float2 horCos = float2(
+                    dot(normalize(deltaPosFront), V),
+                    dot(normalize(deltaPosBack), V)
+                );
+
+                // Sampling direction flips min/max cos(angles)
+                horCos = d >= 0.0f ? horCos : horCos.yx;
+                
+                // Map to slice relative distribution
+                float d05 = d * 0.5f;
+                float2 hor01 = ((0.5f + 0.5f * sinN) + d05) - d05 * horCos;
+                
+                // Jitter sample locations + clamp01
+                hor01 = saturate(hor01 + rnd01.w * (1.0f/32.0f));
+                
+                // Turn arc into bit mask
+                uint2 horInt = uint2(floor(hor01 * 32.0f));
+                uint mX = horInt.x < 32 ? 0xFFFFFFFF << horInt.x : 0;
+                uint mY = horInt.y != 0 ? 0xFFFFFFFF >> (32 - horInt.y) : 0;
+                uint occBits0 = mX & mY;
+
+                // Compute GI contribution
+                uint visBits0 = occBits0 & (~occBits);
+                if(visBits0 != 0)
+                {
+                    float vis0 = float(CountBits(visBits0)) * (1.0f/32.0f); // Need CountBits function
+                    gi0 += sampleRad * vis0;
+                }
+
+                occBits |= occBits0;
+            }
+        }
+        
+        float occ0 = float(CountBits(occBits)) * (1.0f/32.0f);
+        ao += 1.0f - occ0;
+        gi += gi0;
+    }
+    
+    float norm = 1.0f / float(dirCount);
+    return float4(gi, ao) * norm;
+}
+    
+float3 ScreenToWorldPosition(float3 screenPos)
+{
+    // Convert screen space UV to clip space
+    float2 clipXY = screenPos.xy / Resolution * 2.0f - 1.0f;
+    float4 clipPos = float4(clipXY, screenPos.z, 1.0f);
+    
+    // Unproject to world space
+    float4 worldPos = mul(clipPos, ViewProjectionInv);
+    return worldPos.xyz / worldPos.w;
+}
+	
+
+    // Main shader function to shade each fragment using calculated visibility and lighting
+    stage override float4 Shading(){
+        float3 albedo = AlbedoBuffer.SampleLevel(Sampler0, streams.TexCoord, 0).rgb;
+        float3 normal = NormalBuffer.SampleLevel(Sampler0, streams.TexCoord, 0).xyz;
+        float3 radiance = SceneBuffer.SampleLevel(Sampler0, streams.TexCoord, 0).rgb;
+        float depth = SceneBuffer.SampleLevel(Sampler0, streams.TexCoord, 0).rgb;
+    
+        // Early out for sky/background
+        if(depth >= exp2(10.0f))
+        {
+            return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+    
+        // Convert screen space position to world space
+        float3 screenPos = float3(streams.TexCoord, depth);
+        float3 worldPos = ScreenToWorldPosition(screenPos); // You'll need to implement this
+    
+        // Add offset to avoid self-shadowing
+        worldPos += normal * (4.0f/1024.0f);
+    
+        // Calculate global illumination
+        float3 color = 0.0f;
+       float3 gi = HemiGTVBGI(streams.TexCoord, worldPos, normal, 1).rgb;
+    
+        color = radiance + albedo * gi;
+    
+    /*
+        // Handle temporal accumulation
+        if(RootConstants.UseTemporalAccumulation)
+        {
+        float4 prevColor = PrevFrameBuffer.SampleLevel(LinearSampler, uv0, 0);
+        float blend = 1.0f / (RootConstants.FrameAccumulation);
+        color = lerp(prevColor.rgb, color, blend);
+        
+        Output[DTid.xy] = float4(color, RootConstants.FrameAccumulation + 1.0f);
+        return;
+    }*/
+    
+        return float4(color, 1.0f);
+    }
+};

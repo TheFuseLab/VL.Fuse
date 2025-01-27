@@ -72,18 +72,17 @@ ${cases}
             var c = 0;
             inputs.ForEach(input =>
             {
-                if (input == null) return;
+                var switchVal = input != null ? input.ID : TypeHelpers.GetDefaultForType<T>();
                 stringBuilder.Append("    case " + c + ":"+ Environment.NewLine);
-                stringBuilder.Append("        ${resultName} = " + input.ID + ";"+ Environment.NewLine);
+                stringBuilder.Append("        ${resultName} = " + switchVal + ";"+ Environment.NewLine);
                 stringBuilder.Append("        break;" + Environment.NewLine);
                 c++;
             });
-            if (theDefault != null)
-            {
-                stringBuilder.Append("    default:"+ Environment.NewLine);
-                stringBuilder.Append("        ${resultName} = " + theDefault.ID + ";"+ Environment.NewLine);
-                stringBuilder.Append("        break;" );
-            }
+            if (theDefault == null) return stringBuilder.ToString();
+            
+            stringBuilder.Append("    default:"+ Environment.NewLine);
+            stringBuilder.Append("        ${resultName} = " + theDefault.ID + ";"+ Environment.NewLine);
+            stringBuilder.Append("        break;" );
             return stringBuilder.ToString();
         }
 
@@ -194,53 +193,16 @@ ${cases}
         }
     }
     
-    public class EmptyVoid : SimpleKeyword
-    {
+    public class EmptyVoid(NodeContext nodeContext) : SimpleKeyword(nodeContext, "");
     
-        public EmptyVoid(NodeContext nodeContext) : base( nodeContext, "")
-        {
-        }
-    }
+    public class ReturnVoid(NodeContext nodeContext) : SimpleKeyword(nodeContext, "return;");
     
-    public class ReturnVoid : SimpleKeyword
-    {
+    public class BreakVoid(NodeContext nodeContext) : SimpleKeyword(nodeContext, "break;");
     
-        public ReturnVoid(NodeContext nodeContext) : base( nodeContext, "return;")
-        {
-        }
-    }
+    public class ContinueVoid(NodeContext nodeContext) : SimpleKeyword(nodeContext, "continue;");
     
-    public class BreakVoid : SimpleKeyword
-    {
+    public class DiscardVoid(NodeContext nodeContext) : SimpleKeyword(nodeContext, "discard;");
     
-        public BreakVoid(NodeContext nodeContext) : base( nodeContext, "break;")
-        {
-        }
-    }
-    
-    public class ContinueVoid : SimpleKeyword
-    {
-    
-        public ContinueVoid(NodeContext nodeContext) : base( nodeContext, "continue;")
-        {
-        }
-    }
-    
-    public class DiscardVoid : SimpleKeyword
-    {
-    
-        public DiscardVoid(NodeContext nodeContext) : base( nodeContext, "discard;")
-        {
-        }
-    }
-    
-    
-    
-    public class GroupMemoryBarrierWithGroupSync : SimpleKeyword
-    {
-    
-        public GroupMemoryBarrierWithGroupSync(NodeContext nodeContext) : base( nodeContext, "GroupMemoryBarrierWithGroupSync();")
-        {
-        }
-    }
+    public class GroupMemoryBarrierWithGroupSync(NodeContext nodeContext)
+        : SimpleKeyword(nodeContext, "GroupMemoryBarrierWithGroupSync();");
 }

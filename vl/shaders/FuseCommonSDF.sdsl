@@ -101,13 +101,13 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// Cheap Box: distance to corners is overestimated
 	float fBox2Cheap(float2 p, float2 b) 
 	{
-		return vmax(abs(p)-b);
+		return maxComponent(abs(p)-b);
 	}
 	// Box: correct distance to corners
 	float fBox(float2 p, float2 b) 
 	{
 		float2 d = abs(p) - b;
-		return length(max(d, 0)) + vmax(min(d, 0));
+		return length(max(d, 0)) + maxComponent(min(d, 0));
 	}
 
 	//Rounded Box: 
@@ -116,7 +116,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// Endless "corner"
 	float fCorner (float2 p) 
 	{
-		return length(max(p, 0)) + vmax(min(p, 0));
+		return length(max(p, 0)) + maxComponent(min(p, 0));
 	}
 
 	float fLine(float2 p, float2 a, float2 b, float r)
@@ -298,14 +298,14 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// Cheap Box: distance to corners is overestimated
 	float fBoxCheap(float3 p, float3 b) 
 	{ //cheap box
-		return vmax(abs(p) - b);
+		return maxComponent(abs(p) - b);
 	}
 
 	// Box: correct distance to corners
 	float fBox(float3 p, float3 b) 
 	{
 		float3 d = abs(p) - b;
-		return length(max(d, 0)) + vmax(min(d, 0));
+		return length(max(d, 0)) + maxComponent(min(d, 0));
 	}
 
 	//Rounded Cubes: 
@@ -911,7 +911,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 
 	float fStrut(float3 p, float3 freq, float nodeSize, float edgeWidth, float smooth, int type)
 	{
-		float maxFreq = vmax(freq);
+		float maxFreq = maxComponent(freq);
 		float invFreq = 1.0 / maxFreq;
 		pMod3(p, invFreq);
 		float node = fSphere(p, nodeSize * invFreq);
@@ -1051,7 +1051,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	// on patch side freq *= TwoPi , sheetWidth *= .5
 	float fTPMS(float3 p, float3 freq, float sheetWidth, float density, bool invert, int type)
 	{
-		float maxFreq = vmax(freq);
+		float maxFreq = maxComponent(freq);
 		float invFreq = 1.0 / maxFreq;
 		p *= freq;
 
@@ -1707,11 +1707,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 	{
 		//float scale = length(float3(invMat._11, invMat._12, invMat._13)) ;   // just get the X scale, scaling must be uniform
 		// max scale component
-		float scale = vmax(float3(length(float3(invMat._11, invMat._12, invMat._13)), length(float3(invMat._21, invMat._22, invMat._23)), length(float3(invMat._31, invMat._32, invMat._33)))) ;
+		float scale = maxComponent(float3(length(float3(invMat._11, invMat._12, invMat._13)), length(float3(invMat._21, invMat._22, invMat._23)), length(float3(invMat._31, invMat._32, invMat._33)))) ;
 
 		float3 pos = mul(float4(p,1), invMat).xyz;
 
-		float boundsCheck = vmax(abs(pos)) - .5;
+		float boundsCheck = maxComponent(abs(pos)) - .5;
 	
 		if(repeat || boundsCheck < 0) return dfTex.SampleLevel(s, pos+.5, 0).x / scale;
 	
@@ -1725,10 +1725,10 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		float margin = 0.05;
 		//float scale = length(float2(invMat._11, invMat._12)) ;   // just get the X scale, scaling must be uniform
 		// max scale component
-		float scale = vmax(float2(length(float2(invMat._11, invMat._12)), length(float2(invMat._21, invMat._22))));
+		float scale = maxComponent(float2(length(float2(invMat._11, invMat._12)), length(float2(invMat._21, invMat._22))));
 		float bounds = .5; // for scaled test box
 		float2 pos = mul(float4(p, 0, 1), invMat).xy;
-		float boundsCheck = vmax(abs(pos)) - bounds + margin;
+		float boundsCheck = maxComponent(abs(pos)) - bounds + margin;
 		if (boundsCheck < margin) return dfTex.SampleLevel(s, pos * float2(1,-1) +.5, 0).x / scale;
 		return boundsCheck + margin / scale;
 	}

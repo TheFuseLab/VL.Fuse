@@ -62,13 +62,10 @@ ${arrayContent}
             var i = 0;
             foreach (var input in theInputs)
             {
-                content.Append("    ${arrayName}[" + i + "] =  " + input.ID + ";"+Environment.NewLine);
+                var arrayVal = input != null ? input.ID : TypeHelpers.GetDefaultForType<T>();
+                content.Append("    ${arrayName}[" + i + "] =  " + arrayVal + ";"+Environment.NewLine);
                 i++;
             }
-            theInputs.ForEach(input =>
-            {
-                
-            });
             _sourceTemplate = ShaderNodesUtil.Evaluate(content.ToString(),new Dictionary<string, string>()
             {
                 {"arrayType", TypeHelpers.GetGpuType<T>()},

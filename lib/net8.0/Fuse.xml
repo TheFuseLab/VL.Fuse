@@ -4,6 +4,71 @@
         <name>Fuse</name>
     </assembly>
     <members>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.CreateCylindricalSliceMatrix2(System.Int32,System.Int32,System.Single,System.Single,System.Single,Stride.Core.Mathematics.Matrix@,Stride.Core.Mathematics.Matrix@)">
+            <summary>
+            Creates a partial-perspective (perspective in X, orthographic in Y)
+            ViewProjection matrix for the i-th slice around the Y-axis.
+            
+            - numberOfCameras: total slices around 360°
+            - cameraIndex: which slice (0..n-1)
+            - cylinderHeight: total vertical extent for orthographic coverage in Y
+            - nearPlane, farPlane: camera clipping range
+            
+            Each slice is oriented so that it faces outward at angle = cameraIndex * (360/n).
+            The horizontal FOV = 360°/n, while Y is fixed in [-cylHeight/2, +cylHeight/2].
+            </summary>
+        </member>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.CreateCylindricalSliceMatrix(System.Int32,System.Int32,System.Single,System.Single,System.Single,Stride.Core.Mathematics.Matrix@,Stride.Core.Mathematics.Matrix@)">
+            <summary>
+            Creates a partial-perspective slice around the Y-axis (perspective in X, orthographic in Y)
+            by defining planes in world space. Adjacent slices share boundary planes for consistent seams.
+            
+            This version fixes the issue where nearZ, farZ were assumed after transform, causing
+            distortions when the wedge is not 90° or the number of cameras > 4.
+            
+            Steps:
+             1) We define in world space:
+                  - left/right planes (radial) at +/- half wedge around the center angle
+                  - near/far planes parallel to slice's local +Z
+                  - top/bottom planes at y = ±(cylinderHeight/2)
+             2) We build a view matrix that rotates the world by -centerAngle (so the slice faces +Z in camera space).
+             3) We transform each plane from world to camera space via planeTransform = transpose(inverse(view)).
+             4) We solve for the actual 'zNearCam' by intersecting the near-plane with the camera's local z-axis.
+             5) Similarly for 'zFarCam'.
+             6) We find the left/right edges by intersecting those planes at z=zNearCam (since it's partial perspective in X).
+             7) We keep top/bottom as ±(cylinderHeight/2) in camera Y for orthographic vertical.
+             8) Build an off-axis perspective matrix from those computed values.  
+             9) Multiply by view => final view-projection for that slice.
+            </summary>
+        </member>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.TransformPlane(Stride.Core.Mathematics.Plane,Stride.Core.Mathematics.Matrix)">
+            <summary>
+            Transforms a Plane by (transpose of inverse(M)).
+            plane eqn: n·X = d, or A x + B y + C z = D.
+            Typically for going from world-space planes to camera-space.
+            </summary>
+        </member>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.IntersectPlaneAtCameraZ(Stride.Core.Mathematics.Plane)">
+            <summary>
+            Finds the intersection of plane eqn A*x + B*y + C*z = D
+            with the camera's local z-axis (x=0, y=0).
+            => C*z = D => z = D/C
+            </summary>
+        </member>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.IntersectPlaneXatZ(Stride.Core.Mathematics.Plane,System.Single)">
+            <summary>
+            For plane eqn in camera space: A*x + B*y + C*z = D,
+            at y=0, z=fixedZ => A*x + C*fixedZ = D => x = (D - C*fixedZ)/A.
+            </summary>
+        </member>
+        <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.CreateOffAxisPerspectiveRH(System.Single,System.Single,System.Single,System.Single,System.Single,System.Single)">
+            <summary>
+            Creates an off-axis RH perspective matrix (D3D style) 
+            mapping z in [nearZ..farZ] to [0..1].
+            
+            row-major fill => typical in Stride for M*(v) usage
+            </summary>
+        </member>
         <member name="M:Fuse.ShaderFX.AbstractToShaderFX`1.GetChildren(System.Object)">
             <summary>
             Gets the children.

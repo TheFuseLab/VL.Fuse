@@ -1,0 +1,361 @@
+
+shader SDFScene
+{
+	struct HIT {
+		float D; 
+		float3 N; 
+		float3 C;
+	};
+
+	// Helper function to initialize the HIT struct
+	HIT CreateHIT(float d, float3 n, float3 c) {
+		HIT hit;
+		hit.D = d;
+		hit.N = n;
+		hit.C = c;
+		return hit;
+	}
+	
+	float DFBox(float3 p, float3 b) {
+    	float3 d = abs(p-b*0.5)-b*0.5;
+    	return min(max(d.x,max(d.y,d.z)),0.)+length(max(d,0.));
+	}
+
+	float DFBoxC(float3 p, float3 b) {
+		float3 d = abs(p)-b;
+		return min(max(d.x,max(d.y,d.z)),0.)+length(max(d,0.));
+	}
+
+	float DFBox(float2 p, float2 b) {
+		float2 d = abs(p-b*0.5)-b*0.5;
+		return min(max(d.x,d.y),0.)+length(max(d,0.));
+	}
+
+	float DFBoxC(float2 p, float2 b) {
+		float2 d = abs(p)-b;
+		return min(max(d.x,d.y),0.)+length(max(d,0.));
+	}
+
+	float DFDisk(float3 p) {
+		float d = length(p.xz-0.5)-0.35;
+		float2 w = float2(d,abs(p.y));
+		return min(max(w.x,w.y),0.)+length(max(w,0.));
+	}
+
+	float2 ABox(float3 origin, float3 idir, float3 bmin, float3 bmax) {
+		//Returns near/far for box
+		float3 tMin = (bmin-origin)*idir;
+		float3 tMax = (bmax-origin)*idir;
+		float3 t1 = min(tMin,tMax);
+		float3 t2 = max(tMin,tMax);
+		return float2(max(max(t1.x,t1.y),t1.z),min(min(t2.x,t2.y),t2.z));
+	}
+
+	float2 ABoxNormal(float3 origin, float3 idir, float3 bmin, float3 bmax, out float3 N) {
+		//Returns near/far, near normal as out
+		float3 tMin = (bmin-origin)*idir;
+		float3 tMax = (bmax-origin)*idir;
+		float3 t1 = min(tMin,tMax);
+		float3 t2 = max(tMin,tMax);
+		float3 signdir = -(max(float3(0.,0.,0.),sign(idir))*2.-1.);
+		if (t1.x>max(t1.y,t1.z)) N = float3(signdir.x,0.,0.);
+		else if (t1.y>t1.z) N = float3(0.,signdir.y,0.);
+		else N = float3(0.,0.,signdir.z);
+		return float2(max(max(t1.x,t1.y),t1.z),min(min(t2.x,t2.y),t2.z));
+	}
+
+	float4 ABoxXZ(float3 P, float3 D, float3 BMin, float3 BSize, float3 XP, float3 XN, float3 ZP, float3 ZN) {
+		//Returns the nearest distance to the twisted box (flat horisonal surfaces)
+		float3 PXP = BMin+BSize*float3(1.,0.5,0.5);
+		float3 PXN = BMin+BSize*float3(0.,0.5,0.5);
+		float3 PZP = BMin+BSize*float3(0.5,0.5,1.);
+		float3 PZN = BMin+BSize*float3(0.5,0.5,0.);
+		float4 dots = float4(dot(XP,D),dot(XN,D),dot(ZP,D),dot(ZN,D));
+		float4 dists = float4(-dot(P-PXP,XP)/dots.x,-dot(P-PXN,XN)/dots.y,-dot(P-PZP,ZP)/dots.z,-dot(P-PZN,ZN)/dots.w);
+		float3 N;
+		if (dots.x<0.) {
+			float3 ip = P+D*dists.x;
+			if (max(dot(ip-PXN,XN),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(XP),dists.x);
+		}
+		if (dots.y<0.) {
+			float3 ip = P+D*dists.y;
+			if (max(dot(ip-PXP,XP),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(XN),dists.y);
+		}
+		if (dots.z<0.) {
+			float3 ip = P+D*dists.z;
+			if (max(dot(ip-PZN,ZN),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(ZP),dists.z);
+		}
+		if (dots.w<0.) {
+			float3 ip = P+D*dists.w;
+			if (max(dot(ip-PZP,ZP),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(ZN),dists.w);
+		}
+		//No hit
+		return float4(-1,-1.,-1.,-1.); 
+	}
+
+	float4 ABoxXZTopBottom(float3 P, float3 D, float3 BMin, float3 BSize, float3 XP, float3 XN, float3 ZP, float3 ZN) {
+		//Returns the nearest distance to the twisted box (flat horisonal surfaces)
+		float3 PXP = BMin+BSize*float3(1.,0.5,0.5);
+		float3 PXN = BMin+BSize*float3(0.,0.5,0.5);
+		float3 PZP = BMin+BSize*float3(0.5,0.5,1.);
+		float3 PZN = BMin+BSize*float3(0.5,0.5,0.);
+		float4 dots = float4(dot(XP,D),dot(XN,D),dot(ZP,D),dot(ZN,D));
+		float4 dists = float4(-dot(P-PXP,XP)/dots.x,-dot(P-PXN,XN)/dots.y,-dot(P-PZP,ZP)/dots.z,-dot(P-PZN,ZN)/dots.w);
+		float3 N;
+		if (dots.x<0.) {
+			float3 ip = P+D*dists.x;
+			if (max(dot(ip-PXN,XN),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(XP),dists.x);
+		}
+		if (dots.y<0.) {
+			float3 ip = P+D*dists.y;
+			if (max(dot(ip-PXP,XP),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(XN),dists.y);
+		}
+		if (dots.z<0.) {
+			float3 ip = P+D*dists.z;
+			if (max(dot(ip-PZN,ZN),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(ZP),dists.z);
+		}
+		if (dots.w<0.) {
+			float3 ip = P+D*dists.w;
+			if (max(dot(ip-PZP,ZP),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.y>BMin.y && ip.y<BMin.y+BSize.y)
+				return float4(normalize(ZN),dists.w);
+		}
+		//Flat surfaces
+		float rpy = P.y-BMin.y-BSize.y;
+		if (max(-rpy,D.y)<0.) {
+			float3 ip = P-D*(rpy/D.y);
+			if (max(max(dot(ip-PXP,XP),dot(ip-PXN,XN)),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0.) return float4(0.,1.,0.,-rpy/D.y);
+		}
+		rpy = P.y-BMin.y;
+		if (max(rpy,-D.y)<0.) {
+			float3 ip = P-D*(rpy/D.y);
+			if (max(max(dot(ip-PXP,XP),dot(ip-PXN,XN)),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0.) return float4(0.,-1.,0.,-rpy/D.y);
+		}
+		//No hit
+		return float4(-1,-1.,-1.,-1.); 
+	}	
+
+	float4 ABoxXY(float3 P, float3 D, float3 BMin, float3 BSize, float3 XP, float3 XN, float3 YP, float3 YN) {
+		//Returns the nearest distance to the twisted box (flat horisonal surfaces)
+		float3 PXP = BMin+BSize*float3(1.,0.5,0.5);
+		float3 PXN = BMin+BSize*float3(0.,0.5,0.5);
+		float3 PYP = BMin+BSize*float3(0.5,1.,0.5);
+		float3 PYN = BMin+BSize*float3(0.5,0.,0.5);
+		float4 dots = float4(dot(XP,D),dot(XN,D),dot(YP,D),dot(YN,D));
+		float4 dists = float4(-dot(P-PXP,XP)/dots.x,-dot(P-PXN,XN)/dots.y,-dot(P-PYP,YP)/dots.z,-dot(P-PYN,YN)/dots.w);
+		float3 N;
+		if (dots.x<0.) {
+			float3 ip = P+D*dists.x;
+			if (max(dot(ip-PXN,XN),max(dot(ip-PYP,YP),dot(ip-PYN,YN)))<0. && ip.z>BMin.z && ip.z<BMin.z+BSize.z)
+				return float4(normalize(XP),dists.x);
+		}
+		if (dots.y<0.) {
+			float3 ip = P+D*dists.y;
+			if (max(dot(ip-PXP,XP),max(dot(ip-PYP,YP),dot(ip-PYN,YN)))<0. && ip.z>BMin.z && ip.z<BMin.z+BSize.z)
+				return float4(normalize(XN),dists.y);
+		}
+		if (dots.z<0.) {
+			float3 ip = P+D*dists.z;
+			if (max(dot(ip-PYN,YN),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.z>BMin.z && ip.z<BMin.z+BSize.z)
+				return float4(normalize(YP),dists.z);
+		}
+		if (dots.w<0.) {
+			float3 ip = P+D*dists.w;
+			if (max(dot(ip-PYP,YP),max(dot(ip-PXP,XP),dot(ip-PXN,XN)))<0. && ip.z>BMin.z && ip.z<BMin.z+BSize.z)
+				return float4(normalize(YN),dists.w);
+		}
+		//Flat surfaces
+		float rpy = P.y-BMin.y-BSize.y;
+		if (max(-rpy,D.y)<0.) {
+			float3 ip = P-D*(rpy/D.y);
+			//if (max(max(dot(ip-PXP,XP),dot(ip-PXN,XN)),max(dot(ip-PZP,ZP),dot(ip-PZN,ZN)))<0.) return float4(0.,1.,0.,-rpy/D.y);
+		}
+		//No hit
+		return float4(-1,-1.,-1.,-1.); 
+	}							
+
+	float4 Trace(float3 P, float3 D) {
+		HIT OUT = CreateHIT(1000000.,float3(-1.,-1.,-1.),float3(-1.,-1.,-1.));
+		float3 ID = 1./D; float3 N; float4 sd;
+		
+		//Flat floor
+		if (D.y<0. && P.y>0.) {
+			OUT = CreateHIT(-P.y/D.y,float3(0.,1.,0.),float3(0.99,0.99,0.99));
+		}
+		
+		//Wall not window
+		float2 bb = ABoxNormal(P,ID,float3(3.,0.,0.),float3(3.1,3.,3.),N);
+		if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+		
+		
+		 
+		//Wall window
+		bb = ABox(P,ID,float3(0.,0.,2.8),float3(3.1,2.8,3.1));
+		if (DFBox(P-float3(0.,0.,2.8),float3(3.1,2.8,0.3))<0. || (bb.x>0. && bb.y>bb.x && bb.x<OUT.D)) {
+			//Emissive windows
+			bb = ABoxNormal(P,ID,float3(0.05,0.,3.),float3(2.9,2.2,3.1),N);
+			float3 Emissive = lerp(lerp(float3(3.,2.,2.),float3(4.,0.4,0.1),
+							float(P.x+D.x*bb.x>2.)),float3(1.3,1.,4.),float(P.x+D.x*bb.x<1.));
+			Emissive = lerp(Emissive,float3(1.,1.,1.),float(P.y+D.y*bb.x>1.25 && abs(P.x+D.x*bb.x-1.5)<0.5));
+			if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,Emissive);
+			//Window frames
+			sd = ABoxXZ(P,D,float3(0.,0.,2.9),float3(0.225,2.8,0.2),
+							float3(1.,-0.1,-0.02),float3(-1.,0.,0.),float3(0.,0.,1.),float3(-0.4,0.015,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZ(P,D,float3(0.9,0.,2.9),float3(0.3,2.8,0.2),
+							float3(1.,-0.03,-0.1),float3(-1.,-0.02,-0.25),float3(0.,0.,1.),float3(0.2,0.015,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZ(P,D,float3(1.8,0.,2.9),float3(0.35,2.8,0.2),
+							float3(1.,0.04,0.1),float3(-1.,0.08,0.25),float3(0.,0.,1.),float3(0.2,0.015,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZ(P,D,float3(2.8,0.,2.9),float3(0.2,2.8,0.2),
+							float3(1.,0.,0.),float3(-1.,-0.04,-0.02),float3(0.,0.,1.),float3(-0.4,0.015,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		}
+		
+		
+		
+		//Twisted wall over
+		bb = ABox(P,ID,float3(0.,2.2,2.),float3(3.1,3.,3.1));
+		if (DFBox(P-float3(0.,2.2,2.),float3(3.1,0.8,1.1))<0. || (bb.x>0. && bb.y>bb.x && bb.x<OUT.D)) {
+			//Wall behind
+			sd = ABoxXZTopBottom(P,D,float3(0.,2.2,2.7),float3(3.,0.8,0.4),
+							float3(1.,0.,0.),float3(-1.,0.,0.),float3(0.,0.,1.),float3(0.,-0.707,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		}
+		
+		
+		
+		//Floor boards
+		for (float xi = 0.; xi<5.; xi++) {
+			bb = ABox(P,ID,float3(xi*0.63-0.03,0.,0.),float3(xi*0.63+0.8,0.05,3.1));
+			if (DFBox(P-float3(xi*0.6,0.,0.),float3(0.8,0.05,3.1))<0. || (bb.x>0. && bb.y>bb.x && bb.x<OUT.D)) {
+				sd = ABoxXY(P,D,float3(xi*0.63,0.,0.05),float3(0.2,0.03,3.05),
+								float3(1.,0.8,-0.01),float3(-1.,1.6,-0.01),float3(-0.01,1.,-0.005),float3(0.,-1.,0.));
+				if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+				sd = ABoxXY(P,D,float3(xi*0.63+0.21,0.,0.05),float3(0.2,0.03,3.05),
+								float3(1.,0.75,-0.005),float3(-1.,0.75,0.),float3(-0.01,1.,-0.005),float3(0.,-1.,0.));
+				if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+				sd = ABoxXY(P,D,float3(xi*0.63+0.42,0.,0.05),float3(0.2,0.03,3.05),
+								float3(1.,0.8,0.),float3(-1.,0.75,0.),float3(-0.09,1.,0.0025),float3(0.,-1.,0.));
+				if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			}
+		}
+		
+		
+		
+		//Table
+		float3 RP = P-float3(0.1,0.,1.25);
+		bb = ABox(RP,ID,float3(0.,0.,0.),float3(0.75,0.5,0.75));
+		if (DFBox(RP,float3(0.75,0.5,0.75))<0. || (bb.x>0. && bb.y>bb.x && bb.x<OUT.D)) {
+			//Legs
+			sd = ABoxXZ(RP,D,float3(0.15,0.,0.15),float3(0.05,0.45,0.05),
+						float3(1.,0.07,-0.15),float3(-1.,0.03,0.3),float3(-0.5,0.02,1.),float3(0.3,0.07,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZ(RP,D,float3(0.55,0.,0.325),float3(0.05,0.45,0.05),
+						float3(1.,-0.07,-0.15),float3(-1.,-0.01,0.3),float3(-0.5,-0.02,1.),float3(0.3,0.07,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZ(RP,D,float3(0.25,0.,0.55),float3(0.05,0.45,0.05),
+						float3(1.,0.01,-0.15),float3(-1.,0.01,0.3),float3(-0.5,0.02,1.),float3(0.3,-0.07,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			//Table
+			sd = ABoxXZTopBottom(RP,D,float3(0.07,0.45,0.1),float3(0.6,0.025,0.55),
+						float3(1.,0.8,0.15),float3(-1.,0.8,0.5),float3(0.6,0.8,1.),float3(-0.1,0.8,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		}
+		
+		
+		
+		//Boxes
+		sd = ABoxXZTopBottom(P,D,float3(0.05,0.,2.3),float3(0.45,0.45,0.45),
+					float3(1.,0.,-0.6),float3(-1.,0.,0.6),float3(0.6,0.,1.),float3(-0.6,0.,-1.));
+		if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZTopBottom(P,D,float3(-0.1,0.45,2.2),float3(0.7,0.45,0.7),
+						float3(1.,0.,-1.6),float3(-1.,0.,1.6),float3(1.6,0.,1.),float3(-1.6,0.,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		
+		//Wall boo
+		bb = ABoxNormal(P,ID,float3(2.8,1.,1.),float3(3.,1.05,2.),N);
+		if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+			bb = ABoxNormal(P,ID,float3(2.8,1.3,1.1),float3(3.,1.35,2.1),N);
+			if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+				bb = ABoxNormal(P,ID,float3(2.8,1.65,1.2),float3(3.,1.7,2.3),N);
+				if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+			bb = ABoxNormal(P,ID,float3(2.85,1.,1.575),float3(3.,1.65,1.625),N);
+			if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+		
+		
+		
+		//Wall cupb
+		sd = ABoxXZTopBottom(P,D,float3(2.6,2.,0.4),float3(0.4,0.6,0.4),
+					float3(1.,0.,0.),float3(-1.,-0.3,0.),float3(0.,-0.05,1.),float3(0.,-0.15,-1.));
+		if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		
+		
+		
+		//Desk
+		bb = ABoxNormal(P,ID,float3(2.4,0.6,1.),float3(3.,0.65,2.5),N);
+		if (bb.x>0. && bb.y>bb.x && bb.x<OUT.D) OUT = CreateHIT(bb.x,N,float3(1.,1.,1.));
+			sd = ABoxXZTopBottom(P,D,float3(2.5,0.,1.1),float3(0.5,0.6,0.3),
+					float3(1.,0.,0.),float3(-1.,-0.3,0.),float3(0.,-0.05,1.),float3(0.,-0.15,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+			sd = ABoxXZTopBottom(P,D,float3(2.45,0.,2.35),float3(0.1,0.6,0.05),
+					float3(1.,0.,0.),float3(-1.,-0.,0.),float3(0.,0.,1.),float3(0.,0.,-1.));
+			if (sd.w>0. && sd.w<OUT.D) OUT = CreateHIT(sd.w,sd.xyz,float3(1.,1.,1.));
+		
+		
+		
+		//Textured vertical planes
+		if (sign(D.z*(P.z-0.9))<0.) {
+			float t = -(P.z-0.9)/D.z;
+			float3 sp = P+D*t;
+			if (t<OUT.D && DFBox(sp.xy-float2(2.5,0.),float2(0.5,1.7))<0. &&
+				(sin((sp.x-2.5)*27.-1.9)*0.5+0.5)*(sin(sp.y*27.)*0.5+0.5)<0.5) {
+				OUT = CreateHIT(t,float3(0.,0.,-sign(D.z)),float3(1.,1.,1.));
+			}
+		}
+		if (sign(D.z*(P.z-0.3))<0.) {
+			float t = -(P.z-0.3)/D.z;
+			float3 sp = P+D*t;
+			if (t<OUT.D && DFBox(sp.xy-float2(2.5,0.),float2(0.5,1.7))<0. &&
+				(sin((sp.x-2.5)*27.-1.9)*0.5+0.5)*(sin(sp.y*27.)*0.5+0.5)<0.5) {
+				OUT = CreateHIT(t,float3(0.,0.,-sign(D.z)),float3(1.,1.,1.));
+			}
+		}
+		
+		
+		
+		//Textured wall plane
+		if (D.x>0. && P.x<2.975) {
+			float t = -(P.x-2.975)/D.x;
+			float3 sp = P+D*t;
+			if (t<OUT.D && DFBox(sp.zy,float2(3.,3.))<0. &&
+				(sin(sp.z*33.-1.)*0.5+0.5)*(sin(sp.y*33.-0.25)*0.5+0.5)<0.4) {
+				OUT = CreateHIT(t,float3(-1.,0.,0.),float3(1.,0.4,0.05));
+			}
+		}
+		
+		
+		
+		//Texture floor plane
+		if (D.y<0.) {
+			float t = -(P.y-0.06)/D.y;
+			float3 sp = P+D*t;
+			if (t<OUT.D && DFBox(sp.xz-float2(1.,0.325),float2(1.,2.5))<0. &&
+				(sin(sp.x*33.)*0.5+0.5)*(sin(sp.z*33.)*0.5+0.5)<0.4) {
+				float z = (P.z+D.z*t)*0.34;
+				OUT = CreateHIT(t,float3(0.,1.,0.),lerp(float3(1.,1.,1.),float3(0.1,1.,0.1),z*z*(3.-2.*z)));
+			}
+		}
+		
+		
+		
+		return float4(OUT.D,OUT.C);
+	}
+};

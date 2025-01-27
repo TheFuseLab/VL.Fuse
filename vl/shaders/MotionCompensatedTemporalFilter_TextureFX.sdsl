@@ -1,0 +1,28 @@
+[Category("Fuse.TextureFX")]
+shader MotionCompensatedTemporalFilter_TextureFX : TextureFX
+{
+
+	Texture2D PreviousFrame;
+	Texture2D OpticalFlow;
+    float TemporalBlendFactor;
+
+	stage override float4 Shading()
+	{
+		
+		 // Read optical flow
+		float2 flow = OpticalFlow.Sample(LinearSampler, streams.TexCoord).xy;
+		
+		// Sample previous frame with motion compensation
+		float2 prevUV = streams.TexCoord - flow;
+		float4 prevColor = PreviousFrame.Sample(LinearSampler, prevUV);
+		float4 currentColor = Texture0.Sample(LinearSampler, streams.TexCoord);
+		
+		// Blend based on flow confidence (could be extended with more sophisticated blending)
+		float flowConfidence = 1.0 - length(flow) * 5.0; // Simple confidence metric
+		flowConfidence = saturate(flowConfidence);
+		
+		float blendFactor = lerp(1.0, TemporalBlendFactor, flowConfidence);
+		return lerp(currentColor, prevColor, blendFactor);
+	}
+
+};

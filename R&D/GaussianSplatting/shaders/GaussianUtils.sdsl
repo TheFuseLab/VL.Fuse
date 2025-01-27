@@ -1,0 +1,197 @@
+shader GaussianUtils{
+    
+    static const float SH_C0 = 0.28209479177387814f;
+    static const float SH_C1 = 0.4886025119029199f;
+
+    static const float SH_C2_0 = 1.0925484305920792f;
+    static const float SH_C2_1 = -1.0925484305920792f;
+    static const float SH_C2_2 = 0.31539156525252005f;
+    static const float SH_C2_3 = -1.0925484305920792f;
+    static const float SH_C2_4 = 0.5462742152960396f;
+
+    static const float SH_C3_0 = -0.5900435899266435f;
+    static const float SH_C3_1 = 2.890611442640554f;
+    static const float SH_C3_2 = -0.4570457994644658f;
+    static const float SH_C3_3 = 0.3731763325901154f;
+    static const float SH_C3_4 = -0.4570457994644658f;
+    static const float SH_C3_5 = 1.445305721320277f;
+    static const float SH_C3_6 = -0.5900435899266435f;
+
+
+    float3 SphericalHarmonics1(float3 sh0){
+        float3 color = SH_C0 * sh0;
+        return color;
+    }
+
+    float3 SphericalHarmonics2(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3){
+        float3 color = SphericalHarmonics1(sh0);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        color = color - 
+            SH_C1 * y * sh1 + 
+            SH_C1 * z * sh2 - 
+            SH_C1 * x * sh3;
+        return color;
+    }
+
+    float3 SphericalHarmonics3(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3, float3 sh4, float3 sh5, float3 sh6, float3 sh7, float3 sh8){
+        float3 color = SphericalHarmonics2(dir, sh0, sh1, sh2, sh3);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        float xx = x * x, yy = y * y, zz = z * z;
+        float xy = x * y, yz = y * z, xz = x * z;
+        
+        color = color +
+            SH_C2_0 * xy * sh4 +
+            SH_C2_1 * yz * sh5 +
+            SH_C2_2 * (2.0f * zz - xx - yy) * sh6 +
+            SH_C2_3 * xz * sh7 +
+            SH_C2_4 * (xx - yy) * sh8;
+
+        return color;
+    }
+
+    float3 SphericalHarmonics4(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3, float3 sh4, float3 sh5, float3 sh6, float3 sh7, float3 sh8, float3 sh9, float3 sh10, float3 sh11, float3 sh12, float3 sh13, float3 sh14, float3 sh15){
+        float3 color = SphericalHarmonics3(dir, sh0, sh1, sh2, sh3, sh4, sh5, sh6, sh7, sh8);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        float xx = x * x, yy = y * y, zz = z * z;
+        float xy = x * y, yz = y * z, xz = x * z;
+
+        color = color +
+            SH_C3_0 * y * (3.0f * xx - yy) * sh9 +
+            SH_C3_1 * xy * z * sh10 +
+            SH_C3_2 * y * (4.0f * zz - xx - yy) * sh11 +
+            SH_C3_3 * z * (2.0f * zz - 3.0f * xx - 3.0f * yy) * sh12 +
+            SH_C3_4 * x * (4.0f * zz - xx - yy) * sh13 +
+            SH_C3_5 * z * (xx - yy) * sh14 +
+            SH_C3_6 * x * (xx - 3.0f * yy) * sh15;
+
+        return color;
+    }
+    
+    float3x3 ComputeCov3D(float4 q, float3 scale){
+        float3x3 S = float3x3(
+            scale.x, 0.0f, 0.0f,
+            0.0f, scale.y, 0.0f,
+            0.0f, 0.0f, scale.z
+        );
+        
+        float r = -q.w;
+        float x = q.x;
+        float y = q.y;
+        float z = q.z;
+
+        float3x3 R = float3x3(
+            1.0f - 2.0f * (y * y + z * z), 2.0f * (x * y - r * z), 2.0f * (x * z + r * y),
+            2.0f * (x * y + r * z), 1.0f - 2.0f * (x * x + z * z), 2.0f * (y * z - r * x),
+            2.0f * (x * z - r * y), 2.0f * (y * z + r * x), 1.0f - 2.0f * (x * x + y * y)
+        );
+
+        float3x3 M = mul(S, R);
+        float3x3 Sigma = mul(transpose(M), M);
+        return Sigma;
+    }
+
+    float3 computeCov2D(float4 mean_view, float2 screenParams, float3x3 cov3D, float4x4 viewMatrix, float4x4 matrixP){
+        float4 t = mean_view;
+
+        float aspect = matrixP._m00 / matrixP._m11;
+        float tanFovX = rcp(matrixP._m00);
+        float tanFovY = rcp(matrixP._m11 * aspect);
+        float limX = 1.3 * tanFovX;
+        float limY = 1.3 * tanFovY;
+        t.x = clamp(t.x / t.z, -limX, limX) * t.z;
+        t.y = clamp(t.y / t.z, -limY, limY) * t.z;
+
+        float focal = screenParams.x * matrixP._m00 / 2;
+        
+        float3x3 J = float3x3(
+            focal / t.z, 0.0f, -(focal * t.x) / (t.z * t.z),
+            0.0f, focal / t.z, -(focal * t.y) / (t.z * t.z),
+            0.0f, 0.0f, 0.0f
+        );
+        
+        float3x3 W = transpose((float3x3)viewMatrix);
+        float3x3 T = mul(W, J);
+        float3x3 cov = mul(mul(transpose(T), transpose(cov3D)), T);
+        
+        // Apply low-pass filter
+        cov._m00 += 0.3f;
+        cov._m11 += 0.3f;
+        
+        return float3(cov._m00, cov._m01, cov._m11);
+    }
+
+    // from "EWA Splatting" (Zwicker et al 2002) eq. 31
+    float3 CalcCovariance2D(float3 worldPos, float3 cov3d0, float3 cov3d1, float4x4 matrixV, float4x4 matrixP, float4 screenParams)
+    {
+        float4x4 viewMatrix = matrixV;
+        float3 viewPos = mul(viewMatrix, float4(worldPos, 1)).xyz;
+
+        // this is needed in order for splats that are visible in view but clipped "quite a lot" to work
+        float aspect = matrixP._m00 / matrixP._m11;
+        float tanFovX = rcp(matrixP._m00);
+        float tanFovY = rcp(matrixP._m11 * aspect);
+        float limX = 1.3 * tanFovX;
+        float limY = 1.3 * tanFovY;
+        viewPos.x = clamp(viewPos.x / viewPos.z, -limX, limX) * viewPos.z;
+        viewPos.y = clamp(viewPos.y / viewPos.z, -limY, limY) * viewPos.z;
+
+        float focal = screenParams.x * matrixP._m00 / 2;
+
+        float3x3 J = float3x3(
+            focal / viewPos.z, 0, -(focal * viewPos.x) / (viewPos.z * viewPos.z),
+            0, focal / viewPos.z, -(focal * viewPos.y) / (viewPos.z * viewPos.z),
+            0, 0, 0
+        );
+        float3x3 W = (float3x3)viewMatrix;
+        float3x3 T = mul(J, W);
+        float3x3 V = float3x3(
+            cov3d0.x, cov3d0.y, cov3d0.z,
+            cov3d0.y, cov3d1.x, cov3d1.y,
+            cov3d0.z, cov3d1.y, cov3d1.z
+        );
+        float3x3 cov = mul(T, mul(V, transpose(T)));
+
+        // Low pass filter to make each splat at least 1px size.
+        cov._m00 += 0.3;
+        cov._m11 += 0.3;
+        return float3(cov._m00, cov._m01, cov._m11);
+    }
+
+    float2 DecomposeCovariance(float3 cov2d, out float2 v2){
+        // same as in antimatter15/splat
+        float diag1 = cov2d.x, diag2 = cov2d.z, offDiag = cov2d.y;
+        float mid = 0.5f * (diag1 + diag2);
+        float radius = length(float2((diag1 - diag2) / 2.0, offDiag));
+        float lambda1 = mid + radius;
+        float lambda2 = max(mid - radius, 0.1);
+        float2 diagVec = normalize(float2(offDiag, lambda1 - diag1));
+        diagVec.y = -diagVec.y;
+        float maxSize = 4096.0;
+        float2 v1 = min(sqrt(2.0 * lambda1), maxSize) * diagVec;
+        v2 = min(sqrt(2.0 * lambda2), maxSize) * float2(diagVec.y, -diagVec.x);
+        return v1;
+    }
+
+    // Convert SH DC term to RGB
+    float3 DecodeDC(float3 dc) {
+        // First undo the sigmoid encoding
+    const float inv_sigmoid_factor = 1.0f / 0.6f;
+    float3 decodedColor = (1.0f / (1.0f + exp(-dc * inv_sigmoid_factor))) - 0.5f;
+    
+    // Scale by SH constant for DC term (Y0)
+    const float SH_C0 = 0.28209479177387814; // 1/sqrt(4π)
+    return decodedColor * SH_C0 * 2.0f;
+    }
+};

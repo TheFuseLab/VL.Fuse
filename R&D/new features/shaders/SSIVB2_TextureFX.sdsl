@@ -1,0 +1,148 @@
+// SSILVB (Screen-Space Illumination via Bitmasking) Shader
+// This shader uses bitmasking and screen-space sampling to approximate indirect lighting and occlusion effects.
+
+[TextureSource]
+[Summary("Generates pixel noise from a value")]
+shader SSIVB2_TextureFX : TextureFX {
+
+    
+    static const float PI = 3.141592653;
+    static const float I64 = 1./64.;
+    static const float LightCoeff = 10.;
+
+    // Screen-space textures containing scene data at each pixel
+    Texture2D screenPosition;   // Stores world position of each fragment
+    Texture2D screenNormal;     // Stores normal vectors for each fragment
+    Texture2D screenLight;      // Stores lighting information at each fragment
+    Texture2D screenDepth;      // Stores Depth information at each fragment
+
+    float3 Eye; //Eye Direction
+    float3 Pos; // Eye Position
+
+    float2 size;
+    float CurrentFrame;
+    float fov;
+ 
+    //Returns the simple tangent space matrix
+    float3x3 TBN(float3 N) {
+        float3 Nb,Nt;
+        if (abs(N.y)>0.999) {
+            Nb = float3(1.,0.,0.);
+            Nt = float3(0.,0.,1.);
+        } else {
+            Nb = normalize(cross(N,float3(0.,1.,0.)));
+            Nt = normalize(cross(Nb,N));
+        }
+        return float3x3(Nb.x,Nt.x,N.x,Nb.y,Nt.y,N.y,Nb.z,Nt.z,N.z);
+    }
+
+    //Returns the simple tangent space directions
+    float3 TBN(float3 N, out float3 O) {
+        if (abs(N.y)>0.999) {
+            O = float3(1.,0.,0.);
+            return float3(0.,0.,1.);
+        } else {
+            O = normalize(cross(N,float3(0.,1.,0.)));
+            return normalize(cross(O,N));
+        }
+    }
+
+    //Returns 1D noise from 2D
+    float ARand21(float2 uv) {
+        return frac(sin(uv.x*uv.y)*403.125+cos(dot(uv,float2(13.18273,51.2134)))*173.137);
+    }
+
+    float DFBox(float2 p, float2 b) {
+        float2 d = abs(p-b*0.5)-b*0.5;
+        return min(max(d.x,d.y),0.)+length(max(d,0.));
+    }
+
+    //Counts the number of 1:s
+    //https://www.baeldung.com/cs/integer-bitcount
+    int CountBits(int val) {
+        val = (val&0x55555555)+((val>>1)&0x55555555);
+        val = (val&0x33333333)+((val>>2)&0x33333333);
+        val = (val&0x0F0F0F0F)+((val>>4)&0x0F0F0F0F);
+        val = (val&0x00FF00FF)+((val>>8)&0x00FF00FF);
+        val = (val&0x0000FFFF)+((val>>16)&0x0000FFFF);
+        return val;
+    }
+
+	// Main function to calculate visibility and indirect lighting for a fragment
+    float4 getVisibility(float2 fragUV) {
+
+		 // Retrieve screen-space position and normal for the current fragment
+        float3 PPos = screenPosition.Sample(Sampler0, fragUV).rgb;    		// World position
+        float3 Normal = normalize(screenNormal.Sample(Sampler0, fragUV).rgb); 	// Fragment normal
+        float3 Light = screenLight.Sample(Sampler0, fragUV).rgb;
+
+        float3 Tan; 
+        float3 Bit = TBN(Eye,Tan);
+
+        float4 result = float4(0.,0.,0.,1.);
+
+        if(Light.x <= 1.0){
+            float3 VNormal = float3(dot(Normal,Tan),dot(Normal,Bit),dot(Normal,Eye));
+            float3 VPPos = float3(dot(PPos-Pos,Tan),dot(PPos-Pos,Bit),dot(PPos-Pos,Eye));
+
+            float2 fragCoord = fragUV * size;
+            float2 ModFC = fmod(fragCoord,4.);
+            float RandPhiOffset = ARand21(float2(1.234,1.234) + fmod(CurrentFrame * 3.26346,7.2634));
+            float RandPhi = (fmod(floor(ModFC.x)+floor(ModFC.y)*4.+CurrentFrame*5.,16.)+RandPhiOffset)*2.*PI*I64;
+
+
+            //for (float i=0.; i<3.5; i++) {
+                //4 hemi-horizons
+                RandPhi += PI*0.5;
+                float2 SSDir = float2(cos(RandPhi),sin(RandPhi));
+                float StepDist = 1.;
+                float StepCoeff = 0.15 + 0.15 * ARand21(fragUV * (1.4+fmod(CurrentFrame*3.26346,6.2634)));
+                int BitMask = int(0);
+                
+                //for (float s=1.; s<32.5; s++) {
+                    //32 steps
+                    float2 SUV = fragCoord + SSDir * StepDist;
+                    float CurrentStep = max(1.,StepDist*StepCoeff);
+                    StepDist += CurrentStep;
+                    
+                    //if (DFBox(SUV-1.,size-1.)>0.) break;
+
+                    //float3 SVPPos = screenPosition.Sample(Sampler0, SUV / size).rgb;    		// World position
+                    float3 Light = screenLight.Sample(Sampler0, SUV / size).rgb;
+                    float Depth = screenDepth.Sample(Sampler0, SUV / size).r;
+                    float2 ASPECT = float2(size.x/size.y,1.0);
+                    float CFOV = tan(fov);
+                    float3 SVPPos = normalize(float3((SUV / size * 2. -1.)*(ASPECT*CFOV)*float2(1.0,1.0),1.))*Depth;
+                    
+                    //if (SAttr.y<-1.5) continue; this checks sky ignore for now
+                    
+                    float NorDot = dot(VNormal,SVPPos-VPPos)-0.001;
+                    float TanDist = length(SVPPos-VPPos-NorDot*VNormal);
+                    float Angle1f = atan2(NorDot,TanDist);
+                    float Angle2f = atan2(NorDot-0.03*max(1.,StepDist*0.07),TanDist);
+                    float Angle1 = max(0.,ceil(Angle1f/(PI*0.5)*32.));
+                    float Angle2 = max(0.,floor(Angle2f/(PI*0.5)*32.));
+                    
+                    //Sample bitmask
+                    int SBitMask = (int(pow(2.,Angle1-Angle2))-1) << int(Angle2);
+                    float3 SNormal = screenNormal.Sample(Sampler0, SUV / size).rgb; 
+                    SNormal = float3(dot(SNormal,Tan),dot(SNormal,Bit),dot(SNormal,Eye));
+                    result.xyz += float(CountBits(SBitMask & (~BitMask)))/max(1.,Angle1-Angle2) * Light * LightCoeff
+                                  *(pow(cos(Angle2*I64*PI),2.)-pow(cos(Angle1*I64*PI),2.))
+                                  *sqrt(max(0.,dot(SNormal,-normalize(SVPPos-VPPos))));
+                    //Update bitmask
+                    BitMask = BitMask | SBitMask;
+                //}
+            //}
+		float bla = fmod(RandPhi,2.*PI) / 2.*PI;
+            return float4(SVPPos-VPPos, 1.0);
+        }
+
+        return float4(Tan, 1.0); // Return final lighting and visibility as a 4D vector
+    }
+
+    // Main shader function to shade each fragment using calculated visibility and lighting
+    stage override float4 Shading(){
+        return getVisibility(streams.TexCoord);
+    }
+};

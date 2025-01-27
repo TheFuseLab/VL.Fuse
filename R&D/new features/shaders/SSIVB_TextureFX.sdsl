@@ -1,0 +1,136 @@
+// SSILVB (Screen-Space Illumination via Bitmasking) Shader
+// This shader uses bitmasking and screen-space sampling to approximate indirect lighting and occlusion effects.
+
+[TextureSource]
+[Summary("Generates pixel noise from a value")]
+shader SSIVB_TextureFX : TextureFX {
+
+    // Screen-space textures containing scene data at each pixel
+    Texture2D screenPosition;   // Stores world position of each fragment
+    Texture2D screenNormal;     // Stores normal vectors for each fragment
+    Texture2D screenLight;      // Stores lighting information at each fragment
+
+	// Adjustable shader parameters
+    float sampleCount;      // Number of samples per pixel for illumination calculation
+    float sampleRadius;     // Radius around each pixel to sample for indirect lighting
+    float sliceCount;       // Number of slices around each pixel for sampling
+    float hitThickness;     // Thickness to control occlusion hit sensitivity
+    float2 screenSize;      // Size of the screen in pixels
+    float4x4 projection;    // Projection matrix for sample scaling
+
+	// Mathematical constants
+    static const float pi = 3.14159265359;
+    static const float twoPi = 2.0 * pi;
+    static const float halfPi = 0.5 * pi;
+
+	// Random noise function based on pixel coordinates
+    // Generates a pseudo-random float based on pixel coordinates for sampling jitter
+    float randf(int x, int y) {
+        return fmod(52.9829189 * fmod(0.06711056 * float(x) + 0.00583715 * float(y), 1.0), 1.0);
+    }
+
+	// Number of sectors in the 360° surrounding horizon for bitmasking
+    static const uint sectorCount = 32;
+
+	// Updates the sector bitmask based on horizon angles
+    // minHorizon and maxHorizon define the start and end angles for occlusion
+    // outBitfield is the current occlusion state and will be updated with new occlusion information
+    uint updateSectors(float minHorizon, float maxHorizon, uint outBitfield) {
+        float startBitFloat = minHorizon * (float)sectorCount;       // Calculate starting bit position
+        uint startBit = (uint)startBitFloat;                         // Convert to integer bit position
+        uint horizonAngle = uint(ceil((maxHorizon - minHorizon) * float(sectorCount)));  // Angle span in bits
+        uint shiftedBits = (uint)(0xFFFFFFFF >> int(sectorCount - horizonAngle));        // Mask for angle span
+        uint angleBit = horizonAngle > 0 ? shiftedBits : 0;                             // Set angle bits
+
+        uint currentBitfield = angleBit << startBit;                  // Bitfield for this sector
+        return outBitfield | currentBitfield;                         // Combine with existing occlusion bitfield
+    }
+ 
+
+	// Main function to calculate visibility and indirect lighting for a fragment
+    float4 getVisibility(float2 fragUV) {
+        uint indirect = 0;     // Bitmask tracking indirect lighting visibility
+        uint occlusion = 0;    // Bitmask for occlusion tracking
+
+		float visibility = 0.0;              			// Accumulated visibility value
+        float3 lighting = float3(0.0,0.0,0.0);       	// Accumulated indirect lighting color
+        float2 frontBackHorizon = float2(0.0, 0.0);  	// Track horizon angles for occlusion
+        float2 aspect = screenSize.yx / screenSize.x; 	// Aspect ratio adjustment
+
+		 // Retrieve screen-space position and normal for the current fragment
+        float3 position = screenPosition.Sample(Sampler0, fragUV).rgb;    		// World position
+        float3 camera = normalize(-position);                             		// Direction to the camera
+        float3 normal = normalize(screenNormal.Sample(Sampler0, fragUV).rgb) *float3(1.0,1.0, 1.0); 	// Fragment normal
+
+		// Calculate slice rotation angle and sample scaling factors
+        float sliceRotation = pi / (sliceCount - 1.0);                    		// Angle between slices
+        float sampleScale = (-sampleRadius * projection[0][0]) / position.z;  	// Scale samples based on depth
+        float sampleOffset = 0.01;                                        		// Offset to avoid overlapping samples
+        float jitter = randf(int(fragUV.x), int(fragUV.y)) - 0.5;         		// Random jitter to reduce artifacts
+
+
+		// Iterate through slices around the fragment to sample indirect lighting and occlusion
+        for (float slice = 0.0; slice < sliceCount + 0.5; slice += 1.0) {
+            float phi = sliceRotation * (slice + jitter) + pi;            // Calculate angle in radians
+            float2 omega = float2(cos(phi), sin(phi));                    // Circular direction vector
+            float3 direction = float3(omega.x, omega.y, 0.0);             // 3D direction for sampling
+
+            // Calculate orthogonal direction to camera for occlusion handling
+            float3 orthoDirection = direction - dot(direction, camera) * camera;
+            float3 axis = cross(direction, camera);                      // Cross product for perpendicular axis
+            float3 projNormal = normal - axis * dot(normal, axis);       // Projected normal for occlusion
+            float projLength = length(projNormal);                       // Length of the projected normal
+
+            // Calculate angle (n) based on the sign of projection
+            float signN = sign(dot(orthoDirection, projNormal));
+            float cosN = clamp(dot(projNormal, camera) / projLength, 0.0, 1.0);
+            float n = signN * acos(cosN);
+
+            // Inner loop to sample along the slice for indirect lighting and occlusion
+            for (float currentSample = 0.0; currentSample < sampleCount + 0.5; currentSample += 1.0) {
+                float sampleStep = (currentSample + jitter) / sampleCount + sampleOffset;  // Step size for sampling
+                float2 sampleUV = fragUV - sampleStep * sampleScale * omega * aspect;      // UV for sample point
+
+                // Retrieve position, normal, and light data at sample point
+                float3 samplePosition = screenPosition.Sample(Sampler0, sampleUV).rgb;
+                float3 sampleNormal = normalize(screenNormal.Sample(Sampler0, sampleUV).rgb);
+                float3 sampleLight = screenLight.Sample(Sampler0, sampleUV).rgb;
+                float3 sampleDistance = samplePosition - position;       // Distance vector to sample
+                float sampleLength = length(sampleDistance);             // Distance length to sample
+                float3 sampleHorizon = sampleDistance / sampleLength;    // Normalized sample direction
+
+                // Calculate horizon angles for bitmask updates
+                frontBackHorizon.x = dot(sampleHorizon, camera);         // Angle for front horizon
+                frontBackHorizon.y = dot(normalize(sampleDistance - camera * hitThickness), camera); // Back horizon
+
+                frontBackHorizon = acos(frontBackHorizon);               // Convert to angular representation
+                frontBackHorizon = clamp((frontBackHorizon + n + halfPi) / pi, 0.0, 1.0); // Normalize angle range
+
+                // Update indirect lighting bitmask for this sample
+                indirect = updateSectors(frontBackHorizon.x, frontBackHorizon.y, 0);
+
+                // Accumulate lighting based on visible sectors and occlusion
+                lighting += (1.0 - float(countbits(indirect & ~occlusion)) / float(sectorCount)) *
+                            sampleLight * clamp(dot(normal, sampleHorizon), 0.0, 1.0) *
+                            clamp(dot(sampleNormal, -sampleHorizon), 0.0, 1.0);
+
+                // Update occlusion bitmask with indirect visibility
+                occlusion |= indirect;
+            }
+
+            // Calculate visibility from remaining unoccluded sectors
+            visibility += 1.0 - float(countbits(occlusion)) / float(sectorCount);
+        }
+
+        // Average the accumulated results over all slices
+        visibility /= sliceCount;
+        lighting /= sliceCount;
+
+        return float4(lighting, visibility); // Return final lighting and visibility as a 4D vector
+    }
+
+    // Main shader function to shade each fragment using calculated visibility and lighting
+    stage override float4 Shading(){
+        return getVisibility(streams.TexCoord);
+    }
+};
