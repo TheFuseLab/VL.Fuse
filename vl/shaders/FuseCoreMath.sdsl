@@ -241,4 +241,20 @@ shader FuseCoreMath{
 		return float3(x, y, z) * radius;
 	}
 
+	uint FloatToSortableUint(float f)
+	{
+		// Reinterpret float bits as uint
+		uint x = asuint(f);
+
+		// Extract the sign bit (1 => negative, 0 => nonnegative)
+		uint sign = x & 0x80000000;
+
+		// Flip either all bits (if negative) or just the sign bit (if positive)
+		// so that negative floats sort before positive ones in ascending order.
+		uint mask = (sign != 0) ? 0xFFFFFFFF : 0x80000000;
+		x ^= mask;
+
+		return x;
+	}
+
 };
