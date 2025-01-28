@@ -1,11 +1,11 @@
 ﻿namespace Fuse
 {
-    public class Matrix3
+    public struct Matrix3
     {
         
     }
 
-    public class Matrix2
+    public struct Matrix2
     {
     }
 }
