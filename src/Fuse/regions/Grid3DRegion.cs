@@ -54,7 +54,7 @@ namespace Fuse.regions
             for (unsigned int n_id = g_start_end.x; n_id < g_start_end.y; n_id++) {
 				int ${index} = ${elementIndices}[n_id].y;
 
-                if(streams.DispatchThreadId.x == ${index})continue;
+                if(((int)streams.DispatchThreadId.x) == ${index})continue;
                 ";
             theSourceBuilder.Append(
                 ShaderNodesUtil.Evaluate(
@@ -89,7 +89,7 @@ namespace Fuse.regions
         }
     }
 
-    public class Index3DNode : ShaderNode<int>
+    public class Index3DNode : ShaderNode<uint>
     {
         [field: ThreadStatic] public static NodeContext Current { get; private set; }
 
