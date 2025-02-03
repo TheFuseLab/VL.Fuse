@@ -114,7 +114,7 @@ namespace Fuse
             public static string GetDefaultForType<T>(T theValue)
             {
                 if (typeof(T) == typeof(float)) return theValue.ToString();
-                
+               
                 if (typeof(T) == typeof(Vector2))
                 {
                     var vec2 = (Vector2) Convert.ChangeType(theValue, typeof(Vector2));
