@@ -1,0 +1,109 @@
+shader FuseComputeVoronoiTracking{
+
+    // 32-bit PCG implementation optimized for GPU
+    uint pcg_random(inout uint state) {
+        uint oldstate = state;
+        state = oldstate * 747796405u + 2891336453u;
+        uint word = ((oldstate >> ((oldstate >> 28u) + 4u)) ^ oldstate) * 277803737u;
+        return (word >> 22u) ^ word;
+    }
+
+    float rand(inout uint state) {
+        return float(pcg_random(state)) * (1.0 / 4294967296.0);
+    }
+
+    void InsertNeighbor(
+        RWStructuredBuffer<uint> NeighborIds, 
+        RWStructuredBuffer<float> Distances, 
+        inout uint neighborCount, 
+        uint particleId, 
+        uint newId, 
+        float newDistSq, 
+        uint MAX_NEIGHBORS
+    ) {
+        uint baseIndex = particleId * MAX_NEIGHBORS;
+        uint count = neighborCount;
+        
+        // Early out if already at max and new distance is larger than largest stored
+        if (count >= MAX_NEIGHBORS && newDistSq >= Distances[baseIndex + MAX_NEIGHBORS - 1]) {
+            return;
+        }
+        
+        // Find insertion point and check existence
+        uint insertIndex = count;
+        [unroll]
+        for (uint i = 0; i < min(count, MAX_NEIGHBORS); i++) {
+            if (NeighborIds[baseIndex + i] == newId) return;
+            if (newDistSq < Distances[baseIndex + i]) {
+                insertIndex = i;
+                break;
+            }
+        }
+        
+        // Simple shift using forward iteration
+        uint shiftCount = min(count, MAX_NEIGHBORS - 1) - insertIndex;
+        [unroll]
+        for (uint i = 0; i < shiftCount; i++) {
+            uint idx = (min(count, MAX_NEIGHBORS - 1) - i);
+            NeighborIds[baseIndex + idx] = NeighborIds[baseIndex + idx - 1];
+            Distances[baseIndex + idx] = Distances[baseIndex + idx - 1];
+        }
+        
+        // Insert new neighbor
+        NeighborIds[baseIndex + insertIndex] = newId;
+        Distances[baseIndex + insertIndex] = newDistSq;
+        Particles[particleId].neighborCount = min(count + 1, MAX_NEIGHBORS);
+    }
+
+    uint UpdateNeighbors(
+        RWStructuredBuffer<float3> positions,
+        RWStructuredBuffer<uint> NeighborIds, 
+        RWStructuredBuffer<float> Distances, 
+        uint neighborCount, 
+        uint particleId, 
+        uint MAX_NEIGHBORS
+    ) {
+        
+        float3 pos = positions[particleId].position;
+        uint baseIndex = particleId * MAX_NEIGHBORS;
+        
+        // Store previous neighbors
+        uint prevNeighbors[MAX_NEIGHBORS];
+        [unroll]
+        for (uint i = 0; i < neighborCount; i++) {
+            prevNeighbors[i] = NeighborIds[baseIndex + i];
+        }
+        
+        // Reset neighbor count
+        neighborCount = 0;
+        
+        float maxDistSq = maxDistance * maxDistance;
+        
+        // Recheck previous neighbors first
+        for (uint i = 0; i < prevCount; i++) {
+            uint neighborId = prevNeighbors[i];
+            float3 deltaPos = positions[neighborId] - pos;
+            float distSq = dot(deltaPos, deltaPos);
+            
+            if (distSq <= maxDistSq) {
+                InsertNeighbor(NeighborIds, Distances, neighborCount, particleId, neighborId, distSq);
+            }
+        }
+        
+        // Add random samples to potentially find new closer neighbors
+        uint rngState = pcg_random(particleId + frameCount * 719393);
+        for (uint i = 0; i < RANDOM_SAMPLES; i++) {
+            uint candidateId = uint(rand(rngState) * particleCount);
+            if (candidateId != particleId && candidateId < particleCount) {
+                float3 deltaPos = positions[candidateId] - pos;
+                float distSq = dot(deltaPos, deltaPos);
+                
+                if (distSq <= maxDistSq) {
+                    InsertNeighbor(NeighborIds, Distances, neighborCount, particleId, candidateId, distSq);
+                }
+            }
+        }
+
+        return neighborCount;
+    }
+};
