@@ -55,6 +55,20 @@ ${arrayContent}
             });
             Size = theSize; 
         }
+        
+        public Array(NodeContext nodeContext, ShaderNode<int> theSize, bool theIsGroupShared=false) : base(nodeContext, "Array")
+        {
+            const string shaderCode = 
+                @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];" ;
+            
+            _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
+            {
+                {"groupshared",theIsGroupShared ? "groupshared" : ""},
+                {"arrayType", TypeHelpers.GetGpuType<T>()},
+                {"arrayName", ID},
+                {"arraySize", theSize.ID}
+            });
+        }
         public Array(NodeContext nodeContext, ICollection<ShaderNode<T>> theInputs) : base(nodeContext, "Array")
         {
             
