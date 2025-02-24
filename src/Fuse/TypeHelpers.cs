@@ -66,6 +66,33 @@ namespace Fuse
             {
                 return IsStructType(typeof(T));        
             }
+
+            public static bool IsGpuArray(Type type)
+            {
+                if (type == null)
+                    return false;
+        
+                return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(GpuArray<>);
+            }
+            
+            public static bool IsGpuArray<T>()
+            {
+                return IsStructType(typeof(T));        
+            }
+            
+            public static bool IsGpuArray<T>(ShaderNode<T> shaderNode)
+            {
+                return IsGpuArray(typeof(T));        
+            }
+            
+            public static bool IsGpuArray(AbstractShaderNode theValue)
+            {
+                if (theValue == null || !theValue.GetType().IsGenericType)
+                    return false;
+        
+                var genericType = theValue.GetType().GetGenericArguments()[0];
+                return genericType.IsGenericType && genericType.GetGenericTypeDefinition() == typeof(GpuArray<>);
+            }
             
             public static bool IsDelegate(AbstractShaderNode theValue)
             {
@@ -290,6 +317,8 @@ namespace Fuse
                 {typeof(GpuVoid), "void"}
             };
             
+            
+            
             public static string GetGpuType(AbstractShaderNode abstractShaderNode)
             {
                 return abstractShaderNode switch
@@ -310,6 +339,22 @@ namespace Fuse
                     ShaderNode<Int3> _ => "int3",
                     ShaderNode<Int4> _ => "int4",
                     ShaderNode<GpuVoid> _ => "void",
+                    
+                    ShaderNode<GpuArray<float>> _ => "float",
+                    ShaderNode<GpuArray<Vector2>> _ => "float2",
+                    ShaderNode<GpuArray<Vector3>> _ => "float3",
+                    ShaderNode<GpuArray<Vector4>> _ => "float4",
+                    ShaderNode<GpuArray<Color4>> _ => "float4",
+                    ShaderNode<GpuArray<Matrix>> _ => "float4x4",
+                    ShaderNode<GpuArray<Matrix3>> _ => "float3x3",
+                    ShaderNode<GpuArray<Matrix2>> _ => "float2x2",
+                    ShaderNode<GpuArray<bool>> _ => "bool",
+                    ShaderNode<GpuArray<int>> _ => "int",
+                    ShaderNode<GpuArray<uint>> _ => "uint",
+                    ShaderNode<GpuArray<ushort>> _ => "ushort",
+                    ShaderNode<GpuArray<Int2>> _ => "int2",
+                    ShaderNode<GpuArray<Int3>> _ => "int3",
+                    ShaderNode<GpuArray<Int4>> _ => "int4",
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
             }
@@ -531,6 +576,23 @@ namespace Fuse
                     ShaderNode<Int2> _ => 2 * 4,
                     ShaderNode<Int3> _ => 3 * 4,
                     ShaderNode<Int4> _ => 4 * 4,
+                    
+                    ShaderNode<GpuArray<float>> _ => 4,
+                    ShaderNode<GpuArray<Vector2>> _ => 2 * 4,
+                    ShaderNode<GpuArray<Vector3>> _ => 3 * 4,
+                    ShaderNode<GpuArray<Vector4>> _ => 4 * 4,
+                    ShaderNode<GpuArray<Color4>> _ => 4 * 4,
+                    ShaderNode<GpuArray<Matrix>> _ => 4 * 4 * 4,
+                    ShaderNode<GpuArray<Matrix3>> _ => 3 * 3 * 4,
+                    ShaderNode<GpuArray<Matrix2>> _ => 2 * 2 * 4,
+                    ShaderNode<GpuArray<bool>> _ => 1,
+                    ShaderNode<GpuArray<int>> _ => 4,
+                    ShaderNode<GpuArray<uint>> _ => 4,
+                    ShaderNode<GpuArray<ushort>> _ => 4,
+                    ShaderNode<GpuArray<Int2>> _ => 2 * 4,
+                    ShaderNode<GpuArray<Int3>> _ => 3 * 4,
+                    ShaderNode<GpuArray<Int4>> _ => 4 * 4,
+                    
                     ShaderNode<GpuVoid> _ => 0,
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
@@ -590,6 +652,19 @@ namespace Fuse
                     ShaderNode<Int4> _ => PixelFormat.R32G32B32A32_SInt,
                     ShaderNode<uint> _ => PixelFormat.R32_UInt,
                     ShaderNode<ushort> _ => PixelFormat.R16_UInt,
+                    
+                    ShaderNode<GpuArray<float>> _ => PixelFormat.R32_Float,
+                    ShaderNode<GpuArray<Vector2>> _ => PixelFormat.R32G32_Float,
+                    ShaderNode<GpuArray<Vector3>> _ => PixelFormat.R32G32B32_Float,
+                    ShaderNode<GpuArray<Vector4>> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<GpuArray<Color4>> _ => PixelFormat.R32G32B32A32_Float,
+                    ShaderNode<GpuArray<bool>> _ => PixelFormat.R1_UNorm,
+                    ShaderNode<GpuArray<int>> _ => PixelFormat.R32_SInt,
+                    ShaderNode<GpuArray<Int2>> _ => PixelFormat.R32G32_SInt,
+                    ShaderNode<GpuArray<Int3>> _ => PixelFormat.R32G32B32_SInt,
+                    ShaderNode<GpuArray<Int4>> _ => PixelFormat.R32G32B32A32_SInt,
+                    ShaderNode<GpuArray<uint>> _ => PixelFormat.R32_UInt,
+                    ShaderNode<GpuArray<ushort>> _ => PixelFormat.R16_UInt,
                     _ => throw new NotImplementedException("No name defined for type: " + abstractShaderNode.GetType().FullName)
                 };
             }

@@ -24,8 +24,18 @@ ${structMembers}
             var call = new StringBuilder();
             theInputs.ForEach(input =>
             {
-                call.Append("        "+TypeHelpers.GetGpuType(input) + " " + input.Name+";"+Environment.NewLine);
-                myStride += TypeHelpers.GetSizeInBytes(input);
+                if (TypeHelpers.IsGpuArray(input))
+                {
+                    var arrayCount = input is IStructureBufferAttribute structBuffer ? structBuffer.ArrayCount : 1;
+                    call.Append("        "+TypeHelpers.GetGpuType(input) + " " + input.Name+"["+arrayCount+"];"+Environment.NewLine);
+                    myStride += TypeHelpers.GetSizeInBytes(input);
+                }
+                else
+                {
+                    call.Append("        "+TypeHelpers.GetGpuType(input) + " " + input.Name+";"+Environment.NewLine);
+                    myStride += TypeHelpers.GetSizeInBytes(input);
+                }
+                
 
                 
             });

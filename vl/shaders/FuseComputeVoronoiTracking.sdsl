@@ -1,0 +1,186 @@
+shader FuseComputeVoronoiTracking {
+
+    // 32-bit PCG implementation optimized for GPU
+    int pcg_random(inout int state) {
+        int oldstate = state;
+        state = oldstate * 747796405 + 1891336453;
+        int word = ((oldstate >> ((oldstate >> 28) + 4)) ^ oldstate) * 277803737;
+        return (word >> 22) ^ word;
+    }
+
+    float rand(inout int state) {
+        return float(pcg_random(state)) * (1.0 / 4294967296.0);
+    }
+
+    void InsertNeighbor(
+        RWStructuredBuffer<int> NeighborIds, 
+        RWStructuredBuffer<float> Distances, 
+        inout int neighborCount,  // Changed to inout
+        int particleId, 
+        int newId, 
+        float newDistSq, 
+        int maxNeighbors
+    ) {
+        int baseIndex = particleId * maxNeighbors;
+        int count = neighborCount;
+        
+        // Early out if already at max and new distance is larger than largest stored
+        if (count >= maxNeighbors && newDistSq >= Distances[baseIndex + maxNeighbors - 1]) {
+            return;
+        }
+        
+        // Find insertion point and check existence
+        int insertIndex = count;
+        
+        for (int i0 = 0; i0 < min(count, maxNeighbors); i0++) {
+            if (NeighborIds[baseIndex + i0] == newId) return;
+            if (newDistSq < Distances[baseIndex + i0]) {
+                insertIndex = i0;
+                break;
+            }
+        }
+        
+        // Simple shift using forward iteration
+        int shiftCount = min(count, maxNeighbors - 1) - insertIndex;
+        for (int i1 = 0; i1 < shiftCount; i1++) {
+            int idx = (min(count, maxNeighbors - 1) - i1);
+            NeighborIds[baseIndex + idx] = NeighborIds[baseIndex + idx - 1];
+            Distances[baseIndex + idx] = Distances[baseIndex + idx - 1];
+        }
+        
+        // Insert new neighbor
+        NeighborIds[baseIndex + insertIndex] = newId;
+        Distances[baseIndex + insertIndex] = newDistSq;
+        neighborCount = min(count + 1, maxNeighbors);  // Update the count via inout parameter
+    }
+
+    // New function to check a potential neighbor
+    void CheckCandidate(
+        RWStructuredBuffer<float3> positions,
+        RWStructuredBuffer<int> NeighborIds,
+        RWStructuredBuffer<int> NeighborStates,
+        RWStructuredBuffer<float> Distances,
+        inout int currentCount,
+        int particleId,
+        int particleState,
+        int candidateId,
+        float3 pos,
+        float maxDistSq,
+        int maxNeighbors
+    ) {
+        if (candidateId == particleId) return;
+        if (NeighborStates[candidateId] != particleState) return;
+            
+        float3 deltaPos = positions[candidateId] - pos;
+        float distSq = dot(deltaPos, deltaPos);
+            
+        if (distSq > maxDistSq) return;
+                
+        InsertNeighbor(NeighborIds, Distances, currentCount, particleId, candidateId, distSq, maxNeighbors);
+    }
+
+    int UpdateNeighbors(
+        RWStructuredBuffer<float3> positions,
+        RWStructuredBuffer<int> NeighborIds, 
+        RWStructuredBuffer<int> NeighborStates,
+        RWStructuredBuffer<float> Distances, 
+        int neighborCount, 
+        int particleId,
+        int particleState,  
+        int maxNeighbors,
+        float maxDistance,
+        int frameCount,
+        int randomSamples,
+        int particleCount
+    ) {
+        float3 pos = positions[particleId];
+        int baseIndex = particleId * maxNeighbors;
+        
+        // Store previous neighbors
+        int prevNeighbors[64];
+        
+        for (int i0 = 0; i0 < neighborCount; i0++) {
+            prevNeighbors[i0] = NeighborIds[baseIndex + i0];
+        }
+        
+        // Reset neighbor count
+        int prevCount = neighborCount;
+        int currentCount = 0;  // Local variable to track count
+
+        float maxDistSq = maxDistance * maxDistance;
+        
+        if(NeighborStates[particleId] != particleState)return currentCount;
+        
+        // Recheck previous neighbors first
+        for (int i1 = 0; i1 < prevCount; i1++) {
+            int neighborId = prevNeighbors[i1];
+            CheckCandidate(
+                positions, 
+                NeighborIds,
+                NeighborStates,
+                Distances, 
+                currentCount, 
+                particleId,
+                particleState,
+                neighborId, 
+                pos, 
+                maxDistSq, 
+                maxNeighbors
+            );
+        }
+
+        // Phase 2: Check neighbors of neighbors (second-order connections)
+        for (int i2 = 0; i2 < min(prevCount, maxNeighbors/2); i2++) {
+            int neighborId = prevNeighbors[i2];
+            int neighborBaseIndex = neighborId * maxNeighbors;
+            
+            // Get neighbor's current neighbor count
+            int secondOrderCount = 0;
+            for (int j = 0; j < maxNeighbors; j++) {
+                if (NeighborIds[neighborBaseIndex + j] == -1) break;
+                secondOrderCount++;
+            }
+            
+            // Check each of neighbor's neighbors
+            for (int j = 0; j < secondOrderCount; j++) {
+                int secondOrderId = NeighborIds[neighborBaseIndex + j];
+                CheckCandidate(
+                    positions, 
+                    NeighborIds,
+                    NeighborStates,
+                    Distances, 
+                    currentCount, 
+                    particleId,
+                    particleState,
+                    secondOrderId, 
+                    pos, 
+                    maxDistSq, 
+                    maxNeighbors
+                );
+            }
+        }
+        
+        // Add random samples to potentially find new closer neighbors
+        int state = particleId + frameCount * 719393;
+        int rngState = pcg_random(state);
+        for (int i2 = 0; i2 < randomSamples; i2++) {
+            int candidateId = int(rand(rngState) * particleCount);
+            CheckCandidate(
+                positions, 
+                NeighborIds,
+                NeighborStates,
+                Distances, 
+                currentCount, 
+                particleId,
+                particleState,
+                candidateId, 
+                pos, 
+                maxDistSq, 
+                maxNeighbors
+            );
+        }
+
+        return currentCount;
+        
+    }
+};
