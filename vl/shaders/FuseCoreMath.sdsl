@@ -257,4 +257,120 @@ shader FuseCoreMath{
 		return x;
 	}
 
+	float3 ClosestPointOnBox(float3 pos, float3 boxCenter, float3 boxSize, out float3 normal) {
+		float3 halfSize = boxSize * 0.5;
+		float3 localPos = pos - boxCenter;
+		
+		// Get the distance to each face by computing the difference between
+		// the local position and the half size for each axis
+		float3 d = abs(localPos) - halfSize;
+		
+		if (all(d <= 0)) {
+			// Inside box - find closest face by comparing distances
+			float3 d2 = halfSize - abs(localPos);
+			
+			// Find which component has minimum distance
+			int3 comp = (d2.x <= d2.y && d2.x <= d2.z) ? int3(1,0,0) :
+					(d2.y <= d2.x && d2.y <= d2.z) ? int3(0,1,0) :
+													int3(0,0,1);
+			
+			// Set normal based on selected component
+			normal = float3(
+				comp.x * sign(localPos.x),
+				comp.y * sign(localPos.y),
+				comp.z * sign(localPos.z)
+			);
+			
+			// Project to closest face
+			localPos = lerp(localPos, halfSize * sign(localPos), comp);
+			return localPos + boxCenter;
+		}
+		else {
+			// Outside box - clamp to bounds
+			float3 clamped = clamp(localPos, -halfSize, halfSize);
+			float3 delta = localPos - clamped;
+			float3 absDelta = abs(delta);
+			
+			// Find component with maximum deviation
+			int3 comp = (absDelta.x >= absDelta.y && absDelta.x >= absDelta.z) ? int3(1,0,0) :
+					(absDelta.y >= absDelta.x && absDelta.y >= absDelta.z) ? int3(0,1,0) :
+																			int3(0,0,1);
+			
+			// Set normal based on selected component
+			normal = float3(
+				comp.x * sign(delta.x),
+				comp.y * sign(delta.y),
+				comp.z * sign(delta.z)
+			);
+			
+			return clamped + boxCenter;
+		}
+	}
+
+	float3 ClosestPointOnBoxLayers(float3 pos, float3 boxCenter, float3 baseBoxSize, float3 space, out float3 normal, out int layer) {
+		float3 localPos = pos - boxCenter;
+		float3 absLocalPos = abs(localPos);
+		float3 baseHalfSize = baseBoxSize * 0.5;
+		
+		// Calculate layer based on distance from base box
+		float3 distFromBase = max(absLocalPos - baseHalfSize, 0);
+		float maxDist = max(max(distFromBase.x, distFromBase.y), distFromBase.z);
+		
+		// Round to nearest layer based on full distance
+		layer = max(0, floor(maxDist / space.x + 0.5));
+		
+		// Calculate the size of our target box
+		float3 targetHalfSize = baseHalfSize + (layer * space);
+		
+		// Now use the optimized single-box algorithm with the calculated size
+		float3 clamped = clamp(localPos, -targetHalfSize, targetHalfSize);
+		
+		if (clamped.x == localPos.x && clamped.y == localPos.y && clamped.z == localPos.z) {
+			// Inside this layer's box - find closest face
+			float dx = targetHalfSize.x - abs(localPos.x);
+			float dy = targetHalfSize.y - abs(localPos.y);
+			float dz = targetHalfSize.z - abs(localPos.z);
+			
+			if (dx < dy) {
+				if (dx < dz) {
+					normal = float3(sign(localPos.x), 0, 0);
+					clamped.x = targetHalfSize.x * sign(localPos.x);
+				} else {
+					normal = float3(0, 0, sign(localPos.z));
+					clamped.z = targetHalfSize.z * sign(localPos.z);
+				}
+			} else {
+				if (dy < dz) {
+					normal = float3(0, sign(localPos.y), 0);
+					clamped.y = targetHalfSize.y * sign(localPos.y);
+				} else {
+					normal = float3(0, 0, sign(localPos.z));
+					clamped.z = targetHalfSize.z * sign(localPos.z);
+				}
+			}
+		} else {
+			// Outside box - find largest deviation
+			float3 delta = localPos - clamped;
+			float ax = abs(delta.x);
+			float ay = abs(delta.y);
+			float az = abs(delta.z);
+			
+			if (ax > ay) {
+				if (ax > az) {
+					normal = float3(sign(delta.x), 0, 0);
+				} else {
+					normal = float3(0, 0, sign(delta.z));
+				}
+			} else {
+				if (ay > az) {
+					normal = float3(0, sign(delta.y), 0);
+				} else {
+					normal = float3(0, 0, sign(delta.z));
+				}
+			}
+		}
+		
+		return clamped + boxCenter;
+	}
+
 };
