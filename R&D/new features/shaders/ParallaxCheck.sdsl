@@ -1,0 +1,64 @@
+shader ParallaxCheck{
+    // Hash function for jitter calculation
+    float Hash(float2 p)
+    {
+        return frac(sin(dot(p, float2(41.97, 289.13))) * 43758.5453);
+    }
+
+    float2 ApplyParallaxMapping(
+    Texture2D HeightTexture,
+    SamplerState HeightSampler,
+    float2 texCoord,          // Original texture coordinates
+    float3 viewDir,           // View direction in tangent space (should be normalized)
+    float2 texelSize,         // 1.0 / textureSize (if your heightScale is in pixel units)
+    float time,               // Time for animation (used for jitter)
+    int steps,                // Number of depth steps (quality control)
+    bool useJitter,           // Enable/disable jitter for banding reduction
+    float heightScale         // Height map intensity (in UV space, unless you use texelSize)
+)
+{
+    // Ensure viewDir is normalized
+    viewDir = normalize(viewDir);
+
+    // Compute the total parallax offset. 
+    // Here we use the common formulation: (viewDir.xy / viewDir.z) * heightScale
+    // If your heightScale is defined in pixel units, you might want to multiply by texelSize.
+    float2 totalOffset = (viewDir.xy / viewDir.z) * heightScale;
+    // Uncomment the next line if heightScale is in pixel units:
+    // totalOffset *= texelSize;
+
+    // Determine the per-step offset
+    float2 stepOffset = totalOffset / steps;
+
+    // Initialize depth and current texture coordinates.
+    float currentDepth = 0.0;
+    float layerDepth = 1.0 / steps;
+    float2 currentTexCoords = texCoord;
+
+    // Optional jitter to reduce banding artifacts.
+    if (useJitter)
+    {
+        float jitter = frac(Hash(texCoord + time));
+        currentDepth += jitter * layerDepth;
+        currentTexCoords -= stepOffset * jitter;
+    }
+
+    // Ray-marching loop: step until the current depth surpasses the sampled height.
+    for (int i = 0; i < 64; i++)
+    {
+        // Sample the height value (assuming the height is stored in the red channel)
+        float sampledHeight = HeightTexture.Sample(HeightSampler, currentTexCoords).r;
+        
+        // When the accumulated depth exceeds the sampled height, we've reached the surface.
+        if (currentDepth >= sampledHeight)
+        {
+            break;
+        }
+
+        currentTexCoords -= stepOffset;
+        currentDepth += layerDepth;
+    }
+
+    return currentTexCoords;
+}
+};
