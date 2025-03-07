@@ -8,4 +8,9 @@
     public struct Matrix2
     {
     }
+
+    public struct MarchRay
+    {
+        
+    }
 }
