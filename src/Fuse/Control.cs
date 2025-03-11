@@ -19,9 +19,18 @@ namespace Fuse
             _inCheck = inCheck;
             _inFalse = inFalse;
             _inTrue = inTrue;
-            
-            if(_inFalse != null)ins.Add(_inFalse);
-            if(_inTrue != null)ins.Add(_inTrue);
+
+            if (_inFalse != null)
+            {
+                TypeOverride = _inFalse.TypeName();
+                ins.Add(_inFalse);
+            }
+
+            if (_inTrue != null)
+            {
+                TypeOverride = _inTrue.TypeName();
+                ins.Add(_inTrue);
+            }
             if(_inFalse == null && _inTrue == null)ins.Add(null);
             
             SetInputs(ins);

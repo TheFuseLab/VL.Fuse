@@ -698,6 +698,7 @@ namespace Fuse
         public override string TypeName()
         {
             return typeof(T) == typeof(GpuStruct) ||typeof(T)  == typeof(Buffer) ? TypeOverride : TypeHelpers.GetGpuType<T>();
+            
         }
 
         protected override string SourceTemplate()
@@ -776,8 +777,9 @@ namespace Fuse
         
         protected override string SourceTemplate()
         {
-            return ShaderNodesUtil.Evaluate("${resultType} ${resultName} = ${implementation};",new Dictionary<string, string> {
-                {"implementation", ImplementationTemplate()}
+            return ShaderNodesUtil.Evaluate(
+                "${resultType} ${resultName} = ${implementation};",
+                new Dictionary<string, string> { {"implementation", ImplementationTemplate()}
             });
         }
 
