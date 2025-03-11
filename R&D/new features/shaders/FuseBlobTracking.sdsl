@@ -1,0 +1,468 @@
+shader FuseBlobTracking{
+    
+
+// Group shared memory for intermediate processing
+groupshared int gSharedLabels[32][32];
+groupshared int gSharedEquivalence[1024];
+
+//------------------------------------------------------------------------------
+// Helper Functions
+//------------------------------------------------------------------------------
+
+// Check if a pixel is set in the threshold image
+bool IsPixelThresholdSet(Texture2D<float> thresholdImage, int2 pos, int width, int height)
+{
+    if (pos.x >= width || pos.y >= height)
+        return false;
+    
+    return thresholdImage[pos] > 0.5f;
+}
+
+// Find the root label in the equivalence table (with path compression)
+int FindRootLabel(int label)
+{
+    int root = label;
+    
+    while (gSharedEquivalence[root] != root)
+        root = gSharedEquivalence[root];
+    
+    // Path compression
+    while (label != root)
+    {
+        int next = gSharedEquivalence[label];
+        gSharedEquivalence[label] = root;
+        label = next;
+    }
+    
+    return root;
+}
+
+// Union operation for the equivalence table
+void UnionLabels(int labelA, int labelB)
+{
+    int rootA = FindRootLabel(labelA);
+    int rootB = FindRootLabel(labelB);
+    
+    if (rootA != rootB)
+    {
+        // Merge trees - always make smaller root point to larger
+        if (rootA < rootB)
+            gSharedEquivalence[rootB] = rootA;
+        else
+            gSharedEquivalence[rootA] = rootB;
+    }
+}
+
+// Generate a color for visualization based on blob label
+float4 GenerateBlobColor(int label)
+{
+    int colorHash = label * 1664525 + 1013904223;
+    return float4(
+        float(colorHash & 255) / 255.0,
+        float((colorHash >> 8) & 255) / 255.0,
+        float((colorHash >> 16) & 255) / 255.0,
+        1.0
+    );
+}
+
+// Calculate distance between two points
+float CalculateDistance(float2 pointA, float2 pointB)
+{
+    float dx = pointA.x - pointB.x;
+    float dy = pointA.y - pointB.y;
+    return sqrt(dx*dx + dy*dy);
+}
+
+//------------------------------------------------------------------------------
+// First Pass: Initial Component Labeling
+//------------------------------------------------------------------------------
+void PerformInitialLabeling(
+    Texture2D<float> inputImage,
+    RWStructuredBuffer<int> labelTexture,
+    int2 pos,
+    int3 groupThreadID,
+    int3 groupID,
+    int width,
+    int height
+)
+{
+    int localIdx = groupThreadID.y * 32 + groupThreadID.x;
+    
+    // Check if this pixel is part of a blob
+    if (pos.x < width && pos.y < height)
+    {
+        if (IsPixelThresholdSet(inputImage, pos, width, height))
+        {
+            // Initialize with a unique label for this pixel
+            int label = groupID.y * (width / 32) + groupID.x + 1;
+            label = (label * 1024) + localIdx;
+            
+            gSharedLabels[groupThreadID.y][groupThreadID.x] = label;
+            
+            // First-pass labeling with 4-connectivity
+            bool hasNeighbor = false;
+            
+            // Check left neighbor
+            if (groupThreadID.x > 0 && IsPixelThresholdSet(inputImage, int2(pos.x - 1, pos.y), width, height))
+            {
+                hasNeighbor = true;
+                int neighborLabel = gSharedLabels[groupThreadID.y][groupThreadID.x - 1];
+                gSharedLabels[groupThreadID.y][groupThreadID.x] = neighborLabel;
+            }
+            
+            // Check upper neighbor
+            if (groupThreadID.y > 0 && IsPixelThresholdSet(inputImage, int2(pos.x, pos.y - 1), width, height))
+            {
+                int neighborLabel = gSharedLabels[groupThreadID.y - 1][groupThreadID.x];
+                
+                if (hasNeighbor)
+                {
+                    // Merge labels
+                    UnionLabels(gSharedLabels[groupThreadID.y][groupThreadID.x], neighborLabel);
+                }
+                else
+                {
+                    gSharedLabels[groupThreadID.y][groupThreadID.x] = neighborLabel;
+                    hasNeighbor = true;
+                }
+            }
+        }
+    }
+}
+
+    // Resolve local equivalences and write to the global label texture
+    void ResolveLocalEquivalences(
+        Texture2D<float> inputImage,
+        RWStructuredBuffer<int> labelTexture,
+        int2 pos,
+        int3 groupThreadID, 
+        int width,
+        int height
+    )
+    {
+        if (pos.x < width && pos.y < height)
+        {
+            if (IsPixelThresholdSet(inputImage, pos, width, height))
+            {
+                int label = gSharedLabels[groupThreadID.y][groupThreadID.x];
+                int root = FindRootLabel(label);
+                labelTexture[pos.y * width + pos.x] = root;
+            }
+            else
+            {
+                labelTexture[pos.y * width + pos.x] = 0;
+            }
+        }
+
+        labelTexture[pos.y * width + pos.x] = 1;
+    }
+
+    //------------------------------------------------------------------------------
+    // Second Pass: Resolve Global Equivalences
+    //------------------------------------------------------------------------------
+    void ResolveGlobalEquivalences(
+        Texture2D<float> inputImage,
+        RWStructuredBuffer<int> labelTexture,
+        int3 DTid,
+        int width,
+        int height
+    )
+    {
+        int2 pos = DTid.xy;
+
+        if (pos.x < width && pos.y < height)
+        {
+            if (IsPixelThresholdSet(inputImage, pos, width, height))
+            {
+                int label = labelTexture[pos.y * width + pos.x];
+                int finalLabel = label;
+                
+                // Check neighboring pixels for global equivalence resolution
+                // Check left neighbor across thread group boundary
+                if (pos.x > 0 && pos.x % 32 == 0 && IsPixelThresholdSet(inputImage, int2(pos.x - 1, pos.y), width, height))
+                {
+                    int neighborLabel = labelTexture[(pos.y * width) + (pos.x - 1)];
+                    if (neighborLabel < finalLabel && neighborLabel > 0)
+                        finalLabel = neighborLabel;
+                }
+                
+                // Check upper neighbor across thread group boundary
+                if (pos.y > 0 && pos.y % 32 == 0 && IsPixelThresholdSet(inputImage, int2(pos.x, pos.y - 1), width, height))
+                {
+                    int neighborLabel = labelTexture[((pos.y - 1) * width) + pos.x];
+                    if (neighborLabel < finalLabel && neighborLabel > 0)
+                        finalLabel = neighborLabel;
+                }
+                
+                // Update only if we need to
+                if (finalLabel != label)
+                {
+                    labelTexture[pos.y * width + pos.x] = finalLabel;
+                }
+            }
+        }
+    }
+
+    //------------------------------------------------------------------------------
+    // Wrapper Function for First Pass
+    //------------------------------------------------------------------------------
+
+    void ProcessInitialBlobLabeling(
+        Texture2D<float> inputImage,
+        RWStructuredBuffer<int> labelTexture,
+        int3 threadID,
+        int3 groupThreadID,
+        int3 groupID,
+        int width,
+        int height
+    )
+    {
+        int2 pos = threadID.xy;
+        int localIdx = groupID.y * 32 + groupID.x;
+
+        // Initialize shared memory
+        if (localIdx < 1024)
+            gSharedEquivalence[localIdx] = localIdx;
+        
+        gSharedLabels[groupThreadID.y][groupThreadID.x] = 0;
+        
+        GroupMemoryBarrierWithGroupSync();
+        
+        // Perform initial component labeling
+        PerformInitialLabeling(
+            inputImage,
+            labelTexture,
+            pos,
+            groupThreadID,
+            groupID,
+            width,
+            height
+        );
+        
+        GroupMemoryBarrierWithGroupSync();
+        
+        // Resolve local equivalences
+        ResolveLocalEquivalences(
+            inputImage,
+            labelTexture,
+            pos,
+            groupThreadID,
+            width,
+            height
+        );
+
+        
+        labelTexture[pos.y * width + pos.x] = 1;
+    }                               
+
+    //------------------------------------------------------------------------------
+    // Third Pass: Calculate Blob Properties int2 pos = DTid.xy; int3 DTid,
+    //------------------------------------------------------------------------------
+    void CalculateBlobProperties(
+        Texture2D<float> inputImage,
+        RWStructuredBuffer<int> labelTexture,
+        RWStructuredBuffer<int> blobData,
+        RWStructuredBuffer<int> blobCounter,
+        RWStructuredBuffer<float4> blobProperties,
+        RWStructuredBuffer<float4> blobBoundingBoxes,
+        RWStructuredBuffer<int2> blobCentroidAccum,
+        RWTexture2D<float4> outputTexture,
+        int3 DTid,
+        int width,
+        int height,
+        int maxBlobs
+    )
+    {
+        int2 pos = DTid.xy;
+
+        if (pos.x < width && pos.y < height)
+        {
+            float4 outputColor = float4(0, 0, 0, 1);
+            
+            if (IsPixelThresholdSet(inputImage, pos, width, height))
+            {
+                int label = labelTexture[pos.y * width + pos.x];
+                
+                if (label > 0)
+                {
+                    // Use atomic operation to update blob data
+                    int blobIndex;
+                    InterlockedAdd(blobCounter[0], 1, blobIndex);
+                    
+                    if (blobIndex < maxBlobs)
+                    {
+                        // Update blob pixel count
+                        InterlockedAdd(blobData[label], 1);
+                        
+                        // Update blob centroid sum using integer atomic operations
+                        InterlockedAdd(blobCentroidAccum[label].x, pos.x);
+                        InterlockedAdd(blobCentroidAccum[label].y, pos.y);
+                        
+                        // Update bounding box (min/max coordinates)
+                        // We need to use separate approach for atomic min/max
+                        
+                        // For min X (stored in .x) - initialize if it's 0
+                        if (blobBoundingBoxes[label].x == 0)
+                        {
+                            blobBoundingBoxes[label].x = pos.x;
+                        }
+                        else if (pos.x < blobBoundingBoxes[label].x)
+                        {
+                            // Manual atomic min using InterlockedCompareExchange
+                            float currentMinX;
+                            do {
+                                currentMinX = blobBoundingBoxes[label].x;
+                                if (pos.x >= currentMinX)
+                                    break;
+                            } while (blobBoundingBoxes[label].x != currentMinX);
+                            
+                            if (pos.x < currentMinX)
+                                blobBoundingBoxes[label].x = pos.x;
+                        }
+                        
+                        // For max X (stored in .z)
+                        if (blobBoundingBoxes[label].z == 0)
+                        {
+                            blobBoundingBoxes[label].z = pos.x;
+                        }
+                        else if (pos.x > blobBoundingBoxes[label].z)
+                        {
+                            // Manual atomic max
+                            float currentMaxX;
+                            do {
+                                currentMaxX = blobBoundingBoxes[label].z;
+                                if (pos.x <= currentMaxX)
+                                    break;
+                            } while (blobBoundingBoxes[label].z != currentMaxX);
+                            
+                            if (pos.x > currentMaxX)
+                                blobBoundingBoxes[label].z = pos.x;
+                        }
+                        
+                        // For min Y (stored in .y) - initialize if it's 0
+                        if (blobBoundingBoxes[label].y == 0)
+                        {
+                            blobBoundingBoxes[label].y = pos.y;
+                        }
+                        else if (pos.y < blobBoundingBoxes[label].y)
+                        {
+                            // Manual atomic min
+                            float currentMinY;
+                            do {
+                                currentMinY = blobBoundingBoxes[label].y;
+                                if (pos.y >= currentMinY)
+                                    break;
+                            } while (blobBoundingBoxes[label].y != currentMinY);
+                            
+                            if (pos.y < currentMinY)
+                                blobBoundingBoxes[label].y = pos.y;
+                        }
+                        
+                        // For max Y (stored in .w)
+                        if (blobBoundingBoxes[label].w == 0)
+                        {
+                            blobBoundingBoxes[label].w = pos.y;
+                        }
+                        else if (pos.y > blobBoundingBoxes[label].w)
+                        {
+                            // Manual atomic max
+                            float currentMaxY;
+                            do {
+                                currentMaxY = blobBoundingBoxes[label].w;
+                                if (pos.y <= currentMaxY)
+                                    break;
+                            } while (blobBoundingBoxes[label].w != currentMaxY);
+                            
+                            if (pos.y > currentMaxY)
+                                blobBoundingBoxes[label].w = pos.y;
+                        }
+                        
+                        // For visualization, use a different color for each blob
+                        outputColor = GenerateBlobColor(label);
+                    }
+                }
+            }
+            
+            outputTexture[pos] = outputColor;
+        }
+    }
+
+
+    //------------------------------------------------------------------------------
+    // Fourth Pass: Finalize and Track Blobs
+    //------------------------------------------------------------------------------
+    void FinalizeBlobPropertiesAndTrack(
+        RWStructuredBuffer<int> blobData,
+        RWStructuredBuffer<int> blobCounter,
+        RWStructuredBuffer<float4> blobProperties,
+        RWStructuredBuffer<float4> blobBoundingBoxes,
+        RWStructuredBuffer<int2> blobCentroidAccum,
+        RWStructuredBuffer<int> blobTracking,
+        RWStructuredBuffer<float4> previousBlobProperties,
+        int blobIndex,
+        int maxBlobs,
+        float minBlobSize,
+        float maxBlobSize,
+        float trackingThreshold
+    )
+    {
+        if (blobIndex < blobCounter[0] && blobIndex < maxBlobs)
+        {
+            // Calculate final blob properties based on accumulated data
+            int pixelCount = blobData[blobIndex];
+            
+            // Filter by blob size
+            if (pixelCount >= minBlobSize && pixelCount <= maxBlobSize)
+            {
+                // Calculate centroid from integer accumulation
+                float4 blobProp;
+                blobProp.x = (float)blobCentroidAccum[blobIndex].x / pixelCount;
+                blobProp.y = (float)blobCentroidAccum[blobIndex].y / pixelCount;
+                
+                float4 blobBox = blobBoundingBoxes[blobIndex];
+                
+                // Add width and height to properties
+                blobProp.z = blobBox.z - blobBox.x; // width = maxX - minX
+                blobProp.w = blobBox.w - blobBox.y; // height = maxY - minY
+                
+                // Store back the updated properties
+                blobProperties[blobIndex] = blobProp;
+                
+                // Tracking: compare with previous frame blobs
+                float closestDistance = trackingThreshold;
+                int trackId = -1;
+                
+                for (int prevIdx = 0; prevIdx < maxBlobs; prevIdx++)
+                {
+                    float4 prevProp = previousBlobProperties[prevIdx];
+                    
+                    // Skip invalid previous blobs
+                    if (prevProp.x == 0 && prevProp.y == 0 && prevProp.z == 0 && prevProp.w == 0)
+                        continue;
+                    
+                    // Calculate distance between centroids
+                    float2 currentCenter = float2(blobProp.x, blobProp.y);
+                    float2 previousCenter = float2(prevProp.x, prevProp.y);
+                    float distance = CalculateDistance(currentCenter, previousCenter);
+                    
+                    // Check if this is the closest match so far
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        trackId = prevIdx;
+                    }
+                }
+                
+                // Store the tracking ID
+                blobTracking[blobIndex] = trackId;
+            }
+            else
+            {
+                // Invalid blob (too small or too large)
+                blobProperties[blobIndex] = float4(0, 0, 0, 0);
+                blobBoundingBoxes[blobIndex] = float4(0, 0, 0, 0);
+                blobTracking[blobIndex] = -1;
+            }
+        }
+    }    
+};
