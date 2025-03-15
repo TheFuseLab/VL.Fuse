@@ -1,4 +1,6 @@
-﻿using System;
+#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Fuse.util;
@@ -81,7 +83,7 @@ public static class PlyExport
         for (var arrayIdx = 0; arrayIdx < vertexDataList.Count; arrayIdx++)
         {
             var vertexData = vertexDataList[arrayIdx];
-            var transform   = applyTransforms ? transforms[arrayIdx] : Matrix.Identity;
+            var transform = applyTransforms && transforms != null ? transforms[arrayIdx] : Matrix.Identity;
 
             if (vertexData == null || vertexData.Length == 0)
                 continue; // or throw? up to you
