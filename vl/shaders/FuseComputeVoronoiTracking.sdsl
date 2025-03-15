@@ -93,7 +93,7 @@ shader FuseComputeVoronoiTracking {
         int randomSamples,
         int particleCount
     ) {
-        if(NeighborStates[particleId] != particleState)return 0;
+        //if(NeighborStates[particleId] != particleState)return 0;
 
         float3 pos = positions[particleId];
         int baseIndex = particleId * maxNeighbors;
@@ -108,6 +108,12 @@ shader FuseComputeVoronoiTracking {
         // Reset neighbor count
         int prevCount = neighborCount;
         int currentCount = 0;  // Local variable to track count
+
+        // Clear the neighbor buffer to ensure invalid entries are marked
+        for (int i = 0; i < maxNeighbors; i++) {
+            NeighborIds[baseIndex + i] = -1;
+            Distances[baseIndex + i] = 1000000.0;  // Or some very large value
+        }
 
         float maxDistSq = maxDistance * maxDistance;
         

@@ -1,0 +1,79 @@
+shader FuseGeometry{
+
+    // Calculate screen-aligned normal in world space
+    float3 CalculateScreenAlignedNormal(float3 CameraPosition, float3 worldPos, float3 lineDir) {
+        // Direction from camera to position
+        float3 viewDir = normalize(worldPos - CameraPosition);
+        
+        // Cross product gives us a normal perpendicular to both the line direction
+        // and the view direction - this is screen aligned
+        float3 normal = normalize(cross(lineDir, viewDir));
+        
+        return normal;
+    }
+
+    // Calculate miter vector for beveled joints
+    float3 CalculateMiterVector(float3 CameraPosition, float3 prevDir, float3 nextDir, float3 worldPos, out float miterLength) {
+        // Normalize directions
+        prevDir = normalize(prevDir);
+        nextDir = normalize(nextDir);
+        
+        // Average the directions to get miter direction
+        float3 avgDir = normalize(prevDir + nextDir);
+        
+        // Calculate view direction
+        float3 viewDir = normalize(worldPos - CameraPosition);
+        
+        // Calculate normals
+        float3 prevNormal = normalize(cross(prevDir, viewDir));
+        float3 nextNormal = normalize(cross(nextDir, viewDir));
+        
+        // Get miter normal (perpendicular to average direction and view direction)
+        float3 miterNormal = normalize(cross(avgDir, viewDir));
+        
+        // Calculate miter length factor
+        float dotProduct = dot(miterNormal, prevNormal);
+        miterLength = 1.0 / max(0.1, abs(dotProduct));
+        
+        // Limit miter length and apply bevel amount
+        miterLength = min(miterLength, 2.0);
+        
+        return miterNormal;
+    }
+
+    float3 CalculateBevel(
+        float3 CameraPosition, 
+        float3 lineDirection, 
+        float3 startPos,
+        float3 endPos,
+        float3 prevPos,
+        float3 nextPos,
+        bool hasPrev,
+        bool hasNext,
+        out float3 endNormal, 
+        out float startMiterLength, 
+        out float endMiterLength
+    ){
+        // Calculate screen-aligned normals
+        startMiterLength = 1.0;
+        endMiterLength = 1.0;
+        
+        // Default normals (perpendicular to line and view direction)
+        float3 startNormal = CalculateScreenAlignedNormal(CameraPosition, startPos, lineDirection);
+        endNormal = CalculateScreenAlignedNormal(CameraPosition, endPos, lineDirection);
+        
+        // If we have previous segment, calculate beveled normal
+        if (hasPrev) {
+            float3 prevDirection = normalize(startPos - prevPos);
+            startNormal = CalculateMiterVector(CameraPosition, prevDirection, lineDirection, startPos, startMiterLength);
+        }
+        
+        // If we have next segment, calculate beveled normal
+        if (hasNext) {
+            float3 nextDirection = normalize(nextPos - endPos);
+            endNormal = CalculateMiterVector(CameraPosition, lineDirection, nextDirection, endPos, endMiterLength);
+        }
+
+        return startNormal;
+    }
+};

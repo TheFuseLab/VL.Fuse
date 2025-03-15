@@ -1,0 +1,19 @@
+#define GROUP_SIZE 256
+#define MAX_DIM_GROUPS 1024
+#define MAX_DIM_THREADS (GROUP_SIZE * MAX_DIM_GROUPS)
+
+[Summary("initialize the keys buffer")]
+shader FuseComputeInitKeys_ComputeFX : FuseComputeBitonicSortBase
+{
+    override void Compute()
+    {
+        int index = streams.DispatchThreadId.x;
+        
+        uint i = streams.DispatchThreadId.x + streams.DispatchThreadId.y * MAX_DIM_THREADS;
+    
+        if (i >= _Count)
+            return;
+        
+        _Keys[i] = i;
+    }
+};

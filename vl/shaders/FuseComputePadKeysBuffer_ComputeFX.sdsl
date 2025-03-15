@@ -1,0 +1,31 @@
+// copy the original data into a new buffer which is the size of the next power of two.
+// populate the spare values with the highest or lowest value in the data, depending on whether
+// the sort is reversed or not
+[Summary("gets the index of the value in the previous kernel")]
+shader FuseComputePadKeysBuffer_ComputeFX : FuseComputeBitonicSortBase
+{
+    uint _NextPowerOfTwo;
+    int _PaddingValue;
+    
+    override void Compute()
+    {
+        int index = streams.DispatchThreadId.x;
+        
+        if (index >= _NextPowerOfTwo)
+            return;
+        
+        uint i = index;
+        
+        // there's some confusing terminology here. for the actual sort algorithm, 'values' referes to the comparison values
+        // while 'keys' refers to their indices. however, here 'external keys' refers to the sorting values because they could be different
+        // from the actual data values... which are stored in 'temp'. oh dear
+        if (i >= _Count)
+        {
+            _Values[i] = _PaddingValue;
+        }
+        else
+        {
+            _Values[i] = _ExternalKeys[i];
+        }
+    }
+};

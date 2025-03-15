@@ -1,0 +1,36 @@
+[Summary("BitonicSort")]
+shader FuseComputeBitonicSort_ComputeFX : FuseComputeBitonicSortBase
+{
+    int _Block;
+    int _Dimension;
+    bool _Reverse;
+
+    override void Compute()
+    {
+        uint i = streams.DispatchThreadId.x + streams.DispatchThreadId.y * 256;
+        
+        uint j = i ^ _Block;
+        
+        if (j < i || i >= _Count) 
+            return;
+        
+        uint key_i = _Keys[i];
+        uint key_j = _Keys[j];
+        
+        int value_i = _Values[key_i];
+        int value_j = _Values[key_j];
+        
+        if (_Reverse)
+        {
+            value_i = -value_i;
+            value_j = -value_j;
+        }
+        
+        int diff = (value_i - value_j) * ((i & _Dimension) == 0 ? 1 : -1);
+        if (diff > 0)
+        {
+            _Keys[i] = key_j;
+            _Keys[j] = key_i;
+        }
+    }
+};
