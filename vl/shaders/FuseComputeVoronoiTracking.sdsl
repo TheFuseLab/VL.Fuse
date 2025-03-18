@@ -345,4 +345,61 @@ shader FuseComputeVoronoiTracking {
 
         return bestCandidate;
     } 
+
+    void ProcessNeighborsCore(
+        uint particleID,
+        uint neighborsPerParticleIn,
+        RWStructuredBuffer<float3> positions,
+        RWStructuredBuffer<int> neighborIDs,
+        RWStructuredBuffer<float> pathCosts,
+        RWStructuredBuffer<int> nextIDs
+    ) {
+        
+        // Get current particle's cost and next ID
+        float currentCost = pathCosts[particleID];
+        
+        // Skip if this is a target (cost is already 0)
+        if (currentCost == 0.0f)
+            return;
+        
+        // Get current particle's position
+        float3 currentPosition = positions[particleID];
+        
+        // Track the best path found
+        float bestCost = currentCost;
+        int bestNextID = nextIDs[particleID];
+        
+        // Check all neighbors for a better path
+        for (uint n = 0; n < neighborsPerParticleIn; n++) {
+            uint neighborIndex = particleID * neighborsPerParticleIn + n;
+            int neighborID = neighborIDs[neighborIndex];
+
+            // Bounds check for neighborID
+            if (neighborID < 0)
+                continue;
+                
+            // Get neighbor's cost and position
+            float neighborCost = pathCosts[neighborID];
+            float3 neighborPosition = positions[neighborID];
+            
+            // Calculate distance to this neighbor
+            float3 diff = currentPosition - neighborPosition;
+            float distance = length(diff);
+            
+            // Total cost through this neighbor
+            float totalCost = distance + neighborCost;
+            
+            // If this path is better, update
+            if (totalCost < bestCost) {
+                bestCost = totalCost;
+                bestNextID = neighborID;
+            }
+        }
+        
+        // Update particle's cost and next ID if we found a better path
+        if (bestCost < currentCost) {
+            pathCosts[particleID] = bestCost;
+            nextIDs[particleID] = bestNextID;
+        }
+    }
 };
