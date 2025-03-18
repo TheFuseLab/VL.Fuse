@@ -52,13 +52,13 @@ namespace Fuse.ShaderFX
 
         private readonly List<AbstractStage> _stages;
 
-        private readonly HashSet<string>_declarations = new();
-        private readonly HashSet<string>_groupDeclarations = new();
-        private readonly HashSet<string>_structs = new();
-        private readonly HashSet<string>_constantArrays = new();
-        private readonly HashSet<string>_streams = new();
-        private readonly HashSet<string>_mixins = new();
-        private readonly HashSet<string>_compositions = new();
+        private readonly HashSet<string>_declarations = [];
+        private readonly HashSet<string>_groupDeclarations = [];
+        private readonly HashSet<string>_structs = [];
+        private readonly HashSet<string>_constantArrays = [];
+        private readonly HashSet<string>_streams = [];
+        private readonly HashSet<string>_mixins = [];
+        private readonly HashSet<string>_compositions = [];
         private readonly Dictionary<string, string> _functionMap = new();
 
         private readonly string _sourceTemplate;
