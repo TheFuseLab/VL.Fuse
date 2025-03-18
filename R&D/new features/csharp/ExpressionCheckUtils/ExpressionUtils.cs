@@ -121,7 +121,7 @@ public class Foo
     
     [Fragment]
     [return: Pin(Name = "TTTT")]
-    public float Update([DefaultValue((5))] int x, PinAttribute() Spread<float> xxxx)
+    public float Update([DefaultValue(5)] int x, [Pin] Spread<float> xxxx)
     {
         return 1;
     }
