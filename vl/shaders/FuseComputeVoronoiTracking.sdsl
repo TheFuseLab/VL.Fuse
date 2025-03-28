@@ -69,12 +69,12 @@ shader FuseComputeVoronoiTracking {
         int maxNeighbors
     ) {
         if (candidateId == particleId) return;
-        if (NeighborStates[candidateId] != particleState) return;
+        //if (NeighborStates[candidateId] != particleState) return;
             
         float3 deltaPos = positions[candidateId] - pos;
         float distSq = dot(deltaPos, deltaPos);
             
-        if (distSq > maxDistSq) return;
+        //if (distSq > maxDistSq) return;
                 
         InsertNeighbor(NeighborIds, Distances, currentCount, particleId, candidateId, distSq, maxNeighbors);
     }
@@ -94,6 +94,7 @@ shader FuseComputeVoronoiTracking {
         int particleCount
     ) {
         //if(NeighborStates[particleId] != particleState)return 0;
+
 
         float3 pos = positions[particleId];
         int baseIndex = particleId * maxNeighbors;
@@ -116,7 +117,22 @@ shader FuseComputeVoronoiTracking {
         }
 
         float maxDistSq = maxDistance * maxDistance;
-        
+
+        /*
+
+        // In UpdateNeighbors, after clearing neighbors but before other processing:
+int directNeighbor1 = (particleId + 1) % particleCount;
+int directNeighbor2 = (particleId + particleCount - 1) % particleCount;
+
+// Directly add these as neighbors
+float3 delta1 = positions[directNeighbor1] - pos;
+float3 delta2 = positions[directNeighbor2] - pos;
+float dist1 = dot(delta1, delta1);
+float dist2 = dot(delta2, delta2);
+
+CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, particleId, particleState,directNeighbor1,pos, dist1, maxNeighbors);
+CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, particleId, particleState,directNeighbor2,pos, dist2, maxNeighbors);
+        */
         
         // Recheck previous neighbors first
         for (int i1 = 0; i1 < prevCount; i1++) {
@@ -135,6 +151,8 @@ shader FuseComputeVoronoiTracking {
                 maxNeighbors
             );
         }
+
+
 
         // Phase 2: Check neighbors of neighbors (second-order connections)
         for (int i2 = 0; i2 < min(prevCount, maxNeighbors/2); i2++) {
@@ -167,28 +185,39 @@ shader FuseComputeVoronoiTracking {
             }
         }
         
-        // Add random samples to potentially find new closer neighbors
-        int state = particleId + frameCount * 719393;
-        int rngState = pcg_random(state);
+       
         for (int i2 = 0; i2 < randomSamples; i2++) {
-            int candidateId = int(rand(rngState) * particleCount);
-            CheckCandidate(
-                positions, 
-                NeighborIds,
-                NeighborStates,
-                Distances, 
-                currentCount, 
-                particleId,
-                particleState,
-                candidateId, 
-                pos, 
-                maxDistSq, 
-                maxNeighbors
-            );
-        }
-
+            int sample_seed = particleId ^ (frameCount * 719393) ^ (i2 * 104729);
+            int rngState = pcg_random(sample_seed);
+    
+            // Combine random value with stratified component
+            float rand_val = rand(rngState);
+    
+            // Add stratification to ensure sampling across the range
+            float stratified_component = float(i2) / randomSamples;
+            float combined = fmod(rand_val + stratified_component, 1.0);
+    
+        int candidateId = int(combined * particleCount);
+                CheckCandidate(
+                    positions, 
+                    NeighborIds,
+                    NeighborStates,
+                    Distances, 
+                    currentCount, 
+                    particleId,
+                    particleState,
+                    candidateId, 
+                    pos, 
+                    maxDistSq, 
+                    maxNeighbors
+                );
+            }
+        //         NeighborIds[currentCount] = particleId +1;
+        // return currentCount + 1;
         return currentCount;
-        
+/*
+        return currentCount;
+        */
     }
 
     // Returns an defaultValue if no neighbors are available.
