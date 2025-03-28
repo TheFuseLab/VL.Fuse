@@ -37,11 +37,12 @@
             <Pin Id="DbvECvcT6v0QXL4Iv4Jid9" Name="Output" Kind="StateOutputPin" />
             <Pin Id="SOpznxv8oF7Pe8folbFxwy" Name="Vertex Element Names" Kind="OutputPin" />
             <Pin Id="QTBGzXFMk5cLhZrSRtGUC8" Name="On Completed" Kind="OutputPin" />
-            <Pin Id="Az0L2LaJ83MM9uFUcBO2MO" Name="SH DIM" Kind="OutputPin" />
             <Pin Id="M8WhOxn00PnMaDGP7gHcQ6" Name="Number Of Vertices" Kind="OutputPin" />
             <Pin Id="UQU6Z67XFygL4tw2FwGGhx" Name="Vertices" Kind="OutputPin" />
             <Pin Id="UG2Ydh1ZMOTPozSzPJGHp8" Name="SH Count" Kind="OutputPin" />
             <Pin Id="HAwwgSHw9n3LHK9d2pUx8K" Name="Colors" Kind="OutputPin" />
+            <Pin Id="BZPFE0C5jBpPRGjlOyn4gJ" Name="Scale" Kind="InputPin" />
+            <Pin Id="Az0L2LaJ83MM9uFUcBO2MO" Name="SH DIM" Kind="OutputPin" />
           </Node>
           <Node Bounds="101,1275,99,19" Id="FyLExTe3TxOQADFuPAOdh9">
             <p:NodeReference LastCategoryFullName="Fuse.Common.Compute" LastDependency="VL.Fuse.vl">
@@ -260,7 +261,7 @@
             <Pin Id="L1y8NLdw3Z1NusbUjnOECa" Name="Input 4" Kind="InputPin" />
             <Pin Id="OIPy0iyAgkrM7cR5ieNZPx" Name="Input 5" Kind="InputPin" />
           </Node>
-          <Pad Id="LYF5r7MzERPLAo4gJb1ot5" Comment="Index" Bounds="683,1021,35,15" ShowValueBox="true" isIOBox="true" Value="2">
+          <Pad Id="LYF5r7MzERPLAo4gJb1ot5" Comment="Index" Bounds="683,1021,35,15" ShowValueBox="true" isIOBox="true" Value="0">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Integer32" />
             </p:TypeAnnotation>
@@ -283,7 +284,7 @@
             <Pin Id="E9uqF7OeadFNP9loDBLL1P" Name="Output" Kind="OutputPin" />
             <Pin Id="FREFHfMddbSQTGnwpHWG0M" Name="Node Context" Kind="InputPin" IsHidden="true" />
           </Node>
-          <Node Bounds="581,1169,165,19" Id="MCCMVKeK703QLDBSadiJe9">
+          <Node Bounds="581,1169,245,19" Id="MCCMVKeK703QLDBSadiJe9">
             <p:NodeReference LastCategoryFullName="Main" LastDependency="HowTo Gaussian Splatting 2.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GaussianRenderer" />
@@ -299,6 +300,10 @@
             <Pin Id="DtQcNTL4DOGL3F7fLnNoCD" Name="Sprite Size" Kind="InputPin" />
             <Pin Id="LbRGNmOlgCYPoVo9y66Psd" Name="Sprite Threshold" Kind="InputPin" />
             <Pin Id="PqxJ3uA2YpvQBxIdTeTk7j" Name="Lerp To Sprite" Kind="InputPin" />
+            <Pin Id="SDcyWOh4TglPfp1br8BUsr" Name="Opacity VS" Kind="InputPin" />
+            <Pin Id="PzioISoRg59Putf62aMr5S" Name="Color VS" Kind="InputPin" />
+            <Pin Id="PExtNDE86nwOO3z3MyGbUY" Name="Enabled" Kind="InputPin" />
+            <Pin Id="KvUU5mQE3lUQbH8fmJkKIq" Name="SPH Dim" Kind="InputPin" />
           </Node>
           <Pad Id="R1Kwn7mXkfzQdde54sKADy" SlotId="C3JgFxZ0jr8NGcOXNatkbv" Bounds="663,1021" />
           <Node Bounds="351,1150,65,19" Id="JopohM8J8ZQO7y7QjAkUQs">
@@ -491,11 +496,11 @@
             <Pin Id="JtztkRpI64bNfJz18WG64J" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="PvyECipROkWM9C8byeErgJ" Name="Index Provider" Kind="InputPin" IsHidden="true" />
             <Pin Id="ChpPgsh98dlLG05Vu8W76m" Name="Resource" Kind="InputPin" IsHidden="true" />
-            <Pin Id="NZ47JWGPQZOLGKKp7J09c9" Name="name" Kind="InputPin" IsHidden="true" />
             <Pin Id="DMa6aUZhypQOIxWgICFQmd" Name="Dispatch Info" Kind="InputPin" IsHidden="true" />
             <Pin Id="Dn9xJPu2jwJPZ1QCjkq5MU" Name="Compute Graph" Kind="InputPin" IsHidden="true" />
             <Pin Id="GhVIZ1yS32uLLus1nXgueE" Name="ShaderNode" Kind="InputPin" />
             <Pin Id="QF9qbexiDZtO84WpC0WFeN" Name="Force Recompile" Kind="InputPin" IsHidden="true" />
+            <Pin Id="NZ47JWGPQZOLGKKp7J09c9" Name="name" Kind="InputPin" IsHidden="true" />
             <Pin Id="Mk89bg3pAL6OAQxHhN9ZA3" Name="Write Attributes" Kind="InputPin" IsHidden="true" />
             <Pin Id="HZBCXsz7LGRQXETdItbs4h" Name="Iteration Count" Kind="InputPin" IsHidden="true" />
             <Pin Id="PzXzEjDHcLRP9nRfH2I1nc" Name="Enabled" Kind="InputPin" />
@@ -881,6 +886,17 @@
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
           </Pad>
+          <Node Bounds="683,880,93,19" Id="SKqAYRzBjbnMykQvDWgxTx">
+            <p:NodeReference LastCategoryFullName="Main" LastDependency="HowTo Parse a Splat file in a custom way_3.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GaussianPosition" />
+            </p:NodeReference>
+            <Pin Id="RfDbgzWhKK3QOVLSmCTpXI" Name="Name" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="KSvNKlnyuukO7TpjTB8zrA" Name="graph" Kind="OutputPin" />
+            <Pin Id="QMnSbat5d25MavknFSKSBj" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="BnPultoh0WTLvFp74pil7v" Name="Instance" Kind="InputPin" IsHidden="true" />
+            <Pin Id="D8wrXD1un5dN95OhxLGTQH" Name="Semantic ID" Kind="InputPin" IsHidden="true" />
+          </Node>
         </Canvas>
         <Patch Id="MlJDEAkmWSCNFrBbC1wcnK" Name="Create" />
         <Patch Id="FH0PMPoKAjCPHHW3NlP1Bj" Name="Update" ParticipatingElements="TXB7iAr7tgDNDwJ6CEfa4q" />
