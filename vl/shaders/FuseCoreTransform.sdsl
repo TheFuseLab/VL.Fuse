@@ -249,7 +249,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return float4(0.0f, 0.0f, 0.0f, 1.0f); // Return identity
 	}
 
-	float4 rotateVector( float4 q, float3 v ) {
+	float3 rotateVector( float4 q, float3 v ) {
 		// Assumes q is normalized.
     	float3 t = 2.0 * cross(q.xyz, v);
     	return v + q.w * t + cross(q.xyz, t);
@@ -378,10 +378,6 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 			(cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)              // W
 		);
 	}
-
-
-
-
 
 	/// <summary>
 	/// Creates a quaternion given a rotation and an axis.
