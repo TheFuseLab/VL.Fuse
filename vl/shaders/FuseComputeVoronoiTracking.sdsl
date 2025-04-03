@@ -453,22 +453,11 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
 
     // Simple pseudo-random hash function
     // Takes uint3 seed input, returns float [0,1)
-    float hash(uint3 seed3) // Renamed input parameter for clarity
+    float hash(float3 p3)
     {
-        // 1. Combine the uint3 components into a single uint seed
-        //    Using dot product with some integer constants is a common way.
-        uint seed = dot(seed3, uint3(1, 73, 157)); // Example constants
-
-        // 2. Apply Wang hash variation steps to the single uint seed
-        seed = (seed ^ 61) ^ (seed >> 16);
-        seed *= 9;
-        seed = seed ^ (seed >> 4);
-        seed *= 0x27d4eb2d;
-        seed = seed ^ (seed >> 15);
-
-        // 3. Convert the final scalar uint to a float in the range [0, 1)
-        //    Now float(seed) is constructing a float from a uint, which is valid.
-        return float(seed) * (1.0f / 4294967296.0f);
+        p3  = frac(p3 * .1031);
+        p3 += dot(p3, p3.zyx + 31.32);
+        return frac((p3.x + p3.y) * p3.z);
     }
 
 
@@ -491,6 +480,7 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
         int depositAmount,
         float trailScaleFactor,
         float randomSteer,
+        float angleFactor,
         // Trail buffer
         RWStructuredBuffer<int> EdgeTrailsBuffer,
         // Outputs
@@ -578,8 +568,12 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
                 // Calculate weight based on angle, trail, and randomness
                 float angleWeight = pow(smoothstep(senseAngleCos, 1.0f, dotP), turnBias);
                 float trailWeight = (float)EdgeTrailsBuffer[edgeIndex] * trailScaleFactor;
-                float randomInfluence = lerp(1.0f, hash(uint3((uint)particleID, (uint)neighborID, (uint)frameCnt)), randomSteer);
-                float finalWeight = angleWeight * (1.0f + max(0.0f, trailWeight)) * randomInfluence;
+                // Random influence - MODIFIED: More impactful random component
+                float rawRandom = hash(float3((float)particleID, (float)neighborID, (float)frameCnt));
+                // Make random element have more potential to influence decision
+                float randomInfluence = 1.0f + (rawRandom - 0.5f) * 2.0f * randomSteer;
+            
+                float finalWeight = angleWeight * angleFactor + trailWeight * randomInfluence;
                 
                 // Update best choice if this is better
                 if (finalWeight > maxWeight) {
@@ -608,7 +602,7 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
                 }
                 
                 if (validCount > 0) {
-                    int randIdx = int(hash(uint3((uint)particleID, (uint)frameCnt, 99)) * validCount) % validCount;
+                    int randIdx = int(hash(float3((float)particleID, (float)frameCnt, 99)) * validCount) % validCount;
                     chosenNeighborID = validNeighbors[randIdx];
                     chosenEdgeIndex = validEdgeIndices[randIdx];
                     
