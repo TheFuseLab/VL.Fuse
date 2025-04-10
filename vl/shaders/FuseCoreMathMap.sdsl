@@ -592,4 +592,85 @@ shader FuseCoreMathMap: FuseCoreMath
 		return float3(interpolatedValue, interpolatedDerivatives);
 	}
 
+	// HLSL Version
+
+	// --- Helper Function: Cubic Hermite Interpolation ---
+	// Interpolates between p0 (at t=0) and p1 (at t=1)
+	// Matching tangents m0 at t=0 and m1 at t=1
+	// Note: m0/m1 are slopes multiplied by segment duration (dx) if derived from dy/dx
+	float hermiteInterpolate(float p0, float m0, float p1, float m1, float t) {
+		float t2 = t * t;
+		float t3 = t2 * t;
+		// Hermite basis functions
+		float h00 = 2.0*t3 - 3.0*t2 + 1.0;
+		float h10 = t3 - 2.0*t2 + t;
+		float h01 = -2.0*t3 + 3.0*t2;
+		float h11 = t3 - t2;
+		return h00*p0 + h10*m0 + h01*p1 + h11*m1;
+	}
+
+	// --- C1 Continuous Segment Curve (HLSL Version) ---
+	// Based on the previous "KickDrop" logic but using Hermite for C1 continuity.
+	float C1SmoothSegmentCurve(float t, float2 p0, float2 p1, float2 p2, float2 p3)
+	{
+		// Calculate durations and slope of the linear segment
+		// Use max to avoid division by zero or negative durations
+		float duration01 = max(p1.x - p0.x, 1e-6f);
+		float duration12 = max(p2.x - p1.x, 1e-6f);
+		float duration23 = max(p3.x - p2.x, 1e-6f);
+		float slope12 = (p2.y - p1.y) / duration12;
+
+		if(t < p0.x) { return p0.y; } // Before start
+		else if(t < p1.x)
+		{
+			// Segment 0-1: Ease-In (Hermite from slope 0 to slope12)
+			float t_norm = (t - p0.x) / duration01;
+			float m0 = 0.0; // Slope at p0 * duration01 (assume slope=0)
+			float m1 = slope12 * duration01; // Slope at p1 * duration01
+			return hermiteInterpolate(p0.y, m0, p1.y, m1, t_norm);
+		}
+		else if(t < p2.x)
+		{
+			// Segment 1-2: Linear
+			float t_norm = (t - p1.x) / duration12;
+			// Use HLSL's lerp (linear interpolate) function
+			return lerp(p1.y, p2.y, t_norm);
+		}
+		else if (t < p3.x)
+		{
+			// Segment 2-3: Ease-Out (Hermite from slope12 to slope 0)
+			float t_norm = (t - p2.x) / duration23;
+			float m0 = slope12 * duration23; // Slope at p2 * duration23
+			float m1 = 0.0; // Slope at p3 * duration23 (assume slope=0)
+			return hermiteInterpolate(p2.y, m0, p3.y, m1, t_norm);
+		}
+		else { return p3.y; } // After end
+	}
+
+	// --- C1 Continuous Segment Curve (HLSL Version - 3 Point Overload) ---
+	// Overload for 3 points (results in C1 Ease-In / Ease-Out curve with smooth peak/valley)
+	float C1SmoothSegmentCurve(float t, float2 p0, float2 p1, float2 p2)
+	{
+		// This version assumes a smooth transition (slope 0) at the middle point p1,
+		// creating an ease-in followed by an ease-out.
+
+		float duration01 = max(p1.x - p0.x, 1e-6f);
+		float duration12 = max(p2.x - p1.x, 1e-6f);
+
+		if(t < p0.x) { return p0.y; }
+		else if (t < p1.x) {
+			// Segment 0-1: Hermite from slope 0 to slope 0
+			float t_norm = (t - p0.x) / duration01;
+			// m0 = 0 * duration01 = 0.0
+			// m1 = 0 * duration01 = 0.0
+			return hermiteInterpolate(p0.y, 0.0, p1.y, 0.0, t_norm);
+		} else if (t < p2.x) {
+			// Segment 1-2: Hermite from slope 0 to slope 0
+			float t_norm = (t - p1.x) / duration12;
+			// m0 = 0 * duration12 = 0.0
+			// m1 = 0 * duration12 = 0.0
+			return hermiteInterpolate(p1.y, 0.0, p2.y, 0.0, t_norm);
+		} else { return p2.y; }
+
+	}
 };
