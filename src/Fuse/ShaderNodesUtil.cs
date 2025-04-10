@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Fuse.ShaderFX;
+using Silk.NET.OpenGL;
 using Stride.Core;
 using Stride.Core.Mathematics;
 using Stride.Rendering;
@@ -249,13 +250,15 @@ namespace Fuse
 
         // ReSharper disable once UnusedMember.Global
         // accessed from vl
-        public static VLComputeEffectShader RegisterComputeShader<T>( ToComputeFx<T> theComputeFx)
+        public static VLComputeEffectShader RegisterComputeShader<T>(ToComputeFx<T> theComputeFx, string effectName = "FuseComputeGraph")
         {
             var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
             if (game == null) return null;
             
             var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
-            return ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
+            var result = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
+            result.Name = effectName;
+            return result;
         }
 
         class DynamicDrawEffectInstance : DynamicEffectInstance

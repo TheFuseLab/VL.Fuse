@@ -47,7 +47,12 @@ namespace Fuse
         }
     }
     
-    public class ConstantValue<T>: ShaderNode<T>
+    public interface IConstantValue
+    {
+        public Object GetValueAsObject();
+    }
+    
+    public class ConstantValue<T>: ShaderNode<T>,IConstantValue
     {
         public ConstantValue(T theValue) : base(NodeContext.CurrentRoot, "constant", null, false)
         {
@@ -56,6 +61,11 @@ namespace Fuse
         }
         
         public T Value { get; }
+
+        public Object GetValueAsObject()
+        {
+            return Value;
+        }
 
         public override string ID => TypeHelpers.GetDefaultForType(Value);
         public override string TypeName()

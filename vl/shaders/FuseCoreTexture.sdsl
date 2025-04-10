@@ -191,5 +191,126 @@ shader FuseCoreTexture: FuseCoreMath, Texturing, ShaderUtils
 		return va/wt;
 	}
 
+	// Performs a directional blur based on structural information from a depth map
+	// Returns a blurred color that preserves important edges
+	float4 DirectionalBlur(
+		Texture2D sourceTexture,         // Source image to blur
+		Texture2D structureMap,          // Depth/normal map that defines structure
+		SamplerState texSampler,         // Sampler state to use
+		float2 baseUV,                   // Base texture coordinate
+		float blurRadius,                // Radius of the blur (0.0-0.1 recommended)
+		float structureInfluence,        // How much structure affects blur direction (0.0-1.0)
+		float edgePreservation,          // How much to preserve edges (0.0-10.0)
+		float contrastBoost,             // Contrast enhancement (0.0-0.5)
+		float saturationBoost,           // Saturation enhancement (0.0-0.5)
+		float2 dominantDirection,        // Optional dominant direction to bias blur (normalized)
+		float dominantDirectionStrength, // Strength of dominant direction (0.0-1.0)
+		float2 texelSize                 // Size of one texel (1.0/width, 1.0/height)
+	) {
+		// Base color at the original UV
+		float4 baseColor = sourceTexture.Sample(texSampler, baseUV);
+		
+		// Only apply blur if the radius is significant
+		if (blurRadius < 0.0001) return baseColor;
+		
+		// Sample structure (depth/normal) for this position
+		float structure = structureMap.Sample(texSampler, baseUV).r;
+		
+		// Number of samples to take for the blur
+		const int sampleCount = 16;
+		
+		// Accumulate blurred color
+		float4 blurredColor = float4(0, 0, 0, 0);
+		float totalWeight = 0.0;
+		
+		// Determine structure gradient
+		float2 structureGradient = float2(
+			structureMap.Sample(texSampler, baseUV + float2(texelSize.x, 0)).r - 
+			structureMap.Sample(texSampler, baseUV - float2(texelSize.x, 0)).r,
+			structureMap.Sample(texSampler, baseUV + float2(0, texelSize.y)).r - 
+			structureMap.Sample(texSampler, baseUV - float2(0, texelSize.y)).r
+		);
+		
+		// Normalize gradient but keep zero gradients as zero
+		float gradientLength = length(structureGradient);
+		float2 gradientDir = gradientLength > 0.001 ? normalize(structureGradient) : float2(0, 0);
+		
+		// Direction perpendicular to gradient (along edges rather than across)
+		float2 perpDirection = float2(-gradientDir.y, gradientDir.x);
+		
+		// Calculate edge strength factor for edge preservation
+		float edgeFactor = 1.0 / (1.0 + edgePreservation * gradientLength);
+		
+		// Apply structure influence to blur radius
+		float adjustedRadius = blurRadius * edgeFactor;
+		
+		// Sample in a directional pattern
+		for (int i = 0; i < sampleCount; i++) {
+			// Calculate offset angle
+			float angle = (float(i) / float(sampleCount)) * 3.14159 * 2.0;
+			
+			// Create direction vector for this sample
+			float2 baseDir = float2(cos(angle), sin(angle));
+			
+			// Blend between circular pattern and structure-guided pattern
+			float2 structureDir = lerp(baseDir, perpDirection, structureInfluence * smoothstep(0.0, 0.05, gradientLength));
+			
+			// Add influence from dominant direction if specified
+			float2 finalDir = normalize(lerp(structureDir, dominantDirection, dominantDirectionStrength));
+			
+			// Calculate sample offset
+			float offset = (float(i) / float(sampleCount - 1) - 0.5) * 2.0; // Range -1 to 1
+			float2 sampleOffset = finalDir * offset * adjustedRadius;
+			float2 sampleUV = baseUV + sampleOffset;
+			
+			// Get color at sample position
+			float4 sampleColor = sourceTexture.Sample(texSampler, sampleUV);
+			
+			// Weight based on distance and structure similarity
+			float structureAtSample = structureMap.Sample(texSampler, sampleUV).r;
+			float structureDiff = abs(structure - structureAtSample);
+			
+			// Gaussian-like falloff based on distance
+			float distanceFactor = exp(-offset * offset * 2.0);
+			
+			// Structure similarity weight
+			float structureWeight = 1.0 / (1.0 + structureDiff * edgePreservation * 10.0);
+			
+			// Combined weight
+			float weight = distanceFactor * structureWeight;
+			
+			// Accumulate weighted sample
+			blurredColor += sampleColor * weight;
+			totalWeight += weight;
+		}
+		
+		// Normalize the accumulated color
+		float4 resultColor = totalWeight > 0.0 ? blurredColor / totalWeight : baseColor;
+		
+		// Optional: Enhance contrast and saturation
+		if (contrastBoost > 0.0 || saturationBoost > 0.0) {
+			// Calculate luminance
+			float luminance = dot(resultColor.rgb, float3(0.299, 0.587, 0.114));
+			
+			// Enhance saturation (blend toward luminance with negative values, away with positive)
+			float3 satColor = lerp(
+				float3(luminance, luminance, luminance), 
+				resultColor.rgb, 
+				1.0 + saturationBoost
+			);
+			
+			// Enhance contrast
+			float3 contrastColor = lerp(
+				satColor,
+				(satColor - 0.5) * (1.0 + contrastBoost) + 0.5,
+				contrastBoost * 2.0
+			);
+			
+			// Preserve original alpha
+			resultColor = float4(contrastColor, resultColor.a);
+		}
+		
+		return resultColor;
+	}
 
 };

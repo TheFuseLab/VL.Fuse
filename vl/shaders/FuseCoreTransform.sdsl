@@ -234,9 +234,25 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		);
 	}
 
-	float4 rotateVector( float4 quat, float4 vec ) {
-		float4 qv = mulQuat( quat, vec );
-		return mulQuat( qv, float4(-quat.x, -quat.y, -quat.z, quat.w) );
+	/**
+	* Normalizes a quaternion to unit length.
+	* Required for quaternions representing rotations.
+	* Returns identity quaternion (0,0,0,1) for zero-length input.
+	*/
+	float4 qNormalize(float4 q)
+	{
+		float len = length(q);
+		if (len > 1e-6f) // Avoid division by zero or near-zero
+		{
+			return q / len;
+		}
+		return float4(0.0f, 0.0f, 0.0f, 1.0f); // Return identity
+	}
+
+	float3 rotateVector( float4 q, float3 v ) {
+		// Assumes q is normalized.
+    	float3 t = 2.0 * cross(q.xyz, v);
+    	return v + q.w * t + cross(q.xyz, t);
 	}
 
 	float3x3 qRot3x3(float4 q)
@@ -259,51 +275,80 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return as4x4(qRot3x3(q));
 	}
 
-	/// <summary>
-	/// Interpolates between two quaternions, using spherical linear interpolation.
-	/// </summary>
-	/// <param name="a">Start quaternion.</param>
-	/// <param name="b">End quaternion.</param>
-	/// <param name="t">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
-	float4 slerp (float4 a, float4 b, float t )
+	/**
+	* Spherical Linear Interpolation between two unit quaternions.
+	* Provides constant angular velocity interpolation along the shortest arc.
+	* More expensive than Nlerp (Normalized Linear Interpolation).
+	*/
+	float4 qSlerp(float4 q1, float4 q2, float t)
 	{
-		if ( t <= 0.0f )
+		// Ensure inputs are normalized (optional, but good practice)
+		// q1 = QuatNormalize(q1);
+		// q2 = QuatNormalize(q2);
+
+		// Clamp interpolation factor
+		t = saturate(t);
+
+		// Calculate cosine of the angle between the quaternions
+		float cosTheta = dot(q1, q2);
+
+		// If angle is very small, use linear interpolation (Nlerp)
+		// to avoid numerical instability (division by sin(theta) near zero)
+		// and for performance.
+		const float SLERP_DOT_THRESHOLD = 0.9995f;
+
+		// Handle shortest path interpolation: If cosTheta is negative,
+		// the quaternions are more than 90 degrees apart on the 4D sphere.
+		// Interpolating to -q2 will take the shorter path.
+		if (cosTheta < 0.0f)
 		{
-			return a;
+			q2 = -q2; // Flip the second quaternion
+			cosTheta = -cosTheta; // Angle is now < 90 degrees
 		}
 
-		if ( t >= 1.0f )
+		if (cosTheta > SLERP_DOT_THRESHOLD) // Check after potential flip
 		{
-			return b;
+			// Angle is small, use Nlerp
+			return QuatNormalize(lerp(q1, q2, t));
 		}
-
-		float coshalftheta = dot(a, b);
-		//coshalftheta = std::min (1.0f, std::max (-1.0f, coshalftheta));
-		float4 c = b;
-
-		// Angle is greater than 180. We can negate the angle/quat to get the
-		// shorter rotation to reach the same destination.
-		if ( coshalftheta < 0.0f )
+		else
 		{
-			coshalftheta = -coshalftheta;
-			c = -c;
+			// Clamp cosTheta to prevent domain errors with acos
+			cosTheta = clamp(cosTheta, -1.0f, 1.0f);
+
+			// Standard Slerp formula
+			float theta = acos(cosTheta);       // Angle between quaternions
+			// Note: sin(theta) should not be zero here due to the threshold check above.
+			float sinTheta = sin(theta);
+			float invSinTheta = 1.0f / sinTheta;
+
+			float scale0 = sin((1.0f - t) * theta) * invSinTheta;
+			float scale1 = sin(t * theta) * invSinTheta;
+
+			// Perform the interpolation
+			return (q1 * scale0) + (q2 * scale1);
+			// The result *should* be normalized if inputs are, but can re-normalize for safety:
+			// return QuatNormalize((q1 * scale0) + (q2 * scale1));
 		}
-
-			if ( coshalftheta > 0.99f )
-			{
-			// Angle is tiny - save some computation by lerping instead.
-					float4 r = lerp(a, c, t);
-					return r;
-			}
-
-		float halftheta = acos(coshalftheta);
-		float sintheta = sin(halftheta);
-
-		return (sin((1.0f - t) * halftheta) * a + sin(t * halftheta) * c) / sin(halftheta);
 	}
 
+	/**
+	* Normalized Linear Interpolation between two unit quaternions.
+	* Faster than Slerp but does not maintain constant angular velocity.
+	* Often visually acceptable, especially for small rotations or when speed matters.
+	*/
+	float4 qNlerp(float4 q1, float4 q2, float t)
+	{
+		t = saturate(t);
+		float cosTheta = dot(q1, q2);
 
-	// Converting these quaternion function inputs from radians to revolutions, as that is the standard usage in vvvv
+		// Ensure shortest path (optional but recommended for consistency)
+		if (cosTheta < 0.0f) {
+			q2 = -q2;
+		}
+
+		return QuatNormalize(lerp(q1, q2, t));
+	}
 
 
 	/// <summary>
@@ -312,38 +357,27 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// <param name="yaw">The yaw of rotation in radians.</param>
 	/// <param name="pitch">The pitch of rotation in radians.</param>
 	/// <param name="roll">The roll of rotation in radians.</param>
-	float4 CreateQuatRotationYawPitchRoll(float yaw, float pitch, float roll){
-		//float halfRoll = roll * 0.5f;
-		//float halfPitch = pitch * 0.5f;
-		//float halfYaw = yaw * 0.5f;
+	float4 CreateQuatRotationYawPitchRoll(float yawRad, float pitchRad, float rollRad){
+    	float sinRoll, cosRoll, sinPitch, cosPitch, sinYaw, cosYaw;
 
+    	float halfRoll = rollRad * 0.5f;
+    	float halfPitch = pitchRad * 0.5f;
+    	float halfYaw = yawRad * 0.5f;
 
-		//radians to revolutions
-		float halfRoll = roll * PI;
-		float halfPitch = pitch * PI;
-		float halfYaw = yaw * PI;
-			
-		float sinRoll = sin(halfRoll);
-		float cosRoll = cos(halfRoll);
-		float sinPitch = sin(halfPitch);
-		float cosPitch = cos(halfPitch);
-		float sinYaw = sin(halfYaw);
-		float cosYaw = cos(halfYaw);
+    	sincos(halfRoll, sinRoll, cosRoll);
+    	sincos(halfPitch, sinPitch, cosPitch);
+    	sincos(halfYaw, sinYaw, cosYaw);
 
+		// ... rest of the formula using sin/cos variables ...
 		float cosYawPitch = cosYaw * cosPitch;
 		float sinYawPitch = sinYaw * sinPitch;
-
-		return float4 (
-			(cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll),
-			(sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll),
-			(cosYawPitch * sinRoll) - (sinYawPitch * cosRoll),
-			(cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)
+		return float4 ( // Assuming XYZW order output
+			(cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll), // X
+			(sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll), // Y
+			(cosYawPitch * sinRoll) - (sinYawPitch * cosRoll),             // Z
+			(cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)              // W
 		);
 	}
-
-
-
-
 
 	/// <summary>
 	/// Creates a quaternion given a rotation and an axis.
@@ -352,15 +386,11 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// <param name="angle">The angle of rotation.</param>
 	float4 CreateQuatRotationAxis(float3 axis, float angle)
 	{
-		float3 normalized = normalize(axis);
-			
-		//angle *= TWOPI; // radians to revolutions
-		//float halfAngle = angle * 0.5f;
-		float halfAngle = angle * PI;
-		float sinHalf = sin(halfAngle);
-		float cosHalf = cos(halfAngle);
-
-		return float4(normalized * sinHalf, cosHalf);
+		float3 normAxis = normalize(axis); // Ensure unit axis
+    	float halfAngle = angleRad * 0.5f;
+    	float s, c;
+    	sincos(halfAngle, s, c);
+    	return float4(normAxis * s, c);
 	}
 
 	/// <summary>
@@ -368,26 +398,54 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// </summary>
 	/// <param name="start">The start orientation.</param>
 	/// <param name="end">The end orientation.</param>
-	float4 CreateQuatFromVectors(float3 start, float3 end)
+	float4 CreateQuatFromVectors(float3 fromVec, float3 toVec)
 	{
-		start = normalize(start);
-		end = normalize(end);
-		
-		float d = dot(start, end);
-		if (d > 1.0)
-			d = 1.0;
-		else if (d < -1.0)
-			d = -1.0;
-		
-		float angle = acos(d);
+		// Normalize input vectors to be safe
+		fromVec = normalize(fromVec);
+		toVec = normalize(toVec);
 
-		float3 axis = cross(start, end);
-		axis = normalize(axis);
-		
-		float s = sin(angle / 2.0);
-		float qw = cos(angle / 2.0);
-		float3 q = axis * s;
-		return float4(qw, q.x, q.y, q.z);
+		float d = dot(fromVec, toVec);
+
+		// Check for parallel vectors (within tolerance)
+		if (d >= 1.0f - 1e-6f)
+		{
+			// Vectors are already aligned - return identity rotation
+			return float4(0.0f, 0.0f, 0.0f, 1.0f);
+		}
+		// Check for anti-parallel vectors (within tolerance)
+		else if (d <= -1.0f + 1e-6f)
+		{
+			// Vectors are diametrically opposite.
+			// We need an arbitrary axis orthogonal to fromVec to rotate around by 180 degrees.
+			// Try crossing with the world X-axis.
+			float3 axis = float3(1.0f, 0.0f, 0.0f);
+			// If fromVec is aligned with X-axis, cross product will be zero. Use world Y-axis instead.
+			if (abs(fromVec.x) > 0.999f) // Check if roughly aligned with X
+			{
+				axis = float3(0.0f, 1.0f, 0.0f);
+			}
+			// Calculate the orthogonal axis and create 180-degree rotation quaternion
+			axis = normalize(cross(fromVec, axis));
+			return QuatFromAxisAngle(axis, 3.1415926535f); // PI radians = 180 degrees
+		}
+		// General case: Use cross product for axis and calculate w component
+		else
+		{
+			float3 rotAxis = cross(fromVec, toVec);
+
+			// Use the formulation q = (cross(from, to), 1 + dot(from, to)) and normalize.
+			// This avoids square roots and is generally robust.
+			// The resulting quaternion needs to be normalized.
+			// float4 q = float4(rotAxis.x, rotAxis.y, rotAxis.z, 1.0f + d);
+			// return QuatNormalize(q);
+
+			// Alternative formulation using half-angle properties directly (verified earlier):
+			float s = sqrt((1.0f + d) * 2.0f); // This is 2 * cos(angle/2)
+			float invs = 1.0f / s;
+			// xyz = cross(from, to) * sin(angle/2) / sin(angle) ... simplifies
+			return float4(rotAxis.x * invs, rotAxis.y * invs, rotAxis.z * invs, s * 0.5f);
+			// This form is already normalized.
+		}				
 	}
 
 	/// <summary>
@@ -396,9 +454,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	/// <param name="angle">Angle of rotation in radians.</param>
 	float4 CreateQuatRotationX(float angle)
 	{
-		//angle *= TWOPI; // radians to revolutions
-		//float halfAngle = angle * 0.5f;
-		float halfAngle = angle * PI;
+		float halfAngle = angle * 0.5f;
 		return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
 	}
 
@@ -409,8 +465,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	float4 CreateQuatRotationY(float angle)
 	{
 		//angle *= TWOPI; // radians to revolutions
-		//float halfAngle = angle * 0.5f;
-		float halfAngle = angle * PI;
+		float halfAngle = angle * 0.5f;
 		return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
 	}
 
@@ -421,21 +476,8 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	float4 CreateQuatRotationZ(float angle)
 	{
 		//angle *= TWOPI; // radians to revolutions
-		//float halfAngle = angle * 0.5f;
-		float halfAngle = angle * PI;
+		float halfAngle = angle * 0.5f;
 		return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
-	}
-
-	float4 axisAngle2Quat(float3 a, float r)
-	{
-		float4 res = 0;
-		float sinr = sin( r*PI );
-		float cosr = cos( r*PI );
-		res.x = a.x * sinr;
-		res.y = a.y * sinr;
-		res.z = a.z * sinr;
-		res.w = cosr;
-		return res;
 	}
 
 

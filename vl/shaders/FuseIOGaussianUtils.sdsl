@@ -1,0 +1,212 @@
+shader FuseIOGaussianUtils{
+    
+    static const float SH_C0 = 0.28209479177387814f;
+    static const float SH_C1 = 0.4886025119029199f;
+
+    static const float SH_C2_0 = 1.0925484305920792f;
+    static const float SH_C2_1 = -1.0925484305920792f;
+    static const float SH_C2_2 = 0.31539156525252005f;
+    static const float SH_C2_3 = -1.0925484305920792f;
+    static const float SH_C2_4 = 0.5462742152960396f;
+
+    static const float SH_C3_0 = -0.5900435899266435f;
+    static const float SH_C3_1 = 2.890611442640554f;
+    static const float SH_C3_2 = -0.4570457994644658f;
+    static const float SH_C3_3 = 0.3731763325901154f;
+    static const float SH_C3_4 = -0.4570457994644658f;
+    static const float SH_C3_5 = 1.445305721320277f;
+    static const float SH_C3_6 = -0.5900435899266435f;
+
+
+    float3 SphericalHarmonics1(float3 sh0){
+        float3 color = SH_C0 * sh0;
+        return color;
+    }
+
+    float3 SphericalHarmonics2(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3){
+        float3 color = SphericalHarmonics1(sh0);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        color = color - 
+            SH_C1 * y * sh1 + 
+            SH_C1 * z * sh2 - 
+            SH_C1 * x * sh3;
+        return color;
+    }
+
+    float3 SphericalHarmonics3(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3, float3 sh4, float3 sh5, float3 sh6, float3 sh7, float3 sh8){
+        float3 color = SphericalHarmonics2(dir, sh0, sh1, sh2, sh3);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        float xx = x * x, yy = y * y, zz = z * z;
+        float xy = x * y, yz = y * z, xz = x * z;
+        
+        color = color +
+            SH_C2_0 * xy * sh4 +
+            SH_C2_1 * yz * sh5 +
+            SH_C2_2 * (2.0f * zz - xx - yy) * sh6 +
+            SH_C2_3 * xz * sh7 +
+            SH_C2_4 * (xx - yy) * sh8;
+
+        return color;
+    }
+
+    float3 SphericalHarmonics4(float3 dir, float3 sh0, float3 sh1, float3 sh2, float3 sh3, float3 sh4, float3 sh5, float3 sh6, float3 sh7, float3 sh8, float3 sh9, float3 sh10, float3 sh11, float3 sh12, float3 sh13, float3 sh14, float3 sh15){
+        float3 color = SphericalHarmonics3(dir, sh0, sh1, sh2, sh3, sh4, sh5, sh6, sh7, sh8);
+
+        float x = dir.x;
+        float y = dir.y;
+        float z = dir.z;
+
+        float xx = x * x, yy = y * y, zz = z * z;
+        float xy = x * y, yz = y * z, xz = x * z;
+
+        color = color +
+            SH_C3_0 * y * (3.0f * xx - yy) * sh9 +
+            SH_C3_1 * xy * z * sh10 +
+            SH_C3_2 * y * (4.0f * zz - xx - yy) * sh11 +
+            SH_C3_3 * z * (2.0f * zz - 3.0f * xx - 3.0f * yy) * sh12 +
+            SH_C3_4 * x * (4.0f * zz - xx - yy) * sh13 +
+            SH_C3_5 * z * (xx - yy) * sh14 +
+            SH_C3_6 * x * (xx - 3.0f * yy) * sh15;
+
+        return color;
+    }
+ 
+    float3x3 ComputeCov3D(float4 q, float3 scale){
+        float3x3 S = float3x3(
+            scale.x, 0.0f, 0.0f,
+            0.0f, scale.y, 0.0f,
+            0.0f, 0.0f, scale.z
+        );
+            
+        float r = q.x;
+        float x = q.y;
+        float y = q.z;
+        float z = q.w;
+
+        float3x3 R = float3x3(
+            1.0f - 2.0f * (y * y + z * z), 2.0f * (x * y - r * z),        2.0f * (x * z + r * y),
+            2.0f * (x * y + r * z),        1.0f - 2.0f * (x * x + z * z), 2.0f * (y * z - r * x),
+            2.0f * (x * z - r * y),        2.0f * (y * z + r * x),        1.0f - 2.0f * (x * x + y * y)
+        );
+
+        float3x3 M = mul(R, S);
+        float3x3 Sigma = mul( M,transpose(M));
+        return Sigma;
+    }
+
+    // Add new utility function to compute visibility threshold distance based on opacity
+    float ComputeThresholdDistance(float opacity, float visibilityThreshold) {
+        // If we have a Gaussian with max opacity, we need to find at what distance from center
+        // the opacity falls below our threshold (e.g., 0.01 or 1%)
+        
+        // For a Gaussian: opacity * exp(-0.5 * (distance²)) < threshold
+        // Solving for distance: distance² < -2 * ln(threshold / opacity)
+        // So: distance < sqrt(-2 * ln(threshold / opacity))
+        
+        // Ensure we don't take log of a negative number
+        float ratio = max(visibilityThreshold / opacity, 1e-6f);
+        ratio = min(ratio, 0.999f); // Cap ratio to avoid extreme values
+        
+        return sqrt(-2.0f * log(ratio));
+    }
+
+    float3 computeCov2D(float4 mean_view, float2 screenParams, float3x3 cov3D, float4x4 viewMatrix, float4x4 matrixP, float opacity, float visibilityThreshold){
+        float4 t = mean_view;
+
+        float aspect = matrixP._m00 / matrixP._m11;
+        float tanFovX = rcp(matrixP._m00);
+        float tanFovY = rcp(matrixP._m11 / aspect);
+
+        // Limit extreme projection values to prevent distortion
+        float limX = 1.3 * tanFovX;
+        float limY = 1.3 * tanFovY;
+        t.x = clamp(t.x / t.z, -limX, limX) * t.z;
+        t.y = clamp(t.y / t.z, -limY, limY) * t.z;
+
+        float focal = screenParams.x * matrixP._m00 / 2.0;
+        
+        float3x3 J = float3x3(
+            focal / t.z, 0.0f,        -(focal * t.x) / (t.z * t.z),
+            0.0f,        focal / t.z, -(focal * t.y) / (t.z * t.z),
+            0.0f,        0.0f,        0.0f
+        );
+        
+        
+        float3x3 W = transpose((float3x3)viewMatrix);
+        float3x3 T = mul(J,W);
+        float3x3 cov = mul(mul(T, transpose(cov3D)),transpose( T));
+       
+        // Apply low-pass filter
+        cov._m00 += 0.3f;
+        cov._m11 += 0.3f;
+
+        // Calculate trim factor based on visibility threshold and opacity
+        float trimFactor = ComputeThresholdDistance(opacity, visibilityThreshold);
+        
+        // Standard multiplier for Gaussian size is typically 3σ (covers 99.7% of distribution)
+        // We'll scale this based on our trim factor, which is typically less than 3
+        float scaleFactor = trimFactor / 3.0f;
+        
+        // Apply scaling to the covariance matrix (scale^2 because covariance scales with square of coordinates)
+        cov._m00 *= scaleFactor * scaleFactor;
+        cov._m10 *= scaleFactor * scaleFactor;
+        cov._m01 *= scaleFactor * scaleFactor;
+        cov._m11 *= scaleFactor * scaleFactor;
+        
+        return float3(cov._m00, cov._m10, cov._m11);
+    }
+
+    /**
+    * Find eigenvalues and eigenvectors of a 2x2 covariance matrix, and return
+    * the final scaled vectors for quad generation
+    * @param cov - Covariance matrix as float3 (xx, xy, yy)
+    * @param axis2 - Output parameter for the second scaled axis (3σ * v2)
+    * @return float2 - First scaled axis (3σ * v1)
+    */
+    float3 ComputeEigen(float3 cov, out float3 axis2)
+    {
+        float a = cov.x;  // xx
+        float b = cov.y;  // xy
+        float c = cov.z;  // yy
+        
+        // Calculate eigenvalues
+        float trace = a + c;
+        float det = a * c - b * b;
+        float disc = sqrt(trace * trace - 4.0 * det);
+        float lambda1 = (trace + disc) * 0.5;  // Larger eigenvalue
+        float lambda2 = (trace - disc) * 0.5;  // Smaller eigenvalue
+        
+        // Calculate standard deviations directly
+        float sigma1 = sqrt(lambda1);
+        float sigma2 = sqrt(lambda2);
+        
+        // Calculate eigenvectors
+        float2 v1, v2;
+        
+        // First eigenvector
+        if (abs(b) > 1e-6) {
+            v1 = normalize(float2(b, lambda1 - a));
+        } else {
+            v1 = float2(1.0, 0.0);  // If b ≈ 0, eigenvector is (1,0)
+        }
+        
+        // Second eigenvector (perpendicular to first)
+        // For left-handed system, use (v1.y, -v1.x) to rotate clockwise
+        v2 = float2(v1.y, -v1.x);
+       
+    
+        // Set the second scaled axis as output parameter
+        axis2 = float3(v2, sigma2);
+        
+        // Return the first scaled axis
+        return float3(v1,sigma1);
+    }
+};

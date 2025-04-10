@@ -10,7 +10,15 @@ namespace Fuse
         
         public DeclareValue(NodeContext nodeContext, ShaderNode<T> theValue = null): base(nodeContext, "output")
         {
-            _value = theValue ?? Default;
+            if (theValue != null)
+            {
+                _value = theValue;
+                TypeOverride = theValue.TypeName();
+            }
+            else
+            {
+                _value = Default;
+            }
             SetInputs(new List<AbstractShaderNode>{_value});
         }
         
