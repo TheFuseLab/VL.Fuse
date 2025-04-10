@@ -109,25 +109,3 @@ public class ShaderGraphParser
         return new ShaderGraphParser().ProcessShaderFunction(theExpression);
     }
 }
-
-[ProcessNode(FragmentSelection = FragmentSelection.Explicit, HasStateOutput = true)]
-public class Foo
-{
-    [Fragment]
-    public Foo()
-    {
-        
-    }
-    
-    [Fragment]
-    [return: Pin(Name = "TTTT")]
-    public float Update([DefaultValue((5))] int x, PinAttribute() Spread<float> xxxx)
-    {
-        return 1;
-    }
-
-    [Fragment]
-    public void Lala(int y)
-    {
-    }
-}
