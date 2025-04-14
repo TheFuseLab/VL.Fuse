@@ -385,10 +385,13 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
         int startIndex,
         int neighborCount,
         int defaultValue,
-        inout uint seed // Input/Output seed for PRNG state
+        uint seed,
+        out bool noFurthest // Input/Output seed for PRNG state
     ) {
+        noFurthest = false;
         if (neighborCount == 0)
         {
+            noFurthest = true;
             return defaultValue; // No neighbors available
         }
 
@@ -473,6 +476,7 @@ CheckCandidate(positions,NeighborIds,NeighborStates, Distances, currentCount, pa
         }
         else
         {
+            noFurthest = true;
             // Case 2: No neighbors further than reference were found.
             // Fallback to using *all* neighbors.
             if (neighborCount > 0) // Should always be true if furtherCount is 0 unless neighborCount was 0 initially
