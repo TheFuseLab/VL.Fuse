@@ -34,7 +34,7 @@ namespace Fuse
             _modifiers = theModifiers;
             _isGroupable = theIsGroupable;
             _groupOptions = theGroupOptions;
-            OptionalOutputs = new List<AbstractShaderNode>();
+            OptionalOutputs = [];
             Setup(theArguments);
         }
 
@@ -113,7 +113,7 @@ namespace Fuse
                     call.Append(inputList[index].ID);
                 }
                 
-                call.Append(")");
+                call.Append(')');
             }
             return ShaderNodesUtil.Evaluate(resultPart + "${Call};",new Dictionary<string,string>
             {
