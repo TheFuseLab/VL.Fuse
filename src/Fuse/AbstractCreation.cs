@@ -4,6 +4,7 @@ using System.Linq;
 using Fuse.compute;
 using Fuse.function;
 using Stride.Graphics;
+using VL.Core;
 
 namespace Fuse
 {
@@ -80,6 +81,32 @@ namespace Fuse
             var dataType = new[] {typeof(T)};
             var getType = setMemberBaseType.MakeGenericType(dataType);
             return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theStruct, theMember, theValue) as AbstractShaderNode;
+           
+        }
+        
+        public static AbstractShaderNode AbstractCustomFunction(
+            NodeContext theContext, 
+            string theFunction,
+            string theCodeTemplate,
+            AbstractShaderNode theDefault,
+            IEnumerable<AbstractShaderNode> theArguments,
+            IEnumerable<InputModifier> theModifiers = null)
+        {
+           
+            var baseType = typeof(CustomFunction<>);
+            var valueType = GetBaseType(theDefault);
+            var getType = baseType.MakeGenericType(valueType);
+            return Activator.CreateInstance(
+                getType, 
+                theContext, 
+                theFunction, 
+                theCodeTemplate, 
+                theDefault, 
+                theArguments, 
+                null, 
+                null,
+                false,
+                theModifiers) as AbstractShaderNode;
            
         }
         

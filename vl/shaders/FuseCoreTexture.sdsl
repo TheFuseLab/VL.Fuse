@@ -313,4 +313,160 @@ shader FuseCoreTexture: FuseCoreMath, Texturing, ShaderUtils
 		return resultColor;
 	}
 
+	// HLSL Code
+
+	//--------------------------------------------------------------------------------------
+	// 4-Tap Gaussian-Like Mipmap Blur
+	//--------------------------------------------------------------------------------------
+	// Approximates blur by sampling 4 corners around the target coordinate
+	// at a selected integer mip level. Uses equal weights (Box filter at Mip level).
+	//
+	// Args:
+	//   Tex:            Input Texture2D object with Mipmaps.
+	//   Sampler:        Sampler state.
+	//   TexCoord:       Base texture coordinate to sample around.
+	//   BlurAmount:     Desired blur intensity [0 = sharpest, 1 = max mip blur].
+	//   TextureSize:    float2 containing base width and height of the texture (Mip 0).
+	//   NumMipLevels:   Total number of mip levels in the texture.
+	//   KernelScale:    Adjusts the spread of the 4 taps (Optional, default ~0.7).
+	//
+	// Returns:
+	//   Blurred float4 color.
+	//--------------------------------------------------------------------------------------
+	float4 MipmapGaussBlur4Tap(
+		Texture2D Tex,
+		SamplerState Sampler,
+		float2 TexCoord,
+		float BlurAmount,
+		float2 TextureSize,
+		uint NumMipLevels,
+		float KernelScale = 0.707f) // Default scale for corner taps
+	{
+		// 1. Calculate target LOD and select integer level
+		float maxLodIndex = max(0.0f, (float)NumMipLevels - 1.0f);
+		float targetLod = maxLodIndex * saturate(BlurAmount);
+		// Use round() to pick the nearest integer mip level
+		float sampleLod = clamp(targetLod, 0.0f, maxLodIndex);
+
+		// 2. Calculate effective texel size at the selected mip level
+		float mipScale = exp2(sampleLod); // 2^LOD
+		float2 baseTexelSize = float2(1.0f / TextureSize.x, 1.0f / TextureSize.y);
+		float2 mipTexelSize = baseTexelSize * mipScale;
+
+		// 3. Define 4 sampling offsets (rotated grid / corners)
+		float2 offsets[4] = {
+			float2(-0.5f, -0.5f) * mipTexelSize * KernelScale,
+			float2( 0.5f, -0.5f) * mipTexelSize * KernelScale,
+			float2(-0.5f,  0.5f) * mipTexelSize * KernelScale,
+			float2( 0.5f,  0.5f) * mipTexelSize * KernelScale
+		};
+
+		// 4. Sample texture at the 4 offset points on the selected mip level
+		float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+		// Unroll helps performance for small fixed loops
+		[unroll]
+		for(int i = 0; i < 4; ++i)
+		{
+			finalColor += Tex.SampleLevel(Sampler, TexCoord + offsets[i], sampleLod);
+		}
+
+		// 5. Average the samples (equal weights for box filter)
+		finalColor *= 0.25f;
+
+		return finalColor;
+	}
+
+
+	//--------------------------------------------------------------------------------------
+	// 9-Tap Gaussian-Like Mipmap Blur
+	//--------------------------------------------------------------------------------------
+	// Approximates Gaussian blur by sampling a 3x3 grid around the target coordinate
+	// at a selected integer mip level, weighting samples by a Gaussian function.
+	//
+	// Args:
+	//   Tex:            Input Texture2D object with Mipmaps.
+	//   Sampler:        Sampler state.
+	//   TexCoord:       Base texture coordinate to sample around.
+	//   BlurAmount:     Desired blur intensity [0 = sharpest, 1 = max mip blur].
+	//   TextureSize:    float2 containing base width and height of the texture (Mip 0).
+	//   NumMipLevels:   Total number of mip levels in the texture.
+	//   KernelScale:    Adjusts the spread of the 9 taps (Optional, default 1.0).
+	//   SigmaScale:     Adjusts Gaussian sigma relative to BlurAmount (Optional, default 1.0).
+	//
+	// Returns:
+	//   Blurred float4 color.
+	//--------------------------------------------------------------------------------------
+	float4 MipmapGaussBlur9Tap(
+		Texture2D Tex,
+		SamplerState Sampler,
+		float2 TexCoord,
+		float BlurAmount,
+		float2 TextureSize,
+		uint NumMipLevels,
+		float KernelScale = 1.0f,
+		float SigmaScale = 1.0f)
+	{
+		// 1. Calculate target LOD and select integer level
+		float maxLodIndex = max(0.0f, (float)NumMipLevels - 1.0f);
+		float blurAmountSat = saturate(BlurAmount);
+		float targetLod = maxLodIndex * blurAmountSat;
+		// Use round() to pick the nearest integer mip level
+		float sampleLod = clamp(targetLod, 0.0f, maxLodIndex);
+
+		// 2. Calculate effective texel size at the selected mip level
+		float mipScale = exp2(sampleLod); // 2^LOD
+		float2 baseTexelSize = float2(1.0f / TextureSize.x, 1.0f / TextureSize.y);
+		float2 mipTexelSize = baseTexelSize * mipScale;
+
+		// 3. Calculate Gaussian weights and sample offsets for 3x3 grid
+		// Use static const for grid offsets relative to center (integer)
+		static const int2 gridOffsets[9] = {
+			int2(-1,-1), int2(0,-1), int2(1,-1),
+			int2(-1, 0), int2(0, 0), int2(1, 0),
+			int2(-1, 1), int2(0, 1), int2(1, 1)
+		};
+
+		float weights[9];
+		float2 sampleOffsets[9];
+		float totalWeight = 0.0f;
+
+		// Sigma can vary with blur amount for better control
+		// Small sigma for low blur, larger sigma for high blur (relative to kernel size)
+		float sigma = lerp(0.5f, 1.5f, blurAmountSat) * SigmaScale;
+		float sigmaSq_x2 = 2.0f * sigma * sigma; // Precompute 2*sigma^2
+
+		[unroll]
+		for(int i = 0; i < 9; ++i)
+		{
+			float2 gridOffsetF = float2(gridOffsets[i]);
+			// Calculate offset scaled by texel size at the target mip level
+			sampleOffsets[i] = gridOffsetF * mipTexelSize * KernelScale;
+
+			// Calculate Gaussian weight based on unscaled grid distance
+			float distSq = dot(gridOffsetF, gridOffsetF);
+			weights[i] = exp(-distSq / sigmaSq_x2);
+			totalWeight += weights[i];
+		}
+
+		// Normalize weights (avoid division by zero)
+		totalWeight = max(totalWeight, 1e-6f);
+		float invTotalWeight = 1.0f / totalWeight;
+		[unroll]
+		for(int i = 0; i < 9; ++i)
+		{
+			weights[i] *= invTotalWeight;
+		}
+
+		// 4. Sample texture and apply weights
+		float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+		[unroll]
+		for(int i = 0; i < 9; ++i)
+		{
+			finalColor += Tex.SampleLevel(Sampler, TexCoord + sampleOffsets[i], sampleLod) * weights[i];
+		}
+
+		return finalColor;
+	}
+
 };

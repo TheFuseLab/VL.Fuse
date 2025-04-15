@@ -35,4 +35,40 @@ shader FuseCommonComputeUtil : ComputeShaderBase, FuseCoreTransform
         im._12_22_32_42 *= inverseScaling.y;
         im._13_23_33_43 *= inverseScaling.z;
     }
-}
+
+    // Include the AtomicAddFloat helper function here...
+    void AtomicAddFloat(RWStructuredBuffer<int> buffer, uint index, float valueToAdd){
+        int currentIntValue, initialIntValueRead, newIntValue;
+        do {
+            currentIntValue = buffer[index];
+            newIntValue = asint(asfloat(currentIntValue) + valueToAdd);
+            InterlockedCompareExchange(buffer[index], currentIntValue, newIntValue, initialIntValueRead);
+        } while (initialIntValueRead != currentIntValue);
+    }
+
+    // Atomic Minimum for Floats
+    void AtomicMinFloat(RWStructuredBuffer<int> buffer, uint index, float valueToCompare)
+    {
+        int currentIntValue, initialIntValueRead, newIntValue;
+        do
+        {
+            currentIntValue = buffer[index];
+            newIntValue = asint(min(asfloat(currentIntValue), valueToCompare)); 
+            InterlockedCompareExchange(buffer[index], currentIntValue, newIntValue, initialIntValueRead);
+        }
+        while (initialIntValueRead != currentIntValue); // Loop if swap failed
+    }
+
+    // Atomic Minimum for Floats
+    void AtomicMaxFloat(RWStructuredBuffer<int> buffer, uint index, float valueToCompare)
+    {
+        int currentIntValue, initialIntValueRead, newIntValue;
+        do
+        {
+            currentIntValue = buffer[index];
+            newIntValue = asint(max(asfloat(currentIntValue), valueToCompare)); 
+            InterlockedCompareExchange(buffer[index], currentIntValue, newIntValue, initialIntValueRead);
+        }
+        while (initialIntValueRead != currentIntValue); // Loop if swap failed
+    }
+};
