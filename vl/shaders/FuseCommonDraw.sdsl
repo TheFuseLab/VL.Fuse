@@ -1,5 +1,55 @@
 shader FuseCommonDraw : Texturing
 {
+	/**
+	* Downsamples high-resolution depth by finding the minimum depth value
+	* among the 4 neighboring high-res texels corresponding to the low-res pixel center.
+	*
+	* Args:
+	* HighResDepthTexture: The source high-resolution depth texture.
+	* PointSampler: A SamplerState configured for POINT filtering (MinFilter, MagFilter, MipFilter = Point).
+	* LowResPixelUV: The texture coordinate corresponding to the center of the
+	* pixel being rendered in the low-resolution target texture.
+	*
+	* Returns:
+	* The minimum depth value (closest surface) found in the 2x2 high-res area.
+	*/
+	float DownsampleHighResDepth(
+		Texture2D HighResDepthTexture,
+		SamplerState PointSampler,
+		float2 LowResPixelUV
+	)
+	{
+		// Get dimensions of high-res texture to calculate its texel size
+		uint width, height;
+		HighResDepthTexture.GetDimensions(width, height);
+
+		// Prevent division by zero if dimensions are invalid
+		if (width == 0 || height == 0) {
+			return 1.0f; // Return far plane depth as a safe fallback
+		}
+		float2 highResTexelSize = float2(1.0f / (float)width, 1.0f / (float)height);
+
+		// Calculate UVs for the centers of the 4 high-res texels surrounding the LowResPixelUV
+		// These texels form the 2x2 block corresponding to the low-res pixel.
+		// Adjust signs if your UV origin is different (e.g., bottom-left)
+		float2 uv00 = LowResPixelUV - 0.5 * highResTexelSize; // Texel Top-Left relative to center
+		float2 uv10 = LowResPixelUV + float2(0.5, -0.5) * highResTexelSize; // Texel Top-Right relative to center
+		float2 uv01 = LowResPixelUV + float2(-0.5, 0.5) * highResTexelSize; // Texel Bottom-Left relative to center
+		float2 uv11 = LowResPixelUV + 0.5 * highResTexelSize; // Texel Bottom-Right relative to center
+
+		// Sample the 4 depths using point sampling (LOD 0)
+		// Assumes depth is in the .r component. Change if needed (e.g., .x)
+		float depth00 = HighResDepthTexture.SampleLevel(PointSampler, uv00, 0).r;
+		float depth10 = HighResDepthTexture.SampleLevel(PointSampler, uv10, 0).r;
+		float depth01 = HighResDepthTexture.SampleLevel(PointSampler, uv01, 0).r;
+		float depth11 = HighResDepthTexture.SampleLevel(PointSampler, uv11, 0).r;
+
+		// Find the minimum depth among the 4 samples
+		float minDepth = min(min(depth00, depth10), min(depth01, depth11));
+
+		return minDepth;
+	}
+
     float4 FetchLowResDepths(Texture2D theLowresTexture, Sampler theLowResSampler, float2 UV, float4x4 projection){
 	    float4 deviceZ = theLowresTexture.GatherRed(theLowResSampler, UV);
 	
@@ -28,6 +78,8 @@ shader FuseCommonDraw : Texturing
 		    NearestUV = UV;
 	    }
     }
+
+	
 
     float4 LowResUpsample(
         Texture2D theLowresTexture, 
@@ -87,7 +139,7 @@ shader FuseCommonDraw : Texturing
 	    }
 	    else
 	    {
-		    return theLowresContent.SampleLevel(samplerNearest, NearestUV, 0);
+			return theLowresContent.SampleLevel(samplerNearest, NearestUV, 0);
 	    }
     }
 
