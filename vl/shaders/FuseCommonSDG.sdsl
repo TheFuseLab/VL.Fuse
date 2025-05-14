@@ -1,0 +1,643 @@
+shader FuseCommonSDG 
+{
+	// HLSL Converted Shader Code
+
+// Forward declaration for sdgTrapezoid's out parameter if needed,
+// but it's usually fine if functions are defined before use or if it's clear.
+
+float3 sdgCircle(in float2 p, in float r)
+{
+    float l = length(p);
+    float2 grad = p / l;
+    return float3(l - r, grad.x, grad.y);
+}
+
+float3 sdgPie(in float2 p, in float2 c, in float r)
+{
+    float s = sign(p.x);
+    p.x = abs(p.x);
+
+    float l = length(p);
+    float n = l - r;
+    float2 q_pie = p - c * clamp(dot(p, c), 0.0f, r); // Renamed q to q_pie to avoid conflict
+    float m = length(q_pie) * sign(c.y * p.x - c.x * p.y);
+
+    float3 res_val;
+    if (n > m)
+    {
+        float2 grad = p / l;
+        res_val = float3(n, grad.x, grad.y);
+    }
+    else
+    {
+        float2 grad = q_pie / m; // Use q_pie
+        res_val = float3(m, grad.x, grad.y);
+    }
+    return float3(res_val.x, s * res_val.y, res_val.z);
+}
+
+float3 sdgArc(in float2 p, in float2 sca, in float2 scb, in float ra, in float rb)
+{
+    float2 q_arc = p; // Renamed q to q_arc
+
+    // GLSL: mat2(sca.x, -sca.y, sca.y, sca.x) -> col0=(sca.x, -sca.y), col1=(sca.y, sca.x)
+    // Matrix: [ sca.x  sca.y ]
+    //         [-sca.y  sca.x ]
+    // HLSL: float2x2(r0c0, r0c1, r1c0, r1c1)
+    float2x2 ma = float2x2(sca.x, sca.y, -sca.y, sca.x);
+    p = mul(ma, p);
+
+    float s = sign(p.x);
+    p.x = abs(p.x);
+
+    if (scb.y * p.x > scb.x * p.y)
+    {
+        float2 w = p - ra * scb;
+        float d = length(w);
+        // GLSL: vec2(s*w.x,w.y)*ma -> row_vector * matrix
+        float2 grad_mul_result = mul(float2(s * w.x, w.y), ma);
+        float2 grad = grad_mul_result / d;
+        return float3(d - rb, grad.x, grad.y);
+    }
+    else
+    {
+        float l = length(q_arc); // Use q_arc
+        float w = l - ra;
+        float2 grad = sign(w) * q_arc / l; // Use q_arc
+        return float3(abs(w) - rb, grad.x, grad.y);
+    }
+}
+
+float3 sdgTriangleIsosceles(in float2 p, in float2 q_tri) // Renamed q to q_tri
+{
+    float w = sign(p.x);
+    p.x = abs(p.x);
+    float2 a = p - q_tri * clamp(dot(p, q_tri) / dot(q_tri, q_tri), 0.0f, 1.0f);
+    float2 b = p - float2(q_tri.x * clamp(p.x / q_tri.x, 0.0f, 1.0f), q_tri.y); // q_tri.y * 1.0
+    float k = sign(q_tri.y);
+    float l1 = dot(a, a);
+    float l2 = dot(b, b);
+    float d_val = sqrt((l1 < l2) ? l1 : l2); // Renamed d to d_val
+    float2 g = (l1 < l2) ? a : b;
+    float s = max(k * (p.x * q_tri.y - p.y * q_tri.x), k * (p.y - q_tri.y));
+    float2 grad = float2(w * g.x, g.y) / d_val;
+    return float3(d_val, grad.x, grad.y) * sign(s);
+}
+
+float cro(in float2 a, in float2 b) { return a.x * b.y - a.y * b.x; }
+
+float3 sdgQuad(in float2 p, in float2 v0, in float2 v1, in float2 v2, in float2 v3)
+{
+    float gs = cro(v0 - v3, v1 - v0);
+    float4 res;
+
+    // edge 0
+    {
+        float2 e = v1 - v0;
+        float2 w = p - v0;
+        float2 q_edge = w - e * clamp(dot(w, e) / dot(e, e), 0.0f, 1.0f); // Renamed q to q_edge
+        float d = dot(q_edge, q_edge);
+        float s = gs * cro(w, e);
+        res = float4(d, q_edge.x, q_edge.y, s);
+    }
+
+    // edge 1
+    {
+        float2 e = v2 - v1;
+        float2 w = p - v1;
+        float2 q_edge = w - e * clamp(dot(w, e) / dot(e, e), 0.0f, 1.0f);
+        float d = dot(q_edge, q_edge);
+        float s = gs * cro(w, e);
+        // res = float4( (d<res.x) ? float3(d,q_edge.x,q_edge.y) : res.xyz, (s>res.w) ? s : res.w );
+        float3 temp_xyz = res.xyz;
+        if (d < res.x) temp_xyz = float3(d, q_edge.x, q_edge.y);
+        float temp_w = res.w;
+        if (s > res.w) temp_w = s;
+        res = float4(temp_xyz.x, temp_xyz.y, temp_xyz.z, temp_w);
+
+    }
+
+    // edge 2
+    {
+        float2 e = v3 - v2;
+        float2 w = p - v2;
+        float2 q_edge = w - e * clamp(dot(w, e) / dot(e, e), 0.0f, 1.0f);
+        float d = dot(q_edge, q_edge);
+        float s = gs * cro(w, e);
+        // res = float4( (d<res.x) ? float3(d,q_edge.x,q_edge.y) : res.xyz, (s>res.w) ? s : res.w );
+        float3 temp_xyz = res.xyz;
+        if (d < res.x) temp_xyz = float3(d, q_edge.x, q_edge.y);
+        float temp_w = res.w;
+        if (s > res.w) temp_w = s;
+        res = float4(temp_xyz.x, temp_xyz.y, temp_xyz.z, temp_w);
+    }
+
+    // edge 3
+    {
+        float2 e = v0 - v3;
+        float2 w = p - v3;
+        float2 q_edge = w - e * clamp(dot(w, e) / dot(e, e), 0.0f, 1.0f);
+        float d = dot(q_edge, q_edge);
+        float s = gs * cro(w, e);
+        // res = float4( (d<res.x) ? float3(d,q_edge.x,q_edge.y) : res.xyz, (s>res.w) ? s : res.w );
+        float3 temp_xyz = res.xyz;
+        if (d < res.x) temp_xyz = float3(d, q_edge.x, q_edge.y);
+        float temp_w = res.w;
+        if (s > res.w) temp_w = s;
+        res = float4(temp_xyz.x, temp_xyz.y, temp_xyz.z, temp_w);
+    }
+
+    // distance and sign
+    float d_final = sqrt(res.x) * sign(res.w); // Renamed d to d_final
+    float2 grad = res.yz / d_final;
+    return float3(d_final, grad.x, grad.y);
+}
+
+float3 sdgCross(in float2 p, in float2 b)
+{
+    float2 s_sign = sign(p); // Renamed s to s_sign
+
+    p = abs(p);
+
+    float2 q_cross = ((p.y > p.x) ? p.yx : p.xy) - b; // Renamed q to q_cross
+    float h = max(q_cross.x, q_cross.y);
+    float2 o = max((h < 0.0f) ? float2(b.y - b.x, 0.0f) - q_cross : q_cross, 0.0f);
+    float l = length(o);
+
+    float3 r_val;
+    if (h < 0.0f && -q_cross.x < l)
+    {
+        r_val = float3(-q_cross.x, 1.0f, 0.0f);
+    }
+    else
+    {
+        float2 grad_o_l = o / l;
+        r_val = float3(l, grad_o_l.x, grad_o_l.y);
+    }
+
+    float2 grad_comp = s_sign * ((p.y > p.x) ? r_val.zy : r_val.yz);
+    return float3(sign(h) * r_val.x, grad_comp.x, grad_comp.y);
+}
+
+float3 sdgSegment(in float2 p, in float2 a, in float2 b, in float radius)
+{
+    float2 ba = b - a;
+    float2 pa = p - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0f, 1.0f);
+    float2 q_seg = pa - h * ba; // Renamed q to q_seg
+    float d = length(q_seg);
+    float2 grad = q_seg / d;
+    return float3(d - radius, grad.x, grad.y);
+}
+
+static const float3 k_hexagon = float3(-0.866025404f, 0.5f, 0.577350269f);
+float3 sdgHexagon(in float2 p, in float r)
+{
+    float2 s = sign(p);
+    p = abs(p);
+    float w = dot(k_hexagon.xy, p);
+    p -= 2.0f * min(w, 0.0f) * k_hexagon.xy;
+    p -= float2(clamp(p.x, -k_hexagon.z * r, k_hexagon.z * r), r);
+    float d_hex = length(p) * sign(p.y); // Renamed d to d_hex
+
+    // GLSL: mat2(-k.y,-k.x,-k.x,k.y) -> col0=(-k.y,-k.x), col1=(-k.x,k.y)
+    // Matrix: [ -k.y  -k.x ]
+    //         [ -k.x   k.y ]
+    float2x2 mat_hex = float2x2(-k_hexagon.y, -k_hexagon.x, -k_hexagon.x, k_hexagon.y);
+    float2 g = (w < 0.0f) ? mul(mat_hex, p) : p;
+    float2 grad = s * g / d_hex;
+    return float3(d_hex, grad.x, grad.y);
+}
+
+float3 sdgVesica(float2 p, float r, float d_vesica_param) // Renamed d to d_vesica_param
+{
+    float2 s = sign(p);
+    p = abs(p);
+
+    float b = sqrt(r * r - d_vesica_param * d_vesica_param);
+
+    float3 res_val;
+    if ((p.y - b) * d_vesica_param > p.x * b)
+    {
+        float2 q_ves = float2(p.x, p.y - b); // Renamed q to q_ves
+        float l = length(q_ves) * sign(d_vesica_param);
+        float2 grad_q = q_ves / l;
+        res_val = float3(l, grad_q.x, grad_q.y);
+    }
+    else
+    {
+        float2 q_ves = float2(p.x + d_vesica_param, p.y); // Renamed q to q_ves
+        float l = length(q_ves);
+        float2 grad_q = q_ves / l;
+        res_val = float3(l - r, grad_q.x, grad_q.y);
+    }
+    float2 final_grad = res_val.yz * s;
+    return float3(res_val.x, final_grad.x, final_grad.y);
+}
+
+float3 sdgParallelogram(in float2 p, float wi, float he, float sk)
+{
+    float2 e = float2(sk, he);
+    float v = 1.0f;
+    if (p.y < 0.0f)
+    {
+        p = -p;
+        v = -v;
+    }
+
+    // horizontal edge
+    float2 w = p - e;
+    w.x -= clamp(w.x, -wi, wi);
+    float4 dsg = float4(dot(w, w), (v * w).x, (v * w).y, w.y);
+
+    // vertical edge
+    float s = p.x * e.y - p.y * e.x;
+    if (s < 0.0f)
+    {
+        p = -p;
+        v = -v;
+    }
+    float2 q_para = p - float2(wi, 0.0f); // Renamed q to q_para
+    q_para -= e * clamp(dot(q_para, e) / dot(e, e), -1.0f, 1.0f);
+    float d_para = dot(q_para, q_para); // Renamed d to d_para
+    s = abs(s) - wi * he;
+
+    // dsg = float4( (d_para<dsg.x) ? float3(d_para,(v*q_para).x, (v*q_para).y) : dsg.xyz, (s>dsg.w) ? s : dsg.w );
+    float3 temp_xyz = dsg.xyz;
+    if (d_para < dsg.x) temp_xyz = float3(d_para, (v*q_para).x, (v*q_para).y);
+    float temp_w = dsg.w;
+    if (s > dsg.w) temp_w = s;
+    dsg = float4(temp_xyz.x, temp_xyz.y, temp_xyz.z, temp_w);
+
+    // signed distance
+    float d_final = sqrt(dsg.x) * sign(dsg.w); // Renamed d to d_final
+    // and gradient
+    float2 grad = dsg.yz / d_final;
+    return float3(d_final, grad.x, grad.y);
+}
+
+float3 sdMoon(float2 p, float d_moon_param, float ra, float rb) // Renamed d to d_moon_param
+{
+    float s = sign(p.y);
+    p.y = abs(p.y);
+
+    float a = (ra * ra - rb * rb + d_moon_param * d_moon_param) / (2.0f * d_moon_param);
+    float b = sqrt(max(ra * ra - a * a, 0.0f));
+    if (d_moon_param * (p.x * b - p.y * a) > d_moon_param * d_moon_param * max(b - p.y, 0.0f))
+    {
+        float2 w = p - float2(a, b);
+        float d_len = length(w); // Renamed d to d_len
+        w.y *= s;
+        float2 grad = w / d_len;
+        return float3(d_len, grad.x, grad.y);
+    }
+
+    float2 w1 = p;
+    float l1 = length(w1);
+    float d1 = l1 - ra;
+    w1.y *= s;
+    float2 w2 = p - float2(d_moon_param, 0.0f);
+    float l2 = length(w2);
+    float d2 = rb - l2;
+    w2.y *= s;
+
+    if (d1 > d2)
+    {
+        float2 grad1 = w1 / l1;
+        return float3(d1, grad1.x, grad1.y);
+    }
+    else
+    {
+        float2 grad2 = -w2 / l2;
+        return float3(d2, grad2.x, grad2.y);
+    }
+}
+
+float3 sdgEllipse(float2 p, in float2 ab)
+{
+    float2 sp = sign(p);
+    p = abs(p);
+
+    bool s_inside = dot(p / ab, p / ab) > 1.0f; // Renamed s to s_inside
+    float w_angle = atan2(p.y * ab.x, p.x * ab.y); // Renamed w to w_angle
+    if (!s_inside) w_angle = (ab.x * (p.x - ab.x) < ab.y * (p.y - ab.y)) ? 1.570796327f : 0.0f;
+
+    for (int i = 0; i < 4; i++)
+    {
+        float2 cs = float2(cos(w_angle), sin(w_angle));
+        float2 u = ab * cs; // cs.xy is fine too
+        float2 v = ab * float2(-cs.y, cs.x);
+        w_angle = w_angle + dot(p - u, v) / (dot(p - u, u) + dot(v, v));
+    }
+    float2 q_ellipse = ab * float2(cos(w_angle), sin(w_angle)); // Renamed q to q_ellipse
+
+    float d_ellipse = length(p - q_ellipse); // Renamed d to d_ellipse
+    float2 grad_ellipse = sp * (p - q_ellipse) / d_ellipse;
+    return float3(d_ellipse, grad_ellipse.x, grad_ellipse.y) * (s_inside ? 1.0f : -1.0f);
+}
+
+float3 sdParabola(in float2 pos, in float wi, in float he, in float radius)
+{
+    float s = sign(pos.x);
+    pos.x = abs(pos.x);
+
+    float ik = wi * wi / he;
+    float p_par = ik * (he - pos.y - 0.5f * ik) / 3.0f; // Renamed p to p_par
+    float q_par = pos.x * ik * ik * 0.25f; // Renamed q to q_par
+    float h = q_par * q_par - p_par * p_par * p_par;
+
+    float x;
+    if (h > 0.0f) // 1 root
+    {
+        float r = sqrt(h);
+        x = pow(q_par + r, 1.0f / 3.0f) + pow(abs(q_par - r), 1.0f / 3.0f) * sign(p_par);
+    }
+    else // 3 roots
+    {
+        float r = sqrt(p_par);
+        // For acos(x/ (p*r)) part, ensure p*r is not zero if q_par is also zero.
+        // The original shadertoy link might have more robust acos_approx.
+        float acos_arg = q_par / (p_par * r);
+        x = 2.0f * r * cos(acos(clamp(acos_arg, -1.0f, 1.0f)) / 3.0f);
+    }
+
+    x = min(x, wi);
+
+    float2 w = pos - float2(x, he - x * x / ik);
+    float d_par = length(w); // Renamed d to d_par
+    w.x *= s;
+    float2 grad = w / d_par;
+    return float3(d_par - radius, grad.x, grad.y);
+}
+
+float3 sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
+{
+    float2 a = B - A;
+    float2 b = A - 2.0f * B + C;
+    float2 c = a * 2.0f;
+    float2 d_bez = A - pos; // Renamed d to d_bez
+
+    float kk = 1.0f / dot(b, b);
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0f * dot(a, a) + dot(d_bez, b)) / 3.0f;
+    float kz = kk * dot(d_bez, a);
+
+    float3 res;
+
+    float p_bez = ky - kx * kx; // Renamed p to p_bez
+    float q_bez = kx * (2.0f * kx * kx - 3.0f * ky) + kz; // Renamed q to q_bez
+    float p3 = p_bez * p_bez * p_bez;
+    float q2 = q_bez * q_bez;
+    float h = q2 + 4.0f * p3;
+
+    if (h >= 0.0f)  // 1 root
+    {
+        h = sqrt(h);
+        float2 x = (float2(h, -h) - q_bez) / 2.0f;
+
+#if 0 // This block is preserved as in the original
+        // When p_bez≈0 and p_bez<0, h-q_bez has catastrophic cancelation. So, we do
+        // h=√(q_bez²+4p_bez³)=q_bez·√(1+4p_bez³/q_bez²)=q_bez·√(1+w) instead. Now we approximate
+        // √ by a linear Taylor expansion into h≈q_bez(1+½w) so that the q_bez's
+        // cancel each other in h-q_bez. Expanding and simplifying further we
+        // get x=float2(p_bez³/q_bez,-p_bez³/q_bez-q_bez). And using a second degree Taylor
+        // expansion instead: x=float2(k,-k-q_bez) with k=(1-p_bez³/q_bez²)·p_bez³/q_bez
+        if (abs(p_bez) < 0.001f)
+        {
+            //float k_taylor = p3/q_bez; // linear approx // Renamed k to k_taylor
+            float k_taylor = (1.0f-p3/q2)*p3/q_bez; // quadratic approx
+            x = float2(k_taylor,-k_taylor-q_bez);
+        }
+#endif
+
+        float2 uv = sign(x) * pow(abs(x), 1.0f / 3.0f); // HLSL pow(vector, scalar) is component-wise
+        float t = clamp(uv.x + uv.y - kx, 0.0f, 1.0f);
+        float2 q_res = d_bez + (c + b * t) * t; // Renamed q to q_res
+        res = float3(dot(q_res, q_res), q_res.x, q_res.y);
+    }
+    else // 3 roots
+    {
+        float z = sqrt(-p_bez);
+        // Ensure argument to acos is clamped for robustness.
+        float acos_arg = q_bez / (p_bez * z * 2.0f);
+        float v = acos(clamp(acos_arg, -1.0f, 1.0f)) / 3.0f;
+        float m = cos(v);
+        float n = sin(v) * 1.732050808f; // sqrt(3)
+        float3 t = clamp(float3(m + m, -n - m, n - m) * z - kx, 0.0f, 1.0f);
+        float2 qx = d_bez + (c + b * t.x) * t.x;
+        float dx = dot(qx, qx);
+        float2 qy = d_bez + (c + b * t.y) * t.y;
+        float dy = dot(qy, qy);
+        if(dx < dy)
+        {
+            res = float3(dx, qx.x, qx.y);
+        }
+        else
+        {
+            res = float3(dy, qy.x, qy.y);
+        }
+    }
+
+    res.x = sqrt(res.x);
+    res.yz /= -res.x; // HLSL allows this component-wise division
+
+    return res;
+}
+
+float3 sdgTrapezoid(in float2 p, in float ra, float rb, float he, out float2 ocl)
+{
+    float sx = (p.x < 0.0f) ? -1.0f : 1.0f;
+    float sy = (p.y < 0.0f) ? -1.0f : 1.0f;
+
+    p.x = abs(p.x);
+
+    float4 res;
+
+    // bottom and top edges
+    {
+        float h_edge = min(p.x, (p.y < 0.0f) ? ra : rb); // Renamed h to h_edge
+        float2 c_edge = float2(h_edge, sy * he); // Renamed c to c_edge
+        float2 q_edge = p - c_edge; // Renamed q to q_edge
+        float d_val = dot(q_edge, q_edge); // Renamed d to d_val
+        float s_val = abs(p.y) - he; // Renamed s to s_val
+        res = float4(d_val, q_edge.x, q_edge.y, s_val);
+        ocl = c_edge;
+    }
+
+    // side edge
+    {
+        float2 k = float2(rb - ra, 2.0f * he);
+        float2 w = p - float2(ra, -he);
+        float h_proj = clamp(dot(w, k) / dot(k, k), 0.0f, 1.0f); // Renamed h to h_proj
+        float2 c_side = float2(ra, -he) + h_proj * k; // Renamed c to c_side
+        float2 q_side = p - c_side; // Renamed q to q_side
+        float d_val = dot(q_side, q_side); // Renamed d to d_val
+        float s_val = w.x * k.y - w.y * k.x; // Renamed s to s_val
+        if (d_val < res.x)
+        {
+            ocl = c_side;
+            res.xyz = float3(d_val, q_side.x, q_side.y);
+        }
+        if (s_val > res.w)
+        {
+            res.w = s_val;
+        }
+    }
+
+    // distance and sign
+    float d_final = sqrt(res.x) * sign(res.w); // Renamed d to d_final
+    res.y *= sx;
+    ocl.x *= sx;
+
+    float2 grad = res.yz / d_final;
+    return float3(d_final, grad.x, grad.y);
+}
+
+float3 sdgBox(in float2 p, in float2 b, float ra)
+{
+    float2 w = abs(p) - (b - ra);
+    float2 s = float2(p.x < 0.0f ? -1.0f : 1.0f, p.y < 0.0f ? -1.0f : 1.0f);
+
+    float g = max(w.x, w.y);
+    float2 q_box = max(w, 0.0f); // Renamed q to q_box
+    float l = length(q_box);
+
+    float dist_val = (g > 0.0f) ? l - ra : g - ra;
+    float2 grad_dir;
+    if (g > 0.0f)
+    {
+        grad_dir = q_box / l;
+    }
+    else
+    {
+        grad_dir = (w.x > w.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
+    }
+    float2 final_grad = s * grad_dir;
+    return float3(dist_val, final_grad.x, final_grad.y);
+}
+
+float3 sdgHeart(in float2 p)
+{
+    float sx = p.x < 0.0f ? -1.0f : 1.0f;
+
+    p.x = abs(p.x);
+
+    if (p.y + p.x > 1.0f)
+    {
+        static const float r = sqrt(2.0f) / 4.0f;
+        float2 q0 = p - float2(0.25f, 0.75f);
+        float l = length(q0);
+        float2 grad_q0 = q0 / l;
+        float3 d_heart = float3(l - r, grad_q0.x, grad_q0.y); // Renamed d to d_heart
+        d_heart.y *= sx;
+        return d_heart;
+    }
+    else
+    {
+        float2 q1 = p - float2(0.0f, 1.0f);
+        float3 d1 = float3(dot(q1, q1), q1.x, q1.y);
+        float2 q2 = p - 0.5f * max(p.x + p.y, 0.0f);
+        float3 d2 = float3(dot(q2, q2), q2.x, q2.y);
+        float3 d_heart = (d1.x < d2.x) ? d1 : d2; // Renamed d to d_heart
+        d_heart.x = sqrt(d_heart.x);
+        d_heart.yz /= d_heart.x;
+        d_heart *= ((p.x > p.y) ? 1.0f : -1.0f);
+        d_heart.y *= sx;
+        return d_heart;
+    }
+}
+
+static const float3 m_pentagon = float3(0.80901699f, 0.58778525f, 0.72654253f); // pi/5: cos, sin, tan
+static const float2 n_pentagon = float2(m_pentagon.x * m_pentagon.x - m_pentagon.y * m_pentagon.y, 2.0f * m_pentagon.x * m_pentagon.y); // 2pi/5: cos, sin
+
+float3 sdgPentagon(in float2 p, in float r)
+{
+    // symmetry
+    float s = sign(p.x);
+    p.x = abs(p.x);
+
+    // distance
+    float w1 = p.x * m_pentagon.x + p.y * m_pentagon.y;
+    float w2 = p.x * n_pentagon.x - p.y * n_pentagon.y; // GLSL used m_pentagon.x, m_pentagon.y for n also, this uses n_pentagon.
+                                                        // Original has: p.x*n.x - p.y*n.y;
+                                                        // And n is defined using m.x and m.y as cos(2pi/5), sin(2pi/5)
+                                                        // So this should be correct.
+
+    p -= 2.0f * max(w1, 0.0f) * float2(m_pentagon.x, m_pentagon.y);
+    p -= 2.0f * min(w2, 0.0f) * float2(m_pentagon.x, -m_pentagon.y); // Note: GLSL had m.x, -m.y. Check if n.x, -n.y or m.x, -m.y
+                                                                     // Original uses m.x, -m.y for the second rotation. This is cos(pi/5), -sin(pi/5)
+    p -= float2(clamp(p.x, -r * m_pentagon.z, r * m_pentagon.z), -r);
+    float d_pent = length(p) * sign(-p.y); // Renamed d to d_pent
+
+    // gradient
+    // GLSL mat2(-m.x,m.y,-m.y,-m.x) -> M1 = [[-m.x, -m.y], [m.y, -m.x]] (Error in my prev logic, GLSL mat2(c0x,c0y,c1x,c1y))
+    // Col0 = (-m.x, m.y), Col1 = (-m.y, -m.x) => Matrix: [[-m.x, -m.y], [m.y, -m.x]]
+    // HLSL float2x2(-m.x, -m.y, m.y, -m.x)
+    float2x2 mat_p1 = float2x2(-m_pentagon.x, -m_pentagon.y, m_pentagon.y, -m_pentagon.x);
+
+    // GLSL mat2(-n.x,-n.y,-n.y,n.x) -> Col0 = (-n.x, -n.y), Col1 = (-n.y, n.x) => Matrix: [[-n.x, -n.y], [-n.y, n.x]]
+    // HLSL float2x2(-n.x, -n.y, -n.y, n.x)
+    float2x2 mat_p2 = float2x2(-n_pentagon.x, -n_pentagon.y, -n_pentagon.y, n_pentagon.x);
+
+    float2 g;
+    if (w2 < 0.0f)
+        g = mul(mat_p1, p);
+    else if (w1 > 0.0f)
+        g = mul(mat_p2, p);
+    else
+        g = p;
+
+    g.x *= s;
+
+    float2 grad = g / d_pent;
+    return float3(d_pent, grad.x, grad.y);
+}
+
+// .x = f(p)
+// .yz = ∇f(p) = {∂f(p)/∂x, ∂f(p)/∂y} with ‖∇f(p)‖<1 unfortunately
+float3 sdgSMinSmooth(in float3 a, in float3 b, in float k)
+{
+    k *= 4.0f;
+    float h = max(k - abs(a.x - b.x), 0.0f) / (2.0f * k); // Must be 2.0*k based on GLSL, not just k.
+                                                        // Original GLSL: max( k-abs(a.x-b.x), 0.0 )/(2.0*k);
+                                                        // My interpretation was /k, but it seems it should be /(2.0*k)
+    float dist = min(a.x, b.x) - h * h * k; // GLSL was h*h*k. Here it's k.
+                                           // Original GLSL: min(a.x,b.x)-h*h*k,
+                                           // If k_param is the one passed in, then the first line k*=4, then later h*h*k (which is the modified k)
+                                           // Ah, the GLSL has k*=4.0 then later uses that k. So min(a.x,b.x)-h*h*k where k is k_input*4.0
+                                           // And division is (2.0*k)
+    float2 grad_lerp = lerp(a.yz, b.yz, (a.x < b.x) ? h : 1.0f - h);
+    return float3(dist, grad_lerp.x, grad_lerp.y);
+
+/* // Original GLSL alternative implementation, converted
+    k *= 4.0f; // This k refers to the input parameter k
+    float h_alt = max( k-abs(a.x-b.x), 0.0f )/k;
+    float m_alt = h_alt*h_alt*k*(1.0f/4.0f);
+    float n_alt = h_alt*(1.0f/2.0f);
+    if (a.x < b.x)
+    {
+        float2 grad_alt = lerp(a.yz, b.yz, n_alt);
+        return float3(a.x-m_alt, grad_alt.x, grad_alt.y);
+    }
+    else
+    {
+        float2 grad_alt = lerp(a.yz, b.yz, 1.0f-n_alt);
+        return float3(b.x-m_alt, grad_alt.x, grad_alt.y);
+    }
+*/
+}
+
+// .x = f(p)
+// .yz = ∇f(p) = {∂f(p)/∂x, ∂f(p)/∂y} with ‖∇f(p)‖=1 iff ‖∇a(p)‖=‖∇b(p)‖=1
+float3 sdgMin(in float3 a, in float3 b)
+{
+    return (a.x < b.x) ? a : b;
+}
+
+float3 sdgOnion(in float3 shape, in float r )
+{
+    return float3( abs(shape.x) - r, sign(shape.x)*shape.yz );
+}
+
+};
+
