@@ -1,0 +1,190 @@
+shader FuseRenderingBoxGridProject {
+
+    // Function to determine if a ray from viewer intersects with a plane
+    bool rayPlaneIntersection(float3 rayOrigin, float3 rayDir, float3 planePos, float3 planeNormal, out float3 intersection) {
+        float denom = dot(rayDir, planeNormal);
+        
+        // Ray is parallel to the plane or points away
+        if (abs(denom) < 0.0001f)
+            return false;
+            
+        float t = dot(planePos - rayOrigin, planeNormal) / denom;
+        
+        // Intersection is behind the ray origin
+        if (t < 0.0f)
+            return false;
+            
+        intersection = rayOrigin + rayDir * t;
+        return true;
+    }
+
+    // Function to check if a point is within a rectangle defined by center, dimensions, and orientation
+    bool isPointInRectangle(float3 position, float3 rectCenter, float3 rectDimensions, float3 normalAxis) {
+        float3 localPos = position - rectCenter;
+        
+        // Define the axes of the rectangle based on the normal
+        float3 up, right;
+        
+        // Determine up and right vectors based on the normal axis
+        if (abs(normalAxis.y) > 0.99f) {
+            // Floor or ceiling
+            up = float3(0, 0, 1);
+            right = float3(1, 0, 0);
+            
+            // Check if point is within rectangle bounds using width(x) and depth(z)
+            return abs(dot(localPos, right)) <= rectDimensions.x * 0.5f && 
+                abs(dot(localPos, up)) <= rectDimensions.z * 0.5f;
+        }
+        else if (abs(normalAxis.x) > 0.99f) {
+            // Left or right wall
+            up = float3(0, 1, 0);
+            right = float3(0, 0, 1);
+            
+            // Check if point is within rectangle bounds using height(y) and depth(z)
+            return abs(dot(localPos, right)) <= rectDimensions.z * 0.5f && 
+                abs(dot(localPos, up)) <= rectDimensions.y * 0.5f;
+        }
+        else if (abs(normalAxis.z) > 0.99f) {
+            // Front or back wall
+            up = float3(0, 1, 0);
+            right = float3(1, 0, 0);
+            
+            // Check if point is within rectangle bounds using width(x) and height(y)
+            return abs(dot(localPos, right)) <= rectDimensions.x * 0.5f && 
+                abs(dot(localPos, up)) <= rectDimensions.y * 0.5f;
+        }
+        
+        // If none of the conditions match (shouldn't happen), return false
+        return false;
+    }
+
+    // Function to map a point on a room surface to texture coordinates
+    float2 mapToTexture(
+        float3 pointOnSurface, 
+        int surfaceIndex,
+        // Buffer data passed as parameters
+        StructuredBuffer<float4> faceLayoutInfo,
+        float3 roomCenter,
+        float3 roomDimensions,
+        // Zoom parameter (optional)
+        float4 zoomRegion   // Region to zoom into: (minU, minV, maxU, maxV) in normalized cross layout space
+    ) {
+        // Convert point to local room coordinates (relative to room's min corner)
+        float3 localPoint = pointOnSurface - (roomCenter - roomDimensions * 0.5f);
+        
+        float u = 0.0f;
+        float v = 0.0f;
+        
+        // Map based on the surface index
+        switch(surfaceIndex) {
+            case 0: // Floor (Green)
+                u = (localPoint.x / roomDimensions.x);
+                v = 1.0f - (localPoint.z / roomDimensions.z);
+                break;
+                
+            case 1: // Ceiling (Yellow)
+                u = (localPoint.x / roomDimensions.x);
+                v = (localPoint.z / roomDimensions.z);
+                break;
+                
+            case 2: // Right wall (Magenta)
+                u = (localPoint.z / roomDimensions.z);
+                v = (localPoint.y / roomDimensions.y);
+                break;
+                
+            case 3: // Back wall (Cyan)
+                u = 1.0f - (localPoint.x / roomDimensions.x);
+                v = (localPoint.y / roomDimensions.y);
+                break;
+                
+            case 4: // Left wall (Red)
+                u = 1.0f - (localPoint.z / roomDimensions.z);
+                v = (localPoint.y / roomDimensions.y);
+                break;
+                
+            case 5: // Front wall (Blue)
+                u = (localPoint.x / roomDimensions.x);
+                v = (localPoint.y / roomDimensions.y);
+                break;
+                
+            default:
+                // Default case (shouldn't happen)
+                u = v = 0.0f;
+                break;
+        }
+        
+        // Get layout info for this face (startX, startY, width, height)
+        float4 layout = faceLayoutInfo[surfaceIndex];
+        
+        // Map normalized coordinates to the cross layout
+        float2 texCoord;
+        texCoord.x = layout.x + u * layout.z;
+        texCoord.y = layout.y + v * layout.w;
+
+        // Normalize coordinates
+        texCoord = texCoord / float2(4.0, 3.0);
+
+        texCoord.xy = (texCoord.xy - zoomRegion.xy) / (zoomRegion.zw - zoomRegion.xy);
+
+        // Scale back to cross layout size
+        texCoord = texCoord * float2(4.0, 3.0);
+        
+        return texCoord;
+    }
+
+    // Function to project and draw a particle on the texture
+    float3 projectParticleByViewPosition(
+        float3 particlePos,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        // Line parameters
+        float3 viewerPosition,
+        out float3 color,
+        // Buffer data passed as parameters
+        StructuredBuffer<float4> surfacePositionsAndType,
+        StructuredBuffer<float4> surfaceNormalsAndSize,
+        StructuredBuffer<float4> surfaceDimensions,
+        StructuredBuffer<float4> surfaceColorsAndScale,
+        StructuredBuffer<float4> faceLayoutInfo
+    ) {
+        
+        // Calculate ray direction from our line-based view position
+        float3 rayDir = normalize(particlePos - viewerPosition);
+        
+        // Initialize for closest hit
+        float closestDistance = 1.0e10f;
+        float3 projectionResult = float3(0.0, 0.0,0.0);
+        color = float3(1.0, 1.0, 1.0); // Default color (white)
+        bool foundIntersection = false;
+        int hitSurfaceIndex = -1; // Track which surface was hit
+        
+        float3 intersection;
+        // Test intersection with each surface
+        for (int i = 0; i < 6; i++) {
+            // Extract position and normal from packed structures
+            float3 surfacePos = surfacePositionsAndType[i].xyz;
+            float3 surfaceNormal = surfaceNormalsAndSize[i].xyz;
+            
+            if (rayPlaneIntersection(viewerPosition, rayDir, surfacePos, surfaceNormal, intersection)) {
+                // Check if intersection point is within the rectangle
+                if (isPointInRectangle(intersection, surfacePos, surfaceDimensions[i].xyz, surfaceNormal)) {
+                    // Calculate distance to intersection
+                    float intersectionViewDistance = length(intersection - viewerPosition);
+                    
+                    // If this is the closest intersection so far, save it
+                    if (intersectionViewDistance < closestDistance) {
+                        closestDistance = intersectionViewDistance;
+                        color = surfaceColorsAndScale[i].xyz;
+                        hitSurfaceIndex = i; // Save which surface was hit
+                        projectionResult = float3(mapToTexture(intersection, i, faceLayoutInfo, roomCenter, roomDimensions,zoomRegion), distance(intersection,particlePos));
+                        foundIntersection = true;
+                    }
+                }
+            }
+        }
+
+        // Return the texture coordinate for the closest intersection
+        return projectionResult;
+    }
+};
