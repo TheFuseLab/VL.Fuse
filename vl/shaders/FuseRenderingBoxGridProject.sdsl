@@ -187,4 +187,168 @@ shader FuseRenderingBoxGridProject {
         // Return the texture coordinate for the closest intersection
         return projectionResult;
     }
+
+    /// <summary>
+    /// Projects a 3D particle position orthogonally onto all 6 faces of a box.
+    /// Outputs projection data (UVs, distance) and color for each face via out parameters.
+    /// For invalid projections (outside face bounds), distance is -1.0f.
+    /// </summary>
+    float3 projectParticleOrthogonallyToAllFaces(
+        float3 particlePos,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        // Buffer data
+        StructuredBuffer<float4> surfacePositionsAndType,   // .xyz = center of face i
+        StructuredBuffer<float4> surfaceNormalsAndSize,     // .xyz = normal of face i (ensure unit length)
+        StructuredBuffer<float4> surfaceDimensions,         // .xyz = dimensions of face i for isPointInRectangle
+        StructuredBuffer<float4> surfaceColorsAndScale,     // .xyz = color of face i
+        StructuredBuffer<float4> faceLayoutInfo,            // Layout info for face i in the texture atlas
+        // Output parameters
+        out float3 out_projectionFace1,
+        out float3 out_projectionFace2, out float3 out_projectionFace3,
+        out float3 out_projectionFace4, out float3 out_projectionFace5
+    ) {
+        // Temporary arrays to store results before assigning to specific out variables.
+        // HLSL doesn't allow arrays of 'out' parameters directly for loop assignment.
+        float3 temp_projections[6];
+        float3 temp_colors[6];
+
+        for (int i = 0; i < 6; i++) { // Iterate through each of the 6 box faces
+            float3 faceCenter = surfacePositionsAndType[i].xyz;
+            float3 faceNormal = normalize(surfaceNormalsAndSize[i].xyz); // Ensure unit normal
+            float3 faceDimsForRectCheck = surfaceDimensions[i].xyz;
+            temp_colors[i] = surfaceColorsAndScale[i].xyz;
+
+            float signedDistanceToPlane = dot(particlePos - faceCenter, faceNormal);
+            float calculatedOrthogonalDistance = abs(signedDistanceToPlane);
+            float3 pointProjectedOntoInfinitePlane = particlePos - faceNormal * signedDistanceToPlane;
+
+            bool isWithinFaceRectangle = isPointInRectangle(
+                pointProjectedOntoInfinitePlane,
+                faceCenter,
+                faceDimsForRectCheck,
+                faceNormal
+            );
+
+            if (isWithinFaceRectangle) {
+                float2 uv_coords = mapToTexture(
+                    pointProjectedOntoInfinitePlane,
+                    i, // surfaceIndex
+                    faceLayoutInfo,
+                    roomCenter,
+                    roomDimensions,
+                    zoomRegion
+                );
+                temp_projections[i] = float3(uv_coords.x, uv_coords.y, calculatedOrthogonalDistance);
+            } else {
+                // Mark as invalid projection (out of bounds for this face)
+                // UVs are default (0,0), distance is -1.0
+                temp_projections[i] = float3(0.0f, 0.0f, -1.0f);
+            }
+        }
+
+        // Assign temporary results to the specific out variables
+        
+        out_projectionFace1 = temp_projections[1]; 
+        out_projectionFace2 = temp_projections[2]; 
+        out_projectionFace3 = temp_projections[3]; 
+        out_projectionFace4 = temp_projections[4]; 
+        out_projectionFace5 = temp_projections[5]; 
+        return temp_projections[0];
+    }
+
+    /// <summary>
+    /// Projects a vertexPosition along its vertexNormal to the surface of an axis-aligned sharp box.
+    /// Assumes vertexPosition is inside or on the surface of the outer box.
+    /// </summary>
+    /// <param name="vertexPosition">The current position of the vertex.</param>
+    /// <param name="vertexNormal">The surface normal at vertexPosition.</param>
+    /// <param name="boxCenter">The center of the target sharp outer box.</param>
+    /// <param name="boxSize">The full dimensions (width, height, depth) of the outer box.</param>
+    /// <returns>The position on the surface of the sharp outer box.</returns>
+    float3 convertToSharpBox(
+        float3 vertexPosition,
+        float3 vertexNormal,
+        float3 boxCenter,
+        float3 boxSize)
+    {
+        float3 halfBoxSize = abs(boxSize) * 0.5f; // Ensure positive dimensions for safety
+        float3 boxMin = boxCenter - halfBoxSize;
+        float3 boxMax = boxCenter + halfBoxSize;
+
+        float t_intersect = 1.0f / 0.0f; // Positive infinity in HLSL
+
+        // Epsilon values for floating point comparisons
+        float dir_epsilon = 0.00001f;  // To check if normal component is non-zero
+        float hit_epsilon = 0.00001f;  // To allow for t being slightly negative if it should be zero
+
+        // Check if normal is valid (non-zero length)
+        if (dot(vertexNormal, vertexNormal) < dir_epsilon * dir_epsilon) {
+            // Fallback: If normal is zero, cannot project.
+            // Optionally, you could clamp vertexPosition to the box here.
+            // For now, return original position.
+            return vertexPosition;
+        }
+
+        // Calculate t (distance along normal) to hit each of the 6 box planes
+        // We only consider hits in the direction the normal component is pointing.
+
+        // --- X Faces ---
+        if (vertexNormal.x > dir_epsilon) { // Ray is moving towards +X face
+            float tx = (boxMax.x - vertexPosition.x) / vertexNormal.x;
+            // tx should be >= 0 if vertexPosition is inside or on boxMax.x plane
+            // Allow slightly negative tx due to precision if it should be 0
+            if (tx >= -hit_epsilon) {
+                t_intersect = min(t_intersect, tx);
+            }
+        } else if (vertexNormal.x < -dir_epsilon) { // Ray is moving towards -X face
+            float tx = (boxMin.x - vertexPosition.x) / vertexNormal.x;
+            if (tx >= -hit_epsilon) {
+                t_intersect = min(t_intersect, tx);
+            }
+        }
+        // If abs(vertexNormal.x) <= dir_epsilon, ray is parallel to X-faces; no intersection with them.
+
+        // --- Y Faces ---
+        if (vertexNormal.y > dir_epsilon) { // Ray is moving towards +Y face
+            float ty = (boxMax.y - vertexPosition.y) / vertexNormal.y;
+            if (ty >= -hit_epsilon) {
+                t_intersect = min(t_intersect, ty);
+            }
+        } else if (vertexNormal.y < -dir_epsilon) { // Ray is moving towards -Y face
+            float ty = (boxMin.y - vertexPosition.y) / vertexNormal.y;
+            if (ty >= -hit_epsilon) {
+                t_intersect = min(t_intersect, ty);
+            }
+        }
+
+        // --- Z Faces ---
+        if (vertexNormal.z > dir_epsilon) { // Ray is moving towards +Z face
+            float tz = (boxMax.z - vertexPosition.z) / vertexNormal.z;
+            if (tz >= -hit_epsilon) {
+                t_intersect = min(t_intersect, tz);
+            }
+        } else if (vertexNormal.z < -dir_epsilon) { // Ray is moving towards -Z face
+            float tz = (boxMin.z - vertexPosition.z) / vertexNormal.z;
+            if (tz >= -hit_epsilon) {
+                t_intersect = min(t_intersect, tz);
+            }
+        }
+
+        // After checking all 6 planes, t_intersect holds the smallest non-negative distance.
+        // Clamp t_intersect to be >= 0 to handle precision issues where t might be very slightly negative.
+        t_intersect = max(0.0f, t_intersect);
+
+        // Check if a valid intersection was found (t_intersect is not infinity)
+        // isinf() is available in Shader Model 5.0+. For older models, check against a very large float.
+        if (isinf(t_intersect)) {
+            // Fallback: This might happen if normal was degenerate in a way not caught by the initial check,
+            // or vertexPosition is outside and normal points away from all faces (not the assumed scenario).
+            // If inside, this means normal components were too small for all directions.
+            return vertexPosition;
+        }
+
+        return vertexPosition + vertexNormal * t_intersect;
+    }
 };
