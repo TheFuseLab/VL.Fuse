@@ -140,7 +140,7 @@ shader FuseRenderingBoxGridProject {
         float4 zoomRegion,
         // Line parameters
         float3 viewerPosition,
-        out float3 color,
+        out int hitSurfaceIndex,
         // Buffer data passed as parameters
         StructuredBuffer<float4> surfacePositionsAndType,
         StructuredBuffer<float4> surfaceNormalsAndSize,
@@ -155,9 +155,8 @@ shader FuseRenderingBoxGridProject {
         // Initialize for closest hit
         float closestDistance = 1.0e10f;
         float3 projectionResult = float3(0.0, 0.0,0.0);
-        color = float3(1.0, 1.0, 1.0); // Default color (white)
         bool foundIntersection = false;
-        int hitSurfaceIndex = -1; // Track which surface was hit
+        hitSurfaceIndex = -1; // Track which surface was hit
         
         float3 intersection;
         // Test intersection with each surface
@@ -175,7 +174,6 @@ shader FuseRenderingBoxGridProject {
                     // If this is the closest intersection so far, save it
                     if (intersectionViewDistance < closestDistance) {
                         closestDistance = intersectionViewDistance;
-                        color = surfaceColorsAndScale[i].xyz;
                         hitSurfaceIndex = i; // Save which surface was hit
                         projectionResult = float3(mapToTexture(intersection, i, faceLayoutInfo, roomCenter, roomDimensions,zoomRegion), distance(intersection,particlePos));
                         foundIntersection = true;
