@@ -5,13 +5,13 @@ shader FuseRenderingBoxGridProject {
         float denom = dot(rayDir, planeNormal);
         
         // Ray is parallel to the plane or points away
-        if (abs(denom) < 0.001f)
+        if (abs(denom) < 0.0001f)
             return false;
             
         float t = dot(planePos - rayOrigin, planeNormal) / denom;
         
         // Intersection is behind the ray origin
-        if (t < -0.001f)
+        if (t < 0.0f)
             return false;
             
         intersection = rayOrigin + rayDir * t;
@@ -150,17 +150,7 @@ shader FuseRenderingBoxGridProject {
     ) {
         
         // Calculate ray direction from our line-based view position
-        // In projectParticleByViewPosition, before the loop:
-        float3 rayDir = particlePos - viewerPosition;
-        float rayLength = length(rayDir);
-
-        // Skip if particle is too close to viewer (avoid precision issues)
-        if (rayLength < 0.01f) {
-            hitSurfaceIndex = -1;
-            return float3(0, 0, 0);
-        }
-
-        rayDir = rayDir / rayLength;
+        float3 rayDir = normalize(particlePos - viewerPosition);
         
         // Initialize for closest hit
         float closestDistance = 1.0e10f;
@@ -180,12 +170,6 @@ shader FuseRenderingBoxGridProject {
                 if (isPointInRectangle(intersection, surfacePos, surfaceDimensions[i].xyz, surfaceNormal)) {
                     // Calculate distance to intersection
                     float intersectionViewDistance = length(intersection - viewerPosition);
-                    float particleViewDistance = length(particlePos - viewerPosition);
-
-                    // Only accept intersections that are reasonably close to the particle distance
-                    if (abs(intersectionViewDistance - particleViewDistance) > particleViewDistance * 0.1f) {
-                        continue; // Skip this intersection
-                    }
                     
                     // If this is the closest intersection so far, save it
                     if (intersectionViewDistance < closestDistance) {
