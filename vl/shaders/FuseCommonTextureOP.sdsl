@@ -1,0 +1,73 @@
+shader FuseCommonTextureOP{
+
+    float4 mask(Texture2D<float4> MaskTexture, int2 id){
+        // Sample the mask texture
+        float4 maskSample = MaskTexture[id];
+        
+        // Convert to grayscale if needed (assume it's already B&W but handle color input)
+        float maskValue = dot(maskSample.rgb, float3(0.299, 0.587, 0.114));
+        
+        // Threshold to determine inside/outside (>0.5 = outside/white, <0.5 = inside/black)
+        bool isOutside = maskValue > 0.5;
+        
+        // Store initial values: xy = offset vector, z = signed distance, w = unused
+        float signedDist = isOutside ? 3e38 : -3e38;
+        return float4(0, 0, signedDist, 1);
+    }
+
+    float4 jumpflood(Texture2D<float4> InputTexture, int2 Resolution, int2 iCoord, int StepSize){
+        float4 result = InputTexture[iCoord];
+        int w = int(StepSize);
+        
+        // Sample neighboring pixels in a cross pattern
+        for (int y = -w; y <= w; y += w)
+        {
+            for (int x = -w; x <= w; x += w)
+            {
+                // Skip center pixel and ensure we don't sample outside bounds
+                if ((abs(x) + abs(y)) == 0)
+                    continue;
+                    
+                int2 sampleCoord = iCoord + int2(x, y);
+                
+                // Bounds check
+                if (sampleCoord.x < 0 || sampleCoord.x >= int(Resolution.x) || 
+                    sampleCoord.y < 0 || sampleCoord.y >= int(Resolution.y))
+                    continue;
+                
+                float4 sample = InputTexture[uint2(sampleCoord)];
+                
+                // Check if signs differ (boundary detection) or if sample has valid distance
+                bool signDiff = (sample.z > 0.0) != (result.z > 0.0);
+                bool validSample = abs(sample.z) < 2e38;
+                
+                if (signDiff || validSample)
+                {
+                    // Direct offset from current pixel to sample
+                    float2 directOffset = float2(x, y);
+                    float directDist = dot(directOffset, directOffset);
+                    
+                    // If we found a boundary and it's closer than current distance
+                    if (signDiff && directDist < abs(result.z))
+                    {
+                        result = float4(directOffset, directDist * sign(result.z), 1);
+                    }
+                    
+                    // Propagated offset (sample's offset + direct offset)
+                    float2 propagatedOffset = sample.xy + directOffset;
+                    float propagatedDist = dot(propagatedOffset, propagatedOffset);
+                    
+                    // If propagated distance is closer
+                    if (propagatedDist < abs(result.z))
+                    {
+                        result = float4(propagatedOffset, propagatedDist * sign(result.z), 1);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+};
+
+
+// 2425 Glover Place  los angeles ca 90031 suite c
