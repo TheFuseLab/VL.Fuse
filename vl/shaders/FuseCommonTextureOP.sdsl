@@ -1,11 +1,8 @@
 shader FuseCommonTextureOP{
 
-    float4 mask(Texture2D<float4> MaskTexture, int2 id){
+    float4 mask(Texture2D<float> MaskTexture, int2 id){
         // Sample the mask texture
-        float4 maskSample = MaskTexture[id];
-        
-        // Convert to grayscale if needed (assume it's already B&W but handle color input)
-        float maskValue = dot(maskSample.rgb, float3(0.299, 0.587, 0.114));
+        float maskValue = MaskTexture[id];
         
         // Threshold to determine inside/outside (>0.5 = outside/white, <0.5 = inside/black)
         bool isOutside = maskValue > 0.5;

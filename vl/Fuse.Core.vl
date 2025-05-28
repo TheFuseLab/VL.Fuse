@@ -113305,6 +113305,15 @@
                 </Pad>
                 <ControlPoint Id="J6e3vrVPKrDMfvSkZoCCvb" Bounds="684,970" />
                 <ControlPoint Id="S7AwtwZp8shP0EekLYz8fn" Bounds="1912,474" />
+                <Pad Id="CUdxSjPDIbeMbrz9UYEAul" Bounds="-13,502,609,374" ShowValueBox="true" isIOBox="true" Value="float4 mask(Texture2D&lt;float4&gt; MaskTexture, int2 id){&#xD;&#xA;        // Sample the mask texture&#xD;&#xA;        float4 maskSample = MaskTexture[id];&#xD;&#xA;        &#xD;&#xA;        // Convert to grayscale if needed (assume it's already B&amp;W but handle color input)&#xD;&#xA;        float maskValue = dot(maskSample.rgb, float3(0.299, 0.587, 0.114));&#xD;&#xA;        &#xD;&#xA;        // Threshold to determine inside/outside (&gt;0.5 = outside/white, &lt;0.5 = inside/black)&#xD;&#xA;        bool isOutside = maskValue &gt; 0.5;&#xD;&#xA;        &#xD;&#xA;        // Store initial values: xy = offset vector, z = signed distance, w = unused&#xD;&#xA;        float signedDist = isOutside ? 3e38 : -3e38;&#xD;&#xA;        return float4(0, 0, signedDist, 1);&#xD;&#xA;    }">
+                  <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+                    <Choice Kind="TypeFlag" Name="String" />
+                  </p:TypeAnnotation>
+                  <p:ValueBoxSettings>
+                    <p:fontsize p:Type="Int32">9</p:fontsize>
+                    <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+                  </p:ValueBoxSettings>
+                </Pad>
               </Canvas>
               <Patch Id="BrLkH3S32hoMyNdbWDznU9" Name="Create" />
               <Patch Id="NIbiOMDTc2uMoG6fSJ2Iyg" Name="Update">
