@@ -309,7 +309,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		if (cosTheta > SLERP_DOT_THRESHOLD) // Check after potential flip
 		{
 			// Angle is small, use Nlerp
-			return QuatNormalize(lerp(q1, q2, t));
+			return qNormalize(lerp(q1, q2, t));
 		}
 		else
 		{
@@ -347,7 +347,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 			q2 = -q2;
 		}
 
-		return QuatNormalize(lerp(q1, q2, t));
+		return qNormalize(lerp(q1, q2, t));
 	}
 
 
@@ -387,7 +387,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	float4 CreateQuatRotationAxis(float3 axis, float angle)
 	{
 		float3 normAxis = normalize(axis); // Ensure unit axis
-    	float halfAngle = angleRad * 0.5f;
+    	float halfAngle = angle * 0.5f;
     	float s, c;
     	sincos(halfAngle, s, c);
     	return float4(normAxis * s, c);
@@ -426,7 +426,7 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 			}
 			// Calculate the orthogonal axis and create 180-degree rotation quaternion
 			axis = normalize(cross(fromVec, axis));
-			return QuatFromAxisAngle(axis, 3.1415926535f); // PI radians = 180 degrees
+			return CreateQuatRotationAxis(axis, 3.1415926535f); // PI radians = 180 degrees
 		}
 		// General case: Use cross product for axis and calculate w component
 		else
