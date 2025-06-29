@@ -21,7 +21,6 @@ using VL.Stride;
 using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
 using VL.Stride.Shaders.ShaderFX;
-using ServiceRegistry = VL.Core.ServiceRegistry;
 
 namespace Fuse
 {
