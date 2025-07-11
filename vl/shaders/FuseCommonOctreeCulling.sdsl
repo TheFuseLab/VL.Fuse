@@ -1,0 +1,681 @@
+shader FuseCommonOctreeCulling{
+    // FIXED HLSL Compute Shader for GPU-driven Octree Culling and LOD Selection
+    //
+    // MAJOR FIXES:
+    // 1. Proper frustum culling with actual early exits
+    // 2. Fixed screen space size calculation
+    // 3. Better LOD threshold handling
+    // 4. Corrected point stride calculation
+    // 5. Added bounds validation
+
+    //--------------------------------------------------------------------------------------
+    // Data Structures - These must EXACTLY match the C# struct definitions
+    //--------------------------------------------------------------------------------------
+
+    struct GPUOctreeNode
+    {
+        float3 BoundsMin;
+        float  BoundsSize;
+        float3 BoundsMax;
+        uint   ChildStartIndex;
+        uint   IndexStartIndex;
+        uint   IndexCount;
+        uint   LODLevel;
+        uint   ParentIndex;
+    };
+
+    //--------------------------------------------------------------------------------------
+    // Helper Functions - FIXED
+    //--------------------------------------------------------------------------------------
+
+    // FIXED: Improved screen-space size calculation
+    float CalculateScreenSpaceSize(
+        float3 boundsCenter, 
+        float boundsSize, 
+        float4x4 ViewProjection,
+        float3 CameraPositionWS,
+        float ViewportHeight
+    )
+    {
+        float dist = distance(boundsCenter, CameraPositionWS);
+        if (dist < 0.0001f) dist = 0.0001f;
+        
+        // Calculate the projected size more accurately
+        float4 centerProj = mul(ViewProjection, float4(boundsCenter, 1.0));
+        float4 edgeProj = mul(ViewProjection, float4(boundsCenter + float3(boundsSize * 0.5, 0, 0), 1.0));
+        
+        if (centerProj.w > 0.0001f && edgeProj.w > 0.0001f)
+        {
+            float2 centerNDC = centerProj.xy / centerProj.w;
+            float2 edgeNDC = edgeProj.xy / edgeProj.w;
+            float screenSpaceSize = length(edgeNDC - centerNDC) * ViewportHeight * 0.5f;
+            return screenSpaceSize;
+        }
+        
+        // Fallback calculation for points behind camera
+        return (boundsSize / dist) * ViewProjection[1][1] * 0.5f * ViewportHeight;
+    }
+
+    // FIXED: Proper frustum culling implementation
+    uint TestAABBFrustum(
+        float3 boundsMin, 
+        float3 boundsMax, 
+        float4x4 ViewProjection)
+    {
+        // Extract frustum planes from view-projection matrix
+        float4 planes[6];
+        float4x4 vp = ViewProjection;
+        
+        planes[0] = vp[3] + vp[0]; // Left
+        planes[1] = vp[3] - vp[0]; // Right
+        planes[2] = vp[3] + vp[1]; // Bottom
+        planes[3] = vp[3] - vp[1]; // Top
+        planes[4] = vp[3] + vp[2]; // Near
+        planes[5] = vp[3] - vp[2]; // Far
+
+        uint result = 2; // Assume fully inside initially
+        
+        // Test against each plane
+        [unroll]
+        for (int i = 0; i < 6; ++i)
+        {
+            float4 plane = planes[i];
+            float planeLength = length(plane.xyz);
+            if (planeLength > 0.0001f)
+            {
+                plane /= planeLength; // Normalize the plane
+            }
+
+            float3 center = (boundsMax + boundsMin) * 0.5f;
+            float3 extents = (boundsMax - boundsMin) * 0.5f;
+
+            // Calculate the distance from center to plane
+            float distance = dot(float4(center, 1.0f), plane);
+            
+            // Calculate the radius (maximum extent along plane normal)
+            float radius = dot(extents, abs(plane.xyz));
+
+            // Check if completely outside
+            if (distance < -radius)
+            {
+                return 0; // Completely outside
+            }
+            
+            // Check if intersecting
+            if (abs(distance) < radius)
+            {
+                result = 1; // Intersecting
+            }
+        }
+
+        return result; // 0=outside, 1=intersecting, 2=inside
+    }
+
+    // FIXED: Validate node bounds
+    bool IsValidNode(GPUOctreeNode node)
+    {
+        return node.BoundsMin.x <= node.BoundsMax.x && 
+               node.BoundsMin.y <= node.BoundsMax.y && 
+               node.BoundsMin.z <= node.BoundsMax.z &&
+               node.BoundsSize > 0.0f;
+    }
+
+    //======================================================================================
+    // PASS 1 FUNCTION: GENERATE WORK ITEMS - FIXED
+    //======================================================================================
+    void GenerateWorkItems(
+        float4x4 ViewProjection, 
+        float3 CameraPositionWS, 
+        float LODScreenSpaceThreshold, 
+        float ViewportHeight,
+        int MinWorkItemDepth,
+        int startID,
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        RWStructuredBuffer<int> WorkItems, 
+        RWStructuredBuffer<int> WorkItemCounter
+    )
+    {
+        int nodeStack[1024];
+        int stackTop = 0;
+        
+        if (startID >= 0)
+        {
+            nodeStack[stackTop++] = startID;
+        }
+        
+        while(stackTop > 0 && stackTop < 1024)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+            
+            // FIXED: Validate node first
+            if (!IsValidNode(node))
+            {
+                continue;
+            }
+            
+            // FIXED: Proper frustum culling with early exit
+            uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
+            if (frustumTest == 0)
+            {
+                continue; // Skip nodes completely outside the frustum
+            }
+
+            // If it's a leaf node, add it as a work item
+            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                    WorkItems[writeIndex] = nodeID;
+                }
+                continue;
+            }
+
+            // FIXED: Better LOD calculation and decision making
+            float3 center = (node.BoundsMin + node.BoundsMax) * 0.5f;
+            float screenSize = CalculateScreenSpaceSize(center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight);
+            
+            // Decision: traverse deeper or create work item
+            bool shouldTraverseDeeper = (screenSize > LODScreenSpaceThreshold * 2.0f) && (node.LODLevel < MinWorkItemDepth + 3);
+            bool canCreateWorkItem = (node.LODLevel >= MinWorkItemDepth) && (frustumTest == 2 || screenSize <= LODScreenSpaceThreshold * 4.0f);
+            
+            if (shouldTraverseDeeper)
+            {
+                // Add children to stack for deeper traversal
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                    {
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    }
+                }
+            }
+            else if (canCreateWorkItem)
+            {
+                // Create work item for this internal node
+                uint writeIndex;
+                InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                WorkItems[writeIndex] = nodeID;
+            }
+            else
+            {
+                // Default: add children if we can't decide
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                    {
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    }
+                }
+            }
+        }
+    }
+
+    //======================================================================================
+    // PASS 2 FUNCTION: PROCESS WORK ITEMS AND SELECT FOR LOD - FIXED
+    //======================================================================================
+    void ProcessWorkItem_AndSelectLOD(
+        int globalThreadID,
+        float4x4 ViewProjection, 
+        float3 CameraPositionWS, 
+        float LODScreenSpaceThreshold, 
+        float ViewportHeight,
+        RWStructuredBuffer<int> WorkItems, 
+        RWStructuredBuffer<int> WorkItemCounter, 
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        RWStructuredBuffer<int> VisibleNodeIDs, 
+        RWStructuredBuffer<int> VisibleNodeCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        int numWorkItems = WorkItemCounter[0];
+
+        if (globalThreadID >= numWorkItems) return;
+
+        int workNodeID = WorkItems[globalThreadID];
+        
+        int nodeStack[512];
+        int stackTop = 0;
+        nodeStack[stackTop++] = workNodeID;
+
+        while (stackTop > 0 && stackTop < 512)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+            
+            // FIXED: Validate node
+            if (!IsValidNode(node))
+            {
+                continue;
+            }
+            
+            // FIXED: Proper frustum culling
+            uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
+            if (frustumTest == 0)
+            {
+                continue; // Skip nodes outside frustum
+            }
+
+            float3 center = (node.BoundsMin + node.BoundsMax) * 0.5f;
+            float screenSize = CalculateScreenSpaceSize(center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight);
+
+            // FIXED: Better LOD threshold check
+            if (screenSize < LODScreenSpaceThreshold * 0.5f)
+            {
+                continue; // Too small to be visible
+            }
+            
+            // If it's a leaf node, add it to visible nodes
+            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                    InterlockedAdd(TotalPointCounter[0], node.IndexCount);
+                    VisibleNodeIDs[writeIndex] = nodeID;
+                }
+            }
+            else 
+            {
+                // Internal node: decide whether to traverse deeper or render this level
+                if (screenSize > LODScreenSpaceThreshold * 2.0f)
+                {
+                    // Traverse deeper
+                    for (int i = 0; i < 8; ++i)
+                    {
+                        if (stackTop < 511)
+                        {
+                            nodeStack[stackTop++] = node.ChildStartIndex + i;
+                        }
+                    }
+                }
+                else
+                {
+                    // Render at this LOD level - find leaf descendants
+                    int lodStack[256];
+                    int lodStackTop = 0;
+                    lodStack[lodStackTop++] = nodeID;
+                    
+                    while (lodStackTop > 0 && lodStackTop < 256)
+                    {
+                        int lodNodeID = lodStack[--lodStackTop];
+                        GPUOctreeNode lodNode = GpuOctreeNodes[lodNodeID];
+                        
+                        if (lodNode.ChildStartIndex == 0xFFFFFFFF || lodNode.ChildStartIndex == -1)
+                        {
+                            // It's a leaf - add to visible nodes
+                            if (lodNode.IndexCount > 0)
+                            {
+                                uint writeIndex;
+                                InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                                InterlockedAdd(TotalPointCounter[0], lodNode.IndexCount);
+                                VisibleNodeIDs[writeIndex] = lodNodeID;
+                            }
+                        }
+                        else
+                        {
+                            // Add children to LOD stack
+                            for (int j = 0; j < 8; ++j)
+                            {
+                                if (lodStackTop < 255)
+                                {
+                                    lodStack[lodStackTop++] = lodNode.ChildStartIndex + j;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //======================================================================================
+    // PASS 3 FUNCTION: COLLECT POINT INDICES - FIXED
+    //======================================================================================
+    void CollectPointIndices(
+        int globalThreadID,
+        int MaxPointBudget,
+        StructuredBuffer<GPUOctreeNode> allNodes,
+        StructuredBuffer<int> allLodIndices,
+        RWStructuredBuffer<int> visibleNodeIds,
+        RWStructuredBuffer<int> visibleNodeCounter,
+        RWStructuredBuffer<int> finalIndices,
+        RWStructuredBuffer<int> finalCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        int numVisibleNodes = visibleNodeCounter[0];
+        if (globalThreadID >= numVisibleNodes) return;
+
+        int nodeID = visibleNodeIds[globalThreadID];
+        GPUOctreeNode node = allNodes[nodeID];
+        
+        if (node.IndexCount == 0) return;
+
+        int totalPoints = TotalPointCounter[0];
+        
+        // FIXED: Calculate how many points this node should contribute based on budget
+        int targetPointsForThisNode;
+        if (MaxPointBudget > 0 && totalPoints > MaxPointBudget)
+        {
+            // Calculate this node's fair share of the budget
+            float nodeRatio = (float)node.IndexCount / (float)totalPoints;
+            targetPointsForThisNode = max(1, (int)(nodeRatio * MaxPointBudget));
+            
+            // Ensure we don't exceed the node's actual point count
+            targetPointsForThisNode = min(targetPointsForThisNode, (int)node.IndexCount);
+        }
+        else
+        {
+            // No budget constraint, use all points
+            targetPointsForThisNode = (int)node.IndexCount;
+        }
+        
+        // FIXED: Calculate stride to achieve target point count for this node
+        int stride = max(1, (int)node.IndexCount / targetPointsForThisNode);
+        
+        // Collect indices with proper budget enforcement
+        int pointsCollected = 0;
+        for (int i = 0; i < (int)node.IndexCount && pointsCollected < targetPointsForThisNode; i += stride)
+        {
+            int lodIndexAddress = (int)node.IndexStartIndex + i;
+            
+            // Bounds check for LOD indices buffer
+            if (lodIndexAddress >= 0 && lodIndexAddress < allLodIndices.Length)
+            {
+                int pointID = allLodIndices[lodIndexAddress];
+                
+                // Validate point ID
+                if (pointID >= 0)
+                {
+                    // FIXED: Check global budget before adding
+                    uint currentCount = finalCounter[0];
+                    if (MaxPointBudget > 0 && currentCount >= MaxPointBudget)
+                    {
+                        break; // Stop if we've reached the global budget
+                    }
+                    
+                    uint writeIndex;
+                    InterlockedAdd(finalCounter[0], 1, writeIndex);
+                    
+                    // Double-check budget after atomic increment
+                    if (MaxPointBudget > 0 && writeIndex >= MaxPointBudget)
+                    {
+                        // Undo the increment if we exceeded budget
+                        InterlockedAdd(finalCounter[0], -1);
+                        break;
+                    }
+                    
+                    // Bounds check for output buffer
+                    if (writeIndex < finalIndices.Length)
+                    {
+                        finalIndices[writeIndex] = pointID;
+                        pointsCollected++;
+                    }
+                }
+            }
+        }
+    }
+
+    // ERWEITERTE HLSL Compute Shader Funktionen für GPU-driven Octree Culling mit Plane Culling
+    // Neue Versionen von GenerateWorkItems und ProcessWorkItem_AndSelectLOD mit zusätzlichem Plane Culling
+
+    //--------------------------------------------------------------------------------------
+    // Zusätzliche Helper Funktion für Plane Culling
+    //--------------------------------------------------------------------------------------
+
+    // Testet ob eine AABB komplett unter einer Plane liegt
+    // Plane wird als float4 übergeben: xyz = normal, w = distance from origin
+    // Gibt true zurück wenn die AABB komplett unter der Plane liegt (gecullt werden soll)
+    bool IsAABBBelowPlane(float3 boundsMin, float3 boundsMax, float4 plane)
+    {
+        // Normalize plane normal (falls noch nicht normalisiert)
+        float3 normal = normalize(plane.xyz);
+        float distance = plane.w;
+        
+        // Finde den Punkt der AABB, der am weitesten in Richtung der Plane normal zeigt
+        float3 maxPoint;
+        maxPoint.x = (normal.x >= 0.0f) ? boundsMax.x : boundsMin.x;
+        maxPoint.y = (normal.y >= 0.0f) ? boundsMax.y : boundsMin.y;
+        maxPoint.z = (normal.z >= 0.0f) ? boundsMax.z : boundsMin.z;
+        
+        // Berechne Abstand des am weitesten entfernten Punktes zur Plane
+        float maxDistance = dot(maxPoint, normal) - distance;
+        
+        // Wenn selbst der am weitesten entfernte Punkt unter der Plane liegt, 
+        // dann liegt die gesamte AABB unter der Plane
+        return maxDistance < 0.0f;
+    }
+
+    //======================================================================================
+    // PASS 1 FUNCTION: GENERATE WORK ITEMS MIT PLANE CULLING
+    //======================================================================================
+    void GenerateWorkItemsPlane(
+        float4x4 ViewProjection, 
+        float3 CameraPositionWS, 
+        float LODScreenSpaceThreshold, 
+        float ViewportHeight,
+        int MinWorkItemDepth,
+        int startID,
+        float4 CullingPlane,  // NEU: Plane für Culling (xyz = normal, w = distance)
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        RWStructuredBuffer<int> WorkItems, 
+        RWStructuredBuffer<int> WorkItemCounter
+    )
+    {
+        int nodeStack[1024];
+        int stackTop = 0;
+        
+        if (startID >= 0)
+        {
+            nodeStack[stackTop++] = startID;
+        }
+        
+        while(stackTop > 0 && stackTop < 1024)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+            
+            // Validate node first
+            if (!IsValidNode(node))
+            {
+                continue;
+            }
+            
+            // NEU: Plane Culling - Teste ob Node komplett unter der Plane liegt
+            if (IsAABBBelowPlane(node.BoundsMin, node.BoundsMax, CullingPlane))
+            {
+                continue; // Skip nodes completely below the culling plane
+            }
+            
+            // Frustum culling with early exit
+            uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
+            if (frustumTest == 0)
+            {
+                continue; // Skip nodes completely outside the frustum
+            }
+
+            // If it's a leaf node, add it as a work item
+            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                    WorkItems[writeIndex] = nodeID;
+                }
+                continue;
+            }
+
+            // LOD calculation and decision making
+            float3 center = (node.BoundsMin + node.BoundsMax) * 0.5f;
+            float screenSize = CalculateScreenSpaceSize(center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight);
+            
+            // Decision: traverse deeper or create work item
+            bool shouldTraverseDeeper = (screenSize > LODScreenSpaceThreshold * 2.0f) && (node.LODLevel < MinWorkItemDepth + 3);
+            bool canCreateWorkItem = (node.LODLevel >= MinWorkItemDepth) && (frustumTest == 2 || screenSize <= LODScreenSpaceThreshold * 4.0f);
+            
+            if (shouldTraverseDeeper)
+            {
+                // Add children to stack for deeper traversal
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                    {
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    }
+                }
+            }
+            else if (canCreateWorkItem)
+            {
+                // Create work item for this internal node
+                uint writeIndex;
+                InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                WorkItems[writeIndex] = nodeID;
+            }
+            else
+            {
+                // Default: add children if we can't decide
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                    {
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    }
+                }
+            }
+        }
+    }
+
+    //======================================================================================
+    // PASS 2 FUNCTION: PROCESS WORK ITEMS AND SELECT FOR LOD MIT PLANE CULLING
+    //======================================================================================
+    void ProcessWorkItem_AndSelectLODPlane(
+        int globalThreadID,
+        float4x4 ViewProjection, 
+        float3 CameraPositionWS, 
+        float LODScreenSpaceThreshold, 
+        float ViewportHeight,
+        float4 CullingPlane,  // NEU: Plane für Culling (xyz = normal, w = distance)
+        RWStructuredBuffer<int> WorkItems, 
+        RWStructuredBuffer<int> WorkItemCounter, 
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        RWStructuredBuffer<int> VisibleNodeIDs, 
+        RWStructuredBuffer<int> VisibleNodeCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        int numWorkItems = WorkItemCounter[0];
+
+        if (globalThreadID >= numWorkItems) return;
+
+        int workNodeID = WorkItems[globalThreadID];
+        
+        int nodeStack[512];
+        int stackTop = 0;
+        nodeStack[stackTop++] = workNodeID;
+
+        while (stackTop > 0 && stackTop < 512)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+            
+            // Validate node
+            if (!IsValidNode(node))
+            {
+                continue;
+            }
+            
+            // NEU: Plane Culling - Teste ob Node komplett unter der Plane liegt
+            if (IsAABBBelowPlane(node.BoundsMin, node.BoundsMax, CullingPlane))
+            {
+                continue; // Skip nodes completely below the culling plane
+            }
+            
+            // Frustum culling
+            uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
+            if (frustumTest == 0)
+            {
+                continue; // Skip nodes outside frustum
+            }
+
+            float3 center = (node.BoundsMin + node.BoundsMax) * 0.5f;
+            float screenSize = CalculateScreenSpaceSize(center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight);
+
+            // LOD threshold check
+            if (screenSize < LODScreenSpaceThreshold * 0.5f)
+            {
+                continue; // Too small to be visible
+            }
+            
+            // If it's a leaf node, add it to visible nodes
+            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                    InterlockedAdd(TotalPointCounter[0], node.IndexCount);
+                    VisibleNodeIDs[writeIndex] = nodeID;
+                }
+            }
+            else 
+            {
+                // Internal node: decide whether to traverse deeper or render this level
+                if (screenSize > LODScreenSpaceThreshold * 2.0f)
+                {
+                    // Traverse deeper
+                    for (int i = 0; i < 8; ++i)
+                    {
+                        if (stackTop < 511)
+                        {
+                            nodeStack[stackTop++] = node.ChildStartIndex + i;
+                        }
+                    }
+                }
+                else
+                {
+                    // Render at this LOD level - find leaf descendants
+                    int lodStack[256];
+                    int lodStackTop = 0;
+                    lodStack[lodStackTop++] = nodeID;
+                    
+                    while (lodStackTop > 0 && lodStackTop < 256)
+                    {
+                        int lodNodeID = lodStack[--lodStackTop];
+                        GPUOctreeNode lodNode = GpuOctreeNodes[lodNodeID];
+                        
+                        // NEU: Auch hier plane culling für Leaf-Nodes
+                        if (IsAABBBelowPlane(lodNode.BoundsMin, lodNode.BoundsMax, CullingPlane))
+                        {
+                            continue; // Skip leaf nodes below culling plane
+                        }
+                        
+                        if (lodNode.ChildStartIndex == 0xFFFFFFFF || lodNode.ChildStartIndex == -1)
+                        {
+                            // It's a leaf - add to visible nodes
+                            if (lodNode.IndexCount > 0)
+                            {
+                                uint writeIndex;
+                                InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                                InterlockedAdd(TotalPointCounter[0], lodNode.IndexCount);
+                                VisibleNodeIDs[writeIndex] = lodNodeID;
+                            }
+                        }
+                        else
+                        {
+                            // Add children to LOD stack
+                            for (int j = 0; j < 8; ++j)
+                            {
+                                if (lodStackTop < 255)
+                                {
+                                    lodStack[lodStackTop++] = lodNode.ChildStartIndex + j;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};

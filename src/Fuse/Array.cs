@@ -1,125 +1,122 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Fuse.compute;
 using VL.Core;
-using VL.Stride.Shaders.ShaderFX;
 
-namespace Fuse
+namespace Fuse;
+
+public class GpuArray<T> where T : struct
 {
-    public class GpuArray<T> where T :struct
-    {
-        
-    } 
-    public class Array<T> : ShaderNode<GpuArray<T>> where T :struct
-    {
+}
 
-        private readonly string _sourceTemplate = "";
-        
-        public Array(NodeContext nodeContext, ICollection<T> theInputs) : base(nodeContext, "Array")
-        {
-            _sourceTemplate = "";
-            
-            const string shaderCode = 
-                @"    static const ${arrayType} ${arrayName}[${arraySize}] = {
+public class Array<T> : ShaderNode<GpuArray<T>> where T : struct
+{
+    private readonly string _sourceTemplate = "";
+
+    public Array(NodeContext nodeContext, ICollection<T> theInputs) : base(nodeContext, "Array")
+    {
+        _sourceTemplate = "";
+
+        const string shaderCode =
+            @"    static const ${arrayType} ${arrayName}[${arraySize}] = {
 ${arrayContent}
-    };" ;
-            
-            var content = new StringBuilder();
-            theInputs.ForEach(input =>
-            {
-                content.Append("        "+TypeHelpers.GetDefaultForType(input) + ","+Environment.NewLine);
-            });
-            var constantArrayString = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
-            {
-                {"arrayType", TypeHelpers.GetGpuType<T>()},
-                {"arrayName", ID},
-                {"arraySize", theInputs.Count.ToString()},
-                {"arrayContent", content.ToString()}
-            });
-            Size = theInputs.Count; 
-            SetProperty(ConstantArrays, constantArrayString);
-        }
-        
-        public Array(NodeContext nodeContext, int theSize, bool theIsGroupShared=false) : base(nodeContext, "Array")
-        {
-            const string shaderCode = 
-                @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];" ;
-            
-            _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
-            {
-                {"groupshared",theIsGroupShared ? "groupshared" : ""},
-                {"arrayType", TypeHelpers.GetGpuType<T>()},
-                {"arrayName", ID},
-                {"arraySize", theSize.ToString()}
-            });
-            Size = theSize; 
-        }
-        
-        public Array(NodeContext nodeContext, ShaderNode<int> theSize, bool theIsGroupShared=false) : base(nodeContext, "Array")
-        {
-            const string shaderCode = 
-                @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];" ;
-            
-            _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>
-            {
-                {"groupshared",theIsGroupShared ? "groupshared" : ""},
-                {"arrayType", TypeHelpers.GetGpuType<T>()},
-                {"arrayName", ID},
-                {"arraySize", theSize.ID}
-            });
-        }
-        public Array(NodeContext nodeContext, ICollection<ShaderNode<T>> theInputs) : base(nodeContext, "Array")
-        {
-            
-            var content = new StringBuilder("    ${arrayType} ${arrayName}[${arraySize}];"+Environment.NewLine);
-            var i = 0;
-            foreach (var input in theInputs)
-            {
-                var arrayVal = input != null ? input.ID : TypeHelpers.GetDefaultForType<T>();
-                content.Append("    ${arrayName}[" + i + "] =  " + arrayVal + ";"+Environment.NewLine);
-                i++;
-            }
-            _sourceTemplate = ShaderNodesUtil.Evaluate(content.ToString(),new Dictionary<string, string>()
-            {
-                {"arrayType", TypeHelpers.GetGpuType<T>()},
-                {"arrayName", ID},
-                {"arraySize", theInputs.Count.ToString()}
-            });
-            SetInputs(new List<AbstractShaderNode>( theInputs));
-        }
-        
-        protected override string SourceTemplate()
-        {
-            return _sourceTemplate;
-        }
+    };";
 
-        public int Size { get; }
+        var content = new StringBuilder();
+        theInputs.ForEach(input =>
+        {
+            content.Append("        " + TypeHelpers.GetDefaultForType(input) + "," + Environment.NewLine);
+        });
+        var constantArrayString = ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+        {
+            { "arrayType", TypeHelpers.GetGpuType<T>() },
+            { "arrayName", ID },
+            { "arraySize", theInputs.Count.ToString() },
+            { "arrayContent", content.ToString() }
+        });
+        Size = theInputs.Count;
+        SetProperty(ConstantArrays, constantArrayString);
     }
-    
-    public class ArrayGet<T> : ShaderNode<T>  where T :struct
+
+    public Array(NodeContext nodeContext, int theSize, bool theIsGroupShared = false) : base(nodeContext, "Array")
     {
-        private readonly Array<T> _array;
-        private readonly ShaderNode<int> _index;
-        
-        public ArrayGet(NodeContext nodeContext, Array<T> theArray, ShaderNode<int> theIndex) : base( nodeContext, "getItem")
+        const string shaderCode =
+            @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];";
+
+        _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
         {
-            _array = theArray;
-            _index = theIndex;
-            
-            SetInputs(new List<AbstractShaderNode>{theArray,theIndex});
+            { "groupshared", theIsGroupShared ? "groupshared" : "" },
+            { "arrayType", TypeHelpers.GetGpuType<T>() },
+            { "arrayName", ID },
+            { "arraySize", theSize.ToString() }
+        });
+        Size = theSize;
+    }
+
+    public Array(NodeContext nodeContext, ShaderNode<int> theSize, bool theIsGroupShared = false) : base(nodeContext,
+        "Array")
+    {
+        const string shaderCode =
+            @"    ${groupshared} ${arrayType} ${arrayName}[${arraySize}];";
+
+        _sourceTemplate = ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+        {
+            { "groupshared", theIsGroupShared ? "groupshared" : "" },
+            { "arrayType", TypeHelpers.GetGpuType<T>() },
+            { "arrayName", ID },
+            { "arraySize", theSize.ID }
+        });
+    }
+
+    public Array(NodeContext nodeContext, ICollection<ShaderNode<T>> theInputs) : base(nodeContext, "Array")
+    {
+        var content = new StringBuilder("    ${arrayType} ${arrayName}[${arraySize}];" + Environment.NewLine);
+        var i = 0;
+        foreach (var input in theInputs)
+        {
+            var arrayVal = input != null ? input.ID : TypeHelpers.GetDefaultForType<T>();
+            content.Append("    ${arrayName}[" + i + "] =  " + arrayVal + ";" + Environment.NewLine);
+            i++;
         }
 
-        protected override string SourceTemplate()
+        _sourceTemplate = ShaderNodesUtil.Evaluate(content.ToString(), new Dictionary<string, string>
         {
-            const string shaderCode = "${resultType} ${resultName} = ${arrayName}[${index}];";
-            
-            return ShaderNodesUtil.Evaluate(shaderCode,new Dictionary<string, string>()
-            {
-                {"arrayName", _array.ID},
-                {"index", _index.ID}
-            });
-        }
+            { "arrayType", TypeHelpers.GetGpuType<T>() },
+            { "arrayName", ID },
+            { "arraySize", theInputs.Count.ToString() }
+        });
+        SetInputs(new List<AbstractShaderNode>(theInputs));
+    }
 
+    public int Size { get; }
+
+    protected override string SourceTemplate()
+    {
+        return _sourceTemplate;
+    }
+}
+
+public class ArrayGet<T> : ShaderNode<T> where T : struct
+{
+    private readonly Array<T> _array;
+    private readonly ShaderNode<int> _index;
+
+    public ArrayGet(NodeContext nodeContext, Array<T> theArray, ShaderNode<int> theIndex) : base(nodeContext, "getItem")
+    {
+        _array = theArray;
+        _index = theIndex;
+
+        SetInputs(new List<AbstractShaderNode> { theArray, theIndex });
+    }
+
+    protected override string SourceTemplate()
+    {
+        const string shaderCode = "${resultType} ${resultName} = ${arrayName}[${index}];";
+
+        return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
+        {
+            { "arrayName", _array.ID },
+            { "index", _index.ID }
+        });
     }
 }

@@ -15,7 +15,386 @@ shader FuseCoreTexture: FuseCoreMath, Texturing, ShaderUtils
 	#define PI 3.14159265
 	#endif
 
+	// Cubemap to BoxGrid - UV based conversion for Fuse
+	// Takes UV coordinates and converts to cubemap direction for boxgrid layout
 
+	// Function to convert UV to cubemap direction for horizontal strip layout
+	// Layout: +X, -X, +Y, -Y, +Z, -Z
+	float3 BoxgridUVToDirection_HorizontalStrip(float2 uv)
+	{
+		// Determine which face we're on (0-5)
+		float faceWidth = 1.0 / 6.0;
+		int faceIndex = int(uv.x / faceWidth);
+		
+		// Get UV within the face [0,1]
+		float2 faceUV = float2((uv.x - faceIndex * faceWidth) / faceWidth, uv.y);
+		
+		// Convert from [0,1] to [-1,1]
+		float2 faceCoord = faceUV * 2.0 - 1.0;
+		
+		// Generate direction based on face
+		float3 direction = float3(0, 0, 0);
+		
+		switch(faceIndex)
+		{
+			case 0: // +X
+				direction = float3(1.0, -faceCoord.y, -faceCoord.x);
+				break;
+			case 1: // -X
+				direction = float3(-1.0, -faceCoord.y, faceCoord.x);
+				break;
+			case 2: // +Y
+				direction = float3(faceCoord.x, 1.0, faceCoord.y);
+				break;
+			case 3: // -Y
+				direction = float3(faceCoord.x, -1.0, -faceCoord.y);
+				break;
+			case 4: // +Z
+				direction = float3(faceCoord.x, -faceCoord.y, 1.0);
+				break;
+			case 5: // -Z
+				direction = float3(-faceCoord.x, -faceCoord.y, -1.0);
+				break;
+		}
+		
+		return normalize(direction);
+	}
+
+	float2 DirectionToBoxgridUV_Horizontal(float3 dir)
+	{
+		float3 absDir = abs(dir);
+		float maxAxis = max(absDir.x, max(absDir.y, absDir.z));
+		
+		int faceIndex;
+		float2 faceCoord;
+		
+		if (maxAxis == absDir.x)
+		{
+			if (dir.x > 0) // +X face
+			{
+				faceIndex = 0;
+				faceCoord = float2(-dir.z / dir.x, -dir.y / dir.x);
+			}
+			else // -X face
+			{
+				faceIndex = 1;
+				faceCoord = float2(dir.z / -dir.x, -dir.y / -dir.x);
+			}
+		}
+		else if (maxAxis == absDir.y)
+		{
+			if (dir.y > 0) // +Y face
+			{
+				faceIndex = 2;
+				faceCoord = float2(dir.x / dir.y, dir.z / dir.y);
+			}
+			else // -Y face
+			{
+				faceIndex = 3;
+				faceCoord = float2(dir.x / -dir.y, -dir.z / -dir.y);
+			}
+		}
+		else // maxAxis == absDir.z
+		{
+			if (dir.z > 0) // +Z face
+			{
+				faceIndex = 4;
+				faceCoord = float2(dir.x / dir.z, -dir.y / dir.z);
+			}
+			else // -Z face
+			{
+				faceIndex = 5;
+				faceCoord = float2(-dir.x / -dir.z, -dir.y / -dir.z);
+			}
+		}
+		
+		// Convert face coordinates from [-1,1] to [0,1]
+		float2 cellUV = (faceCoord + 1.0) * 0.5;
+		
+		// Convert to grid UV
+		float faceWidth = 1.0 / 6.0;
+		float2 gridUV = float2(faceIndex * faceWidth + cellUV.x * faceWidth, cellUV.y);
+		
+		return gridUV;
+	}
+
+	// Function for 3x2 grid layout
+	// Top row: +X, -X, +Y
+	// Bottom row: -Y, +Z, -Z
+	float3 BoxgridUVToDirection_3x2Grid(float2 uv)
+	{
+		float faceWidth = 1.0 / 3.0;
+		float faceHeight = 1.0 / 2.0;
+		
+		int col = int(uv.x / faceWidth);
+		int row = int(uv.y / faceHeight);
+		int faceIndex = row * 3 + col;
+		
+		// Remap face indices for 3x2 layout
+		int faceRemap[6] = {0, 1, 2, 3, 4, 5};
+		if (row == 0) // Top row
+		{
+			if (col == 0) faceIndex = 0; // +X
+			else if (col == 1) faceIndex = 1; // -X
+			else faceIndex = 2; // +Y
+		}
+		else // Bottom row
+		{
+			if (col == 0) faceIndex = 3; // -Y
+			else if (col == 1) faceIndex = 4; // +Z
+			else faceIndex = 5; // -Z
+		}
+		
+		// Get UV within the face
+		float2 faceUV = float2((uv.x - col * faceWidth) / faceWidth, 
+							(uv.y - row * faceHeight) / faceHeight);
+		
+		// Convert to [-1, 1]
+		float2 faceCoord = faceUV * 2.0 - 1.0;
+		
+		// Generate direction based on face
+		float3 direction = float3(0, 0, 0);
+		
+		switch(faceIndex)
+		{
+			case 0: // +X
+				direction = float3(1.0, -faceCoord.y, -faceCoord.x);
+				break;
+			case 1: // -X
+				direction = float3(-1.0, -faceCoord.y, faceCoord.x);
+				break;
+			case 2: // +Y
+				direction = float3(faceCoord.x, 1.0, faceCoord.y);
+				break;
+			case 3: // -Y
+				direction = float3(faceCoord.x, -1.0, -faceCoord.y);
+				break;
+			case 4: // +Z
+				direction = float3(faceCoord.x, -faceCoord.y, 1.0);
+				break;
+			case 5: // -Z
+				direction = float3(-faceCoord.x, -faceCoord.y, -1.0);
+				break;
+		}
+		
+		return normalize(direction);
+	}
+
+	float2 DirectionToBoxgridUV_3x2(float3 dir)
+	{
+		float3 absDir = abs(dir);
+		float maxAxis = max(absDir.x, max(absDir.y, absDir.z));
+		
+		int row, col;
+		float2 faceCoord;
+		
+		if (maxAxis == absDir.x)
+		{
+			if (dir.x > 0) // +X face
+			{
+				row = 0; col = 0;
+				faceCoord = float2(-dir.z / dir.x, -dir.y / dir.x);
+			}
+			else // -X face
+			{
+				row = 1; col = 0;
+				faceCoord = float2(dir.z / -dir.x, -dir.y / -dir.x);
+			}
+		}
+		else if (maxAxis == absDir.y)
+		{
+			if (dir.y > 0) // +Y face
+			{
+				row = 0; col = 1;
+				faceCoord = float2(dir.x / dir.y, dir.z / dir.y);
+			}
+			else // -Y face
+			{
+				row = 1; col = 1;
+				faceCoord = float2(dir.x / -dir.y, -dir.z / -dir.y);
+			}
+		}
+		else // maxAxis == absDir.z
+		{
+			if (dir.z > 0) // +Z face
+			{
+				row = 0; col = 2;
+				faceCoord = float2(dir.x / dir.z, -dir.y / dir.z);
+			}
+			else // -Z face
+			{
+				row = 1; col = 2;
+				faceCoord = float2(-dir.x / -dir.z, -dir.y / -dir.z);
+			}
+		}
+		
+		// Convert face coordinates from [-1,1] to [0,1]
+		float2 cellUV = (faceCoord + 1.0) * 0.5;
+		
+		// Convert to grid UV
+		float faceWidth = 1.0 / 3.0;
+		float faceHeight = 1.0 / 2.0;
+		
+		float2 gridUV = float2(col * faceWidth + cellUV.x * faceWidth,
+							row * faceHeight + cellUV.y * faceHeight);
+		
+		return gridUV;
+	}
+
+	// Function for cross/unfolded cube layout
+	//     [+Y]
+	// [-X][+Z][+X][-Z]
+	//     [-Y]
+	float3 BoxgridUVToDirection_Cross(float2 uv)
+	{
+		// 4x3 grid layout
+		float faceWidth = 1.0 / 4.0;
+		float faceHeight = 1.0 / 3.0;
+		
+		// Get grid position
+		int col = int(uv.x / faceWidth);
+		int row = int(uv.y / faceHeight);
+		
+		// Get UV within the current cell [0,1]
+		float2 cellUV = float2((uv.x - col * faceWidth) / faceWidth,
+							(uv.y - row * faceHeight) / faceHeight);
+		
+		// Convert to [-1,1] for face coordinates
+		float2 faceCoord = cellUV * 2.0 - 1.0;
+		
+		float3 direction = float3(0, 0, 0);
+		
+		// Apply your specific mappings and rotations
+		if (row == 0) // Top row
+		{
+			if (col == 1) // +Y face (was at 1,0, should stay at 1,0)
+			{
+				// +Y face - looking down
+				direction = float3(faceCoord.x, -faceCoord.y, 1.0);
+			}
+		}
+		else if (row == 1) // Middle row
+		{
+			if (col == 0) // -X face (needs 90° CCW rotation)
+			{
+				// Rotate 90 degrees counter-clockwise
+				float2 rotated = float2(-faceCoord.y, faceCoord.x);
+				direction = float3(-1.0, -rotated.y, rotated.x);
+			}
+			else if (col == 1) // +Z face (was at 1,1, should be from 0,1)
+			{
+				// +Z face - looking backward
+				direction = float3(faceCoord.x, -1.0, -faceCoord.y);
+			}
+			else if (col == 2) // +X face (needs 90° CW rotation)
+			{
+				// Rotate 90 degrees clockwise
+				float2 rotated = float2(faceCoord.y, -faceCoord.x);
+				direction = float3(1.0, -rotated.y, -rotated.x);
+			}
+			else if (col == 3) // -Z face (needs 180° rotation, was at 1,3, should be from 2,1)
+			{
+				direction = float3(faceCoord.x, 1.0, faceCoord.y);
+			}
+		}
+		else if (row == 2) // Bottom row
+		{
+			if (col == 1) 
+			{
+				float2 rotated = float2(-faceCoord.x, -faceCoord.y);
+				direction = float3(-rotated.x, -rotated.y, -1.0);
+			}
+		}
+		
+		// Only normalize if we have a valid direction
+		if (dot(direction, direction) > 0.1)
+			return normalize(direction);
+		else
+			return float3(0, 0, 0);
+	}
+
+	float2 DirectionToBoxgridUV_Cross(float3 dir)
+	{
+		float3 absDir = abs(dir);
+		float maxAxis = max(absDir.x, max(absDir.y, absDir.z));
+		
+		int row, col;
+		float2 faceCoord;
+		
+		if (maxAxis == absDir.y)
+		{
+			if (dir.y > 0) // +Y face
+			{
+				row = 1; col = 3;
+				faceCoord = float2(dir.x / -dir.y, dir.z / dir.y);
+			}
+			else // -Y face
+			{
+				row = 1; col = 1;
+				faceCoord = float2(-dir.x / -dir.y, -dir.z / -dir.y);
+			}
+		}
+		else if (maxAxis == absDir.x)
+		{
+			if (dir.x > 0) // +X face
+			{
+				row = 1; col = 0;
+				// Apply inverse 90° CW rotation
+				float2 temp = float2(-dir.z / dir.x, dir.y / dir.x);
+				faceCoord = float2(-temp.y, temp.x);
+			}
+			else // -X face
+			{
+				row = 1; col = 2;
+				// Apply inverse 90° CCW rotation
+				float2 temp = float2(dir.z / -dir.x, dir.y / -dir.x);
+				faceCoord = float2(temp.y, -temp.x);
+			}
+		}
+		else // maxAxis == absDir.z
+		{
+			if (dir.z > 0) // +Z face
+			{
+				row = 0; col = 1;
+				faceCoord = float2(dir.x / -dir.z, -dir.y / dir.z);
+			}
+			else // -Z face
+			{
+				row = 2; col = 1;
+				faceCoord = float2(dir.x / dir.z, dir.y / -dir.z);
+			}
+		}
+		
+		// Convert face coordinates from [-1,1] to [0,1]
+		float2 cellUV = (faceCoord + 1.0) * 0.5;
+		
+		// Convert to grid UV
+		float faceWidth = 1.0 / 4.0;
+		float faceHeight = 1.0 / 3.0;
+		
+		float2 gridUV = float2(col * faceWidth + cellUV.x * faceWidth,
+							row * faceHeight + cellUV.y * faceHeight);
+		
+		return gridUV;
+	}																	
+
+	// Convert equirectangular UV to 3D direction
+	float3 EquirectangularUVToDirection(float2 uv)
+	{
+		// Convert UV to spherical coordinates
+		float theta = uv.x * 2.0 * 3.14159265359; // Longitude: 0 to 2π
+		float phi = uv.y * 3.14159265359;          // Latitude: 0 to π
+		
+		// Convert spherical to Cartesian coordinates
+		float sinPhi = sin(phi);
+		float3 direction = float3(
+			sinPhi * cos(theta),  // x
+			cos(phi),             // y
+			sinPhi * sin(theta)   // z
+		);
+		
+		return normalize(direction);
+	}
 
 	float2 cubicUV(float3 pos, float3 norm)
 	{

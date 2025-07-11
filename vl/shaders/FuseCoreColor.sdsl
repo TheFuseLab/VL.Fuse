@@ -737,4 +737,239 @@ shader FuseCoreColor
 
 		return mappedColor;
 	}
+
+	// Constrast
+
+	// HLSL Bidirectional Contrast Function - Enhance or Reduce Contrast
+	// Works in both directions: positive values sharpen, negative values soften
+
+	// Main contrast function (bidirectional)
+	float3 AdjustContrast(float3 color, float contrast, float brightnessCompensation)
+	{
+		// Contrast range: -1.0 = minimum contrast (flat), 0.0 = no change, 1.0 = maximum contrast
+		// BrightnessCompensation: 0.0 = maintain brightness, 1.0 = boost brightness when increasing contrast
+		
+		// Calculate original luminance
+		float luminance = dot(color, float3(0.299, 0.587, 0.114));
+		
+		// Apply contrast adjustment
+		float contrastFactor = 1.0 + contrast;
+		float3 adjustedColor;
+		
+		if (contrast >= 0.0)
+		{
+			// Increase contrast
+			adjustedColor = saturate(0.5 + contrastFactor * (color - 0.5));
+		}
+		else
+		{
+			// Reduce contrast (blend toward gray)
+			float3 gray = float3(0.5, 0.5, 0.5);
+			adjustedColor = lerp(color, gray, -contrast);
+		}
+		
+		// Brightness preservation/compensation
+		float newLuminance = dot(adjustedColor, float3(0.299, 0.587, 0.114));
+		if (newLuminance > 0.001)
+		{
+			float brightnessFactor = luminance / newLuminance;
+			// Apply compensation based on whether we're increasing or decreasing contrast
+			if (contrast > 0.0)
+			{
+				// When increasing contrast, optionally boost brightness
+				brightnessFactor = lerp(brightnessFactor, brightnessFactor + brightnessCompensation, contrast);
+			}
+			adjustedColor *= brightnessFactor;
+		}
+		
+		return saturate(adjustedColor);
+	}
+
+	// Sigmoid contrast with bidirectional support
+	float3 SigmoidContrast(float3 color, float strength)
+	{
+		// Strength range: -1.0 = flat/no contrast, 0.0 = no change, 1.0 = maximum contrast
+		
+		if (abs(strength) < 0.001) return color; // No change
+		
+		float3 result;
+		
+		if (strength > 0.0)
+		{
+			// Increase contrast with brightness bias
+			float midpoint = 0.4;
+			float slope = 1.0 + strength * 4.0;
+			
+			result.x = 1.0 / (1.0 + exp(-slope * (color.x - midpoint)));
+			result.y = 1.0 / (1.0 + exp(-slope * (color.y - midpoint)));
+			result.z = 1.0 / (1.0 + exp(-slope * (color.z - midpoint)));
+			
+			// Normalize
+			float min_val = 1.0 / (1.0 + exp(slope * midpoint));
+			float max_val = 1.0 / (1.0 + exp(-slope * (1.0 - midpoint)));
+			result = (result - min_val) / (max_val - min_val);
+		}
+		else
+		{
+			// Reduce contrast - blend toward middle gray
+			float blendAmount = -strength;
+			result = lerp(color, float3(0.5, 0.5, 0.5), blendAmount * 0.7);
+		}
+		
+		return saturate(result);
+	}
+
+	// Bidirectional vibrance/saturation adjustment
+	float3 AdjustVibrance(float3 color, float vibrance)
+	{
+		// Vibrance range: -1.0 = grayscale, 0.0 = no change, 1.0 = maximum vibrance
+		
+		float luminance = dot(color, float3(0.299, 0.587, 0.114));
+		float3 gray = float3(luminance, luminance, luminance);
+		
+		// Calculate current saturation
+		float saturation = length(color - gray);
+		
+		if (vibrance > 0.0)
+		{
+			// Increase vibrance (boost less saturated colors more)
+			float saturationBoost = 1.0 + vibrance * (1.0 - saturation);
+			return lerp(gray, color, saturationBoost);
+		}
+		else
+		{
+			// Decrease vibrance/saturation
+			return lerp(gray, color, 1.0 + vibrance);
+		}
+	}
+
+	// Combined bidirectional color adjustment (FIXED)
+	float3 AdjustColorSharpness(float3 color, float intensity)
+	{
+		// Intensity range: -1.0 = maximum softening, 0.0 = no change, 1.0 = maximum sharpening
+		
+		if (abs(intensity) < 0.001) return color; // No change
+		
+		float3 result = color;
+		
+		if (intensity > 0.0)
+		{
+			// Sharpen: increase contrast and vibrance more carefully
+			
+			// First preserve the original luminance
+			float originalLum = dot(color, float3(0.299, 0.587, 0.114));
+			
+			// Apply contrast with reduced intensity
+			result = AdjustContrast(result, intensity * 0.3, intensity * 0.1);
+			
+			// Apply vibrance with better saturation handling
+			result = AdjustVibrance(result, intensity * 0.4);
+			
+			// Ensure we don't oversaturate
+			float newLum = dot(result, float3(0.299, 0.587, 0.114));
+			if (newLum > 0.001)
+			{
+				// Limit the saturation boost to prevent color artifacts
+				float3 gray = float3(newLum, newLum, newLum);
+				float currentSat = length(result - gray);
+				float maxSat = 0.8; // Prevent oversaturation
+				
+				if (currentSat > maxSat)
+				{
+					result = gray + (result - gray) * (maxSat / currentSat);
+				}
+			}
+			
+			// Very subtle highlight adjustment
+			result = pow(abs(result), max(0.95, 1.0 - intensity * 0.05)) * sign(result);
+		}
+		else
+		{
+			// Soften: reduce contrast and vibrance
+			float soften = -intensity;
+			result = AdjustContrast(result, -soften * 0.4, 0.0);
+			result = AdjustVibrance(result, -soften * 0.5);
+			// Subtle midtone lift for softer appearance
+			result = pow(abs(result), 1.0 - soften * 0.05) * sign(result);
+		}
+		
+		return saturate(result);
+	}
+
+
+	// Advanced contrast curve adjustment
+	float3 ContrastCurve(float3 color, float contrast, float pivot)
+	{
+		// Contrast: -1.0 to 1.0, Pivot: 0.0 to 1.0 (default 0.5)
+		// Adjusts contrast around a pivot point
+		
+		float3 result;
+		
+		if (contrast > 0.0)
+		{
+			// S-curve for contrast increase
+			float slope = 1.0 + contrast * 2.0;
+			result = pivot + (color - pivot) * slope;
+		}
+		else
+		{
+			// Inverse S-curve for contrast decrease
+			float slope = 1.0 / (1.0 - contrast);
+			result = pivot + (color - pivot) / slope;
+		}
+		
+		return saturate(result);
+	}
+
+	// Histogram-based contrast adjustment (preserves overall distribution)
+	float3 HistogramContrast(float3 color, float amount)
+	{
+		// Amount: -1.0 to 1.0
+		// This method better preserves the overall brightness distribution
+		
+		float luminance = dot(color, float3(0.299, 0.587, 0.114));
+		
+		// Define contrast curve based on luminance zones
+		float shadow = smoothstep(0.0, 0.3, luminance);
+		float midtone = 1.0 - abs(luminance - 0.5) * 2.0;
+		float highlight = smoothstep(0.7, 1.0, luminance);
+		
+		float3 result = color;
+		
+		if (amount > 0.0)
+		{
+			// Increase contrast: darken shadows, brighten highlights
+			result *= 1.0 + amount * highlight * 0.3;
+			result *= 1.0 - amount * (1.0 - shadow) * 0.2;
+		}
+		else
+		{
+			// Decrease contrast: lift shadows, compress highlights
+			float compress = -amount;
+			result = result * (1.0 - compress * 0.3) + compress * 0.3;
+		}
+		
+		return saturate(result);
+	}
+
+	// Specialized softening filter (negative contrast with pleasing results)
+	float3 SoftenImage(float3 color, float amount)
+	{
+		// Amount: 0.0 = no change, 1.0 = maximum softening
+		
+		// Reduce local contrast
+		float3 softened = AdjustContrast(color, -amount * 0.6, 0.0);
+		
+		// Slight desaturation for film-like softness
+		softened = AdjustVibrance(softened, -amount * 0.3);
+		
+		// Lift shadows slightly for softer look
+		softened = pow(softened, 1.0 - amount * 0.1);
+		
+		// Blend with slight blur simulation (fake glow)
+		float3 glow = pow(softened, 2.2) * 1.2;
+		softened = lerp(softened, glow, amount * 0.1);
+		
+		return saturate(softened);
+	}
 };

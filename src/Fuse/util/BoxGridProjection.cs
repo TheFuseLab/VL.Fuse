@@ -5,9 +5,8 @@ namespace Fuse.util;
 
 public static class BoxGridProjection
 {
-    
     #region SurfaceUtil
-    
+
     public struct SurfaceData
     {
         public Vector4[] PositionsAndType;
@@ -15,7 +14,7 @@ public static class BoxGridProjection
         public Vector4[] Dimensions;
         public Vector4[] ColorsAndScale;
     }
-    
+
     public static SurfaceData CalculateSurfaceData(Vector3 roomCenter, Vector3 roomDimensions)
     {
         var surfaceData = new SurfaceData
@@ -92,8 +91,8 @@ public static class BoxGridProjection
 
         return surfaceData;
     }
-    
-    
+
+
     public struct LayoutInfo
     {
         public Vector4[] FaceLayoutInfo;
@@ -187,8 +186,9 @@ public static class BoxGridProjection
 
     #endregion
 
-    #region 
-    
+
+    #region
+
     private static void ExtractPlanesFromMatrix(
         Matrix viewProj,
         out Plane left,
@@ -247,8 +247,6 @@ public static class BoxGridProjection
         Plane.Normalize(ref far, out far);
     }
 
-
-    
 
     // --- Helper Functions Needed for Clipping ---
 
@@ -323,12 +321,9 @@ public static class BoxGridProjection
     }
 
 
-
-    /// 
-    ///     Calculates the polygons representing the visible portions of a transformed box's faces within a frustum defined by
-    ///     a View-Projection matrix.
-    ///     Uses the Sutherland-Hodgman algorithm to clip each face against the frustum planes.
-   
+    /// Calculates the polygons representing the visible portions of a transformed box's faces within a frustum defined by
+    /// a View-Projection matrix.
+    /// Uses the Sutherland-Hodgman algorithm to clip each face against the frustum planes.
     public static List<List<Vector3>> GetClippedBoxFacePolygonsFromMatrix( // Renamed slightly
         Matrix viewProj, // Changed from BoundingFrustum
         Vector3 boxCenter,
@@ -338,7 +333,7 @@ public static class BoxGridProjection
         var halfDim = boxDimensions * 0.5f;
 
         // 1. Get the 6 faces of the transformed box as polygons
-        List<Vector3>[] transformedFacePolygons =
+        var transformedFacePolygons =
             GetTransformedBoxFacePolygons(boxCenter, halfDim, ref boxWorldTransform);
 
         // 2. Extract frustum planes directly from the matrix
@@ -367,11 +362,143 @@ public static class BoxGridProjection
 
         return visiblePolygons; // Vertices are in transformed world space
     }
-    
+
+    /// <summary>
+    ///     Calculates a transformation matrix that creates the smallest possible bounding rectangle for coplanar points
+    ///     Returns identity matrix if input is invalid
+    /// </summary>
+    /// <param name="points">Array of Vector3 points on the same plane (minimum 3 points required)</param>
+    /// <returns>Matrix transformation that will transform the points into the smallest possible bounding rectangle</returns>
+    public static Matrix CalculateQuadTransform(Vector3[] points)
+    {
+        // Validate input - need at least 3 points to define a plane
+        if (points?.Length < 3) return Matrix.Identity;
+
+        var normal = Vector3.Cross(points[1] - points[0], points[2] - points[0]);
+        if (normal.LengthSquared() < MathUtil.ZeroTolerance) return Matrix.Identity;
+
+        normal.Normalize();
+
+        // Check if all points are coplanar
+        for (var i = 3; i < points.Length; i++)
+            if (System.Math.Abs(Vector3.Dot(points[i] - points[0], normal)) >= MathUtil.ZeroTolerance)
+                return Matrix.Identity;
+
+        // Calculate centroid using Stride math
+        var center = Vector3.Zero;
+        foreach (var point in points) center += point;
+        center /= points.Length;
+
+        // Collect potential rotation axes from various point relationships
+        var edges = new List<Vector3>();
+        var numPoints = points.Length;
+
+        // Add edges between consecutive points (treating as a polygon)
+        for (var i = 0; i < numPoints; i++)
+        {
+            var edge = points[(i + 1) % numPoints] - points[i];
+            if (edge.LengthSquared() > MathUtil.ZeroTolerance)
+            {
+                edge.Normalize();
+                edges.Add(edge);
+            }
+        }
+
+        // Add vectors from center to each point
+        foreach (var point in points)
+        {
+            var radial = point - center;
+            if (radial.LengthSquared() > MathUtil.ZeroTolerance)
+            {
+                radial.Normalize();
+                edges.Add(radial);
+            }
+        }
+
+        // Add some additional vectors between non-adjacent points (sample to avoid too many)
+        var maxSamples = MathUtil.Clamp(numPoints * (numPoints - 1) / 2, 0, 10);
+        var sampleCount = 0;
+        for (var i = 0; i < numPoints && sampleCount < maxSamples; i++)
+        for (var j = i + 2; j < numPoints && sampleCount < maxSamples; j++)
+        {
+            var diagonal = points[j] - points[i];
+            if (diagonal.LengthSquared() > MathUtil.ZeroTolerance)
+            {
+                diagonal.Normalize();
+                edges.Add(diagonal);
+                sampleCount++;
+            }
+        }
+
+        if (edges.Count == 0) return Matrix.Identity;
+
+        // Find orientation with smallest bounding rectangle area
+        var minArea = float.MaxValue;
+        var bestRotation = Matrix.Identity;
+        var bestDimensions = Vector2.Zero;
+        var bestCenter = Vector3.Zero;
+
+        foreach (var primaryAxis in edges)
+        {
+            var secondaryAxis = Vector3.Cross(normal, primaryAxis);
+            secondaryAxis.Normalize();
+
+            // Calculate bounding rectangle for all points in this orientation
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+
+            foreach (var point in points)
+            {
+                var localPoint = point - center;
+                var projX = Vector3.Dot(localPoint, primaryAxis);
+                var projY = Vector3.Dot(localPoint, secondaryAxis);
+
+                minX = System.Math.Min(minX, projX);
+                maxX = System.Math.Max(maxX, projX);
+                minY = System.Math.Min(minY, projY);
+                maxY = System.Math.Max(maxY, projY);
+            }
+
+            var width = maxX - minX;
+            var height = maxY - minY;
+            var area = width * height;
+
+            if (area < minArea)
+            {
+                minArea = area;
+                bestDimensions = new Vector2(width, height);
+
+                // Calculate the actual center of the bounding rectangle in 3D space
+                var centerX = (minX + maxX) * 0.5f;
+                var centerY = (minY + maxY) * 0.5f;
+                bestCenter = center + centerX * primaryAxis + centerY * secondaryAxis;
+
+                // Build rotation matrix for this orientation
+                bestRotation = new Matrix
+                {
+                    Row1 = new Vector4(primaryAxis, 0),
+                    Row2 = new Vector4(secondaryAxis, 0),
+                    Row3 = new Vector4(normal, 0),
+                    Row4 = new Vector4(0, 0, 0, 1)
+                };
+            }
+        }
+
+        if (bestDimensions.X < MathUtil.ZeroTolerance || bestDimensions.Y < MathUtil.ZeroTolerance)
+            return Matrix.Identity;
+
+        // Create transformation: Scale unit square to bounding rectangle size, 
+        // then rotate to correct orientation, then translate to correct position
+        var scale = Matrix.Scaling(bestDimensions.X, bestDimensions.Y, 1);
+        var translation = Matrix.Translation(bestCenter);
+
+        return scale * bestRotation * translation;
+    }
+
     #endregion
-    
+
     #region UVUtils
-    
+
     private const float POINT_ON_PLANE_TOLERANCE = 0.1f;
 
     // --- Helper Functions (RayPlaneIntersection, IsPointInRectangle, MapToTexture) ---
@@ -607,6 +734,6 @@ public static class BoxGridProjection
 
         return normalizedCrossCoord;
     }
-    
+
     #endregion
 }

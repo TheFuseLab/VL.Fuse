@@ -14,9 +14,10 @@ public class ComputeResource
         Size = size;
     }
 
-    public AttributeType AttributeType { get;  }
-  //  public string Group { get;  }
-    public string Resource { get;  }
+    public AttributeType AttributeType { get; }
+
+    //  public string Group { get;  }
+    public string Resource { get; }
 
     public Int3 Size { get; }
 /*
@@ -28,22 +29,21 @@ public class ComputeResource
     public override bool Equals(object obj)
     {
         if (obj is ComputeResource otherOverride)
-        {
             return /*SameTarget(otherOverride) &&*/ Resource == otherOverride.Resource;
-        }
         return false;
     }
 
     public override int GetHashCode()
     {
-        var hash = 17; 
+        var hash = 17;
         hash = hash * 23 + AttributeType.GetHashCode();
-      //  hash = hash * 23 + (Group?.GetHashCode() ?? 0);
+        //  hash = hash * 23 + (Group?.GetHashCode() ?? 0);
         hash = hash * 23 + (Resource?.GetHashCode() ?? 0);
         return hash;
     }
-    
-    public static IEnumerable<ComputeResource> MergeResources(IEnumerable<ComputeResource> baseSequence, IEnumerable<ComputeResource> sequence2)
+
+    public static IEnumerable<ComputeResource> MergeResources(IEnumerable<ComputeResource> baseSequence,
+        IEnumerable<ComputeResource> sequence2)
     {
         var baseDict = baseSequence.ToDictionary(g => new { g.AttributeType, g.Resource }, g => g);
 
@@ -55,9 +55,7 @@ public class ComputeResource
             if (baseDict.ContainsKey(key))
             {
                 if (!baseDict[key].Equals(item)) // If the item in sequence2 is different than the one in baseSequence
-                {
                     baseDict[key] = item; // Replace the item in the baseSequence with the one from sequence2
-                }
             }
             else
             {

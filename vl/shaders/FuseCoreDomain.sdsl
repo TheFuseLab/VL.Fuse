@@ -397,4 +397,125 @@ shader FuseCoreDomain: FuseCoreMath
 		return q.xzy;
 	}
 
+	static const float PI = 3.14159265359;
+	static const float TWO_PI = 6.28318530718;
+	static const float GOLDEN_ANGLE = 2.39996322972; // Golden angle in radians
+
+	// ============================================================================
+	// Octahedral Mapping - Best general purpose solution
+	// Low distortion, no singularities, continuous parameterization
+	// ============================================================================
+	float2 OctahedralMap(float3 normal)
+	{
+		float3 n = abs(normal);
+		float2 uv = normal.xy / (n.x + n.y + n.z);
+		
+		if (normal.z < 0.0)
+		{
+			uv = (1.0 - abs(uv.yx)) * (uv.xy >= 0.0 ? 1.0 : -1.0);
+		}
+		
+		return uv * 0.5 + 0.5;
+	}
+
+	// Inverse octahedral mapping (2D to 3D)
+	float3 OctahedralMapInverse(float2 uv)
+	{
+		uv = uv * 2.0 - 1.0;
+		float3 n = float3(uv.x, uv.y, 1.0 - abs(uv.x) - abs(uv.y));
+		
+		if (n.z < 0.0)
+		{
+			float2 signs = (n.xy >= 0.0 ? 1.0 : -1.0);
+			n.xy = (1.0 - abs(n.yx)) * signs;
+		}
+		
+		return normalize(n);
+	}
+
+	// ============================================================================
+	// Stereographic Projection - Conformal mapping
+	// Preserves angles, infinite domain, good for effects
+	// ============================================================================
+	float2 StereographicMap(float3 normal)
+	{
+		float k = 1.0 / (1.0 + normal.z);
+		return float2(normal.x * k, normal.y * k);
+	}
+
+	// Inverse stereographic projection with scale parameter
+	float3 StereographicMapInverse(float2 uv, float scale)
+	{
+		float r2 = dot(uv, uv) / (scale * scale);
+		float k = 2.0 / (1.0 + r2);
+		return float3(k * uv.x / scale, k * uv.y / scale, k - 1.0);
+	}
+
+	// ============================================================================
+	// HEALPix-like Projection - Equal area mapping
+	// Good for uniform sampling, used in cosmology
+	// ============================================================================
+	float2 HEALPixMap(float3 normal)
+	{
+		float phi = atan2(normal.y, normal.x);
+		float z = normal.z;
+		float sigma = sqrt(3.0 * (1.0 - abs(z)));
+		
+		float u = phi / TWO_PI + 0.5;
+		float v = (z > 0.0) ? 
+			(2.0 - sigma) / 4.0 : 
+			(2.0 + sigma) / 4.0;
+		
+		return float2(u, v);
+	}
+
+	// ============================================================================
+	// Fibonacci Spiral Mapping - Low discrepancy spiral
+	// Good for quasi-uniform distribution
+	// ============================================================================
+	float2 FibonacciSpiralMap(float3 normal)
+	{
+		float phi = atan2(normal.y, normal.x);
+		float cosTheta = normal.z;
+		float k = (1.0 + cosTheta) * 0.5;
+		
+		// Golden ratio spiral offset
+		float spiral = frac(k * GOLDEN_ANGLE / TWO_PI * 10.0);
+		
+		return float2(phi / TWO_PI + 0.5, spiral);
+	}
+
+	// ============================================================================
+	// Equal Area Cylindrical Projection
+	// Better area preservation than standard spherical coordinates
+	// ============================================================================
+	float2 EqualAreaCylindricalMap(float3 normal)
+	{
+		float phi = atan2(normal.y, normal.x) / TWO_PI + 0.5;
+		float v = asin(clamp(normal.z, -1.0, 1.0)) / PI + 0.5;
+		return float2(phi, v);
+	}
+
+	// Inverse equal area cylindrical
+	float3 EqualAreaCylindricalMapInverse(float2 uv)
+	{
+		float phi = (uv.x - 0.5) * TWO_PI;
+		float theta = asin(clamp((uv.y - 0.5) * 2.0, -1.0, 1.0));
+		
+		float cosTheta = cos(theta);
+		return float3(
+			cosTheta * cos(phi),
+			cosTheta * sin(phi),
+			sin(theta)
+		);
+	}
+
+	// Standard spherical coordinates (for comparison - has polar distortion)
+	float2 SphericalCoordinates(float3 normal)
+	{
+		float phi = atan2(normal.y, normal.x) / TWO_PI + 0.5;
+		float theta = acos(clamp(normal.z, -1.0, 1.0)) / PI;
+		return float2(phi, theta);
+	}
+
 };
