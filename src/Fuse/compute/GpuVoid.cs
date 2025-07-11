@@ -1,6 +1,5 @@
-namespace Fuse.compute
+namespace Fuse.compute;
+
+public class GpuVoid
 {
-    public class GpuVoid
-    {
-    }
 }

@@ -2,48 +2,48 @@
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Text;
-using Fuse.compute;
 using Stride.Core.Mathematics;
 using VL.Core;
 using VL.Core.PublicAPI;
 
-namespace Fuse.regions
+namespace Fuse.regions;
+
+public class Grid3DGroup : Group
 {
-    public class Grid3DGroup : Group
+    private readonly ShaderNode<Int3> _cell;
+    private readonly BufferInput<Int2> _elementIndices;
+    private readonly ShaderNode<Int3> _gridDim;
+
+    private readonly BufferInput<Int2> _gridIndices;
+
+    private readonly Grid3DRegion _parentRegion;
+
+    public Grid3DGroup(
+        NodeContext nodeContext,
+        Grid3DRegion parentRegion,
+        ShaderNode<Int3> cell,
+        ShaderNode<Int3> gridDim,
+        BufferInput<Int2> gridIndices,
+        BufferInput<Int2> elementIndices,
+        IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "Grid3DGroup")
     {
-        private readonly ShaderNode<Int3> _cell;
-        private readonly ShaderNode<Int3> _gridDim;
+        Name = "Grid3DGroup";
+        _parentRegion = parentRegion;
+        _cell = cell;
+        _gridDim = gridDim;
 
-        private readonly BufferInput<Int2> _gridIndices;
-        private readonly BufferInput<Int2> _elementIndices;
+        _gridIndices = gridIndices;
+        _elementIndices = elementIndices;
+    }
 
-        private readonly Grid3DRegion _parentRegion;
+    protected override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes,
+        string thePrepend)
+    {
+        if (!theHashes.Add(this)) return;
 
-        public Grid3DGroup(
-            NodeContext nodeContext,
-            Grid3DRegion parentRegion,
-            ShaderNode<Int3> cell,
-            ShaderNode<Int3> gridDim,
-            BufferInput<Int2> gridIndices,
-            BufferInput<Int2> elementIndices,
-            IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "Grid3DGroup")
-        {
-            Name = "Grid3DGroup";
-            _parentRegion = parentRegion;
-            _cell = cell;
-            _gridDim = gridDim;
+        if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
 
-            _gridIndices = gridIndices;
-            _elementIndices = elementIndices;
-        }
-
-        protected override void BuildSource(StringBuilder theSourceBuilder, HashSet<AbstractShaderNode> theHashes, string thePrepend)
-        {
-            if (!theHashes.Add(this)) return;
-            
-            if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
-
-            const string shaderCode = @"
+        const string shaderCode = @"
         for (int Z = max(${cell}.z - 1, 0); Z <= min(${cell}.z + 1, ${dim}.z - 1); Z++) 
 	    for (int Y = max(${cell}.y - 1, 0); Y <= min(${cell}.y + 1, ${dim}.y - 1); Y++) 
 	    for (int X = max(${cell}.x - 1, 0); X <= min(${cell}.x + 1, ${dim}.x - 1); X++){
@@ -56,94 +56,97 @@ namespace Fuse.regions
 
                 if(((int)streams.DispatchThreadId.x) == ${index})continue;
                 ";
-            theSourceBuilder.Append(
-                ShaderNodesUtil.Evaluate(
-                    shaderCode,
-                    new Dictionary<string, string>
-                    {
-                        { "cell", _cell.ID },
-                        { "dim", _gridDim.ID },
-                        { "gridIndices", _gridIndices.ID },
-                        { "elementIndices", _elementIndices.ID },
-                        { "index", _parentRegion.IndexName }
-                    }
-                )
-            );
-            theSourceBuilder.AppendLine();
-            var myChildSourceBuilder = new StringBuilder();
-            BuildChildrenSource(myChildSourceBuilder, theHashes, thePrepend);
-            var myChildSource = myChildSourceBuilder.ToString();
-            myChildSource = ShaderNodesUtil.IndentCode(myChildSource);
-            theSourceBuilder.Append(myChildSource);
+        theSourceBuilder.Append(
+            ShaderNodesUtil.Evaluate(
+                shaderCode,
+                new Dictionary<string, string>
+                {
+                    { "cell", _cell.ID },
+                    { "dim", _gridDim.ID },
+                    { "gridIndices", _gridIndices.ID },
+                    { "elementIndices", _elementIndices.ID },
+                    { "index", _parentRegion.IndexName }
+                }
+            )
+        );
+        theSourceBuilder.AppendLine();
+        var myChildSourceBuilder = new StringBuilder();
+        BuildChildrenSource(myChildSourceBuilder, theHashes, thePrepend);
+        var myChildSource = myChildSourceBuilder.ToString();
+        myChildSource = ShaderNodesUtil.IndentCode(myChildSource);
+        theSourceBuilder.Append(myChildSource);
 
-            var source = SourceCode;
-            if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(this))
-            {
-                theSourceBuilder.Append("        " + source + Environment.NewLine);
-            }
+        var source = SourceCode;
+        if (!string.IsNullOrWhiteSpace(source.Trim()) && theHashes.Add(this))
+            theSourceBuilder.Append("        " + source + Environment.NewLine);
 
-            theSourceBuilder.Append(@"
+        theSourceBuilder.Append(@"
             }
         }");
-            theSourceBuilder.AppendLine();
-        }
+        theSourceBuilder.AppendLine();
     }
+}
 
-    public class Index3DNode : ShaderNode<uint>
+public class Index3DNode : ShaderNode<uint>
+{
+    public Index3DNode(NodeContext nodeContext) : base(nodeContext, "index")
     {
-        [field: ThreadStatic] public static NodeContext Current { get; private set; }
-
-        public static IDisposable MakeCurrent(NodeContext context)
-        {
-            var previous = Current;
-            Current = context;
-            return Disposable.Create(() => { Current = previous; });
-        }
-
-        public Index3DNode(NodeContext nodeContext) : base(nodeContext, "index")
-        {
-            ID = Current == null ?  "0": $"index_{ShaderNodesUtil.GetHashCode(Current)}";
-            SetInputs(new List<AbstractShaderNode>());
-        }
-
-        public override string ID { get; }
-
-        protected override string SourceTemplate()
-        {
-            return "";
-        }
+        ID = Current == null ? "0" : $"index_{ShaderNodesUtil.GetHashCode(Current)}";
+        SetInputs(new List<AbstractShaderNode>());
     }
 
-    public class Grid3DRegion : AbstractRegion
+    [field: ThreadStatic] public static NodeContext Current { get; private set; }
+
+    public override string ID { get; }
+
+    public static IDisposable MakeCurrent(NodeContext context)
     {
-        public string IndexName { get; }
-
-        public Grid3DRegion(
-            NodeContext nodeContext,
-            ShaderNode<Int3> cell,
-            ShaderNode<Int3> gridDim,
-            BufferInput<Int2> gridIndices,
-            BufferInput<Int2> elementIndices,
-            IEnumerable<AbstractShaderNode> theInputs,
-            IEnumerable<AbstractShaderNode> theOutputs,
-            IEnumerable<AbstractShaderNode> theCrossLinks,
-            IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "forRegion")
-        {
-            IndexName = "index_" + HashCode;
-            SetupRegion(
-                (subContextFactory, myOutputs) => new Grid3DGroup(
-                    subContextFactory.NextSubContext(), 
-                    this, 
-                    cell, 
-                    gridDim, 
-                    gridIndices, 
-                    elementIndices,  
-                    myOutputs),
-                (theInputList) => { theInputList.Add(cell);theInputList.Add(gridDim);theInputList.Add(gridIndices);theInputList.Add(elementIndices);},
-                theInputs,
-                theOutputs, 
-                theCrossLinks, 
-                theDescriptions);
-        }
+        var previous = Current;
+        Current = context;
+        return Disposable.Create(() => { Current = previous; });
     }
+
+    protected override string SourceTemplate()
+    {
+        return "";
+    }
+}
+
+public class Grid3DRegion : AbstractRegion
+{
+    public Grid3DRegion(
+        NodeContext nodeContext,
+        ShaderNode<Int3> cell,
+        ShaderNode<Int3> gridDim,
+        BufferInput<Int2> gridIndices,
+        BufferInput<Int2> elementIndices,
+        IEnumerable<AbstractShaderNode> theInputs,
+        IEnumerable<AbstractShaderNode> theOutputs,
+        IEnumerable<AbstractShaderNode> theCrossLinks,
+        IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "forRegion")
+    {
+        IndexName = "index_" + HashCode;
+        SetupRegion(
+            (subContextFactory, myOutputs) => new Grid3DGroup(
+                subContextFactory.NextSubContext(),
+                this,
+                cell,
+                gridDim,
+                gridIndices,
+                elementIndices,
+                myOutputs),
+            theInputList =>
+            {
+                theInputList.Add(cell);
+                theInputList.Add(gridDim);
+                theInputList.Add(gridIndices);
+                theInputList.Add(elementIndices);
+            },
+            theInputs,
+            theOutputs,
+            theCrossLinks,
+            theDescriptions);
+    }
+
+    public string IndexName { get; }
 }

@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Stride.Core.Mathematics;
 
 namespace Fuse.util;
 
 public static class BoxGridProjection
 {
-    
     #region SurfaceUtil
-    
+
     public struct SurfaceData
     {
         public Vector4[] PositionsAndType;
@@ -16,7 +14,7 @@ public static class BoxGridProjection
         public Vector4[] Dimensions;
         public Vector4[] ColorsAndScale;
     }
-    
+
     public static SurfaceData CalculateSurfaceData(Vector3 roomCenter, Vector3 roomDimensions)
     {
         var surfaceData = new SurfaceData
@@ -93,8 +91,8 @@ public static class BoxGridProjection
 
         return surfaceData;
     }
-    
-    
+
+
     public struct LayoutInfo
     {
         public Vector4[] FaceLayoutInfo;
@@ -187,11 +185,10 @@ public static class BoxGridProjection
     }
 
     #endregion
-    
-    
 
-    #region 
-    
+
+    #region
+
     private static void ExtractPlanesFromMatrix(
         Matrix viewProj,
         out Plane left,
@@ -250,8 +247,6 @@ public static class BoxGridProjection
         Plane.Normalize(ref far, out far);
     }
 
-
-    
 
     // --- Helper Functions Needed for Clipping ---
 
@@ -326,12 +321,9 @@ public static class BoxGridProjection
     }
 
 
-
-    /// 
-    ///     Calculates the polygons representing the visible portions of a transformed box's faces within a frustum defined by
-    ///     a View-Projection matrix.
-    ///     Uses the Sutherland-Hodgman algorithm to clip each face against the frustum planes.
-   
+    /// Calculates the polygons representing the visible portions of a transformed box's faces within a frustum defined by
+    /// a View-Projection matrix.
+    /// Uses the Sutherland-Hodgman algorithm to clip each face against the frustum planes.
     public static List<List<Vector3>> GetClippedBoxFacePolygonsFromMatrix( // Renamed slightly
         Matrix viewProj, // Changed from BoundingFrustum
         Vector3 boxCenter,
@@ -341,7 +333,7 @@ public static class BoxGridProjection
         var halfDim = boxDimensions * 0.5f;
 
         // 1. Get the 6 faces of the transformed box as polygons
-        List<Vector3>[] transformedFacePolygons =
+        var transformedFacePolygons =
             GetTransformedBoxFacePolygons(boxCenter, halfDim, ref boxWorldTransform);
 
         // 2. Extract frustum planes directly from the matrix
@@ -370,7 +362,7 @@ public static class BoxGridProjection
 
         return visiblePolygons; // Vertices are in transformed world space
     }
-    
+
     /// <summary>
     ///     Calculates a transformation matrix that creates the smallest possible bounding rectangle for coplanar points
     ///     Returns identity matrix if input is invalid
@@ -502,11 +494,11 @@ public static class BoxGridProjection
 
         return scale * bestRotation * translation;
     }
-    
+
     #endregion
-    
+
     #region UVUtils
-    
+
     private const float POINT_ON_PLANE_TOLERANCE = 0.1f;
 
     // --- Helper Functions (RayPlaneIntersection, IsPointInRectangle, MapToTexture) ---
@@ -742,6 +734,6 @@ public static class BoxGridProjection
 
         return normalizedCrossCoord;
     }
-    
+
     #endregion
 }

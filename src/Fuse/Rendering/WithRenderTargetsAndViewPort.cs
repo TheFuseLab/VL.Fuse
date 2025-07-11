@@ -6,56 +6,55 @@ using RendererBase = VL.Stride.Rendering.RendererBase;
 namespace Fuse.Rendering;
 
 public class WithRenderTargetAndViewPort : RendererBase
+{
+    private readonly ViewportState viewportState = new();
+
+    public Texture RenderTarget { get; set; }
+
+    public Texture DepthBuffer { get; set; }
+
+    protected override void DrawInternal(RenderDrawContext context)
     {
-        ViewportState viewportState = new ViewportState();
+        var renderTarget = RenderTarget;
+        var depthBuffer = DepthBuffer;
+        var setRenderTarget = renderTarget != null;
+        var setDepthBuffer = depthBuffer != null;
 
-        public Texture RenderTarget { get; set; }
-
-        public Texture DepthBuffer { get; set; }
-
-        protected override void DrawInternal(RenderDrawContext context)
+        if (setRenderTarget || setDepthBuffer)
         {
-            var renderTarget = RenderTarget;
-            var depthBuffer = DepthBuffer;
-            var setRenderTarget = renderTarget != null;
-            var setDepthBuffer = depthBuffer != null;
+            var renderContext = context.RenderContext;
 
-            if (setRenderTarget || setDepthBuffer)
+            using (renderContext.SaveRenderOutputAndRestore())
+            using (renderContext.SaveViewportAndRestore())
+            using (context.PushRenderTargetsAndRestore())
             {
-                var renderContext = context.RenderContext;
-
-                using (renderContext.SaveRenderOutputAndRestore())
-                using (renderContext.SaveViewportAndRestore())
-                using (context.PushRenderTargetsAndRestore())
+                if (setRenderTarget)
                 {
-                    if (setRenderTarget)
-                    {
-                        renderContext.RenderOutput.RenderTargetFormat0 = renderTarget.ViewFormat;
-                        renderContext.RenderOutput.RenderTargetCount = 1;
+                    renderContext.RenderOutput.RenderTargetFormat0 = renderTarget.ViewFormat;
+                    renderContext.RenderOutput.RenderTargetCount = 1;
 
-                        renderContext.ViewportState = viewportState;
-                        renderContext.ViewportState.Viewport0 = new Viewport(0, 0, renderTarget.ViewWidth, renderTarget.ViewHeight);
-                    }
-                    //context.CommandList.SetViewports();
-                    //context.CommandList.SetRenderTargets();
-                    context.CommandList.SetRenderTargetAndViewport(depthBuffer, renderTarget);
-                    
-                    DrawInput(context);
-                    
-                }  
-            }
-            else
-            {
+                    renderContext.ViewportState = viewportState;
+                    renderContext.ViewportState.Viewport0 =
+                        new Viewport(0, 0, renderTarget.ViewWidth, renderTarget.ViewHeight);
+                }
+
+                //context.CommandList.SetViewports();
+                //context.CommandList.SetRenderTargets();
+                context.CommandList.SetRenderTargetAndViewport(depthBuffer, renderTarget);
+
                 DrawInput(context);
             }
         }
-        
-        
+        else
+        {
+            DrawInput(context);
+        }
     }
+}
 
 public class WithRenderTargetsAndViewPort : RendererBase
 {
-    ViewportState viewportState = new();
+    private readonly ViewportState viewportState = new();
 
     public List<Texture> RenderTargets { get; set; }
 
@@ -65,7 +64,7 @@ public class WithRenderTargetsAndViewPort : RendererBase
     {
         var depthBuffer = DepthBuffer;
         var setDepthBuffer = depthBuffer != null;
-        
+
         var renderTargets = new Texture[RenderTargets.Count];
         var setRenderTarget = renderTargets.Length > 0;
 
@@ -110,6 +109,7 @@ public class WithRenderTargetsAndViewPort : RendererBase
                                 break;
                         }
                     }
+
                     renderContext.RenderOutput.RenderTargetCount = RenderTargets.Count;
 
                     renderContext.ViewportState = viewportState;
@@ -120,7 +120,6 @@ public class WithRenderTargetsAndViewPort : RendererBase
                 context.CommandList.SetRenderTargetsAndViewport(depthBuffer, renderTargets);
 
                 DrawInput(context);
-
             }
         }
         else

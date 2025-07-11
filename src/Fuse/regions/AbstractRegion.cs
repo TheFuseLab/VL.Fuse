@@ -8,14 +8,14 @@ namespace Fuse.regions;
 
 public abstract class AbstractRegion : ShaderNode<GpuVoid>
 {
+    public delegate void AddRegionNodes(List<AbstractShaderNode> theNodes);
+
+    public delegate Group CreateRegionGroup(NodeSubContextFactory subContextFactory, List<AbstractShaderNode> outputs);
+
     protected AbstractRegion(NodeContext nodeContext, string theName) : base(nodeContext, theName)
     {
         OptionalOutputs = new List<AbstractShaderNode>();
     }
-
-    public delegate Group CreateRegionGroup(NodeSubContextFactory subContextFactory, List<AbstractShaderNode> outputs);
-
-    public delegate void AddRegionNodes(List<AbstractShaderNode> theNodes);
 
     protected virtual void SetupRegion(
         CreateRegionGroup theCreateRegion,
@@ -46,7 +46,6 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
 
 
         for (var i = 0; i < outputs.Count; i++)
-        {
             switch (outputs[i])
             {
                 case ShaderNode<GpuVoid> shaderNode:
@@ -68,10 +67,8 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
                     myOutputs.Add(myOutput);
                     break;
             }
-        }
 
         for (var i = 0; i < outputs.Count; i++)
-        {
             switch (outputs[i])
             {
                 case ShaderNode<GpuVoid>:
@@ -81,13 +78,11 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
                     myOutputs.Add(myAssign);
                     break;
             }
-        }
 
-        var inCall = new Group(subContextFactory.NextSubContext(),myInputs);
+        var inCall = new Group(subContextFactory.NextSubContext(), myInputs);
         var crossLinkCall = new Group(subContextFactory.NextSubContext(), myCrossLinks);
 
         for (var i = 0; i < outputs.Count; i++)
-        {
             switch (outputs[i])
             {
                 case ShaderNode<GpuVoid>:
@@ -103,7 +98,6 @@ public abstract class AbstractRegion : ShaderNode<GpuVoid>
 
                     break;
             }
-        }
 
         var inputList = new List<AbstractShaderNode> { crossLinkCall };
         theAddRegionNodes(inputList);

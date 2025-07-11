@@ -308,46 +308,46 @@ shader FuseCoreMath{
 	}
 
 	float3 ClosestPointOnBoxLayers(float3 pos, float3 boxCenter, float3 baseBoxSize, float3 space, out float3 normal, out int layer) {
-    // Transform position into the box's local space.
-    float3 localPos = pos - boxCenter;
-    float3 baseHalfSize = baseBoxSize * 0.5;
-    float3 absLocalPos = abs(localPos);
-    
-    // Compute extra distance beyond the base box boundaries.
-    float3 delta = max(abs(localPos) - baseHalfSize, 0); // extra distance per axis
-	float3 layersNeeded = delta / space;                   // per-axis layer requirement
-	layer = (int)round(max(max(layersNeeded.x, layersNeeded.y), layersNeeded.z));
-    float3 targetHalfSize = baseHalfSize + layer * space;
-    
-    // Clamp the point to the candidate box.
-    float3 clamped = clamp(localPos, -targetHalfSize, targetHalfSize);
-    
-    // Determine normal.
-    if (all(clamped == localPos)) {
-        // Point is inside the candidate box—push out to the nearest face.
-        float3 distToFace = targetHalfSize - absLocalPos;
-        if (distToFace.x < distToFace.y && distToFace.x < distToFace.z) {
-            normal = float3(sign(localPos.x), 0, 0);
-            clamped.x = targetHalfSize.x * sign(localPos.x);
-        } else if (distToFace.y < distToFace.z) {
-            normal = float3(0, sign(localPos.y), 0);
-            clamped.y = targetHalfSize.y * sign(localPos.y);
-        } else {
-            normal = float3(0, 0, sign(localPos.z));
-            clamped.z = targetHalfSize.z * sign(localPos.z);
-        }
-    } else {
-        // Point is outside: choose the axis with the largest deviation.
-        float3 diff = localPos - clamped;
-        float3 absDiff = abs(diff);
-        if (absDiff.x >= absDiff.y && absDiff.x >= absDiff.z)
-            normal = float3(sign(diff.x), 0, 0);
-        else if (absDiff.y >= absDiff.z)
-            normal = float3(0, sign(diff.y), 0);
-        else
-            normal = float3(0, 0, sign(diff.z));
-    }
-    
-    return clamped + boxCenter;
-}
+		// Transform position into the box's local space.
+		float3 localPos = pos - boxCenter;
+		float3 baseHalfSize = baseBoxSize * 0.5;
+		float3 absLocalPos = abs(localPos);
+		
+		// Compute extra distance beyond the base box boundaries.
+		float3 delta = max(abs(localPos) - baseHalfSize, 0); // extra distance per axis
+		float3 layersNeeded = delta / space;                   // per-axis layer requirement
+		layer = (int)round(max(max(layersNeeded.x, layersNeeded.y), layersNeeded.z));
+		float3 targetHalfSize = baseHalfSize + layer * space;
+		
+		// Clamp the point to the candidate box.
+		float3 clamped = clamp(localPos, -targetHalfSize, targetHalfSize);
+		
+		// Determine normal.
+		if (all(clamped == localPos)) {
+			// Point is inside the candidate box—push out to the nearest face.
+			float3 distToFace = targetHalfSize - absLocalPos;
+			if (distToFace.x < distToFace.y && distToFace.x < distToFace.z) {
+				normal = float3(sign(localPos.x), 0, 0);
+				clamped.x = targetHalfSize.x * sign(localPos.x);
+			} else if (distToFace.y < distToFace.z) {
+				normal = float3(0, sign(localPos.y), 0);
+				clamped.y = targetHalfSize.y * sign(localPos.y);
+			} else {
+				normal = float3(0, 0, sign(localPos.z));
+				clamped.z = targetHalfSize.z * sign(localPos.z);
+			}
+		} else {
+			// Point is outside: choose the axis with the largest deviation.
+			float3 diff = localPos - clamped;
+			float3 absDiff = abs(diff);
+			if (absDiff.x >= absDiff.y && absDiff.x >= absDiff.z)
+				normal = float3(sign(diff.x), 0, 0);
+			else if (absDiff.y >= absDiff.z)
+				normal = float3(0, sign(diff.y), 0);
+			else
+				normal = float3(0, 0, sign(diff.z));
+		}
+		
+		return clamped + boxCenter;
+	}
 };

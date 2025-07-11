@@ -1,12 +1,11 @@
-﻿using Stride.Core.Extensions;
-using Stride.Core.Mathematics;
+﻿using Stride.Core.Mathematics;
 
 namespace Fuse.util;
 
 public static class FrustumUtil
 {
     /// <summary>
-    /// Determines whether a sphere intersects with the frustum defined by the given planes.
+    ///     Determines whether a sphere intersects with the frustum defined by the given planes.
     /// </summary>
     /// <param name="planes">An array of six normalized planes defining the frustum.</param>
     /// <param name="sphere">The BoundingSphere to test.</param>
@@ -26,16 +25,15 @@ public static class FrustumUtil
         // The sphere is either intersecting or completely inside all planes
         return true;
     }
-    
+
     /// <summary>
-    /// Extracts the six normalized planes from the BoundingFrustum.
-    /// Order: Left, Right, Top, Bottom, Near, Far
+    ///     Extracts the six normalized planes from the BoundingFrustum.
+    ///     Order: Left, Right, Top, Bottom, Near, Far
     /// </summary>
     /// <param name="frustum">The BoundingFrustum to extract planes from.</param>
     /// <returns>An array of six normalized planes.</returns>
     public static Plane[] GetFrustumPlanes(BoundingFrustum frustum)
     {
-
         var planes = new Plane[6];
 
         // Left Plane
