@@ -1,12 +1,29 @@
-﻿namespace Fuse.Core.Base
+﻿namespace Fuse.Core.Base;
 
+public enum PickOneXY
 {
-    public enum PickOneXY { X, Y};
-
-    public enum PickOneXYZ { X, Y, Z };
-
-    public enum PickOneXYZW { X, Y, Z, W };
-
-    public enum PickTwoXYZ { XY, XZ, ZY };
+    X,
+    Y
 }
 
+public enum PickOneXYZ
+{
+    X,
+    Y,
+    Z
+}
+
+public enum PickOneXYZW
+{
+    X,
+    Y,
+    Z,
+    W
+}
+
+public enum PickTwoXYZ
+{
+    XY,
+    XZ,
+    ZY
+}

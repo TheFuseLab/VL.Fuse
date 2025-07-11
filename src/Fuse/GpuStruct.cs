@@ -1,24 +1,21 @@
-﻿namespace Fuse
+﻿namespace Fuse;
+
+public interface IGpuStruct
 {
+    string TypeName();
+}
 
-    public interface IGpuStruct
+public class GpuStruct : IGpuStruct
+{
+    private readonly string _typeName;
+
+    public GpuStruct(string theTypeName = "GpuStruct")
     {
-        string TypeName();
+        _typeName = theTypeName;
     }
 
-    public class GpuStruct : IGpuStruct
+    public string TypeName()
     {
-        private readonly string _typeName;
-        public GpuStruct(string theTypeName = "GpuStruct")
-        {
-            _typeName = theTypeName;
-        }
-        
-        public string TypeName()
-        {
-            return _typeName;
-        }
+        return _typeName;
     }
-
-    
 }

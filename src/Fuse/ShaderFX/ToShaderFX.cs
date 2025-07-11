@@ -1,40 +1,37 @@
 ﻿using System.Collections.Generic;
 
-namespace Fuse.ShaderFX
+namespace Fuse.ShaderFX;
+
+public class ShaderFXStage<T> : AbstractStage
 {
-    public class ShaderFXStage<T> : AbstractStage
-    {
-        private const string ShaderSource = @"
+    private const string ShaderSource = @"
     override ${resultType} Compute()
     {
 ${sourceFX}
         ${resultFX}
     }";
-        public ShaderFXStage(ShaderNode<T> theShaderNode) : base("FX", theShaderNode)
-        {
-        }
 
-        public override void AppendInputs(Dictionary<string, string> theTemplateMap)
-        {
-            if (TypeHelpers.GetGpuType<T>().Equals("void"))
-            {
-                theTemplateMap["resultFX"] = "";
-            }
-            else
-            {
-                theTemplateMap["resultFX"] = "return " + StageNode.ID +";";
-            }
-        }
-
-        public override string Source()
-        {
-            return ShaderSource;
-        }
-    }
-    public class ToShaderFX<T> : AbstractToShaderFX<T> 
+    public ShaderFXStage(ShaderNode<T> theShaderNode) : base("FX", theShaderNode)
     {
+    }
 
-        private const string ShaderSource = @"
+    public override void AppendInputs(Dictionary<string, string> theTemplateMap)
+    {
+        if (TypeHelpers.GetGpuType<T>().Equals("void"))
+            theTemplateMap["resultFX"] = "";
+        else
+            theTemplateMap["resultFX"] = "return " + StageNode.ID + ";";
+    }
+
+    public override string Source()
+    {
+        return ShaderSource;
+    }
+}
+
+public class ToShaderFX<T> : AbstractToShaderFX<T>
+{
+    private const string ShaderSource = @"
 shader ${shaderID} : Compute${shaderType}${mixins}
 {
     rgroup PerMaterial{
@@ -59,12 +56,11 @@ ${stageFX}
 
 };";
 
-        public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false) : base( 
-            new List<AbstractStage>{new ShaderFXStage<T>(theCompute)},
-            new Dictionary<string, string>(),
-            theIsCompute,
-            ShaderSource)
-        {
-        }
+    public ToShaderFX(ShaderNode<T> theCompute, bool theIsCompute = false) : base(
+        new List<AbstractStage> { new ShaderFXStage<T>(theCompute) },
+        new Dictionary<string, string>(),
+        theIsCompute,
+        ShaderSource)
+    {
     }
 }

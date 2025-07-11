@@ -1,14 +1,13 @@
-﻿namespace Fuse.math
+﻿namespace Fuse.math;
+
+public enum DistanceMetricsSelector
 {
-    public enum DistanceMetricsSelector
-    {
-        Euclidean,
-        EuclideanSquared,
-        Chebyshev,
-        Manhattan,
-        Canberra,
-        CosineSimilarity,
-        PearsonCorrelation,
-        Minkowski // not sure about this guy, since complicates the signature 
-    }
+    Euclidean,
+    EuclideanSquared,
+    Chebyshev,
+    Manhattan,
+    Canberra,
+    CosineSimilarity,
+    PearsonCorrelation,
+    Minkowski // not sure about this guy, since complicates the signature 
 }

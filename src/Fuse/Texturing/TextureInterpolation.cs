@@ -8,6 +8,7 @@ public enum TextureInterpolation
     Quintic,
     Linear
 }
+
 public enum BoxGridMode
 {
     Horizontal,

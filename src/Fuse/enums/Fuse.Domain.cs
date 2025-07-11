@@ -1,15 +1,67 @@
-﻿namespace Fuse.Domain
+﻿namespace Fuse.Domain;
+
+public enum DistanceMetric
 {
-    public enum DistanceMetric { Euclidean, EuclideanSquared, Chebyshev, Manhattan, Canberra, CosineSimilarity, PearsonCorrelation, Minkowski };
+    Euclidean,
+    EuclideanSquared,
+    Chebyshev,
+    Manhattan,
+    Canberra,
+    CosineSimilarity,
+    PearsonCorrelation,
+    Minkowski
+}
 
-    public enum DomainRepeat2D { WrapXY, MirrorXY, GridXY, WrapX, MirrorX, WrapY, MirrorY, PolarXY };
+public enum DomainRepeat2D
+{
+    WrapXY,
+    MirrorXY,
+    GridXY,
+    WrapX,
+    MirrorX,
+    WrapY,
+    MirrorY,
+    PolarXY
+}
 
-    public enum DomainRepeat3D { WrapX, WrapY, WrapZ, MirrorX, MirrorY, MirrorZ, WrapXY, WrapXZ, WrapYZ, MirrorXY, MirrorXZ, MirrorYZ, WrapXYZ, PolarXY, PolarXZ, PolarYZ };
+public enum DomainRepeat3D
+{
+    WrapX,
+    WrapY,
+    WrapZ,
 
-    public enum DomainAlignment
-    {
-        Start,
-        Center,
-        End
-    }
+    MirrorX,
+    MirrorY,
+    MirrorZ,
+
+    WrapXY,
+    WrapXZ,
+    WrapYZ,
+
+    MirrorXY,
+    MirrorXZ,
+    MirrorYZ,
+
+    WrapXYZ,
+
+    PolarXY,
+    PolarXZ,
+    PolarYZ
+}
+
+public enum DomainAlignment
+{
+    Start,
+    Center,
+    End
+}
+
+public enum SphericalMapping
+{
+    Octahedral,
+    Stereographic,
+    HEALPix,
+    FibonacciSpiral,
+    EqualAreaCylindrical,
+    Spherical
 }
