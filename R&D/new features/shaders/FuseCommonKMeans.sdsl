@@ -1,0 +1,89 @@
+shader FuseCommonKMeans{
+    // ==================== Random Number Generation ====================
+    int PCGHash(int seed)
+    {
+        // Use hex literals, which don't require a 'u' suffix.
+        uint state = uint(seed) * 0x2C927735 + 0xAC4B3C05;
+
+        int word = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
+        return (word >> 22) ^ word;
+    }
+
+    // ==================== Update Centroids with Parallel Reduction ====================
+    groupshared float4 localSum[256];
+    groupshared float localWeights[256];
+
+    void UpdateCentroid(
+        StructuredBuffer<float4> positions,
+        StructuredBuffer<int> clusterIDs,
+        RWStructuredBuffer<float4> centroids,
+        RWStructuredBuffer<int> clusterCounts,
+        int clusterIndex,
+        int threadIndex,
+        int numPoints,
+        bool useWeights)
+    {
+        // Initialize local storage
+        localSum[threadIndex] = float4(0, 0, 0, 0);
+        localWeights[threadIndex] = 0;
+        
+        // Each thread processes a subset of points
+        int pointsPerThread = (numPoints + 255) / 256;
+        int startPoint = threadIndex * pointsPerThread;
+        int endPoint = min(startPoint + pointsPerThread, numPoints);
+        
+        for (int i = startPoint; i < endPoint; i++)
+        {
+            if (clusterIDs[i] == clusterIndex)
+            {
+                float weight = useWeights ? positions[i].w : 1.0;
+                localSum[threadIndex] += positions[i] * weight;
+                localWeights[threadIndex] += weight;
+            }
+        }
+        
+        // Parallel reduction
+        GroupMemoryBarrierWithGroupSync();
+        
+        for (int s = 128; s > 0; s >>= 1)
+        {
+            if (threadIndex < s && threadIndex + s < 256)
+            {
+                localSum[threadIndex] += localSum[threadIndex + s];
+                localWeights[threadIndex] += localWeights[threadIndex + s];
+            }
+            GroupMemoryBarrierWithGroupSync();
+        }
+        
+        // Thread 0 updates the centroid
+        if (threadIndex == 0 && localWeights[0] > 0)
+        {
+            centroids[clusterIndex] = localSum[0] / localWeights[0];
+            clusterCounts[clusterIndex] = int(localWeights[0]);
+        }
+    }
+
+    // ==================== Compute Cluster Statistics ====================
+    void ComputeClusterWCSS(
+        StructuredBuffer<float> distances,
+        StructuredBuffer<int> clusterIDs,
+        RWStructuredBuffer<float> clusterWCSS,
+        int clusterIndex,
+        int numPoints)
+    {
+        float wcss = 0;
+        int count = 0;
+        
+        for (int i = 0; i < numPoints; i++)
+        {
+            if (clusterIDs[i] == clusterIndex)
+            {
+                float dist = distances[i];
+                wcss += dist * dist;
+                count++;
+            }
+        }
+        
+        clusterWCSS[clusterIndex] = wcss;
+    }
+};
