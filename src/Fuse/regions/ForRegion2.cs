@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Text;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Text;
@@ -18,6 +19,8 @@ public interface IForRegionInlay
 [ProcessNode(FragmentSelection = FragmentSelection.Explicit)]
 public class ForRegion2 : FuseRegionBase<IForRegionInlay>, IRegion<IForRegionInlay>
 {
+    private static readonly ConstantValue<int> s_fallbackStart = new(0);
+
     private ShaderNode<int> _inEnd;
     private ShaderNode<int> _inStart;
     private readonly ShaderNode<int> _indexNode;
@@ -28,6 +31,7 @@ public class ForRegion2 : FuseRegionBase<IForRegionInlay>, IRegion<IForRegionInl
     private readonly NodeContext _nodeContext;
     private bool _updateShaderNode;
     private IForRegionInlay _forRegionInlay;
+    private readonly Dictionary<InputDescription, AbstractShaderNode> innerInputs = new Dictionary<InputDescription, AbstractShaderNode>();
 
     [Fragment]
     public ForRegion2(NodeContext nodeContext)
@@ -38,11 +42,11 @@ public class ForRegion2 : FuseRegionBase<IForRegionInlay>, IRegion<IForRegionInl
 
     [Fragment]
     public void Update(
-        ShaderNode<int> inStart,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] ShaderNode<int> inStart,
         ShaderNode<int> inEnd,
-        bool theLoop,
-        bool theUnroll,
-        int theUnrollLoops)
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] bool theLoop,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] bool theUnroll,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] int theUnrollLoops)
     {
         if (_forRegionInlay is null)
         {
@@ -63,11 +67,13 @@ public class ForRegion2 : FuseRegionBase<IForRegionInlay>, IRegion<IForRegionInl
             _theUnroll = theUnroll;
             _theUnrollLoops = theUnrollLoops;
 
-            var inputs = _inputValues.Where(e => !e.Key.IsLink).Select(e => e.Value).OfType<AbstractShaderNode>();
+            var subFac = new NodeSubContextFactory(_nodeContext);
+            // Somehow we need to pass this along as 
+            var inputs = _inputValues.Where(e => !e.Key.IsLink).Select(e => innerInputs[e.Key]);
             var inputDescriptions = _inputValues.Where(e => !e.Key.IsLink).Select((e, i) => new BorderControlPointDescription(e.Key.Name, e.Key.InnerType, i, e.Key.IsSplicer));
             var crossLinks = _inputValues.Where(e => e.Key.IsLink).Select(e => e.Value).OfType<AbstractShaderNode>();
             var outputs = _outputValues.Select(e => e.Value).OfType<AbstractShaderNode>();
-            _forRegion = new ForRegion(_nodeContext, inStart, inEnd, theLoop, theUnroll, theUnrollLoops, inputs, outputs, crossLinks, inputDescriptions);
+            _forRegion = new ForRegion(_nodeContext, inStart ?? s_fallbackStart, inEnd ?? s_fallbackStart, theLoop, theUnroll, theUnrollLoops, inputs, outputs, crossLinks, inputDescriptions);
             var i = 0;
             foreach (var (decription, value) in _outputValues)
             {
@@ -83,9 +89,30 @@ public class ForRegion2 : FuseRegionBase<IForRegionInlay>, IRegion<IForRegionInl
             return; // No change, do nothing
         }
 
+        if (description.IsLink)
+        {
+            innerInputs[description] = (AbstractShaderNode)outerValue;
+        }
+        else
+        {
+            var context = _nodeContext.CreateSubContext("x", description.Id);
+            var declareValue = AbstractCreation.CreateAbstract((AbstractShaderNode)outerValue, typeof(DeclareValue<>), [context, outerValue]);
+            innerInputs[description] = declareValue;
+        }
+
         _updateShaderNode = true;
 
         base.AcknowledgeInput(description, outerValue);
+    }
+
+    public override void RetrieveInput(in InputDescription description, IForRegionInlay patchInlay, out object innerValue)
+    {
+        if (innerInputs.TryGetValue(description, out var existingValue))
+        {
+            innerValue = existingValue;
+            return;
+        }
+        base.RetrieveInput(description, patchInlay, out innerValue);
     }
 
     public override void AcknowledgeOutput(in OutputDescription description, IForRegionInlay patchInlay, object innerValue)
