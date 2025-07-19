@@ -14,13 +14,13 @@ public class ForGroup : Group
 
     private readonly bool _loop;
 
-    private readonly ForRegion _parentRegion;
+    private readonly string _indexName;
     private readonly bool _unroll;
     private readonly int _unrollLoops;
 
     public ForGroup(
         NodeContext nodeContext,
-        ForRegion parentRegion,
+        string indexName,
         ShaderNode<int> inStart,
         ShaderNode<int> inEnd,
         bool theLoop,
@@ -29,7 +29,7 @@ public class ForGroup : Group
         IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "ForGroup")
     {
         Name = "ForGroup";
-        _parentRegion = parentRegion;
+        _indexName = indexName;
         _inStart = inStart;
         _inEnd = inEnd;
 
@@ -66,7 +66,7 @@ public class ForGroup : Group
                 {
                     { "start", _inStart.ID },
                     { "end", _inEnd.ID },
-                    { "index", _parentRegion.IndexName },
+                    { "index", _indexName },
                     { "attributes", BuildAttributes() }
                 }
             )
@@ -93,6 +93,12 @@ public class IndexNode : ShaderNode<int>
     public IndexNode(NodeContext nodeContext) : base(nodeContext, "index")
     {
         ID = Current == null ? "0" : $"index_{ShaderNodesUtil.GetHashCode(Current)}";
+        SetInputs(new List<AbstractShaderNode>());
+    }
+
+    public IndexNode(NodeContext nodeContext, bool workaround) : base(nodeContext, "index")
+    {
+        ID = $"index_{ShaderNodesUtil.GetHashCode(nodeContext)}";
         SetInputs(new List<AbstractShaderNode>());
     }
 
@@ -127,12 +133,10 @@ public class ForRegion : AbstractRegion
         IEnumerable<AbstractShaderNode> theCrossLinks,
         IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "forRegion")
     {
-        IndexName = "index_" + HashCode;
-
         SetupRegion(
             (subContextFactory, myOutputs) => new ForGroup(
                 subContextFactory.NextSubContext(),
-                this,
+                indexName: "index_" + HashCode,
                 inStart,
                 inEnd,
                 theLoop,
@@ -149,6 +153,4 @@ public class ForRegion : AbstractRegion
             theCrossLinks,
             theDescriptions);
     }
-
-    public string IndexName { get; }
 }
