@@ -566,29 +566,34 @@ public static class BoxGridProjection
         IReadOnlyList<Vector3> worldPoints,
         Vector3 viewerPosition,
         SurfaceData surfaceData,
-        LayoutInfo layoutInfo)
+        LayoutInfo layoutInfo,
+        bool[] includeFaces = null)
     {
         var allResults = new List<Vector2>();
         if (worldPoints == null || worldPoints.Count == 0) return allResults;
+        
+        // If includeFaces is null, include all faces by default
+        if (includeFaces == null)
+        {
+            includeFaces = [true, true, true, true, true, true];
+        }
+        else if (includeFaces.Length != 6)
+        {
+            includeFaces = [true, true, true, true, true, true];
+        }
 
-        var roomDimsForCheck = new Vector3(layoutInfo.RoomDimensions.X, layoutInfo.RoomDimensions.Y,
+        var roomDimsForCheck = new Vector3(
+            layoutInfo.RoomDimensions.X, 
+            layoutInfo.RoomDimensions.Y,
             layoutInfo.RoomDimensions.Z);
 
         // To avoid adding duplicate ProjectedPointInfo for the same (originalPointIndex, faceIndex)
         // combination if a particle's projection happens to be processed multiple times
         // due to the outer loop structure.
         var alreadyAdded = new HashSet<(int, int)>();
-
-
-        // Outer loop: Iterate through each of the 6 room faces (acting as potential primary hit faces)
-        // This doesn't really change the logic for finding the closest hit,
-        // but it fulfills the structural request. The core logic for each particle remains the same.
-        for (var primaryTargetFaceConsideration = 0;
-             primaryTargetFaceConsideration < 6;
-             primaryTargetFaceConsideration++)
-            // Inner loop: Iterate through each input world point (particle)
-        for (var pointIdx = 0; pointIdx < worldPoints.Count; pointIdx++)
-        {
+        
+        // Inner loop: Iterate through each input world point (particle)
+        for (var pointIdx = 0; pointIdx < worldPoints.Count; pointIdx++) {
             var particlePos = worldPoints[pointIdx];
 
             // 1. Raycast from viewer through particle to find the *closest* intersection point
@@ -604,50 +609,71 @@ public static class BoxGridProjection
 
             for (var i = 0; i < 6; i++) // Check against ALL faces to find the true closest
             {
-                var surfacePlanePos = new Vector3(surfaceData.PositionsAndType[i].X, surfaceData.PositionsAndType[i].Y,
-                    surfaceData.PositionsAndType[i].Z);
-                var surfacePlaneNormal = new Vector3(surfaceData.NormalsAndSize[i].X, surfaceData.NormalsAndSize[i].Y,
-                    surfaceData.NormalsAndSize[i].Z);
-                if (!RayPlaneIntersection(viewerPosition, rayDir, surfacePlanePos, surfacePlaneNormal,
-                        out var currentIntersection)) continue;
-                if (!IsPointInRectangle(currentIntersection, surfacePlanePos, roomDimsForCheck,
-                        surfacePlaneNormal)) continue;
-                var distance = (currentIntersection - viewerPosition).LengthSquared();
-                if (!(distance < closestDistance)) continue;
+                if (!includeFaces[i]) continue;
+                    
+                var surfacePlanePos = new Vector3(
+                        surfaceData.PositionsAndType[i].X, 
+                        surfaceData.PositionsAndType[i].Y,
+                        surfaceData.PositionsAndType[i].Z);
+                    var surfacePlaneNormal = new Vector3(
+                        surfaceData.NormalsAndSize[i].X, 
+                        surfaceData.NormalsAndSize[i].Y,
+                        surfaceData.NormalsAndSize[i].Z);
+                    if (!RayPlaneIntersection(
+                            viewerPosition, 
+                            rayDir, 
+                            surfacePlanePos, 
+                            surfacePlaneNormal,
+                            out var currentIntersection)
+                        ) continue;
+                    if (!IsPointInRectangle(
+                            currentIntersection, 
+                            surfacePlanePos, 
+                            roomDimsForCheck,
+                            surfacePlaneNormal)
+                        ) continue;
+                    var distance = (currentIntersection - viewerPosition).LengthSquared();
+                    if (!(distance < closestDistance)) continue;
 
-                closestDistance = distance;
-                closestIntersectionPoint = currentIntersection;
-                actualPrimaryHitFaceIndex = i;
-            }
+                    closestDistance = distance;
+                    closestIntersectionPoint = currentIntersection;
+                    actualPrimaryHitFaceIndex = i;
+                }
 
-            if (actualPrimaryHitFaceIndex == -1) continue; // This particle's ray didn't hit any face
+                if (actualPrimaryHitFaceIndex == -1) continue; // This particle's ray didn't hit any face
 
-            // Now we have the `closestIntersectionPoint` and `actualPrimaryHitFaceIndex` for `particlePos`.
-            // Regardless of `primaryTargetFaceConsideration`, we now check which faces this
-            // `closestIntersectionPoint` lies on for edge/corner mapping.
-            // 2. For the `closestIntersectionPoint`, check which faces it lies on.
-            for (var faceIdxMapping = 0; faceIdxMapping < 6; faceIdxMapping++)
-            {
-                // Check if we've already added this specific (originalPoint, mappingFace) pair
-                if (alreadyAdded.Contains((pointIdx, faceIdxMapping))) continue;
+                // Now we have the `closestIntersectionPoint` and `actualPrimaryHitFaceIndex` for `particlePos`.
+                // Regardless of `primaryTargetFaceConsideration`, we now check which faces this
+                // `closestIntersectionPoint` lies on for edge/corner mapping.
+                // 2. For the `closestIntersectionPoint`, check which faces it lies on.
+                for (var faceIdxMapping = 0; faceIdxMapping < 6; faceIdxMapping++)
+                {
+                    if (!includeFaces[faceIdxMapping]) continue;
+                    // Check if we've already added this specific (originalPoint, mappingFace) pair
+                    if (alreadyAdded.Contains((pointIdx, faceIdxMapping))) continue;
 
-                var currentSurfacePos = new Vector3(surfaceData.PositionsAndType[faceIdxMapping].X,
-                    surfaceData.PositionsAndType[faceIdxMapping].Y, surfaceData.PositionsAndType[faceIdxMapping].Z);
-                var currentSurfaceNormal = new Vector3(surfaceData.NormalsAndSize[faceIdxMapping].X,
-                    surfaceData.NormalsAndSize[faceIdxMapping].Y, surfaceData.NormalsAndSize[faceIdxMapping].Z);
-                currentSurfaceNormal.Normalize();
+                    var currentSurfacePos = new Vector3(
+                        surfaceData.PositionsAndType[faceIdxMapping].X,
+                        surfaceData.PositionsAndType[faceIdxMapping].Y, 
+                        surfaceData.PositionsAndType[faceIdxMapping].Z);
+                    var currentSurfaceNormal = new Vector3(
+                        surfaceData.NormalsAndSize[faceIdxMapping].X,
+                        surfaceData.NormalsAndSize[faceIdxMapping].Y, 
+                        surfaceData.NormalsAndSize[faceIdxMapping].Z);
+                    currentSurfaceNormal.Normalize();
 
-                var distanceToPlane = Vector3.Dot(closestIntersectionPoint - currentSurfacePos, currentSurfaceNormal);
-                if (!(System.Math.Abs(distanceToPlane) <= POINT_ON_PLANE_TOLERANCE)) continue;
-                if (!IsPointInRectangle(closestIntersectionPoint, currentSurfacePos, roomDimsForCheck,
-                        currentSurfaceNormal)) continue;
-                var uv = MapToTexture(closestIntersectionPoint, faceIdxMapping, layoutInfo);
-                allResults.Add(uv);
-                alreadyAdded.Add((pointIdx, faceIdxMapping)); // Mark as added
-            } // End loop for mapping faces for the closestIntersectionPoint
-        } // End loop through particles
-
-        // End loop through primaryTargetFaceConsideration (outermost loop)
+                    var distanceToPlane = Vector3.Dot(closestIntersectionPoint - currentSurfacePos, currentSurfaceNormal);
+                    if (!(System.Math.Abs(distanceToPlane) <= POINT_ON_PLANE_TOLERANCE)) continue;
+                    if (!IsPointInRectangle(
+                            closestIntersectionPoint, 
+                            currentSurfacePos, 
+                            roomDimsForCheck,
+                            currentSurfaceNormal)) continue;
+                    var uv = MapToTexture(closestIntersectionPoint, faceIdxMapping, layoutInfo);
+                    allResults.Add(uv);
+                    alreadyAdded.Add((pointIdx, faceIdxMapping)); // Mark as added
+                } // End loop for mapping faces for the closestIntersectionPoint
+            } // End loop through particles
         return allResults;
     }
 
