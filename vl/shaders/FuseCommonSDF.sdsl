@@ -1685,11 +1685,11 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		p = abs(p);
 		float2 h = float2(p.x + p.y*.57735, p.y*1.1547);
 
-		float2 pi = floor(h);
-		float2 pf = h - pi;
+		float2 PI = floor(h);
+		float2 pf = h - PI;
 
 		// Determining the nearest hexagonal border distance.
-		float v = frac((pi.x + pi.y)/3.)*3.;
+		float v = frac((PI.x + PI.y)/3.)*3.;
 		float ca = step(1., v);
 		float cb = step(2., v);
 		float2  ma = step(pf, pf.yx);
@@ -1704,7 +1704,7 @@ shader FuseCommonSDF : FuseCoreMath, FuseCoreTransform, FuseCoreDomain, FuseCore
 		p -= float2(h.x - h.y*.5, h.y*.866);
 	
 		//distance to border, distance to nearest center, 2d cell id.
-		return float4(e-r, length(p)-r, pi + ca - cb*ma);
+		return float4(e-r, length(p)-r, PI + ca - cb*ma);
 	}
 
 
