@@ -76,4 +76,83 @@ shader FuseGeometry{
 
         return startNormal;
     }
+
+      // --- utilities ---
+    float3 safe_normalize(float3 v) {
+        float d2 = dot(v,v);
+        return (d2 > 1e-12) ? v * rsqrt(d2) : float3(0,0,0);
+    }
+
+    // Ortho: CamForward = konstante Blickrichtung in Welt (typ. -cameraViewZ)
+    // Tipp: als Uniform aus der View-Matrix ableiten.
+    //   float3 CamForward = -normalize( (float3)View._m20_m21_m22 ); // -Z in Welt
+
+    // ===== ORTHO VARIANTEN =====
+
+    // screen-aligned normal in world space (orthographic)
+    float3 CalculateScreenAlignedNormalOrtho(float3 CamForward, float3 lineDir) {
+        float3 viewDir = safe_normalize(CamForward);       // konstant in Ortho
+        float3 t       = safe_normalize(lineDir);
+        float3 n       = safe_normalize(cross(t, viewDir)); // in Bildschirmbreite
+        // Falls t ~ parallel zu viewDir: cross≈0 → safe_normalize gibt 0 zurück (ok)
+        return n;
+    }
+
+    // miter vector (orthographic)
+    float3 CalculateMiterVectorOrtho(float3 CamForward,
+                                     float3 prevDir, float3 nextDir,
+                                     out float miterLength) {
+        float3 v  = safe_normalize(CamForward);
+        float3 pd = safe_normalize(prevDir);
+        float3 nd = safe_normalize(nextDir);
+
+        float3 avgDir = safe_normalize(pd + nd);
+        if (all(avgDir == 0)) { avgDir = pd; } // fallback bei 180° Ecke
+
+        float3 prevN  = safe_normalize(cross(pd, v));
+        float3 nextN  = safe_normalize(cross(nd, v));
+        float3 miterN = safe_normalize(cross(avgDir, v));
+
+        // Skalar für Bevel-Länge (wie in deiner Persp-Variante)
+        float dp = dot(miterN, prevN);
+        miterLength = 1.0 / max(0.1, abs(dp));
+        miterLength = min(miterLength, 2.0);
+        return miterN;
+    }
+
+    // vollständiger Ortho-Bevel (spiegelt deine Signatur)
+    float3 CalculateBevelOrtho(
+        float3 CamForward,          // statt CameraPosition
+        float3 lineDirection,       // curDir
+        float3 startPos,
+        float3 endPos,
+        float3 prevPos,
+        float3 nextPos,
+        bool hasPrev,
+        bool hasNext,
+        out float3 endNormal,
+        out float startMiterLength,
+        out float endMiterLength
+    ){
+        startMiterLength = 1.0;
+        endMiterLength   = 1.0;
+
+        // default: screen-aligned normals (orthographic)
+        float3 startNormal = CalculateScreenAlignedNormalOrtho(CamForward, lineDirection);
+        endNormal          = startNormal;
+
+        // prev -> start
+        if (hasPrev) {
+            float3 prevDir = safe_normalize(startPos - prevPos);
+            startNormal    = CalculateMiterVectorOrtho(CamForward, prevDir, lineDirection, startMiterLength);
+        }
+
+        // end -> next
+        if (hasNext) {
+            float3 nextDir = safe_normalize(nextPos - endPos);
+            endNormal      = CalculateMiterVectorOrtho(CamForward, lineDirection, nextDir, endMiterLength);
+        }
+
+        return startNormal;
+    }
 };
