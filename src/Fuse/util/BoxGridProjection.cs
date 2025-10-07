@@ -503,7 +503,7 @@ public static class BoxGridProjection
 
     // --- Helper Functions (RayPlaneIntersection, IsPointInRectangle, MapToTexture) ---
     // ... (Assume these are present and correct) ...
-    private static bool RayPlaneIntersection(Vector3 rayOrigin, Vector3 rayDir, Vector3 planePos, Vector3 planeNormal,
+    internal static bool RayPlaneIntersection(Vector3 rayOrigin, Vector3 rayDir, Vector3 planePos, Vector3 planeNormal,
         out Vector3 intersection)
     {
         intersection = Vector3.Zero;
@@ -515,7 +515,7 @@ public static class BoxGridProjection
         return true;
     }
 
-    private static bool IsPointInRectangle(Vector3 position, Vector3 rectCenter, Vector3 rectDimensions,
+    internal static bool IsPointInRectangle(Vector3 position, Vector3 rectCenter, Vector3 rectDimensions,
         Vector3 normalAxis)
     {
         var localPos = position - rectCenter;
@@ -686,7 +686,7 @@ public static class BoxGridProjection
     /// <param name="surfaceIndex">The index (0-5) of the surface the point lies on.</param>
     /// <param name="layoutInfo">Layout information containing face layout and room details.</param>
     /// <returns>The calculated 2D texture coordinate.</returns>
-    private static Vector2 MapToTexture(
+    internal static Vector2 MapToTexture(
         Vector3 pointOnSurface,
         int surfaceIndex,
         LayoutInfo layoutInfo
