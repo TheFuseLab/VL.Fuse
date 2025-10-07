@@ -59,7 +59,7 @@ shader FuseRenderingBoxGridProject {
     }
 
     // Function to map a point on a room surface to texture coordinates
-    float2 mapToTexture(
+    float4 mapToTexture(
         float3 pointOnSurface, 
         int surfaceIndex,
         // Buffer data passed as parameters
@@ -112,6 +112,9 @@ shader FuseRenderingBoxGridProject {
                 u = v = 0.0f;
                 break;
         }
+
+        // Store normalized per-face UVs in [0,1]
+        float2 faceUV01 = saturate(float2(u, v));
         
         // Get layout info for this face (startX, startY, width, height)
         float4 layout = faceLayoutInfo[surfaceIndex];
@@ -129,7 +132,8 @@ shader FuseRenderingBoxGridProject {
         // Scale back to cross layout size
         texCoord = texCoord * float2(4.0, 3.0);
         
-        return texCoord;
+        // Return atlas UVs (xy) + face-local UVs (zw)
+        return float4(texCoord, faceUV01);
     }
 
     // Function to project and draw a particle on the texture
@@ -141,6 +145,7 @@ shader FuseRenderingBoxGridProject {
         // Line parameters
         float3 viewerPosition,
         out int hitSurfaceIndex,
+        out float2 out_faceUV01,
         // Buffer data passed as parameters
         StructuredBuffer<float4> surfacePositionsAndType,
         StructuredBuffer<float4> surfaceNormalsAndSize,
@@ -175,7 +180,10 @@ shader FuseRenderingBoxGridProject {
                     if (intersectionViewDistance < closestDistance) {
                         closestDistance = intersectionViewDistance;
                         hitSurfaceIndex = i; // Save which surface was hit
-                        projectionResult = float3(mapToTexture(intersection, i, faceLayoutInfo, roomCenter, roomDimensions,zoomRegion), distance(intersection,particlePos));
+
+                        float4 uvPack = mapToTexture(intersection, i, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
+                        projectionResult = float3(uvPack.xy, distance(intersection,particlePos));
+                        out_faceUV01 = uvPack.zw;
                         foundIntersection = true;
                     }
                 }
@@ -349,4 +357,39 @@ shader FuseRenderingBoxGridProject {
 
         return vertexPosition + vertexNormal * t_intersect;
     }
+
+    // --- helpers ---
+    float2 rotate01(float2 uv, int rot)
+    {
+        // rot in {0,1,2,3} -> 0°,90°,180°,270° clockwise
+        // Implemented as swizzles (branchy but predictable; you can #pragma unroll)
+        if (rot == 0) return uv;
+        if (rot == 1) return float2(uv.y, 1.0 - uv.x);
+        if (rot == 2) return 1.0 - uv;
+        /*rot==3*/    return float2(1.0 - uv.y, uv.x);
+    }
+
+    // Map face-local UV [0,1] -> big atlas UV [0,1] using per-face rect/orientation.
+    // Stretch only (no aspect preservation).
+    float2 MapFaceUVToAtlas(
+        StructuredBuffer<float4> FaceRectNrm, // [6] each: (x, y, w, h), normalized
+        StructuredBuffer<int> FaceRot,   // [6] values: 0,1,2,3 => 0°,90°,180°,270°
+        StructuredBuffer<int> FaceFlip,  // [6] bit0: flipU, bit1: flipV
+        float2 faceUV01, 
+        int faceIndex)
+    {
+        // flips
+        int flip = FaceFlip[faceIndex];
+        if (flip & 1) faceUV01.x = 1.0 - faceUV01.x; // flip U
+        if (flip & 2) faceUV01.y = 1.0 - faceUV01.y; // flip V
+
+        // rotation
+        faceUV01 = rotate01(faceUV01, FaceRot[faceIndex] & 3);
+
+        // rect (normalized)
+        float4 r = FaceRectNrm[faceIndex]; // (x,y,w,h) in [0,1]
+
+        // stretch into rect
+        return r.xy + faceUV01 * r.zw;     // still normalized (0..1)
+    }  
 };
