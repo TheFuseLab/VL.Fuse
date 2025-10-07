@@ -6,16 +6,16 @@ using VL.Core.PublicAPI;
 
 namespace Fuse.regions;
 
-public class IfGroup : Group
+public class WhileGroup : Group
 {
     private readonly ShaderNode<bool> _inCheck;
 
-    public IfGroup(
+    public WhileGroup(
         NodeContext nodeContext,
         ShaderNode<bool> inCheck,
-        IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "IfGroup")
+        IEnumerable<AbstractShaderNode> theInputs) : base(nodeContext, theInputs, "WhileGroup")
     {
-        Name = "IfGroup";
+        Name = "WhileGroup";
         _inCheck = inCheck;
     }
 
@@ -27,7 +27,7 @@ public class IfGroup : Group
         if (ShaderNodesUtil.DebugShaderGeneration) Console.WriteLine(thePrepend + ID);
 
         const string shaderCode = @"
-        if(${check}){";
+        while(${check}){";
         theSourceBuilder.Append(
             ShaderNodesUtil.Evaluate(
                 shaderCode,
@@ -54,18 +54,18 @@ public class IfGroup : Group
     }
 }
 
-public class IfRegion : AbstractRegion
+public class WhileRegion : AbstractRegion
 {
-    public IfRegion(
+    public WhileRegion(
         NodeContext nodeContext,
         ShaderNode<bool> inCheck,
         IEnumerable<AbstractShaderNode> theInputs,
         IEnumerable<AbstractShaderNode> theOutputs,
         IEnumerable<AbstractShaderNode> theCrossLinks,
-        IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "ifRegion")
+        IEnumerable<BorderControlPointDescription> theDescriptions) : base(nodeContext, "WhileRegion")
     {
         SetupRegion(
-            (subContextFactory, myOutputs) => new IfGroup(subContextFactory.NextSubContext(), inCheck, myOutputs),
+            (subContextFactory, myOutputs) => new WhileGroup(subContextFactory.NextSubContext(), inCheck, myOutputs),
             theInputList => { theInputList.Add(inCheck); },
             theInputs,
             theOutputs,
