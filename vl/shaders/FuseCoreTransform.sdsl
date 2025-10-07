@@ -480,6 +480,75 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
 	}
 
+	// Convert a 3x3 rotation matrix to a quaternion
+	// Returns quaternion as float4(x, y, z, w)
+	// Handles scaled matrices by normalizing the basis vectors
+	float4 MatrixToQuaternion3(float3x3 m)
+	{
+		// Normalize the matrix columns to remove scale
+		float3 col0 = normalize(float3(m[0][0], m[1][0], m[2][0]));
+		float3 col1 = normalize(float3(m[0][1], m[1][1], m[2][1]));
+		float3 col2 = normalize(float3(m[0][2], m[1][2], m[2][2]));
+		
+		// Reconstruct normalized matrix
+		m[0][0] = col0.x; m[1][0] = col0.y; m[2][0] = col0.z;
+		m[0][1] = col1.x; m[1][1] = col1.y; m[2][1] = col1.z;
+		m[0][2] = col2.x; m[1][2] = col2.y; m[2][2] = col2.z;
+		
+		float4 q;
+		float trace = m[0][0] + m[1][1] + m[2][2];
+		
+		if (trace > 0.0)
+		{
+			// w is the largest component
+			float s = sqrt(trace + 1.0) * 2.0; // s = 4 * w
+			q.w = 0.25 * s;
+			q.x = (m[2][1] - m[1][2]) / s;
+			q.y = (m[0][2] - m[2][0]) / s;
+			q.z = (m[1][0] - m[0][1]) / s;
+		}
+		else if ((m[0][0] > m[1][1]) && (m[0][0] > m[2][2]))
+		{
+			// x is the largest component
+			float s = sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2.0; // s = 4 * x
+			q.w = (m[2][1] - m[1][2]) / s;
+			q.x = 0.25 * s;
+			q.y = (m[0][1] + m[1][0]) / s;
+			q.z = (m[0][2] + m[2][0]) / s;
+		}
+		else if (m[1][1] > m[2][2])
+		{
+			// y is the largest component
+			float s = sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2.0; // s = 4 * y
+			q.w = (m[0][2] - m[2][0]) / s;
+			q.x = (m[0][1] + m[1][0]) / s;
+			q.y = 0.25 * s;
+			q.z = (m[1][2] + m[2][1]) / s;
+		}
+		else
+		{
+			// z is the largest component
+			float s = sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2.0; // s = 4 * z
+			q.w = (m[1][0] - m[0][1]) / s;
+			q.x = (m[0][2] + m[2][0]) / s;
+			q.y = (m[1][2] + m[2][1]) / s;
+			q.z = 0.25 * s;
+		}
+		
+		return q;
+	}
+
+	// Overload for 4x4 matrices (extracts the 3x3 rotation part)
+	float4 MatrixToQuaternion4(float4x4 m)
+	{
+		float3x3 rot = float3x3(
+			m[0].xyz,
+			m[1].xyz,
+			m[2].xyz
+		);
+		return MatrixToQuaternion3(rot);
+	}
+
 
 	////////////////////////////////////////////////////////////////
 	//
@@ -610,34 +679,85 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 	}
 
 	// Invert 3D transformation matrix (not perspective). Adapted from graphics gems 2.
-// Inverts upper left by calculating its determinant and multiplying it to the symmetric
-// adjust matrix of each element. Finally deals with the translation by transforming the
-// original translation using by the calculated inverse.
-//https://github.com/erich666/GraphicsGems/blob/master/gemsii/inverse.c
-float4x4 InverseTRSMatrix(float4x4 input)
-{
-    float4x4 output = (float4x4)0;
+	// Inverts upper left by calculating its determinant and multiplying it to the symmetric
+	// adjust matrix of each element. Finally deals with the translation by transforming the
+	// original translation using by the calculated inverse.
+	//https://github.com/erich666/GraphicsGems/blob/master/gemsii/inverse.c
+	float4x4 InverseTRSMatrix(float4x4 input)
+	{
+		float4x4 output = (float4x4)0;
 
-    //Fill output with cofactor
-    output._m00 = input._m11 * input._m22 - input._m12 * input._m21;
-    output._m10 = input._m12 * input._m20 - input._m10 * input._m22;
-    output._m20 = input._m10 * input._m21 - input._m11 * input._m20;
-    output._m01 = input._m02 * input._m21 - input._m01 * input._m22;
-    output._m11 = input._m00 * input._m22 - input._m02 * input._m20;
-    output._m21 = input._m01 * input._m20 - input._m00 * input._m21;
-    output._m02 = input._m01 * input._m12 - input._m02 * input._m11;
-    output._m12 = input._m02 * input._m10 - input._m00 * input._m12;
-    output._m22 = input._m00 * input._m11 - input._m01 * input._m10;
+		//Fill output with cofactor
+		output._m00 = input._m11 * input._m22 - input._m12 * input._m21;
+		output._m10 = input._m12 * input._m20 - input._m10 * input._m22;
+		output._m20 = input._m10 * input._m21 - input._m11 * input._m20;
+		output._m01 = input._m02 * input._m21 - input._m01 * input._m22;
+		output._m11 = input._m00 * input._m22 - input._m02 * input._m20;
+		output._m21 = input._m01 * input._m20 - input._m00 * input._m21;
+		output._m02 = input._m01 * input._m12 - input._m02 * input._m11;
+		output._m12 = input._m02 * input._m10 - input._m00 * input._m12;
+		output._m22 = input._m00 * input._m11 - input._m01 * input._m10;
 
-    //Multiply by reciprocal determinant
-    float det = determinant((float3x3)input);
-    const bool degenerate = (det * det) < 1e-25 ; //Condition consistent with C++ InvertMatrix4x4_General3D()
-    output *= degenerate ? 0.0f :  rcp(det) ;
+		//Multiply by reciprocal determinant
+		float det = determinant((float3x3)input);
+		const bool degenerate = (det * det) < 1e-25 ; //Condition consistent with C++ InvertMatrix4x4_General3D()
+		output *= degenerate ? 0.0f :  rcp(det) ;
 
-    // Do the translation part
-    output._m30_m31_m32 = -mul((float3x3)output, input._m30_m31_m32);
-    output._m33 = degenerate ? 0.0f : 1.0f;
+		// Do the translation part
+		output._m30_m31_m32 = -mul((float3x3)output, input._m30_m31_m32);
+		output._m33 = degenerate ? 0.0f : 1.0f;
 
-    return output;
-}
+		return output;
+	}
+
+	float4x4 RigidInverse(float4x4 M)
+	{
+		// extract translation (safe)
+		float3 t = mul(float4(0,0,0,1), M).xyz;
+
+		// extract/orthonormalize rotation basis from M’s linear part
+		float3 x = mul(float3(1,0,0), (float3x3)M);
+		float3 y = mul(float3(0,1,0), (float3x3)M);
+		float3 z = mul(float3(0,0,1), (float3x3)M);
+		x = normalize(x);
+		y = normalize(y - x*dot(x,y));
+		z = normalize(cross(x,y));
+
+		float3x3 R  = float3x3(x,y,z);
+		float3x3 Rt = transpose(R);
+
+		// row-vector convention: inverse translation is  -t * Rt
+		float3 tInv = -mul(t, Rt);
+
+		// assemble rows
+		float4 r0 = float4(Rt[0], 0.0);
+		float4 r1 = float4(Rt[1], 0.0);
+		float4 r2 = float4(Rt[2], 0.0);
+		float4 r3 = float4(tInv, 1.0);
+		return float4x4(r0, r1, r2, r3);
+	}
+
+	// ---- helpers ----
+	float3x3 Inverse3x3(float3x3 m)
+	{
+		float3 a = m[0], b = m[1], c = m[2];
+		float3 r0 = cross(b, c);
+		float3 r1 = cross(c, a);
+		float3 r2 = cross(a, b);
+		float det = dot(a, r0);
+		float invDet = (abs(det) < 1e-12) ? 0.0 : 1.0 / det;
+		return float3x3(r0*invDet, r1*invDet, r2*invDet);
+	}
+
+	// Row-vector affine inverse: M = [A 0; t 1]  →  M⁻¹ = [A⁻¹ 0; -t*A⁻¹ 1]
+	float4x4 AffineInverse_Row(float4x4 M)
+	{
+		float3x3 A  = (float3x3)M;          // linear part
+		float3x3 Ai = Inverse3x3(A);        // A^{-1}
+		float3   t  = mul(float4(0,0,0,1), M).xyz;   // translation (row-vector safe)
+		float3   tInv = -mul(t, Ai);        // <- NOTE: vector * matrix (row-vector)
+
+		return float4x4( float4(Ai[0],0), float4(Ai[1],0), float4(Ai[2],0), float4(tInv,1) );
+	}
+
 };
