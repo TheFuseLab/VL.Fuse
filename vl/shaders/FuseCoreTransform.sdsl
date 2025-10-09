@@ -737,27 +737,54 @@ shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 		return float4x4(r0, r1, r2, r3);
 	}
 
-	// ---- helpers ----
-	float3x3 Inverse3x3(float3x3 m)
+	// Robust 3x3 inverse that returns ROWS of A^{-1} explicitly
+	void Inverse3x3_Rows(float3 r0, float3 r1, float3 r2, out float3 i0, out float3 i1, out float3 i2)
 	{
-		float3 a = m[0], b = m[1], c = m[2];
-		float3 r0 = cross(b, c);
-		float3 r1 = cross(c, a);
-		float3 r2 = cross(a, b);
-		float det = dot(a, r0);
+		// Build columns of A from the given ROWS
+		float3 a = float3(r0.x, r1.x, r2.x); // col 0
+		float3 b = float3(r0.y, r1.y, r2.y); // col 1
+		float3 c = float3(r0.z, r1.z, r2.z); // col 2
+
+		// Cofactors from columns
+		float3 R0 = cross(b, c);
+		float3 R1 = cross(c, a);
+		float3 R2 = cross(a, b);
+		float det = dot(a, R0);
 		float invDet = (abs(det) < 1e-12) ? 0.0 : 1.0 / det;
-		return float3x3(r0*invDet, r1*invDet, r2*invDet);
+
+		// ROWS of A^{-1}
+		i0 = R0 * invDet;
+		i1 = R1 * invDet;
+		i2 = R2 * invDet;
 	}
 
-	// Row-vector affine inverse: M = [A 0; t 1]  →  M⁻¹ = [A⁻¹ 0; -t*A⁻¹ 1]
+	// Row-vector affine inverse: v' = v * M
+	// M = [ A  0 ]
+	//     [ t  1 ]
+	// M^{-1} = [ A^{-1}      0 ]
+	//           [ -t*A^{-1}  1 ]
 	float4x4 AffineInverse_Row(float4x4 M)
 	{
-		float3x3 A  = (float3x3)M;          // linear part
-		float3x3 Ai = Inverse3x3(A);        // A^{-1}
-		float3   t  = mul(float4(0,0,0,1), M).xyz;   // translation (row-vector safe)
-		float3   tInv = -mul(t, Ai);        // <- NOTE: vector * matrix (row-vector)
+		// Extract ROWS of the linear part and translation row
+		float3 r0 = float3(M._11, M._12, M._13);
+		float3 r1 = float3(M._21, M._22, M._23);
+		float3 r2 = float3(M._31, M._32, M._33);
+		float3 t  = float3(M._41, M._42, M._43);
 
-		return float4x4( float4(Ai[0],0), float4(Ai[1],0), float4(Ai[2],0), float4(tInv,1) );
+		// Inverse linear part (as ROWS)
+		float3 i0, i1, i2;
+		Inverse3x3_Rows(r0, r1, r2, i0, i1, i2);
+
+		// Row-vector translation: -t * A^{-1}  (row * matrix = sum(t_k * row_k))
+		float3 tInv = -(t.x * i0 + t.y * i1 + t.z * i2);
+
+		// Assemble with ROWS
+		return float4x4(
+			float4(i0, 0.0),
+			float4(i1, 0.0),
+			float4(i2, 0.0),
+			float4(tInv, 1.0)
+		);
 	}
 
 };
