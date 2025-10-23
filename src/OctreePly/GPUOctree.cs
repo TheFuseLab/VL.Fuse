@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+﻿using System.Runtime.InteropServices;
 
 // High-performance octree optimized for memory efficiency and cache performance
 public class GPUOctree
@@ -40,13 +36,13 @@ public class GPUOctree
 
     public class BuildConfig
     {
+        public bool EnableDetailedValidation = false;
         public int MaxDepth = 10;
         public int MaxPointsPerLeaf = 2048;
+        public bool OptimizeForSpeed = true; // Enable all speed optimizations
+        public int ProgressReportInterval = 100000; // More frequent for faster builds
         public float SubdivisionEpsilon = 1e-4f;
         public float VerificationEpsilon = 1e-3f;
-        public bool EnableDetailedValidation = false;
-        public int ProgressReportInterval = 100000; // More frequent for faster builds
-        public bool OptimizeForSpeed = true; // Enable all speed optimizations
     }
 
     #endregion
@@ -69,7 +65,7 @@ public class GPUOctree
     private float[] _xCoords, _yCoords, _zCoords;
     private int _totalPoints;
     private BuildConfig _config;
-    
+
     // Reusable arrays to avoid allocations
     private int[] _tempOctants;
     private int[] _octantCounts;
@@ -94,12 +90,14 @@ public class GPUOctree
         BuildConfig config)
     {
         var startTime = DateTime.Now;
-        
+
         try
         {
             _config = config;
 
-            _xCoords = plyData["x"]; _yCoords = plyData["y"]; _zCoords = plyData["z"];
+            _xCoords = plyData["x"];
+            _yCoords = plyData["y"];
+            _zCoords = plyData["z"];
             _totalPoints = _xCoords.Length;
             octreeProgressInfo.TotalPoints = _totalPoints;
             Console.WriteLine($"Building high-performance octree for {_totalPoints:N0} points...");
@@ -114,8 +112,9 @@ public class GPUOctree
 
             // Auto-adjust epsilon
             var bounds = CalculateBounds();
-            float dataScale = Math.Max(Math.Max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY), bounds.maxZ - bounds.minZ);
-            
+            var dataScale = Math.Max(Math.Max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY),
+                bounds.maxZ - bounds.minZ);
+
             if (_config.SubdivisionEpsilon == 1e-4f)
             {
                 _config.SubdivisionEpsilon = dataScale * 1e-7f;
@@ -124,8 +123,8 @@ public class GPUOctree
 
             // Initialize point indices
             _pointIndices = new int[_totalPoints];
-            for (int i = 0; i < _totalPoints; i++) _pointIndices[i] = i;
-            
+            for (var i = 0; i < _totalPoints; i++) _pointIndices[i] = i;
+
             // Pre-allocate nodes list with reasonable capacity
             _nodes = new List<OctreeNode>(Math.Min(_totalPoints / 100, 500000));
             _nodes.Add(new OctreeNode
@@ -140,9 +139,9 @@ public class GPUOctree
             var currentLevel = new Queue<int>();
             var nextLevel = new Queue<int>();
             currentLevel.Enqueue(0);
-            
-            int nodesProcessedCounter = 0;
-            int currentDepth = 0;
+
+            var nodesProcessedCounter = 0;
+            var currentDepth = 0;
 
             while (currentLevel.Count > 0 || nextLevel.Count > 0)
             {
@@ -156,45 +155,37 @@ public class GPUOctree
                     Console.WriteLine($"Processing depth {currentDepth}, {currentLevel.Count} nodes");
                 }
 
-                int nodeID = currentLevel.Dequeue();
+                var nodeID = currentLevel.Dequeue();
                 nodesProcessedCounter++;
 
                 if (nodesProcessedCounter % _config.ProgressReportInterval == 0)
                 {
                     var elapsed = DateTime.Now - startTime;
-                    Console.WriteLine($"Processed {nodesProcessedCounter:N0} nodes in {elapsed.TotalSeconds:F1}s, {_nodes.Count:N0} total nodes");
+                    Console.WriteLine(
+                        $"Processed {nodesProcessedCounter:N0} nodes in {elapsed.TotalSeconds:F1}s, {_nodes.Count:N0} total nodes");
                 }
 
                 var currentNode = _nodes[nodeID];
 
                 if (currentNode.PointCount > _config.MaxPointsPerLeaf && currentNode.Depth < _config.MaxDepth)
-                {
                     if (SubdivideOptimized(nodeID))
                     {
-                        int firstChildID = _nodes[nodeID].FirstChildIndex;
-                        for (int i = 0; i < 8; i++)
+                        var firstChildID = _nodes[nodeID].FirstChildIndex;
+                        for (var i = 0; i < 8; i++)
                         {
                             var childNode = _nodes[firstChildID + i];
-                            if (childNode.PointCount > 0)
-                            {
-                                nextLevel.Enqueue(firstChildID + i);
-                            }
+                            if (childNode.PointCount > 0) nextLevel.Enqueue(firstChildID + i);
                         }
                     }
-                }
             }
-            
+
             var buildTime = DateTime.Now - startTime;
             Console.WriteLine($"Octree complete: {_nodes.Count:N0} nodes in {buildTime.TotalSeconds:F1} seconds");
 
             if (_config.EnableDetailedValidation)
-            {
                 FinalVerification(octreeProgressInfo);
-            }
             else
-            {
                 QuickValidation();
-            }
 
             PackForGPU(octreeProgressInfo);
             octreeProgressInfo.IsCompleted = true;
@@ -206,6 +197,7 @@ public class GPUOctree
             Console.WriteLine($"ERROR: {ex.Message}");
         }
     }
+
     #endregion
 
     #region High-Performance Core Logic
@@ -213,79 +205,72 @@ public class GPUOctree
     private bool SubdivideOptimized(int parentNodeID)
     {
         var parentNode = _nodes[parentNodeID];
-        int firstChildID = _nodes.Count;
-        
+        var firstChildID = _nodes.Count;
+
         // Calculate center point
-        float cX = (parentNode.MinX + parentNode.MaxX) * 0.5f;
-        float cY = (parentNode.MinY + parentNode.MaxY) * 0.5f;
-        float cZ = (parentNode.MinZ + parentNode.MaxZ) * 0.5f;
+        var cX = (parentNode.MinX + parentNode.MaxX) * 0.5f;
+        var cY = (parentNode.MinY + parentNode.MaxY) * 0.5f;
+        var cZ = (parentNode.MinZ + parentNode.MaxZ) * 0.5f;
 
         // Fast in-place partitioning instead of creating temporary lists
         if (_config.OptimizeForSpeed && parentNode.PointCount <= _tempOctants.Length)
-        {
             return SubdivideInPlace(parentNodeID, parentNode, firstChildID, cX, cY, cZ);
-        }
-        else
-        {
-            return SubdivideStandard(parentNodeID, parentNode, firstChildID, cX, cY, cZ);
-        }
+
+        return SubdivideStandard(parentNodeID, parentNode, firstChildID, cX, cY, cZ);
     }
 
-    private bool SubdivideInPlace(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX, float cY, float cZ)
+    private bool SubdivideInPlace(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX, float cY,
+        float cZ)
     {
         // Clear counters
         Array.Clear(_octantCounts, 0, 8);
-        
+
         // First pass: classify points and count
-        for (int i = 0; i < parentNode.PointCount; i++)
+        for (var i = 0; i < parentNode.PointCount; i++)
         {
-            int arrayIndex = parentNode.StartIndex + i;
-            int pIdx = _pointIndices[arrayIndex];
-            
-            float px = Math.Max(parentNode.MinX, Math.Min(parentNode.MaxX, _xCoords[pIdx]));
-            float py = Math.Max(parentNode.MinY, Math.Min(parentNode.MaxY, _yCoords[pIdx]));
-            float pz = Math.Max(parentNode.MinZ, Math.Min(parentNode.MaxZ, _zCoords[pIdx]));
-            
-            int octant = 0;
+            var arrayIndex = parentNode.StartIndex + i;
+            var pIdx = _pointIndices[arrayIndex];
+
+            var px = Math.Max(parentNode.MinX, Math.Min(parentNode.MaxX, _xCoords[pIdx]));
+            var py = Math.Max(parentNode.MinY, Math.Min(parentNode.MaxY, _yCoords[pIdx]));
+            var pz = Math.Max(parentNode.MinZ, Math.Min(parentNode.MaxZ, _zCoords[pIdx]));
+
+            var octant = 0;
             if (px >= cX) octant |= 1;
             if (py >= cY) octant |= 2;
             if (pz >= cZ) octant |= 4;
-            
+
             _tempOctants[i] = octant;
             _octantCounts[octant]++;
         }
 
         // Check if subdivision is effective
-        int nonEmptyOctants = 0;
-        for (int i = 0; i < 8; i++)
-        {
-            if (_octantCounts[i] > 0) nonEmptyOctants++;
-        }
-        
+        var nonEmptyOctants = 0;
+        for (var i = 0; i < 8; i++)
+            if (_octantCounts[i] > 0)
+                nonEmptyOctants++;
+
         if (nonEmptyOctants <= 1) return false;
 
         // Calculate offsets for in-place partitioning
         _octantOffsets[0] = parentNode.StartIndex;
-        for (int i = 1; i < 8; i++)
-        {
-            _octantOffsets[i] = _octantOffsets[i - 1] + _octantCounts[i - 1];
-        }
+        for (var i = 1; i < 8; i++) _octantOffsets[i] = _octantOffsets[i - 1] + _octantCounts[i - 1];
 
         // In-place partitioning using counting sort approach
         var tempIndices = new int[parentNode.PointCount];
         var tempWriteOffsets = new int[8];
         Array.Copy(_octantOffsets, tempWriteOffsets, 8);
-        
+
         // Rearrange points based on octant classification
-        for (int i = 0; i < parentNode.PointCount; i++)
+        for (var i = 0; i < parentNode.PointCount; i++)
         {
-            int octant = _tempOctants[i];
-            int originalIndex = parentNode.StartIndex + i;
-            int newIndex = tempWriteOffsets[octant] - parentNode.StartIndex;
+            var octant = _tempOctants[i];
+            var originalIndex = parentNode.StartIndex + i;
+            var newIndex = tempWriteOffsets[octant] - parentNode.StartIndex;
             tempIndices[newIndex] = _pointIndices[originalIndex];
             tempWriteOffsets[octant]++;
         }
-        
+
         // Copy back to main array
         Array.Copy(tempIndices, 0, _pointIndices, parentNode.StartIndex, parentNode.PointCount);
 
@@ -294,62 +279,60 @@ public class GPUOctree
         return true;
     }
 
-    private bool SubdivideStandard(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX, float cY, float cZ)
+    private bool SubdivideStandard(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX, float cY,
+        float cZ)
     {
         // Fallback to standard method for very large nodes
         var childPointLists = new List<int>[8];
-        int estimatedChildSize = Math.Max(16, parentNode.PointCount / 8);
-        
-        for (int i = 0; i < 8; i++)
-        {
-            childPointLists[i] = new List<int>(estimatedChildSize);
-        }
+        var estimatedChildSize = Math.Max(16, parentNode.PointCount / 8);
 
-        for (int i = 0; i < parentNode.PointCount; i++)
+        for (var i = 0; i < 8; i++) childPointLists[i] = new List<int>(estimatedChildSize);
+
+        for (var i = 0; i < parentNode.PointCount; i++)
         {
-            int arrayIndex = parentNode.StartIndex + i;
-            int pIdx = _pointIndices[arrayIndex];
-            
-            float px = Math.Max(parentNode.MinX, Math.Min(parentNode.MaxX, _xCoords[pIdx]));
-            float py = Math.Max(parentNode.MinY, Math.Min(parentNode.MaxY, _yCoords[pIdx]));
-            float pz = Math.Max(parentNode.MinZ, Math.Min(parentNode.MaxZ, _zCoords[pIdx]));
-            
-            int octant = 0;
+            var arrayIndex = parentNode.StartIndex + i;
+            var pIdx = _pointIndices[arrayIndex];
+
+            var px = Math.Max(parentNode.MinX, Math.Min(parentNode.MaxX, _xCoords[pIdx]));
+            var py = Math.Max(parentNode.MinY, Math.Min(parentNode.MaxY, _yCoords[pIdx]));
+            var pz = Math.Max(parentNode.MinZ, Math.Min(parentNode.MaxZ, _zCoords[pIdx]));
+
+            var octant = 0;
             if (px >= cX) octant |= 1;
             if (py >= cY) octant |= 2;
             if (pz >= cZ) octant |= 4;
-            
+
             childPointLists[octant].Add(pIdx);
         }
 
-        int nonEmptyOctants = 0;
-        for (int i = 0; i < 8; i++)
-        {
-            if (childPointLists[i].Count > 0) nonEmptyOctants++;
-        }
-        
+        var nonEmptyOctants = 0;
+        for (var i = 0; i < 8; i++)
+            if (childPointLists[i].Count > 0)
+                nonEmptyOctants++;
+
         if (nonEmptyOctants <= 1) return false;
 
         CreateChildNodesStandard(parentNodeID, parentNode, firstChildID, childPointLists, cX, cY, cZ);
         return true;
     }
 
-    private void CreateChildNodesOptimized(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX, float cY, float cZ)
+    private void CreateChildNodesOptimized(int parentNodeID, OctreeNode parentNode, int firstChildID, float cX,
+        float cY, float cZ)
     {
-        float expansion = _config.SubdivisionEpsilon;
-        
-        for (int i = 0; i < 8; i++)
+        var expansion = _config.SubdivisionEpsilon;
+
+        for (var i = 0; i < 8; i++)
         {
-            int pointCount = _octantCounts[i];
-            
+            var pointCount = _octantCounts[i];
+
             // Calculate child bounds
-            float minX = (i & 1) == 0 ? parentNode.MinX : cX;
-            float maxX = (i & 1) == 0 ? cX : parentNode.MaxX;
-            float minY = (i & 2) == 0 ? parentNode.MinY : cY;
-            float maxY = (i & 2) == 0 ? cY : parentNode.MaxY;
-            float minZ = (i & 4) == 0 ? parentNode.MinZ : cZ;
-            float maxZ = (i & 4) == 0 ? cZ : parentNode.MaxZ;
-            
+            var minX = (i & 1) == 0 ? parentNode.MinX : cX;
+            var maxX = (i & 1) == 0 ? cX : parentNode.MaxX;
+            var minY = (i & 2) == 0 ? parentNode.MinY : cY;
+            var maxY = (i & 2) == 0 ? cY : parentNode.MaxY;
+            var minZ = (i & 4) == 0 ? parentNode.MinZ : cZ;
+            var maxZ = (i & 4) == 0 ? cZ : parentNode.MaxZ;
+
             // Expand bounds slightly
             minX = Math.Max(minX - expansion, parentNode.MinX - expansion);
             maxX = Math.Min(maxX + expansion, parentNode.MaxX + expansion);
@@ -357,9 +340,9 @@ public class GPUOctree
             maxY = Math.Min(maxY + expansion, parentNode.MaxY + expansion);
             minZ = Math.Max(minZ - expansion, parentNode.MinZ - expansion);
             maxZ = Math.Min(maxZ + expansion, parentNode.MaxZ + expansion);
-            
-            int childStartIndex = pointCount > 0 ? _octantOffsets[i] : parentNode.StartIndex;
-            
+
+            var childStartIndex = pointCount > 0 ? _octantOffsets[i] : parentNode.StartIndex;
+
             _nodes.Add(new OctreeNode
             {
                 MinX = minX, MaxX = maxX,
@@ -372,7 +355,7 @@ public class GPUOctree
                 PointCount = pointCount
             });
         }
-        
+
         // Update parent to internal node
         var updatedParent = parentNode;
         updatedParent.PointCount = 0;
@@ -380,38 +363,38 @@ public class GPUOctree
         _nodes[parentNodeID] = updatedParent;
     }
 
-    private void CreateChildNodesStandard(int parentNodeID, OctreeNode parentNode, int firstChildID, 
+    private void CreateChildNodesStandard(int parentNodeID, OctreeNode parentNode, int firstChildID,
         List<int>[] childPointLists, float cX, float cY, float cZ)
     {
-        int writeOffset = parentNode.StartIndex;
-        float expansion = _config.SubdivisionEpsilon;
-        
-        for (int i = 0; i < 8; i++)
+        var writeOffset = parentNode.StartIndex;
+        var expansion = _config.SubdivisionEpsilon;
+
+        for (var i = 0; i < 8; i++)
         {
             var pointList = childPointLists[i];
-            
-            float minX = (i & 1) == 0 ? parentNode.MinX : cX;
-            float maxX = (i & 1) == 0 ? cX : parentNode.MaxX;
-            float minY = (i & 2) == 0 ? parentNode.MinY : cY;
-            float maxY = (i & 2) == 0 ? cY : parentNode.MaxY;
-            float minZ = (i & 4) == 0 ? parentNode.MinZ : cZ;
-            float maxZ = (i & 4) == 0 ? cZ : parentNode.MaxZ;
-            
+
+            var minX = (i & 1) == 0 ? parentNode.MinX : cX;
+            var maxX = (i & 1) == 0 ? cX : parentNode.MaxX;
+            var minY = (i & 2) == 0 ? parentNode.MinY : cY;
+            var maxY = (i & 2) == 0 ? cY : parentNode.MaxY;
+            var minZ = (i & 4) == 0 ? parentNode.MinZ : cZ;
+            var maxZ = (i & 4) == 0 ? cZ : parentNode.MaxZ;
+
             minX = Math.Max(minX - expansion, parentNode.MinX - expansion);
             maxX = Math.Min(maxX + expansion, parentNode.MaxX + expansion);
             minY = Math.Max(minY - expansion, parentNode.MinY - expansion);
             maxY = Math.Min(maxY + expansion, parentNode.MaxY + expansion);
             minZ = Math.Max(minZ - expansion, parentNode.MinZ - expansion);
             maxZ = Math.Min(maxZ + expansion, parentNode.MaxZ + expansion);
-            
-            int childStartIndex = pointList.Count > 0 ? writeOffset : parentNode.StartIndex;
-            
+
+            var childStartIndex = pointList.Count > 0 ? writeOffset : parentNode.StartIndex;
+
             if (pointList.Count > 0)
             {
                 pointList.CopyTo(_pointIndices, writeOffset);
                 writeOffset += pointList.Count;
             }
-            
+
             _nodes.Add(new OctreeNode
             {
                 MinX = minX, MaxX = maxX,
@@ -424,7 +407,7 @@ public class GPUOctree
                 PointCount = pointList.Count
             });
         }
-        
+
         var updatedParent = parentNode;
         updatedParent.PointCount = 0;
         updatedParent.FirstChildIndex = firstChildID;
@@ -433,20 +416,15 @@ public class GPUOctree
 
     private void QuickValidation()
     {
-        int totalLeafPoints = 0;
-        for (int i = 0; i < _nodes.Count; i++)
+        var totalLeafPoints = 0;
+        for (var i = 0; i < _nodes.Count; i++)
         {
             var node = _nodes[i];
-            if (node.FirstChildIndex == -1 && node.PointCount > 0)
-            {
-                totalLeafPoints += node.PointCount;
-            }
+            if (node.FirstChildIndex == -1 && node.PointCount > 0) totalLeafPoints += node.PointCount;
         }
-        
+
         if (totalLeafPoints != _totalPoints)
-        {
             throw new Exception($"Point count mismatch: {totalLeafPoints} != {_totalPoints}");
-        }
         Console.WriteLine("Quick validation passed");
     }
 
@@ -456,39 +434,33 @@ public class GPUOctree
         Console.WriteLine(progress.StageName);
         progress.ProgressPercentage = 90;
 
-        int totalLeafPoints = 0;
+        var totalLeafPoints = 0;
         var allPointsUsed = new HashSet<int>();
 
-        for (int i = 0; i < _nodes.Count; i++)
+        for (var i = 0; i < _nodes.Count; i++)
         {
             var node = _nodes[i];
             if (node.FirstChildIndex == -1 && node.PointCount > 0)
             {
                 totalLeafPoints += node.PointCount;
-                
-                for (int j = 0; j < node.PointCount; j++)
+
+                for (var j = 0; j < node.PointCount; j++)
                 {
-                    int pointIndex = _pointIndices[node.StartIndex + j];
-                    
+                    var pointIndex = _pointIndices[node.StartIndex + j];
+
                     if (pointIndex < 0 || pointIndex >= _totalPoints)
-                    {
                         throw new Exception($"Invalid point index: {pointIndex} in node {i}");
-                    }
-                    
+
                     if (allPointsUsed.Contains(pointIndex))
-                    {
                         throw new Exception($"Duplicate point: {pointIndex} in node {i}");
-                    }
                     allPointsUsed.Add(pointIndex);
                 }
             }
         }
-        
+
         if (totalLeafPoints != _totalPoints)
-        {
             throw new Exception($"Point count mismatch: {totalLeafPoints} != {_totalPoints}");
-        }
-        
+
         Console.WriteLine("Detailed verification passed");
     }
 
@@ -498,13 +470,13 @@ public class GPUOctree
         progress.ProgressPercentage = 95;
         progress.NodeCount = _nodes.Count;
         progress.TotalNodes = _nodes.Count;
-        
+
         var gpuNodes = new GPUOctreeNode[progress.NodeCount];
-        
-        for (int i = 0; i < progress.NodeCount; i++)
+
+        for (var i = 0; i < progress.NodeCount; i++)
         {
             var node = _nodes[i];
-            bool isLeaf = node.FirstChildIndex == -1;
+            var isLeaf = node.FirstChildIndex == -1;
             gpuNodes[i] = new GPUOctreeNode
             {
                 BoundsMinX = node.MinX, BoundsMinY = node.MinY, BoundsMinZ = node.MinZ,
@@ -517,56 +489,65 @@ public class GPUOctree
                 IndexCount = isLeaf ? node.PointCount : 0
             };
         }
-        
+
         progress.NodeBufferData = ConvertStructArrayToBytes(gpuNodes);
         progress.IndexBufferData = ConvertIntArrayToBytes(_pointIndices);
         progress.IndexCount = _pointIndices.Length;
         progress.TotalMemoryUsed = progress.NodeBufferData.Length + progress.IndexBufferData.Length;
 
-        Console.WriteLine($"Packed {progress.NodeBufferData.Length / (1024.0*1024.0):F1} MB nodes, {progress.IndexBufferData.Length / (1024.0*1024.0):F1} MB indices");
+        Console.WriteLine(
+            $"Packed {progress.NodeBufferData.Length / (1024.0 * 1024.0):F1} MB nodes, {progress.IndexBufferData.Length / (1024.0 * 1024.0):F1} MB indices");
     }
 
     private (float minX, float minY, float minZ, float maxX, float maxY, float maxZ) CalculateBounds()
     {
         float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
         float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
-        
-        for (int i = 0; i < _totalPoints; i++)
+
+        for (var i = 0; i < _totalPoints; i++)
         {
             float x = _xCoords[i], y = _yCoords[i], z = _zCoords[i];
-            if (x < minX) minX = x; if (x > maxX) maxX = x;
-            if (y < minY) minY = y; if (y > maxY) maxY = y;
-            if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            if (z < minZ) minZ = z;
+            if (z > maxZ) maxZ = z;
         }
-        
-        float centerX = (minX + maxX) * 0.5f;
-        float centerY = (minY + maxY) * 0.5f;
-        float centerZ = (minZ + maxZ) * 0.5f;
-        float maxDimension = Math.Max(Math.Max(maxX - minX, maxY - minY), maxZ - minZ);
-        float padding = maxDimension * 0.001f;
-        float halfSize = (maxDimension + padding) * 0.5f;
-        
+
+        var centerX = (minX + maxX) * 0.5f;
+        var centerY = (minY + maxY) * 0.5f;
+        var centerZ = (minZ + maxZ) * 0.5f;
+        var maxDimension = Math.Max(Math.Max(maxX - minX, maxY - minY), maxZ - minZ);
+        var padding = maxDimension * 0.001f;
+        var halfSize = (maxDimension + padding) * 0.5f;
+
         return (centerX - halfSize, centerY - halfSize, centerZ - halfSize,
-                centerX + halfSize, centerY + halfSize, centerZ + halfSize);
+            centerX + halfSize, centerY + halfSize, centerZ + halfSize);
     }
 
     private byte[] ConvertStructArrayToBytes<T>(T[] structures) where T : struct
     {
-        int bufferSize = structures.Length * Marshal.SizeOf<T>();
-        byte[] buffer = new byte[bufferSize];
-        GCHandle handle = GCHandle.Alloc(structures, GCHandleType.Pinned);
-        try { Marshal.Copy(handle.AddrOfPinnedObject(), buffer, 0, bufferSize); }
-        finally { handle.Free(); }
+        var bufferSize = structures.Length * Marshal.SizeOf<T>();
+        var buffer = new byte[bufferSize];
+        var handle = GCHandle.Alloc(structures, GCHandleType.Pinned);
+        try
+        {
+            Marshal.Copy(handle.AddrOfPinnedObject(), buffer, 0, bufferSize);
+        }
+        finally
+        {
+            handle.Free();
+        }
+
         return buffer;
     }
 
     private byte[] ConvertIntArrayToBytes(int[] data)
     {
-        if ((long)data.Length * sizeof(int) > 2L * 1024 * 1024 * 1024) 
-        {
+        if ((long)data.Length * sizeof(int) > 2L * 1024 * 1024 * 1024)
             throw new Exception("Index buffer too large for current implementation");
-        }
-        byte[] buffer = new byte[data.Length * sizeof(int)];
+        var buffer = new byte[data.Length * sizeof(int)];
         Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length);
         return buffer;
     }

@@ -1,3 +1,1 @@
-﻿using VL.Core.Import;
-
-[assembly: ImportAsIs]
+﻿[assembly: ImportAsIs]

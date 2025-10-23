@@ -2,15 +2,15 @@
 
 // In VVVV, create a new C# node
 [ProcessNode]
-public class FastPly 
+public class FastPly
 {
-    private FastPlyReader.ProgressInfo _progressInfo;
-    private Task _loadingTask;
     private bool _isLoading;
+    private Task _loadingTask;
+    private FastPlyReader.ProgressInfo _progressInfo;
 
     public string FilePath { get; set; }
     public bool Load { get; set; }
-    
+
     // Output pins
     public Dictionary<string, float[]> Result { get; private set; }
     public float Progress { get; private set; }
@@ -22,10 +22,7 @@ public class FastPly
     public void Update()
     {
         // Start loading when Load is triggered
-        if (Load && !_isLoading && !string.IsNullOrEmpty(FilePath))
-        {
-            StartLoading();
-        }
+        if (Load && !_isLoading && !string.IsNullOrEmpty(FilePath)) StartLoading();
 
         // Update outputs with current progress
         if (_progressInfo != null)
@@ -48,7 +45,7 @@ public class FastPly
     {
         _isLoading = true;
         _progressInfo = new FastPlyReader.ProgressInfo();
-        
+
         try
         {
             _loadingTask = FastPlyReader.LoadInBackgroundAsync(FilePath, _progressInfo);

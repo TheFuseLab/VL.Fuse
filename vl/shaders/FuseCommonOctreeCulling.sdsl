@@ -331,17 +331,31 @@ shader FuseCommonOctreeCulling{
         }
     }
 
+    // SDSL-freundlicher 32-bit Hash ohne große Literale oder 'u'-Suffix
+int Hash32i(int v)
+{
+    v = v ^ (v << 13);
+    v = v ^ (v >> 17);
+    v = v ^ (v << 5);
+    // Positiv halten (SDSL mag unsigned nicht immer überall)
+    if (v < 0) v = -v;
+    return v;
+}
+
+
     //======================================================================================
     // PASS 3 FUNCTION: COLLECT POINT INDICES - FIXED
     //======================================================================================
     void CollectPointIndices(
-        int globalThreadID,
-        int MaxPointBudget,
-        StructuredBuffer<GPUOctreeNode> allNodes,
+        int globalThreadID, //1
+        int MaxPointBudget, //2
+        StructuredBuffer<GPUOctreeNode> allNodes, //3
         StructuredBuffer<int> allLodIndices,
+        int allLodIndicesLength,
         RWStructuredBuffer<int> visibleNodeIds,
         RWStructuredBuffer<int> visibleNodeCounter,
         RWStructuredBuffer<int> finalIndices,
+        int finalIndicesLength,
         RWStructuredBuffer<int> finalCounter,
         RWStructuredBuffer<int> TotalPointCounter)
     {
@@ -350,73 +364,79 @@ shader FuseCommonOctreeCulling{
 
         int nodeID = visibleNodeIds[globalThreadID];
         GPUOctreeNode node = allNodes[nodeID];
-        
-        if (node.IndexCount == 0) return;
+        if (node.IndexCount <= 0) return;
 
+        // --- Quota-Berechnung wie bisher ---
         int totalPoints = TotalPointCounter[0];
-        
-        // FIXED: Calculate how many points this node should contribute based on budget
+
         int targetPointsForThisNode;
         if (MaxPointBudget > 0 && totalPoints > MaxPointBudget)
         {
-            // Calculate this node's fair share of the budget
             float nodeRatio = (float)node.IndexCount / (float)totalPoints;
-            targetPointsForThisNode = max(1, (int)(nodeRatio * MaxPointBudget));
-            
-            // Ensure we don't exceed the node's actual point count
+            targetPointsForThisNode = max(1, (int)floor(nodeRatio * (float)MaxPointBudget + 0.5));
             targetPointsForThisNode = min(targetPointsForThisNode, (int)node.IndexCount);
         }
         else
         {
-            // No budget constraint, use all points
             targetPointsForThisNode = (int)node.IndexCount;
         }
-        
-        // FIXED: Calculate stride to achieve target point count for this node
-        int stride = max(1, (int)node.IndexCount / targetPointsForThisNode);
-        
-        // Collect indices with proper budget enforcement
-        int pointsCollected = 0;
-        for (int i = 0; i < (int)node.IndexCount && pointsCollected < targetPointsForThisNode; i += stride)
+
+        if (targetPointsForThisNode <= 0) return;
+
+        // --- Globale Capacity bestimmen (Budget oder Puffergröße) ---
+        int capacity = (MaxPointBudget > 0) ? MaxPointBudget : finalIndicesLength;
+
+        int cur = finalCounter[0];
+        if (cur >= capacity) return;
+
+        int remaining = capacity - cur;
+        int writableRequest = min(targetPointsForThisNode, remaining);
+        if (writableRequest <= 0) return;
+
+        // --- EINMALIGE Reservation des Ausgabeblocks ---
+        uint baseIndex;
+        InterlockedAdd(finalCounter[0], writableRequest, baseIndex);
+
+        // Überbelegung durch Race-Condition abfangen
+        if ((int)baseIndex >= capacity) return;
+
+        int writable = min(writableRequest, capacity - (int)baseIndex);
+        if (writable <= 0) return;
+
+        // --- Stride so wählen, dass wir nur ~writable Elemente sampeln ---
+        int nodeCount = (int)node.IndexCount;
+        int stride = max(1, (nodeCount + writable - 1) / writable); // ceil-div
+
+        int start = (int)node.IndexStartIndex;
+        int maxSrc = min(start + nodeCount, allLodIndicesLength);
+
+            // --- Lineares, zusammenhängendes Schreiben ohne weitere Atomics ---
+        // Jitter: vermeidet gleichmäßige Alias-Muster
+        int rndBase = Hash32i(nodeID); // deterministisch pro Node
+
+        [loop]
+        for (int k = 0; k < writable; ++k)
         {
-            int lodIndexAddress = (int)node.IndexStartIndex + i;
-            
-            // Bounds check for LOD indices buffer
-            if (lodIndexAddress >= 0 && lodIndexAddress < allLodIndices.Length)
+            // k-abhängiges kleines Offset aus Hash
+            int rndk = Hash32i(rndBase + k + 1);
+            int off  = 0;
+            if (stride > 1)
+                off = rndk % stride; // 0 .. stride-1
+
+            int i = k * stride + off;
+
+            if (i >= nodeCount) i = nodeCount - 1;
+
+            int addr = start + i;
+            if (addr >= 0 && addr < maxSrc)
             {
-                int pointID = allLodIndices[lodIndexAddress];
-                
-                // Validate point ID
-                if (pointID >= 0)
-                {
-                    // FIXED: Check global budget before adding
-                    uint currentCount = finalCounter[0];
-                    if (MaxPointBudget > 0 && currentCount >= MaxPointBudget)
-                    {
-                        break; // Stop if we've reached the global budget
-                    }
-                    
-                    uint writeIndex;
-                    InterlockedAdd(finalCounter[0], 1, writeIndex);
-                    
-                    // Double-check budget after atomic increment
-                    if (MaxPointBudget > 0 && writeIndex >= MaxPointBudget)
-                    {
-                        // Undo the increment if we exceeded budget
-                        InterlockedAdd(finalCounter[0], -1);
-                        break;
-                    }
-                    
-                    // Bounds check for output buffer
-                    if (writeIndex < finalIndices.Length)
-                    {
-                        finalIndices[writeIndex] = pointID;
-                        pointsCollected++;
-                    }
-                }
+                int pointID = allLodIndices[addr];
+                finalIndices[baseIndex + k] = pointID;
             }
         }
+
     }
+
 
     // ERWEITERTE HLSL Compute Shader Funktionen für GPU-driven Octree Culling mit Plane Culling
     // Neue Versionen von GenerateWorkItems und ProcessWorkItem_AndSelectLOD mit zusätzlichem Plane Culling
@@ -678,4 +698,224 @@ shader FuseCommonOctreeCulling{
             }
         }
     }
+
+    static const int GROUP_SIZE = 128; // muss zu deinem Dispatch passen
+
+    // groupshared muss global stehen
+    groupshared int sQuota[GROUP_SIZE];
+    groupshared int sPrefix[GROUP_SIZE];
+    groupshared int sGroupTotal;
+    groupshared int sBaseIndex;
+
+    // Annahme: global vorhanden
+    // static const int GROUP_SIZE = 128;
+    // groupshared int sQuota[GROUP_SIZE], sPrefix[GROUP_SIZE], sGroupTotal, sBaseIndex;
+    // int Hash32i(int v) { v ^= (v << 13); v ^= (v >> 17); v ^= (v << 5); if (v < 0) v = -v; return v; }
+
+    // Annahme: global vorhanden
+    // static const int GROUP_SIZE = 128;
+    // groupshared int sQuota[GROUP_SIZE];
+    // groupshared int sBaseIndex;
+    // int Hash32i(int v){ v ^= (v<<13); v ^= (v>>17); v ^= (v<<5); if(v<0) v = -v; return v; }
+
+    void CollectPointIndices_GroupStandalone(
+        int globalThreadID,                 // SV_DispatchThreadID.x
+        int groupThreadID,                  // SV_GroupThreadID.x
+        int MaxPointBudget,
+        StructuredBuffer<GPUOctreeNode> allNodes,
+        StructuredBuffer<int> allLodIndices,
+        int allLodIndicesLength,
+        RWStructuredBuffer<int> visibleNodeIds,
+        RWStructuredBuffer<int> visibleNodeCounter,
+        RWStructuredBuffer<int> finalIndices,
+        int finalIndicesLength,
+        RWStructuredBuffer<int> finalCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        // --- KEINE early returns vor den Barrieren ---
+        const int gid  = globalThreadID;
+        const int ltid = groupThreadID;
+
+        // Sichtbare Nodes & Aktiv-Flag
+        int numVisible = visibleNodeCounter[0];
+        int active     = (gid < numVisible) ? 1 : 0;
+
+        // Node-Daten (defensiv initialisieren)
+        int nodeID = 0, nodeCount = 0, start = 0;
+        if (active != 0)
+        {
+            nodeID    = visibleNodeIds[gid];
+            GPUOctreeNode n = allNodes[nodeID];
+            nodeCount = n.IndexCount; if (nodeCount < 0) nodeCount = 0;
+            start     = n.IndexStartIndex;
+        }
+
+        // 1) Quota pro Thread
+        int myQuota = 0;
+        if (active != 0 && nodeCount > 0)
+        {
+            int totalPoints = TotalPointCounter[0];
+            int target      = nodeCount;
+            if (MaxPointBudget > 0 && totalPoints > MaxPointBudget)
+            {
+                float r = (float)nodeCount / (float)totalPoints;
+                target  = (int)floor(r * (float)MaxPointBudget + 0.5);
+                if (target < 1)        target = 1;
+                if (target > nodeCount) target = nodeCount;
+            }
+            myQuota = target;
+        }
+
+        // 2) INCLUSIVE Scan: sQuota := laufende Summe
+        sQuota[ltid] = myQuota;
+        GroupMemoryBarrierWithGroupSync();
+
+        // Hillis–Steele inclusive
+        for (int offset = 1; offset < GROUP_SIZE; offset <<= 1)
+        {
+            int add = (ltid >= offset) ? sQuota[ltid - offset] : 0;
+            GroupMemoryBarrierWithGroupSync();
+            sQuota[ltid] = sQuota[ltid] + add;
+            GroupMemoryBarrierWithGroupSync();
+        }
+
+        // exklusive Prefix = inclusive − mein Wert
+        int inclusive = sQuota[ltid];
+        int myPrefix  = inclusive - myQuota;
+
+        // Gruppen-Gesamtsumme = inclusive des letzten Threads
+        int groupTotal = sQuota[GROUP_SIZE - 1];
+
+        // 3) Eine Atomic-Reservation pro Gruppe
+        if (ltid == 0)
+        {
+            sBaseIndex = -1;
+            if (groupTotal > 0)
+                InterlockedAdd(finalCounter[0], groupTotal, sBaseIndex);
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        int baseIndex = sBaseIndex;
+
+        // 4) Capacity clampen und persönlichen Bereich bestimmen (ohne return)
+        int capacity = (MaxPointBudget > 0) ? MaxPointBudget : finalIndicesLength;
+        int allowed  = (baseIndex >= 0 && baseIndex < capacity) ? (capacity - baseIndex) : 0;
+
+        int myStart  = baseIndex + myPrefix;
+        int myWrite  = myQuota;
+
+        if (allowed <= 0)                           myWrite = 0;
+        else if (myPrefix >= allowed)               myWrite = 0;
+        else if (myStart + myWrite > baseIndex + allowed)
+                                                    myWrite = (baseIndex + allowed) - myStart;
+
+        // 5) Schreiben (nur aktive Threads mit >0 Write)
+        if (active != 0 && myWrite > 0 && nodeCount > 0)
+        {
+            int maxSrc = start + nodeCount;
+            if (maxSrc > allLodIndicesLength) maxSrc = allLodIndicesLength;
+
+            // ceil-div stride
+            int stride = (nodeCount + myWrite - 1) / myWrite; if (stride < 1) stride = 1;
+
+            int rndBase = Hash32i(nodeID);
+
+            [loop]
+            for (int k = 0; k < myWrite; ++k)
+            {
+                int rndk = Hash32i(rndBase + k + 1);
+                int off  = (stride > 1) ? (rndk % stride) : 0;
+
+                int i = k * stride + off;
+                if (i >= nodeCount) i = nodeCount - 1;
+
+                int addr = start + i;
+                if (addr >= 0 && addr < maxSrc)
+                {
+                    int dst = myStart + k;
+                    if (dst >= 0 && dst < finalIndicesLength)
+                        finalIndices[dst] = allLodIndices[addr];
+                }
+            }
+        }
+        // alle Threads haben alle Barrieren passiert → kein weiterer Sync nötig
+    }
+
+    // Schreibpass für Two-Pass-Scan: nutzt vorab berechnete Offsets[i] (exklusiv).
+    // Two-pass write: uses precomputed Quotas and Offsets (exclusive) — no atomics here.
+// ================================================================
+// PASS 3: PRECOMPUTED-LOD (Linear Copy) – 1 Atomic pro Node
+// Signatur identisch zu deiner alten CollectPointIndices-Variante
+// ================================================================
+void CollectPointIndices_LinearLOD(
+    int  globalThreadID,                          
+    int  MaxPointBudget,                          
+    StructuredBuffer<GPUOctreeNode> allNodes,     
+    StructuredBuffer<int>           allLodIndices,
+    int                              allLodIndicesLength,
+    RWStructuredBuffer<int>          visibleNodeIds,
+    RWStructuredBuffer<int>          visibleNodeCounter,
+    RWStructuredBuffer<int>          finalIndices,
+    int                              finalIndicesLength,
+    RWStructuredBuffer<int>          finalCounter,
+    RWStructuredBuffer<int>          TotalPointCounter)
+{
+    int numVisibleNodes = visibleNodeCounter[0];
+    if (globalThreadID >= numVisibleNodes) return;
+
+    int nodeID = visibleNodeIds[globalThreadID];
+    GPUOctreeNode node = allNodes[nodeID];
+    int nodeCount = (int)node.IndexCount;
+    if (nodeCount <= 0) return;
+
+    // Quota wie bisher
+    int totalPoints = TotalPointCounter[0];
+    int quota = nodeCount;
+    if (MaxPointBudget > 0 && totalPoints > MaxPointBudget)
+    {
+        float r = (float)nodeCount / (float)totalPoints;
+        quota   = (int)floor(r * (float)MaxPointBudget + 0.5);
+        if (quota < 1)         quota = 1;
+        if (quota > nodeCount) quota = nodeCount;
+    }
+    if (quota <= 0) return;
+
+    // Kapazität
+    int capacity = (MaxPointBudget > 0) ? MaxPointBudget : finalIndicesLength;
+
+    // Einmalige Reservation
+    int request = quota;
+    int cur = finalCounter[0];
+    if (cur >= capacity) return;
+    int remain = capacity - cur;
+    if (request > remain) request = remain;
+    if (request <= 0) return;
+
+    int baseIndex;
+    InterlockedAdd(finalCounter[0], request, baseIndex);
+
+    if (baseIndex >= capacity) return;
+    int writable = request;
+    int capRemain = capacity - baseIndex;
+    if (writable > capRemain) writable = capRemain;
+    if (writable <= 0) return;
+
+    // Linearer Copy der ersten 'writable' Indizes
+    int start  = (int)node.IndexStartIndex;
+    int maxSrc = start + nodeCount;
+    if (maxSrc > allLodIndicesLength) maxSrc = allLodIndicesLength;
+
+    for (int k = 0; k < writable; ++k)
+    {
+        int srcAddr = start + k;
+        if (srcAddr >= maxSrc) break;
+
+        int dstAddr = baseIndex + k;
+        if (dstAddr >= finalIndicesLength) break;
+
+        finalIndices[dstAddr] = allLodIndices[srcAddr];
+    }
+}
+
+
 };
