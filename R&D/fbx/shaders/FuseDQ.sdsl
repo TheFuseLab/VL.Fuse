@@ -1,0 +1,95 @@
+// ============================================================================
+// FuseDQMixin.sdsl  —  Dual-Quaternion skinning helpers (no uniforms)
+// Usage:
+//   use FuseDQ;
+//
+//   // Example (compute or draw):
+//   float3 outP, outN;
+//   SkinVertexDQ(
+//       inPos, inNrm,
+//       boneIdx, boneW,
+//       SkinDQ,      // StructuredBuffer<float4> with rastered palette
+//       boneBase,    // base index: clipStart + frame * boneCount
+//       outP, outN
+//   );
+//
+// Palette layout (rastered):
+//   For bone i in current frame:
+//     qr = SkinDQ[ 2*(boneBase + i) + 0 ];
+//     qd = SkinDQ[ 2*(boneBase + i) + 1 ];
+// ============================================================================
+
+shader FuseDQ{
+    // ------------------- Quaternion / Dual-Quaternion core -------------------
+
+    float4 QMul(float4 a, float4 b)
+    {
+        return float4(
+            a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+            a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+            a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
+            a.w*b.w - (a.x*b.x + a.y*b.y + a.z*b.z)
+        );
+    }
+
+    void DQMul(float4 ar, float4 ad, float4 br, float4 bd, out float4 rr, out float4 rd)
+    {
+        rr = QMul(ar, br);
+        rd = QMul(ar, bd) + QMul(ad, br);
+    }
+
+    void DQNormalize(inout float4 qr, inout float4 qd)
+    {
+        qr = normalize(qr);
+        // make dual part orthogonal to real part (rigid motion constraint)
+        qd = qd - dot(qr, qd) * qr;
+    }
+
+    // DQ = {qr, qd} where both are float4 (quaternions)
+    float4 DQLerp(in float4 qr0, in float4 qd0,
+                in float4 qr1, in float4 qd1,
+                float t,
+                out float4 qd)
+    {
+        float4 r1 = qr1, d1 = qd1;
+        if (dot(qr0, qr1) < 0) { r1 = -r1; d1 = -d1; }        // 1) hemisphere
+
+        float4 qr = lerp(qr0, r1, t);
+        qd = lerp(qd0, d1, t);
+
+        // 2) renormalize + orthogonalize
+        qr = normalize(qr);
+        qd = qd - dot(qr, qd) * qr;
+
+        return qr;
+    }
+
+    float3 RotateByQuat(float3 v, float4 q)
+    {
+        // q * v * q*
+        float3 t = 2.0 * cross(q.xyz, v);
+        return v + q.w * t + cross(q.xyz, t);
+    }
+
+    float3 TranslationFromDQ(float4 qr, float4 qd)
+    {
+        // t = 2 * qd * conj(qr)
+        float4 qc = float4(-qr.xyz, qr.w);
+        float4 t4 = 2.0 * QMul(qd, qc);
+        return t4.xyz;
+    }
+
+    float4x4 DQToMat4x4(float4 qr, float4 qd)
+    {
+        qr = normalize(qr);
+        float x = qr.x, y = qr.y, z = qr.z, w = qr.w;
+
+        float4x4 M;
+        M[0] = float4(1-2*(y*y+z*z), 2*(x*y - w*z),   2*(x*z + w*y), 0);
+        M[1] = float4(2*(x*y + w*z),   1-2*(x*x+z*z), 2*(y*z - w*x), 0);
+        M[2] = float4(2*(x*z - w*y),   2*(y*z + w*x), 1-2*(x*x+y*y), 0);
+        float3 t = TranslationFromDQ(qr, qd);
+        M[3] = float4(t, 1);
+        return M;
+    }
+};
