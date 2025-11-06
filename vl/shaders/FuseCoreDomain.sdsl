@@ -397,10 +397,6 @@ shader FuseCoreDomain: FuseCoreMath
 		return q.xzy;
 	}
 
-	static const float PI = 3.14159265359;
-	static const float TWO_PI = 6.28318530718;
-	static const float GOLDEN_ANGLE = 2.39996322972; // Golden angle in radians
-
 	// ============================================================================
 	// Octahedral Mapping - Best general purpose solution
 	// Low distortion, no singularities, continuous parameterization
@@ -461,7 +457,7 @@ shader FuseCoreDomain: FuseCoreMath
 		float z = normal.z;
 		float sigma = sqrt(3.0 * (1.0 - abs(z)));
 		
-		float u = phi / TWO_PI + 0.5;
+		float u = phi / TWOPI + 0.5;
 		float v = (z > 0.0) ? 
 			(2.0 - sigma) / 4.0 : 
 			(2.0 + sigma) / 4.0;
@@ -480,9 +476,9 @@ shader FuseCoreDomain: FuseCoreMath
 		float k = (1.0 + cosTheta) * 0.5;
 		
 		// Golden ratio spiral offset
-		float spiral = frac(k * GOLDEN_ANGLE / TWO_PI * 10.0);
+		float spiral = frac(k * GOLDEN_ANGLE / TWOPI * 10.0);
 		
-		return float2(phi / TWO_PI + 0.5, spiral);
+		return float2(phi / TWOPI + 0.5, spiral);
 	}
 
 	// ============================================================================
@@ -491,7 +487,7 @@ shader FuseCoreDomain: FuseCoreMath
 	// ============================================================================
 	float2 EqualAreaCylindricalMap(float3 normal)
 	{
-		float phi = atan2(normal.y, normal.x) / TWO_PI + 0.5;
+		float phi = atan2(normal.y, normal.x) / TWOPI + 0.5;
 		float v = asin(clamp(normal.z, -1.0, 1.0)) / PI + 0.5;
 		return float2(phi, v);
 	}
@@ -499,7 +495,7 @@ shader FuseCoreDomain: FuseCoreMath
 	// Inverse equal area cylindrical
 	float3 EqualAreaCylindricalMapInverse(float2 uv)
 	{
-		float phi = (uv.x - 0.5) * TWO_PI;
+		float phi = (uv.x - 0.5) * TWOPI;
 		float theta = asin(clamp((uv.y - 0.5) * 2.0, -1.0, 1.0));
 		
 		float cosTheta = cos(theta);
@@ -513,7 +509,7 @@ shader FuseCoreDomain: FuseCoreMath
 	// Standard spherical coordinates (for comparison - has polar distortion)
 	float2 SphericalCoordinates(float3 normal)
 	{
-		float phi = atan2(normal.y, normal.x) / TWO_PI + 0.5;
+		float phi = atan2(normal.y, normal.x) / TWOPI + 0.5;
 		float theta = acos(clamp(normal.z, -1.0, 1.0)) / PI;
 		return float2(phi, theta);
 	}
