@@ -32,9 +32,8 @@ namespace Fuse.Tests
 
         private static TestEnvironment CreateEnvironment()
         {
-            var vvvvExePath = Task.Run(() => TestEnvironmentLoader.DownloadEntryAssemblyAsync());
-            Console.WriteLine("YP" + vvvvExePath);
-            return TestEnvironmentLoader.Load(vvvvExePath.Result, new[] { MainLibPath, RepositoriesPath });
+            var vvvvExePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "vvvv", "vvvv_gamma_7.0-win-x64", "vvvv.exe");
+            return TestEnvironmentLoader.Load(vvvvExePath, [MainLibPath, RepositoriesPath]);
         }
 
         public static IEnumerable<TestCaseData> NormalPatches()
