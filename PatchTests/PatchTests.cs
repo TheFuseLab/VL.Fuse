@@ -75,8 +75,8 @@ namespace Fuse.Tests
         static PatchTests()
         {
             var currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            MainLibPath = Path.GetFullPath(Path.Combine(currentDirectory, @"..\..\..\..\"));
-            RepositoriesPath = Path.GetFullPath(Path.Combine(MainLibPath, @".."));
+            MainLibPath = @"D:\development\vl\repo";
+            RepositoriesPath =  @"C:\Users\Christian\AppData\Local\vvvv\gamma\nugets";
         }
 
 
