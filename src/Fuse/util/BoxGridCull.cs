@@ -1,333 +1,236 @@
-﻿using System;
+using System;
 using Stride.Core.Mathematics;
 
 namespace Fuse.util;
 
-/// <summary>
-/// CPU-side conservative culling for the Box-Grid projection.
-/// Reuses BoxGridProjection helpers (RayPlaneIntersection, IsPointInRectangle, MapToTexture).
-/// </summary>
-public static class BoxGridCpuCulling
+public static class BoxgridCpuProjector
 {
-    // -------------------------------------------------------------------------
-    // Viewer / Transform parameters (mirror of your shader uniforms)
-    // -------------------------------------------------------------------------
-    public struct ViewerParams
+    /// <summary>
+    ///     CPU equivalent of projectParticleByViewPositionAABB + mapToTexture.
+    ///     Returns false if ray from ViewerPosition through particlePos does not hit the room or visible atlas region.
+    /// </summary>
+    public static bool TryProjectPointToAtlas(
+        in BoxgridProjector proj,
+        in Vector3 particlePos,
+        out int faceIndex,
+        out Vector2 atlasPos4x3, // in 4x3 layout space AFTER zoom (like uvPack.xy on GPU)
+        out float offsetDist // = distance(intersection, particlePos), like uvPack.z on GPU
+    )
     {
-        /// <summary>Anchor for direction (shader: input_622991451)</summary>
-        public Vector3 Anchor;
+        faceIndex = -1;
+        atlasPos4x3 = Vector2.Zero;
+        offsetDist = 0f;
 
-        /// <summary>Axis-wise scale for the normalized direction (shader: input_224581828)</summary>
-        public Vector3 ScaleVec;
+        var ro = proj.ViewerPosition;
+        var dir = particlePos - ro;
+        var lenSq = dir.LengthSquared();
+        if (lenSq <= float.Epsilon)
+            return false;
 
-        /// <summary>Viewer post-transform (shader: input_446715587)</summary>
-        public Matrix PostTransform;
+        var rd = dir / (float)System.Math.Sqrt(lenSq);
 
-        /// <summary>Particle/world point transform (shader: input_3979838717)</summary>
-        public Matrix ParticleTransform;
+        var bounds = proj.RoomBounds;
+        var boxMin = bounds.Minimum;
+        var boxMax = bounds.Maximum;
 
-        public static ViewerParams CreateDefault(Vector3 anchor, Vector3 scaleVec, Matrix postTransform, Matrix particleTransform)
+        // --- slab intersection ---
+        var invDir = new Vector3(
+            1f / rd.X,
+            1f / rd.Y,
+            1f / rd.Z
+        );
+
+        var t0 = (boxMin - ro) * invDir;
+        var t1 = (boxMax - ro) * invDir;
+
+        var tmin = Vector3.Min(t0, t1);
+        var tmax = Vector3.Max(t0, t1);
+
+        var tEnter = System.Math.Max(System.Math.Max(tmin.X, tmin.Y), tmin.Z);
+        var tExit = System.Math.Min(System.Math.Min(tmax.X, tmax.Y), tmax.Z);
+
+        if (tExit < 0f || tEnter > tExit)
+            return false;
+
+        var t = tEnter > 0f ? tEnter : tExit;
+        if (t <= 0f)
+            return false;
+
+        var hit = ro + rd * t;
+
+        // --- classify face like GPU indices ---
+        const float eps = 1e-4f;
+
+        if (System.Math.Abs(hit.Y - boxMin.Y) < eps) faceIndex = 0; // floor
+        else if (System.Math.Abs(hit.Y - boxMax.Y) < eps) faceIndex = 1; // ceiling
+        else if (System.Math.Abs(hit.X - boxMax.X) < eps) faceIndex = 2; // right
+        else if (System.Math.Abs(hit.Z - boxMax.Z) < eps) faceIndex = 3; // back
+        else if (System.Math.Abs(hit.X - boxMin.X) < eps) faceIndex = 4; // left
+        else if (System.Math.Abs(hit.Z - boxMin.Z) < eps) faceIndex = 5; // front
+        else
+            return false;
+
+        // --- per-face UV in [0,1], mirroring HLSL mapToTexture ---
+        var size = proj.RoomSize;
+        float u = 0f, v = 0f;
+
+        switch (faceIndex)
         {
-            return new ViewerParams
-            {
-                Anchor = anchor,
-                ScaleVec = scaleVec,
-                PostTransform = postTransform,
-                ParticleTransform = particleTransform
-            };
-        }
-    }
-
-    public struct ZoomRegion
-    {
-        /// <summary>Min/max in normalized cross-layout UV (0..1)</summary>
-        public Vector2 Min;
-        public Vector2 Max;
-    }
-
-    // -------------------------------------------------------------------------
-    // Viewer position (CPU mirror of your VS logic)
-    // dir = normalize(P - Anchor); v = dir * ScaleVec; v += Anchor; v -> PostTransform
-    // -------------------------------------------------------------------------
-    public static Vector3 ComputeViewerPosition(in Vector3 particleWS, in ViewerParams vp)
-    {
-        var dir = particleWS - vp.Anchor;
-        if (dir.LengthSquared() > 1e-12f) dir.Normalize();
-
-        var v = dir * vp.ScaleVec;
-        v += vp.Anchor;
-
-        var v4 = new Vector4(v, 1f);
-        var vt = Vector4.Transform(v4, vp.PostTransform);
-        return new Vector3(vt.X, vt.Y, vt.Z);
-    }
-
-    // -------------------------------------------------------------------------
-    // Projection test: ray from viewerPS to pointPS against the box faces
-    // Uses BoxGridProjection.RayPlaneIntersection, IsPointInRectangle, MapToTexture
-    // pointPS and viewerPS are already in the same transformed space
-    // -------------------------------------------------------------------------
-    public static bool TryProjectToFace(
-        in Vector3 pointPS,
-        in Vector3 viewerPS,
-        in BoxGridProjection.SurfaceData surface,
-        in BoxGridProjection.LayoutInfo layout,
-        out int hitFaceIndex,
-        out Vector2 uv,
-        out float viewDistance)
-    {
-        hitFaceIndex = -1;
-        uv = Vector2.Zero;
-        viewDistance = 0f;
-
-        var rayDir = pointPS - viewerPS;
-        var len2 = rayDir.LengthSquared();
-        if (len2 < 1e-20f) return false;
-        rayDir /= MathF.Sqrt(len2);
-
-        var roomDims = new Vector3(layout.RoomDimensions.X, layout.RoomDimensions.Y, layout.RoomDimensions.Z);
-
-        var closestDist = float.MaxValue;
-        var bestUV = Vector2.Zero;
-        var bestFace = -1;
-
-        for (var i = 0; i < 6; i++)
-        {
-            var planePos = new Vector3(
-                surface.PositionsAndType[i].X,
-                surface.PositionsAndType[i].Y,
-                surface.PositionsAndType[i].Z);
-
-            var planeNrm = new Vector3(
-                surface.NormalsAndSize[i].X,
-                surface.NormalsAndSize[i].Y,
-                surface.NormalsAndSize[i].Z);
-
-            if (!BoxGridProjection.RayPlaneIntersection(viewerPS, rayDir, planePos, planeNrm, out var isect))
-                continue;
-
-            if (!BoxGridProjection.IsPointInRectangle(isect, planePos, roomDims, planeNrm))
-                continue;
-
-            var distView = (isect - viewerPS).Length();
-            if (distView < closestDist)
-            {
-                closestDist = distView;
-                bestFace = i;
-                bestUV = BoxGridProjection.MapToTexture(isect, i, layout); // returns 0..1 in 4x3-normalized space
-            }
+            case 0: // Floor
+                u = (hit.X - boxMin.X) / size.X;
+                v = 1f - (hit.Z - boxMin.Z) / size.Z;
+                break;
+            case 1: // Ceiling
+                u = (hit.X - boxMin.X) / size.X;
+                v = (hit.Z - boxMin.Z) / size.Z;
+                break;
+            case 2: // Right wall
+                u = (hit.Z - boxMin.Z) / size.Z;
+                v = (hit.Y - boxMin.Y) / size.Y;
+                break;
+            case 3: // Back wall
+                u = 1f - (hit.X - boxMin.X) / size.X;
+                v = (hit.Y - boxMin.Y) / size.Y;
+                break;
+            case 4: // Left wall
+                u = 1f - (hit.Z - boxMin.Z) / size.Z;
+                v = (hit.Y - boxMin.Y) / size.Y;
+                break;
+            case 5: // Front wall
+                u = (hit.X - boxMin.X) / size.X;
+                v = (hit.Y - boxMin.Y) / size.Y;
+                break;
+            default:
+                return false;
         }
 
-        if (bestFace < 0) return false;
+        // strict bounds check (no saturate)
+        if (u < 0f || u > 1f || v < 0f || v > 1f)
+            return false;
 
-        hitFaceIndex = bestFace;
-        uv = bestUV;
-        viewDistance = closestDist;
+        // --- atlas mapping (exactly like HLSL mapToTexture) ---
+
+        // 1) map face-local UV -> 4x3 layout
+        // faceLayout: (x, y, w, h) in 4x3 space
+        var layout = proj.FaceLayoutInfo[faceIndex];
+        var texX = layout.X + u * layout.Z;
+        var texY = layout.Y + v * layout.W;
+
+        // 2) normalize to [0,1] atlas
+        var uvNorm = new Vector2(texX / 4f, texY / 3f);
+
+        // 3) apply zoomRegion in normalized space
+        var zoomMin = new Vector2(proj.ZoomRegion.X, proj.ZoomRegion.Y);
+        var zoomMax = new Vector2(proj.ZoomRegion.Z, proj.ZoomRegion.W);
+        var zoomSize = zoomMax - zoomMin;
+
+        // avoid div-by-zero if misconfigured
+        if (zoomSize.X <= 0f || zoomSize.Y <= 0f)
+            return false;
+
+        var uvZoomedNorm = (uvNorm - zoomMin) / zoomSize;
+
+        // 4) scale back to 4x3 layout space (this is what your shader returns in uvPack.xy)
+        atlasPos4x3 = new Vector2(uvZoomedNorm.X * 4f, uvZoomedNorm.Y * 3f);
+
+        // z-component: match GPU = distance(intersection, particlePos)
+        offsetDist = Vector3.Distance(hit, particlePos);
+
+        // Optional: require zoomed UV inside [0,1] to be "visible"
+        if (uvZoomedNorm.X < 0f || uvZoomedNorm.X > 1f ||
+            uvZoomedNorm.Y < 0f || uvZoomedNorm.Y > 1f)
+            return false;
+
         return true;
     }
-
-    // -------------------------------------------------------------------------
-    // AABB → Atlas zoom culling (conservative, sample-based)
-    // Applies ParticleTransform to samples and PostTransform to viewer
-    // -------------------------------------------------------------------------
-    public static bool CullChunkByAtlas(
-        in BoundingBox chunkAabbWS,
-        in ViewerParams vp,
-        in BoxGridProjection.SurfaceData surface,
-        in BoxGridProjection.LayoutInfo layout,
-        in ZoomRegion zoom,
-        float uvEpsilon,
-        out byte faceMask)
+    
+    public static bool CullBoundingBox(in BoxgridProjector proj, in BoundingBox box)
     {
-        faceMask = 0;
+        // 1) quick reject vs room
+        if (!box.Intersects(proj.RoomBounds))
+            return true;
 
-        Span<Vector3> samples = stackalloc Vector3[15];
-        var sampleCount = GatherSupportPoints(chunkAabbWS, samples);
+        // 2) test all 8 corners against projector
+        //    if any corner projects into visible region, keep the box
+        var min = box.Minimum;
+        var max = box.Maximum;
 
-        var faceMin = new Vector2[6];
-        var faceMax = new Vector2[6];
-        var faceHas = new bool[6];
-
-        for (var i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
-            faceMin[i] = new Vector2(float.MaxValue, float.MaxValue);
-            faceMax[i] = new Vector2(float.MinValue, float.MinValue);
+            var p = new Vector3(
+                (i & 1) != 0 ? max.X : min.X,
+                (i & 2) != 0 ? max.Y : min.Y,
+                (i & 4) != 0 ? max.Z : min.Z
+            );
+
+            if (BoxgridCpuProjector.TryProjectPointToAtlas(proj, p,
+                    out _, out _, out _))
+                return false; // visible
         }
 
-        for (var s = 0; s < sampleCount; s++)
+        return true; // culled
+    }
+
+
+    public static bool CullBoundingSphere(in BoxgridProjector proj, in BoundingSphere sphere)
+    {
+        // 1) quick reject vs room AABB
+        if (!SphereIntersectsAabb(sphere, proj.RoomBounds))
+            return true;
+
+        // 2) conservative test: if center projects into visible region -> keep
+        if (TryProjectPointToAtlas(proj, sphere.Center,
+                out _, out _, out _))
+            return false;
+
+        // Optional: sample a few directions around center for tighter cull.
+        // For safety in your use-case, I'd keep clusters if in doubt:
+        return false;
+    }
+
+    private static bool SphereIntersectsAabb(in BoundingSphere s, in BoundingBox b)
+    {
+        // classic closest-point test
+        var c = s.Center;
+        var x = MathF.Max(b.Minimum.X, MathF.Min(c.X, b.Maximum.X));
+        var y = MathF.Max(b.Minimum.Y, MathF.Min(c.Y, b.Maximum.Y));
+        var z = MathF.Max(b.Minimum.Z, MathF.Min(c.Z, b.Maximum.Z));
+
+        var dx = x - c.X;
+        var dy = y - c.Y;
+        var dz = z - c.Z;
+
+        return dx * dx + dy * dy + dz * dz <= s.Radius * s.Radius;
+    }
+    
+    public static BoxgridProjector CreateBoxgridProjector(in BoundingBox roomBounds, in Vector3 viewerPosition, in Vector4[] faceLayoutInfo)
+    {
+        return new BoxgridProjector
         {
-            var S_ws = samples[s];
+            RoomCenter = roomBounds.Center,
+            RoomSize = roomBounds.Maximum - roomBounds.Minimum,
+            ViewerPosition = viewerPosition,
+            FaceLayoutInfo = faceLayoutInfo,
+        };
+    }
 
-            // build viewer (post-transformed) and transform the sample point with ParticleTransform
-            var viewerPS = ComputeViewerPosition(S_ws, vp);
-            var pointPS  = Vector3.TransformCoordinate(S_ws, vp.ParticleTransform);
+    public struct BoxgridProjector
+    {
+        public Vector3 RoomCenter; // room center in world space
+        public Vector3 RoomSize; // full size (width, height, depth)
+        public Vector4 ZoomRegion; // (minU, minV, maxU, maxV) in normalized atlas space
+        public Vector3 ViewerPosition; // world space
 
-            if (!TryProjectToFace(pointPS, viewerPS, surface, layout, out var face, out var uv, out _))
-                continue;
+        // length 6, each: (x, y, w, h) in 4x3 layout space, same as GPU faceLayoutInfo
+        public Vector4[] FaceLayoutInfo;
 
-            uv = new Vector2(MathUtil.Clamp(uv.X, 0f, 1f), MathUtil.Clamp(uv.Y, 0f, 1f));
-            ExpandUvAabb(ref faceMin[face], ref faceMax[face], uv, uvEpsilon);
-            faceHas[face] = true;
-        }
-
-        var anyOverlap = false;
-        for (var f = 0; f < 6; f++)
+        public BoundingBox RoomBounds
         {
-            if (!faceHas[f]) continue;
-            if (AabbOverlap(faceMin[f], faceMax[f], zoom.Min, zoom.Max))
+            get
             {
-                anyOverlap = true;
-                faceMask |= (byte)(1 << f);
+                var half = RoomSize * 0.5f;
+                return new BoundingBox(RoomCenter - half, RoomCenter + half);
             }
         }
-
-        return !anyOverlap; // true -> culled
-    }
-
-    // -------------------------------------------------------------------------
-    // BoundingSphere → Atlas zoom culling (conservative, sample-based)
-    // -------------------------------------------------------------------------
-    public static bool CullSphereByAtlas(
-        in Vector3 sphereCenterWS,
-        float radiusWS,
-        in ViewerParams vp,
-        in BoxGridProjection.SurfaceData surface,
-        in BoxGridProjection.LayoutInfo layout,
-        in ZoomRegion zoom,
-        float uvEpsilon,
-        out byte faceMask)
-    {
-        faceMask = 0;
-
-        Span<Vector3> samples = stackalloc Vector3[27];
-        var sampleCount = GatherSphereSupportPoints(sphereCenterWS, radiusWS, samples);
-
-        var faceMin = new Vector2[6];
-        var faceMax = new Vector2[6];
-        var faceHas = new bool[6];
-
-        for (var i = 0; i < 6; i++)
-        {
-            faceMin[i] = new Vector2(float.MaxValue, float.MaxValue);
-            faceMax[i] = new Vector2(float.MinValue, float.MinValue);
-        }
-
-        for (var s = 0; s < sampleCount; s++)
-        {
-            var S_ws = samples[s];
-
-            var viewerPS = ComputeViewerPosition(S_ws, vp);
-            var pointPS  = Vector3.TransformCoordinate(S_ws, vp.ParticleTransform);
-
-            if (!TryProjectToFace(pointPS, viewerPS, surface, layout, out var face, out var uv, out _))
-                continue;
-
-            uv = new Vector2(MathUtil.Clamp(uv.X, 0f, 1f), MathUtil.Clamp(uv.Y, 0f, 1f));
-            ExpandUvAabb(ref faceMin[face], ref faceMax[face], uv, uvEpsilon);
-            faceHas[face] = true;
-        }
-
-        var anyOverlap = false;
-        for (var f = 0; f < 6; f++)
-        {
-            if (!faceHas[f]) continue;
-            if (AabbOverlap(faceMin[f], faceMax[f], zoom.Min, zoom.Max))
-            {
-                anyOverlap = true;
-                faceMask |= (byte)(1 << f);
-            }
-        }
-
-        return !anyOverlap; // true -> culled
-    }
-
-    // -------------------------------------------------------------------------
-    // Utilities
-    // -------------------------------------------------------------------------
-    private static int GatherSupportPoints(in BoundingBox aabb, Span<Vector3> dst)
-    {
-        var min = aabb.Minimum;
-        var max = aabb.Maximum;
-        var i = 0;
-
-        // 8 corners
-        dst[i++] = new Vector3(min.X, min.Y, min.Z);
-        dst[i++] = new Vector3(max.X, min.Y, min.Z);
-        dst[i++] = new Vector3(min.X, max.Y, min.Z);
-        dst[i++] = new Vector3(max.X, max.Y, min.Z);
-        dst[i++] = new Vector3(min.X, min.Y, max.Z);
-        dst[i++] = new Vector3(max.X, min.Y, max.Z);
-        dst[i++] = new Vector3(min.X, max.Y, max.Z);
-        dst[i++] = new Vector3(max.X, max.Y, max.Z);
-
-        // 6 face centers
-        var c = (min + max) * 0.5f;
-        dst[i++] = new Vector3(c.X, min.Y, c.Z);
-        dst[i++] = new Vector3(c.X, max.Y, c.Z);
-        dst[i++] = new Vector3(min.X, c.Y, c.Z);
-        dst[i++] = new Vector3(max.X, c.Y, c.Z);
-        dst[i++] = new Vector3(c.X, c.Y, min.Z);
-        dst[i++] = new Vector3(c.X, c.Y, max.Z);
-
-        // center
-        dst[i++] = c;
-
-        return i;
-    }
-
-    private static int GatherSphereSupportPoints(in Vector3 c, float r, Span<Vector3> dst)
-    {
-        var i = 0;
-
-        // center
-        dst[i++] = c;
-
-        // 6 axis extremes
-        dst[i++] = c + new Vector3( r, 0, 0);
-        dst[i++] = c + new Vector3(-r, 0, 0);
-        dst[i++] = c + new Vector3( 0, r, 0);
-        dst[i++] = c + new Vector3( 0,-r, 0);
-        dst[i++] = c + new Vector3( 0, 0, r);
-        dst[i++] = c + new Vector3( 0, 0,-r);
-
-        // 8 cube corners normalized
-        const float invSqrt3 = 0.5773502691896258f;
-        var corners = new[]{
-            new Vector3( 1, 1, 1), new Vector3( 1, 1,-1),
-            new Vector3( 1,-1, 1), new Vector3( 1,-1,-1),
-            new Vector3(-1, 1, 1), new Vector3(-1, 1,-1),
-            new Vector3(-1,-1, 1), new Vector3(-1,-1,-1)
-        };
-        for (var k = 0; k < 8; k++) dst[i++] = c + corners[k] * (r * invSqrt3);
-
-        // 12 edge midpoints normalized
-        var edges = new[]{
-            new Vector3( 1, 1, 0), new Vector3( 1,-1, 0), new Vector3(-1, 1, 0), new Vector3(-1,-1, 0),
-            new Vector3( 1, 0, 1), new Vector3( 1, 0,-1), new Vector3(-1, 0, 1), new Vector3(-1, 0,-1),
-            new Vector3( 0, 1, 1), new Vector3( 0, 1,-1), new Vector3( 0,-1, 1), new Vector3( 0,-1,-1),
-        };
-        for (var k = 0; k < 12; k++) { var d = edges[k]; d.Normalize(); dst[i++] = c + d * r; }
-
-        return i; // 27
-    }
-
-    private static void ExpandUvAabb(ref Vector2 min, ref Vector2 max, in Vector2 p, float eps)
-    {
-        min.X = MathF.Min(min.X, p.X - eps);
-        min.Y = MathF.Min(min.Y, p.Y - eps);
-        max.X = MathF.Max(max.X, p.X + eps);
-        max.Y = MathF.Max(max.Y, p.Y + eps);
-
-        min.X = MathUtil.Clamp(min.X, 0f, 1f);
-        min.Y = MathUtil.Clamp(min.Y, 0f, 1f);
-        max.X = MathUtil.Clamp(max.X, 0f, 1f);
-        max.Y = MathUtil.Clamp(max.Y, 0f, 1f);
-    }
-
-    private static bool AabbOverlap(in Vector2 aMin, in Vector2 aMax, in Vector2 bMin, in Vector2 bMax)
-    {
-        if (aMax.X < bMin.X || aMin.X > bMax.X) return false;
-        if (aMax.Y < bMin.Y || aMin.Y > bMax.Y) return false;
-        return true;
     }
 }
