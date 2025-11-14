@@ -114,7 +114,7 @@ shader FuseRenderingBoxGridProject {
         }
 
         // Store normalized per-face UVs in [0,1]
-        float2 faceUV01 = saturate(float2(u, v));
+        float2 faceUV01 = float2(u, v);
         
         // Get layout info for this face (startX, startY, width, height)
         float4 layout = faceLayoutInfo[surfaceIndex];
@@ -193,6 +193,91 @@ shader FuseRenderingBoxGridProject {
         // Return the texture coordinate for the closest intersection
         return projectionResult;
     }
+
+    float3 projectParticleByViewPositionAABB(
+        float3 particlePos,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,               // same semantics as before
+        float3 viewerPosition,
+        out int   hitSurfaceIndex,
+        out float2 out_faceUV01,
+        StructuredBuffer<float4> faceLayoutInfo
+    )
+    {
+        // safe defaults so HLSL is happy
+        hitSurfaceIndex = -1;
+        out_faceUV01 = float2(0.0, 0.0);
+
+        float3 ro = viewerPosition;
+        float3 rd = normalize(particlePos - viewerPosition);
+
+        float3 halfExt = roomDimensions * 0.5f;
+        float3 boxMin  = roomCenter - halfExt;
+        float3 boxMax  = roomCenter + halfExt;
+
+        // ---------- slab intersection ----------
+        float3 invDir = 1.0 / rd;
+
+        float3 t0 = (boxMin - ro) * invDir;
+        float3 t1 = (boxMax - ro) * invDir;
+
+        float3 tmin = min(t0, t1);
+        float3 tmax = max(t0, t1);
+
+        float tEnter = max(max(tmin.x, tmin.y), tmin.z);
+        float tExit  = min(min(tmax.x, tmax.y), tmax.z);
+
+        // no hit or behind
+        if (tExit < 0.0 || tEnter > tExit)
+            return float3(0.0, 0.0, 0.0);
+
+        float t = (tEnter > 0.0) ? tEnter : tExit;
+        if (t <= 0.0)
+            return float3(0.0, 0.0, 0.0);
+
+        float3 p = ro + rd * t;
+
+        // ---------- classify face (match your indices) ----------
+        const float eps = 1e-4;
+
+        // 0: floor (Green)    -> y = boxMin.y
+        // 1: ceiling (Yellow) -> y = boxMax.y
+        // 2: right (Magenta)  -> x = boxMax.x
+        // 3: back (Cyan)      -> z = boxMax.z
+        // 4: left (Red)       -> x = boxMin.x
+        // 5: front (Blue)     -> z = boxMin.z
+
+        if      (abs(p.y - boxMin.y) < eps) hitSurfaceIndex = 0;
+        else if (abs(p.y - boxMax.y) < eps) hitSurfaceIndex = 1;
+        else if (abs(p.x - boxMax.x) < eps) hitSurfaceIndex = 2;
+        else if (abs(p.z - boxMax.z) < eps) hitSurfaceIndex = 3;
+        else if (abs(p.x - boxMin.x) < eps) hitSurfaceIndex = 4;
+        else if (abs(p.z - boxMin.z) < eps) hitSurfaceIndex = 5;
+
+        if (hitSurfaceIndex < 0)
+            return float3(0.0, 0.0, 0.0);
+
+        // ---------- UV & atlas via your existing mapToTexture ----------
+        // mapToTexture expects the exact hit point, face index, and your original buffers.
+        float4 uvPack = mapToTexture(
+            p,
+            hitSurfaceIndex,
+            faceLayoutInfo,
+            roomCenter,
+            roomDimensions,
+            zoomRegion
+        );
+
+        out_faceUV01 = uvPack.zw;
+
+        // IMPORTANT: z matches original: distance from intersection to particle
+        float offsetDist = distance(p, particlePos);
+
+        // uvPack.xy is in 4x3 layout space, like before
+        return float3(uvPack.xy, offsetDist);
+    }
+
 
     /// <summary>
     /// Projects a 3D particle position orthogonally onto all 6 faces of a box.
