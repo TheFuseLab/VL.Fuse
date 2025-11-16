@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
+#pragma warning disable CS1591
 
 // High-performance octree optimized for memory efficiency and cache performance
 public class GPUOctree
@@ -7,12 +8,12 @@ public class GPUOctree
 
     public class OctreeProgressInfo
     {
-        public string StageName { get; set; }
+        public string? StageName { get; set; }
         public double ProgressPercentage { get; set; }
         public bool IsCompleted { get; set; }
-        public Exception Error { get; set; }
-        public byte[] NodeBufferData { get; set; }
-        public byte[] IndexBufferData { get; set; }
+        public Exception? Error { get; set; }
+        public byte[]? NodeBufferData { get; set; }
+        public byte[]? IndexBufferData { get; set; }
         public int NodeCount { get; set; }
         public int TotalNodes { get; set; }
         public int IndexCount { get; set; }
@@ -42,7 +43,6 @@ public class GPUOctree
         public bool OptimizeForSpeed = true; // Enable all speed optimizations
         public int ProgressReportInterval = 100000; // More frequent for faster builds
         public float SubdivisionEpsilon = 1e-4f;
-        public float VerificationEpsilon = 1e-3f;
     }
 
     #endregion
@@ -60,16 +60,16 @@ public class GPUOctree
         public int ParentIndex;
     }
 
-    private List<OctreeNode> _nodes;
-    private int[] _pointIndices;
-    private float[] _xCoords, _yCoords, _zCoords;
+    private List<OctreeNode> _nodes = new List<OctreeNode>(0);
+    private int[] _pointIndices = Array.Empty<int>();
+    private float[] _xCoords = Array.Empty<float>(), _yCoords = Array.Empty<float>(), _zCoords = Array.Empty<float>();
     private int _totalPoints;
-    private BuildConfig _config;
+    private BuildConfig _config = new BuildConfig();
 
     // Reusable arrays to avoid allocations
-    private int[] _tempOctants;
-    private int[] _octantCounts;
-    private int[] _octantOffsets;
+    private int[] _tempOctants = Array.Empty<int>();
+    private int[] _octantCounts = Array.Empty<int>();
+    private int[] _octantOffsets = Array.Empty<int>();
 
     #endregion
 
@@ -78,7 +78,7 @@ public class GPUOctree
     public static async Task BuildInBackgroundAsync(
         Dictionary<string, float[]> plyData,
         OctreeProgressInfo octreeProgressInfo,
-        BuildConfig config = null)
+        BuildConfig? config = null)
     {
         var octree = new GPUOctree();
         await Task.Run(() => octree.BuildInternal(plyData, octreeProgressInfo, config ?? new BuildConfig()));
@@ -118,7 +118,6 @@ public class GPUOctree
             if (_config.SubdivisionEpsilon == 1e-4f)
             {
                 _config.SubdivisionEpsilon = dataScale * 1e-7f;
-                _config.VerificationEpsilon = dataScale * 1e-6f;
             }
 
             // Initialize point indices

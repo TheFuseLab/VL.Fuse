@@ -1,9 +1,12 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 
+#pragma warning disable CS1591
+
 public class FastPlyReader
 {
+    
     private static readonly Dictionary<PropertyType, PropertyReader> PropertyReaders = new()
     {
         {
@@ -482,16 +485,16 @@ public class FastPlyReader
     public class ProgressInfo
     {
         public int Stage { get; set; } // 0=Header, 1=Data
-        public string StageName { get; set; }
+        public string StageName { get; set; } = string.Empty;
         public long BytesProcessed { get; set; }
         public long TotalBytes { get; set; }
         public int VerticesProcessed { get; set; }
         public int TotalVertices { get; set; }
         public double ProgressPercentage { get; set; }
-        public string CurrentField { get; set; }
+        public string CurrentField { get; set; } = string.Empty;
         public TimeSpan Elapsed { get; set; }
         public bool IsCompleted { get; set; }
-        public Dictionary<string, float[]> Result { get; set; }
-        public Exception Error { get; set; }
+        public Dictionary<string, float[]> Result { get; set; } = new Dictionary<string, float[]>(0);
+        public Exception? Error { get; set; }
     }
 }

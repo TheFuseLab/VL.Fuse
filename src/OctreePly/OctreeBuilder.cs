@@ -1,30 +1,36 @@
-﻿using System;
+using System;
+using System.Diagnostics;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Vector3 = Stride.Core.Mathematics.Vector3;
 
 namespace VL.E57
 {
+    #pragma warning disable CS1591
     // VVVV Process Node für GPU-Octree-Build + CPU-seitiges Precompute-LOD (Leaves)
     [ProcessNode]
     public class OctreeBuilder
     {
-        private Task _buildTask;
+        private Task? _buildTask;
         private bool _isBuilding;
         private bool _lastBuildTrigger;
-        private GPUOctree.OctreeProgressInfo _progressInfo;
+        private GPUOctree.OctreeProgressInfo? _progressInfo;
+        private bool _hasPrecomputedLODs;
+        private bool _wasCacheHit;   // NEW: track whether this run used a cache hit
 
         // ---------------------------
         // Inputs
         // ---------------------------
-        public Dictionary<string, float[]> PLYData { private get; set; }
+        public Dictionary<string, float[]> PLYData { private get; set; } = new Dictionary<string, float[]>(0);
         public bool Build { private get; set; }
         public int MaxDepth { private get; set; } = 8;
         public int MaxPointsPerLeaf { private get; set; } = 5000;
+        public bool UseDiskCache { private get; set; }
+        public bool ForceCacheUpdate { private get; set; }
+        public string CacheBasePath { private get; set; } = string.Empty;
+        public string PointCloudKey { private get; set; } = string.Empty;
+        public bool Debug { private get; set; }
 
         /// <summary>
         /// Aktiviert die CPU-seitige Progressive-LOD-Permutation für Leaf-Nodes.
@@ -52,8 +58,8 @@ namespace VL.E57
         // ---------------------------
         // Outputs – Resultate
         // ---------------------------
-        public byte[] NodeBufferData { get; private set; }
-        public byte[] IndexBufferData { get; private set; }
+        public byte[] NodeBufferData { get; private set; } = Array.Empty<byte>();
+        public byte[] IndexBufferData { get; private set; } = Array.Empty<byte>();
         public int NodeCount { get; private set; }
         public int IndexCount { get; private set; }
         public int NodesProcessed { get; private set; }
@@ -87,8 +93,8 @@ namespace VL.E57
 
                 if (_progressInfo.Error == null)
                 {
-                    NodeBufferData = _progressInfo.NodeBufferData;
-                    IndexBufferData = _progressInfo.IndexBufferData;
+                    NodeBufferData = _progressInfo.NodeBufferData ?? Array.Empty<byte>();
+                    IndexBufferData = _progressInfo.IndexBufferData ?? Array.Empty<byte>();
                     NodeCount = _progressInfo.NodeCount;
                     IndexCount = _progressInfo.IndexCount;
                     TotalMemoryUsed = _progressInfo.TotalMemoryUsed;
@@ -100,15 +106,23 @@ namespace VL.E57
 
             IsBuilding = _isBuilding;
         }
+        
+        private void Log(string message)
+        {
+            if (Debug) Console.WriteLine(message);
+        }
 
         private async void StartBuilding()
         {
             _isBuilding = true;
+            _wasCacheHit = false;            // NEW: reset per build
+            _hasPrecomputedLODs = false;     // reset (will be filled from cache/build)
             _progressInfo = new GPUOctree.OctreeProgressInfo();
+            var swTotal = Stopwatch.StartNew();
 
             // Clear outputs
-            NodeBufferData = null;
-            IndexBufferData = null;
+            NodeBufferData = Array.Empty<byte>();
+            IndexBufferData = Array.Empty<byte>();
             NodeCount = 0;
             IndexCount = 0;
             TotalMemoryUsed = 0;
@@ -123,21 +137,120 @@ namespace VL.E57
 
             try
             {
-                _buildTask = GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
-                await _buildTask;
+                if (!string.IsNullOrWhiteSpace(CacheBasePath))
+                    DiskCachePaths.BasePath = CacheBasePath;
 
-                // Wenn Build ok: optional progressive LODs für Leaves einarbeiten
-                if (_progressInfo.Error == null && EnablePrecomputedLeafLODs)
+                if (UseDiskCache)
+                {
+                    var pcKey = !string.IsNullOrWhiteSpace(PointCloudKey) ? PointCloudKey : DerivePointCloudKey(PLYData);
+                    var octreeKey = DiskCacheKey.ForOctree(pcKey, MaxDepth, MaxPointsPerLeaf, 0f, config.OptimizeForSpeed, config.EnableDetailedValidation);
+                    if (ForceCacheUpdate)
+                        DiskCache.Invalidate("octree", octreeKey);
+
+                    if (DiskCache.TryGet("octree", octreeKey, new OctreeCacheSerializer(), default, out var payloadTask))
+                    {
+                        var swHit = Stopwatch.StartNew();
+                        var payload = await payloadTask;
+                        swHit.Stop();
+                        Log($"[OctreeBuilder] Cache hit. Read in {swHit.ElapsedMilliseconds} ms. Nodes={payload.NodeCount} Indices={payload.IndexCount}");
+                        _wasCacheHit = true;                         // NEW
+                        _hasPrecomputedLODs = payload.HasPrecomputedLODs;  // NEW: remember flag from cache
+
+                        _progressInfo.StageName = "Loaded from cache";
+                        _progressInfo.ProgressPercentage = 100;
+                        _progressInfo.NodeBufferData = payload.NodeBuffer;
+                        _progressInfo.IndexBufferData = payload.IndexBuffer;
+                        _progressInfo.NodeCount = payload.NodeCount;
+                        _progressInfo.IndexCount = payload.IndexCount;
+                        _progressInfo.TotalMemoryUsed = payload.TotalMemory;
+                        _progressInfo.IsCompleted = true;
+                    }
+                    else
+                    {
+                        var swMiss = Stopwatch.StartNew();
+                        var payload = await DiskCache.GetOrCreateAsync(
+                            cacheNamespace: "octree",
+                            key: octreeKey,
+                            serializer: new OctreeCacheSerializer(),
+                            buildAsync: async ct =>
+                            {
+                                var swBuild = Stopwatch.StartNew();
+                                await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
+                                swBuild.Stop();
+                                Log($"[OctreeBuilder] Built from source in {swBuild.ElapsedMilliseconds} ms. Nodes={_progressInfo.NodeCount} Indices={_progressInfo.IndexCount}");
+
+                                // Precompute LODs BEFORE writing to cache (only once per dataset)
+                                bool precomputed = false;
+                                if (EnablePrecomputedLeafLODs && _progressInfo.Error == null)
+                                {
+                                    StageSafe("Precompute LODs (Leaves, caching)", 0.0);
+                                    TryApplyPrecomputedLeafLODs(
+                                        _progressInfo.NodeBufferData ?? Array.Empty<byte>(),
+                                        _progressInfo.IndexBufferData ?? Array.Empty<byte>(),
+                                        _progressInfo.NodeCount,
+                                        _progressInfo.IndexCount,
+                                        PLYData,
+                                        LeafTargetCellsOnLongestAxis);
+                                    StageSafe("Precompute LODs (Leaves, caching) – done", 1.0);
+                                    precomputed = true;
+                                }
+
+                                return new OctreeCacheSerializer.Payload(
+                                    _progressInfo.NodeBufferData!,
+                                    _progressInfo.IndexBufferData!,
+                                    _progressInfo.NodeCount,
+                                    _progressInfo.IndexCount,
+                                    _progressInfo.TotalMemoryUsed,
+                                    precomputed);
+                            },
+                            ct: default);
+                        swMiss.Stop();
+                        Log($"[OctreeBuilder] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms.");
+                        _buildTask = Task.CompletedTask;
+                        if (_progressInfo != null && _progressInfo.Error == null)
+                        {
+                            _progressInfo.NodeBufferData = payload.NodeBuffer;
+                            _progressInfo.IndexBufferData = payload.IndexBuffer;
+                            _progressInfo.NodeCount = payload.NodeCount;
+                            _progressInfo.IndexCount = payload.IndexCount;
+                            _progressInfo.TotalMemoryUsed = payload.TotalMemory;
+                            _progressInfo.IsCompleted = true;
+                            _hasPrecomputedLODs = payload.HasPrecomputedLODs;   // NEW: propagate flag
+                        }
+                    }
+                }
+                else
+                {
+                    // No disk cache: build + optional LODs in this run
+                    var swNoCache = Stopwatch.StartNew();
+                    _buildTask = GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
+                    await _buildTask;
+                    swNoCache.Stop();
+                    Log($"[OctreeBuilder] Built without cache in {swNoCache.ElapsedMilliseconds} ms. Nodes={_progressInfo?.NodeCount} Indices={_progressInfo?.IndexCount}");
+                    _hasPrecomputedLODs = false; // will be set true if we run LODs below
+                }
+
+                // ---------------------------------------------
+                // Post-build LOD precompute:
+                // - For disk cache: ONLY in the buildAsync above.
+                // - For no-cache: do it here once per run.
+                // ---------------------------------------------
+                if (_progressInfo != null &&
+                    _progressInfo.Error == null &&
+                    EnablePrecomputedLeafLODs &&
+                    !_hasPrecomputedLODs &&
+                    !UseDiskCache)              // NEW: skip on cache hits/misses (cache path handled above)
                 {
                     StageSafe("Precompute LODs (Leaves)", 0.0);
                     TryApplyPrecomputedLeafLODs(
-                        _progressInfo.NodeBufferData,
-                        _progressInfo.IndexBufferData,
+                        _progressInfo.NodeBufferData ?? Array.Empty<byte>(),
+                        _progressInfo.IndexBufferData ?? Array.Empty<byte>(),
                         _progressInfo.NodeCount,
                         _progressInfo.IndexCount,
                         PLYData,
                         LeafTargetCellsOnLongestAxis);
                     StageSafe("Precompute LODs (Leaves) – done", 1.0);
+                    _hasPrecomputedLODs = true;
                 }
             }
             catch (Exception ex)
@@ -149,6 +262,28 @@ namespace VL.E57
                     _progressInfo.StageName = "Error";
                 }
             }
+            finally
+            {
+                swTotal.Stop();
+                Log($"[OctreeBuilder] Total elapsed {swTotal.ElapsedMilliseconds} ms.");
+            }
+        }
+
+        private static string DerivePointCloudKey(Dictionary<string, float[]> ply)
+        {
+            if (ply == null || ply.Count == 0) return "empty";
+            var keys = new List<string>(ply.Keys);
+            keys.Sort(StringComparer.OrdinalIgnoreCase);
+            long total = 0;
+            var sb = new System.Text.StringBuilder();
+            foreach (var k in keys)
+            {
+                var len = ply[k]?.LongLength ?? 0;
+                total += len;
+                sb.Append(k).Append(':').Append(len).Append('|');
+            }
+            sb.Append("sum:").Append(total);
+            return sb.ToString();
         }
 
         private void UpdateOutputs()
@@ -194,12 +329,6 @@ namespace VL.E57
         // Precompute-LODs (Leaves)
         // ===========================
 
-        // CPU-seitige Node-Struktur, passend zu GPU/HLSL (48 Bytes, 16B-aligned Blöcke)
-        // HLSL:
-        // float3 BoundsMin; float BoundsSize;
-        // float3 BoundsMax; uint  ChildStartIndex;
-        // uint IndexStartIndex; uint IndexCount;
-        // uint LODLevel;       uint ParentIndex;
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         private struct CpuNode
         {
@@ -225,10 +354,6 @@ namespace VL.E57
             public Vector3 Size => Max - Min;
         }
 
-        /// <summary>
-        /// Wendet auf den Indexbereich jeder Leaf-Node eine progressive Permutation an.
-        /// (Multiscale-Grid: Grob-&gt;Fein Layer)
-        /// </summary>
         private void TryApplyPrecomputedLeafLODs(
             byte[] nodeBufferData,
             byte[] indexBufferData,
@@ -240,17 +365,13 @@ namespace VL.E57
             if (nodeBufferData == null || indexBufferData == null || nodeCount <= 0 || indexCount <= 0)
                 return;
 
-            // Positionsdaten prüfen
             if (!TryGetPositions(plyData, out var posX, out var posY, out var posZ) ||
                 posX.Length != posY.Length || posX.Length != posZ.Length)
                 return;
 
-            // Arrays für Nodes/Indices (wir bauen Spans später im Lambda)
-            // Achtung: hier KEIN Span capturen!
             var nodeBytes   = nodeBufferData;
             var indexBytes  = indexBufferData;
 
-            // Positionsarray (das darf gecaptured werden)
             var posVec = new Vector3[posX.Length];
             for (int i = 0; i < posVec.Length; i++)
                 posVec[i] = new Vector3(posX[i], posY[i], posZ[i]);
@@ -263,7 +384,6 @@ namespace VL.E57
                 var nodeSpan    = MemoryMarshal.Cast<byte, CpuNode>(nodeBytes.AsSpan());
                 var indicesSpan = MemoryMarshal.Cast<byte, int>(indexBytes.AsSpan());
 
-                // Node lesen (Kopie ok)
                 var n = nodeSpan[i];
                 bool isLeaf = (n.ChildStartIndex == 0xFFFFFFFFu) || unchecked((int)n.ChildStartIndex) == -1;
                 if (!isLeaf) return;
@@ -273,19 +393,15 @@ namespace VL.E57
                 if ((uint)start >= (uint)indicesSpan.Length || count <= 1 || (start + count) > indicesSpan.Length)
                     return;
 
-                // Bounds & Basiszellgröße pro Leaf
                 var b = new Bounds { Min = n.BoundsMin, Max = n.BoundsMax };
                 var size = b.Size;
                 float longest = MathF.Max(size.X, MathF.Max(size.Y, size.Z));
                 float baseCell = longest > 0 ? longest / targetCells : 1e-4f;
 
-                // Slice des Indexbereichs bilden und in-place permutieren
                 var slice = indicesSpan.Slice(start, count);
-
-                // WICHTIG: Hier NICHT posVec.AsSpan() vordefinieren/capturen, sondern direkt übergeben.
-                ProgressiveOrderLeaf(slice, posVec /* implizit ReadOnlySpan */, in b, baseCell);
+                ProgressiveOrderLeaf(slice, posVec, in b, baseCell);
             });
-            
+
             // --- DEBUG ---
             int nonEmpty = 0, empty = 0;
             for (int i = 0; i < nodeCount; i++)
@@ -293,20 +409,25 @@ namespace VL.E57
                 var n = MemoryMarshal.Cast<byte, CpuNode>(nodeBufferData.AsSpan())[i];
                 if (n.IndexCount > 0) nonEmpty++; else empty++;
             }
+
             Console.WriteLine($"[LOD Permutation] Nodes: {nodeCount}, nonEmpty={nonEmpty}, totalIndices={indexCount}");
-            Console.WriteLine($"First few indices: {string.Join(",", MemoryMarshal.Cast<byte,int>(indexBufferData.AsSpan()).Slice(0, Math.Min(16,indexCount)).ToArray())}");
 
+            var allIndicesSpan = MemoryMarshal.Cast<byte, int>(indexBufferData.AsSpan());
+            int previewCount = Math.Min(16, indexCount);
+            if (previewCount > 0)
+            {
+                var preview = allIndicesSpan.Slice(0, previewCount).ToArray();
+                Console.WriteLine($"First few indices: {string.Join(",", preview)}");
+            }
         }
-
 
         private static bool TryGetPositions(
             Dictionary<string, float[]> ply,
             out float[] x, out float[] y, out float[] z)
         {
-            x = y = z = null;
+            x = y = z = Array.Empty<float>();
             if (ply == null) return false;
 
-            // üblich: "x","y","z" – ggf. Keys tolerant behandeln
             bool ok =
                 TryGetCaseInsensitive(ply, "x", out x) &&
                 TryGetCaseInsensitive(ply, "y", out y) &&
@@ -324,13 +445,9 @@ namespace VL.E57
                     return true;
                 }
             }
-            arr = null;
+            arr = Array.Empty<float>();
             return false;
         }
-
-        // ---------------------------
-        // Progressive Leaf Ordering
-        // ---------------------------
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int Hash32(int x)
@@ -344,9 +461,6 @@ namespace VL.E57
             }
         }
 
-        /// <summary>
-        /// Deterministisches Fisher–Yates Shuffle (in-place).
-        /// </summary>
         private static void ShuffleDeterministic(Span<int> span, int seed)
         {
             int n = span.Length;
@@ -363,7 +477,6 @@ namespace VL.E57
         {
             public static int FromBounds(in Bounds b)
             {
-                // stabiler Seed aus Bounds (bitgenau)
                 int hx = BitConverter.SingleToInt32Bits(b.Min.X);
                 int hy = BitConverter.SingleToInt32Bits(b.Min.Y);
                 int hz = BitConverter.SingleToInt32Bits(b.Min.Z);
@@ -374,10 +487,6 @@ namespace VL.E57
             }
         }
 
-        /// <summary>
-        /// Multiscale-Grid Progressive Order für Leaf-Indexbereich (in-place).
-        /// Jedes Präfix ist visuell brauchbar verteilt. O(n), cachefreundlich.
-        /// </summary>
         private static void ProgressiveOrderLeaf(
             Span<int> indices,
             ReadOnlySpan<Vector3> positions,
@@ -386,13 +495,11 @@ namespace VL.E57
         {
             if (indices.Length <= 1) return;
 
-            // temporäre Flags aus Pool
             var used = ArrayPool<byte>.Shared.Rent(indices.Length);
             try
             {
                 Array.Clear(used, 0, indices.Length);
 
-                // robuste Basisreihenfolge – deterministisch je Leaf
                 ShuffleDeterministic(indices, BoundsKeySeed.FromBounds(in b));
 
                 var size = b.Size;
@@ -402,8 +509,6 @@ namespace VL.E57
 
                 int w = 0;
 
-                // lokaler Hilfs-Hash (Zell-ID → seen)
-                // Zellschlüssel: 3×21 Bit in ein Int64 (–2^20..2^20 reicht in der Praxis)
                 static long CellKey(int x, int y, int z) =>
                     ((long)(uint)(x & 0x1FFFFF) << 42) | ((long)(uint)(y & 0x1FFFFF) << 21) | (uint)(z & 0x1FFFFF);
 
@@ -428,7 +533,7 @@ namespace VL.E57
                         {
                             seen[key] = 1;
                             used[i] = 1;
-                            indices[w++] = id; // pick nach vorne
+                            indices[w++] = id;
                             if (w == indices.Length) break;
                         }
                     }
@@ -436,7 +541,6 @@ namespace VL.E57
                     if (w == indices.Length) break;
                 }
 
-                // Rest anhängen (feine Details)
                 for (int i = 0; i < indices.Length; i++)
                     if (used[i] == 0)
                         indices[w++] = indices[i];
