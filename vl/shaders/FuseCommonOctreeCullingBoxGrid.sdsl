@@ -1,0 +1,321 @@
+shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOctreeCulling{
+
+    // Transform a world-space point into the BoxGrid space used by your BoxGrid shader.
+    // This matches: mul(float4(pposition, 1), input_1112030763).xyz
+    float3 WorldToBoxGrid_Pos(
+        float3 worldPos,
+        float4x4 ParticleToBoxGrid  // == input_1112030763
+    ){
+        return mul(float4(worldPos, 1.0), ParticleToBoxGrid).xyz;
+    }
+
+    // Returns true if ANY corner of the node's AABB projects onto the boxgrid
+    // (i.e. ray from viewer → corner hits one of the 6 faces AND inside zoomRegion / faceLayout).
+    bool BoxGridNodeIsVisible(
+        float3 boundsMin,
+        float3 boundsMax,
+        float4x4 ParticleToBoxGrid,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<float4> faceLayoutInfo
+    ){
+        // Optional: small early out if node AABB is far from room AABB
+        float3 halfSize = roomDimensions * 0.5f;
+        float3 roomMin = roomCenter - halfSize;
+        float3 roomMax = roomCenter + halfSize;
+
+        // AABB–AABB overlap; if you want to be super conservative, you can remove this
+        if (boundsMax.x < roomMin.x || boundsMin.x > roomMax.x ||
+            boundsMax.y < roomMin.y || boundsMin.y > roomMax.y ||
+            boundsMax.z < roomMin.z || boundsMin.z > roomMax.z)
+        {
+            // Node completely outside room volume; most likely invisible
+            // If you want to allow rays from viewer → node intersecting room, remove this check.
+            return false;
+        }
+
+        // Test all 8 corners like your CPU CullBoundingBox
+        [unroll]
+        for (int i = 0; i < 8; ++i)
+        {
+            float3 cornerWS = float3(
+                (i & 1) != 0 ? boundsMax.x : boundsMin.x,
+                (i & 2) != 0 ? boundsMax.y : boundsMin.y,
+                (i & 4) != 0 ? boundsMax.z : boundsMin.z
+            );
+
+            // Transform corner into BoxGrid space (like pposition → mulXyz_1320…)
+            float3 cornerBox = WorldToBoxGrid_Pos(
+                cornerWS,
+                ParticleToBoxGrid
+            );
+
+            int   faceIndex;
+            float2 faceUV01;
+
+            float3 proj = projectParticleByViewPositionAABB(
+                cornerBox,
+                roomCenter,
+                roomDimensions,
+                zoomRegion,
+                viewerPosition,
+                faceIndex,
+                faceUV01,
+                faceLayoutInfo
+            );
+
+            // projectParticleByViewPositionAABB sets faceIndex >= 0 on hit
+            if (faceIndex >= 0)
+            {
+                return true; // this node contributes to the boxgrid
+            }
+        }
+
+        return false; // no corner projects onto any face
+    }
+
+
+    // Simple LOD metric: approximate "screen size" by boundsSize / distance.
+    // You can tune LODScale to match your setup.
+    float ComputeBoxGridScreenSize(
+        float3 boundsMin,
+        float3 boundsMax,
+        float3 viewerPosition,
+        float LODScale)
+    {
+        float3 center = 0.5f * (boundsMin + boundsMax);
+        float  size   = max(max(boundsMax.x - boundsMin.x,
+                                boundsMax.y - boundsMin.y),
+                                boundsMax.z - boundsMin.z);
+
+        float  dist   = distance(center, viewerPosition);
+        dist = max(dist, 0.0001f);
+
+        return (size / dist) * LODScale;
+    }
+
+    // PASS 1: Generate work items using ONLY BoxGrid culling
+    void GenerateWorkItems_BoxGrid(
+        float3 viewerPosition,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4x4 ParticleToBoxGrid,
+        float4 zoomRegion,
+        float  LODScreenSpaceThreshold, // interpreted with ComputeBoxGridScreenSize
+        float  LODScale,                // tweakable scale factor
+        int    MinWorkItemDepth,
+        int    startID,
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        StructuredBuffer<float4> FaceLayoutInfo,
+        RWStructuredBuffer<int> WorkItems,
+        RWStructuredBuffer<int> WorkItemCounter
+    ){
+        int nodeStack[1024];
+        int stackTop = 0;
+
+        if (startID >= 0)
+            nodeStack[stackTop++] = startID;
+
+        while (stackTop > 0 && stackTop < 1024)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+
+            if (!IsValidNode(node))
+                continue;
+
+            // --- NEW: BoxGrid visibility test
+            if (!BoxGridNodeIsVisible(
+                    node.BoundsMin,
+                    node.BoundsMax,
+                    ParticleToBoxGrid,
+                    roomCenter,
+                    roomDimensions,
+                    zoomRegion,
+                    viewerPosition,
+                    FaceLayoutInfo))
+            {
+                // node is completely invisible in the boxgrid
+                continue;
+            }
+
+            // Leaf node => always create work item if it has points
+            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                    WorkItems[writeIndex] = nodeID;
+                }
+                continue;
+            }
+
+            // --- LOD decision based on viewer distance & node size
+            float screenSize = ComputeBoxGridScreenSize(
+                node.BoundsMin,
+                node.BoundsMax,
+                viewerPosition,
+                LODScale
+            );
+
+            bool shouldTraverseDeeper =
+                (screenSize > LODScreenSpaceThreshold * 2.0f) &&
+                (node.LODLevel < MinWorkItemDepth + 3);
+
+            bool canCreateWorkItem =
+                (node.LODLevel >= MinWorkItemDepth) &&
+                (screenSize <= LODScreenSpaceThreshold * 4.0f);
+
+            if (shouldTraverseDeeper)
+            {
+                // traverse children
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                }
+            }
+            else if (canCreateWorkItem)
+            {
+                uint writeIndex;
+                InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
+                WorkItems[writeIndex] = nodeID;
+            }
+            else
+            {
+                // fallback: traverse children
+                for (uint i = 0; i < 8; ++i)
+                {
+                    if (stackTop < 1023)
+                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                }
+            }
+        }
+    }
+
+
+    void ProcessWorkItem_AndSelectLOD_BoxGrid(
+        int  globalThreadID,
+        float3 viewerPosition,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4x4 ParticleToBoxGrid,
+        float4 zoomRegion,
+        float  LODScreenSpaceThreshold,
+        float  LODScale,
+        RWStructuredBuffer<int> WorkItems,
+        RWStructuredBuffer<int> WorkItemCounter,
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        StructuredBuffer<float4> FaceLayoutInfo,
+        RWStructuredBuffer<int> VisibleNodeIDs,
+        RWStructuredBuffer<int> VisibleNodeCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        int numWorkItems = WorkItemCounter[0];
+        if (globalThreadID >= numWorkItems) return;
+
+        int workNodeID = WorkItems[globalThreadID];
+
+        int nodeStack[512];
+        int stackTop = 0;
+        nodeStack[stackTop++] = workNodeID;
+
+        while (stackTop > 0 && stackTop < 512)
+        {
+            int nodeID = nodeStack[--stackTop];
+            GPUOctreeNode node = GpuOctreeNodes[nodeID];
+
+            if (!IsValidNode(node))
+                continue;
+
+            // BoxGrid visibility check
+            if (!BoxGridNodeIsVisible(
+                    node.BoundsMin,
+                    node.BoundsMax,
+                    ParticleToBoxGrid,
+                    roomCenter,
+                    roomDimensions,
+                    zoomRegion,
+                    viewerPosition,
+                    FaceLayoutInfo))
+            {
+                continue;
+            }
+
+            // LOD metric
+            float screenSize = ComputeBoxGridScreenSize(
+                node.BoundsMin,
+                node.BoundsMax,
+                viewerPosition,
+                LODScale
+            );
+
+            // too small: discard
+            if (screenSize < LODScreenSpaceThreshold * 0.5f)
+                continue;
+
+            bool isLeaf = (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1);
+
+            if (isLeaf)
+            {
+                if (node.IndexCount > 0)
+                {
+                    uint writeIndex;
+                    InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                    InterlockedAdd(TotalPointCounter[0], node.IndexCount);
+                    VisibleNodeIDs[writeIndex] = nodeID;
+                }
+            }
+            else
+            {
+                if (screenSize > LODScreenSpaceThreshold * 2.0f)
+                {
+                    // go deeper
+                    for (int i = 0; i < 8; ++i)
+                    {
+                        if (stackTop < 511)
+                            nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    }
+                }
+                else
+                {
+                    // render at this LOD: collect leaf descendants
+                    int lodStack[256];
+                    int lodTop = 0;
+                    lodStack[lodTop++] = nodeID;
+
+                    while (lodTop > 0 && lodTop < 256)
+                    {
+                        int lodNodeID = lodStack[--lodTop];
+                        GPUOctreeNode lodNode = GpuOctreeNodes[lodNodeID];
+
+                        bool lodIsLeaf = (lodNode.ChildStartIndex == 0xFFFFFFFF || lodNode.ChildStartIndex == -1);
+
+                        if (lodIsLeaf)
+                        {
+                            if (lodNode.IndexCount > 0)
+                            {
+                                uint writeIndex;
+                                InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
+                                InterlockedAdd(TotalPointCounter[0], lodNode.IndexCount);
+                                VisibleNodeIDs[writeIndex] = lodNodeID;
+                            }
+                        }
+                        else
+                        {
+                            for (int j = 0; j < 8; ++j)
+                            {
+                                if (lodTop < 255)
+                                    lodStack[lodTop++] = lodNode.ChildStartIndex + j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+};
