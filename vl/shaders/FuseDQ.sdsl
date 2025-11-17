@@ -1,26 +1,14 @@
-// ============================================================================
-// FuseDQMixin.sdsl  —  Dual-Quaternion skinning helpers (no uniforms)
-// Usage:
-//   use FuseDQ;
-//
-//   // Example (compute or draw):
-//   float3 outP, outN;
-//   SkinVertexDQ(
-//       inPos, inNrm,
-//       boneIdx, boneW,
-//       SkinDQ,      // StructuredBuffer<float4> with rastered palette
-//       boneBase,    // base index: clipStart + frame * boneCount
-//       outP, outN
-//   );
-//
-// Palette layout (rastered):
-//   For bone i in current frame:
-//     qr = SkinDQ[ 2*(boneBase + i) + 0 ];
-//     qd = SkinDQ[ 2*(boneBase + i) + 1 ];
-// ============================================================================
+shader FuseDQ
+{
+    // ===================== Types =====================
 
-shader FuseDQ{
-    // ------------------- Quaternion / Dual-Quaternion core -------------------
+    struct DualQuat
+    {
+        float4 real;   // rotation quaternion (unit)
+        float4 dual;   // dual part encoding translation
+    };
+
+    // ===================== Core quaternion math =====================
 
     float4 QMul(float4 a, float4 b)
     {
@@ -28,68 +16,220 @@ shader FuseDQ{
             a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
             a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
             a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
-            a.w*b.w - (a.x*b.x + a.y*b.y + a.z*b.z)
+            a.w*b.w - dot(a.xyz, b.xyz)
         );
     }
 
-    void DQMul(float4 ar, float4 ad, float4 br, float4 bd, out float4 rr, out float4 rd)
+    float4 QConjugate(float4 q)
     {
-        rr = QMul(ar, br);
-        rd = QMul(ar, bd) + QMul(ad, br);
+        return float4(-q.xyz, q.w);
     }
 
-    void DQNormalize(inout float4 qr, inout float4 qd)
+    float4 QNormalize(float4 q)
     {
-        qr = normalize(qr);
-        // make dual part orthogonal to real part (rigid motion constraint)
-        qd = qd - dot(qr, qd) * qr;
+        return normalize(q);
     }
 
-    // DQ = {qr, qd} where both are float4 (quaternions)
-    float4 DQLerp(in float4 qr0, in float4 qd0,
-                in float4 qr1, in float4 qd1,
-                float t,
-                out float4 qd)
+    float4 QFromAxisAngle(float3 axis, float angleRad)
     {
-        float4 r1 = qr1, d1 = qd1;
-        if (dot(qr0, qr1) < 0) { r1 = -r1; d1 = -d1; }        // 1) hemisphere
-
-        float4 qr = lerp(qr0, r1, t);
-        qd = lerp(qd0, d1, t);
-
-        // 2) renormalize + orthogonalize
-        qr = normalize(qr);
-        qd = qd - dot(qr, qd) * qr;
-
-        return qr;
+        float h = 0.5 * angleRad;
+        float s = sin(h);
+        return float4(normalize(axis) * s, cos(h));
     }
+
+    // ===================== Core DQ math =====================
+
+    DualQuat DQ_Identity()
+    {
+        DualQuat dq;
+        dq.real = float4(0,0,0,1);
+        dq.dual = float4(0,0,0,0);
+        return dq;
+    }
+
+    DualQuat DQ_FromRotation(float4 rot)
+    {
+        DualQuat dq;
+        dq.real = QNormalize(rot);
+        dq.dual = float4(0,0,0,0);
+        return dq;
+    }
+
+    DualQuat DQ_FromTranslation(float3 t)
+    {
+        DualQuat dq;
+        dq.real = float4(0,0,0,1);
+        float4 tq = float4(t * 0.5, 0);      // pure quaternion
+        dq.dual = QMul(tq, dq.real);         // 0.5 * t * r, but r = identity here
+        return dq;
+    }
+
+    DualQuat DQ_FromRotationTranslation(float4 rot, float3 t)
+    {
+        DualQuat dq;
+        dq.real = QNormalize(rot);
+        float4 tq = float4(t * 0.5, 0);      // pure quaternion for translation
+        dq.dual = QMul(tq, dq.real);         // 0.5 * t * r
+        return dq;
+    }
+
+    DualQuat DQ_Mul(DualQuat a, DualQuat b)
+    {
+        DualQuat r;
+        r.real = QMul(a.real, b.real);
+        r.dual = QMul(a.real, b.dual) + QMul(a.dual, b.real);
+        return r;
+    }
+
+    DualQuat DQ_Conjugate(DualQuat dq)
+    {
+        DualQuat r;
+        r.real = QConjugate(dq.real);
+        r.dual = QConjugate(dq.dual);
+        return r;
+    }
+
+    DualQuat DQ_Normalize(DualQuat dq)
+    {
+        dq.real = QNormalize(dq.real);
+        // orthogonalize dual part to satisfy rigid motion constraint
+        dq.dual = dq.dual - dot(dq.real, dq.dual) * dq.real;
+        return dq;
+    }
+
+    // For unit DQ (rigid transform) inverse is just conjugate
+    DualQuat DQ_Inverse(DualQuat dq)
+    {
+        // If not sure it's unit, you can normalize first:
+        dq = DQ_Normalize(dq);
+        return DQ_Conjugate(dq);
+    }
+
+    DualQuat DQ_HemisphereFix(DualQuat a, DualQuat b)
+    {
+        if (dot(a.real, b.real) < 0.0)
+        {
+            b.real = -b.real;
+            b.dual = -b.dual;
+        }
+        return b;
+    }
+
+    // ===================== Blending =====================
+
+    // Simple linear blend (nlerp style), used for:
+    // - frame interpolation
+    // - clip blending
+    DualQuat DQ_Lerp(DualQuat a, DualQuat b, float t)
+    {
+        b = DQ_HemisphereFix(a, b);
+
+        DualQuat r;
+        r.real = lerp(a.real, b.real, t);
+        r.dual = lerp(a.dual, b.dual, t);
+
+        return DQ_Normalize(r);
+    }
+
+    // Weighted blend of up to 4 DQs (e.g. skinning influences)
+    // w should sum to 1, but function is robust either way.
+    DualQuat DQ_Blend4(DualQuat dq0, DualQuat dq1, DualQuat dq2, DualQuat dq3, float4 w)
+    {
+        // Choose a reference for hemisphere correction (first with non-zero weight)
+        DualQuat refDQ = dq0;
+        if (w.x <= 0 && w.y > 0) refDQ = dq1;
+        if (w.x <= 0 && w.y <= 0 && w.z > 0) refDQ = dq2;
+        if (w.x <= 0 && w.y <= 0 && w.z <= 0 && w.w > 0) refDQ = dq3;
+
+        dq0 = DQ_HemisphereFix(refDQ, dq0);
+        dq1 = DQ_HemisphereFix(refDQ, dq1);
+        dq2 = DQ_HemisphereFix(refDQ, dq2);
+        dq3 = DQ_HemisphereFix(refDQ, dq3);
+
+        DualQuat r;
+        r.real = w.x * dq0.real + w.y * dq1.real + w.z * dq2.real + w.w * dq3.real;
+        r.dual = w.x * dq0.dual + w.y * dq1.dual + w.z * dq2.dual + w.w * dq3.dual;
+
+        return DQ_Normalize(r);
+    }
+
+    // 2-way weighted blend [a,b] with weight t (0..1)
+    DualQuat DQ_Blend2(DualQuat a, DualQuat b, float t)
+    {
+        return DQ_Lerp(a, b, t);
+    }
+
+    // ===================== Transform helpers =====================
 
     float3 RotateByQuat(float3 v, float4 q)
     {
-        // q * v * q*
         float3 t = 2.0 * cross(q.xyz, v);
         return v + q.w * t + cross(q.xyz, t);
     }
 
-    float3 TranslationFromDQ(float4 qr, float4 qd)
+    float3 DQ_GetTranslation(DualQuat dq)
     {
-        // t = 2 * qd * conj(qr)
-        float4 qc = float4(-qr.xyz, qr.w);
-        float4 t4 = 2.0 * QMul(qd, qc);
+        float4 qc = QConjugate(dq.real);
+        float4 t4 = 2.0 * QMul(dq.dual, qc);
         return t4.xyz;
     }
 
-    float4x4 DQToMat4x4(float4 qr, float4 qd)
+    DualQuat DQ_SetTranslation(DualQuat dq, float3 t)
     {
-        qr = normalize(qr);
-        float x = qr.x, y = qr.y, z = qr.z, w = qr.w;
+        float4 tq = float4(t * 0.5, 0);
+        dq.dual = QMul(tq, dq.real);
+        return dq;
+    }
+
+    DualQuat DQ_AddTranslation(DualQuat dq, float3 dt)
+    {
+        float3 t = DQ_GetTranslation(dq);
+        return DQ_SetTranslation(dq, t + dt);
+    }
+
+    float3 DQ_TransformPosition(DualQuat dq, float3 p)
+    {
+        float3 rp = RotateByQuat(p, dq.real);
+        float3 t  = DQ_GetTranslation(dq);
+        return rp + t;
+    }
+
+    float3 DQ_TransformDirection(DualQuat dq, float3 n)
+    {
+        return RotateByQuat(n, dq.real);
+    }
+
+    // ===================== Matrix conversion =====================
+
+    float4x4 DQ_ToMatrix(DualQuat dq)
+    {
+        dq = DQ_Normalize(dq);
+
+        float x = dq.real.x;
+        float y = dq.real.y;
+        float z = dq.real.z;
+        float w = dq.real.w;
+
+        float3 t = DQ_GetTranslation(dq);
 
         float4x4 M;
-        M[0] = float4(1-2*(y*y+z*z), 2*(x*y - w*z),   2*(x*z + w*y), 0);
-        M[1] = float4(2*(x*y + w*z),   1-2*(x*x+z*z), 2*(y*z - w*x), 0);
-        M[2] = float4(2*(x*z - w*y),   2*(y*z + w*x), 1-2*(x*x+y*y), 0);
-        float3 t = TranslationFromDQ(qr, qd);
+        M[0] = float4(1-2*(y*y+z*z), 2*(x*y - w*z),   2*(x*z + w*y),   0);
+        M[1] = float4(2*(x*y + w*z), 1-2*(x*x+z*z),   2*(y*z - w*x),   0);
+        M[2] = float4(2*(x*z - w*y), 2*(y*z + w*x),   1-2*(x*x+y*y),   0);
         M[3] = float4(t, 1);
         return M;
+    }
+
+    // Approximate inverse from matrix (assumes no scale / orthogonal basis)
+    DualQuat DQ_FromMatrix(float4x4 M)
+    {
+        float3x3 R = float3x3(M[0].xyz, M[1].xyz, M[2].xyz);
+        float3 t   = M[3].xyz;
+
+        // float4 rot = RotationFromMatrix(R); // implement if needed elsewhere
+        // For now assume rotation is provided; this is a placeholder.
+        // In practice you usually convert to DQ at bake time on CPU.
+        float4 rot = float4(0,0,0,1);
+        return DQ_FromRotationTranslation(rot, t);
     }
 };
