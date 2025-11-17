@@ -1,6 +1,6 @@
-using System;
 using System.Diagnostics;
-namespace VL.E57;
+
+namespace Fuse.IO.Ply;
 #pragma warning disable CS1591
 
 // In VVVV, create a new C# node
@@ -10,16 +10,13 @@ public class FastPly
     private bool _isLoading;
     private Task? _loadingTask;
     private FastPlyReader.ProgressInfo? _progressInfo;
-
     public string FilePath { get; set; } = string.Empty;
     public bool Load { get; set; }
     public bool UseDiskCache { get; set; }
     public bool ForceReload { get; set; }
     public string CacheBasePath { get; set; } = string.Empty;
     public bool Debug { get; set; }
-
-    // Output pins
-    public Dictionary<string, float[]> Result { get; private set; } = new Dictionary<string, float[]>(0);
+    public Dictionary<string, float[]> Result { get; private set; } = new(0);
     public float Progress { get; private set; }
     public string Status { get; private set; } = string.Empty;
     public bool IsCompleted { get; private set; }
@@ -33,7 +30,7 @@ public class FastPly
 
         // Update outputs with current progress
         if (_progressInfo == null) return;
-        
+
         Progress = (float)_progressInfo.ProgressPercentage;
         Status = _progressInfo.StageName ?? Status;
         IsCompleted = _progressInfo.IsCompleted;
@@ -41,7 +38,7 @@ public class FastPly
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
         if (!_progressInfo.IsCompleted) return;
-        
+
         Result = _progressInfo.Result;
         _isLoading = false;
     }
@@ -63,12 +60,14 @@ public class FastPly
                 if (ForceReload)
                     DiskCache.Invalidate("ply", key);
 
-                if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None, out var payloadTask))
+                if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None,
+                        out var payloadTask))
                 {
                     var swHit = Stopwatch.StartNew();
                     var arrays = await payloadTask;
                     swHit.Stop();
-                    Log($"[FastPly] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrays?.Count ?? 0}");
+                    Log(
+                        $"[FastPly] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrays?.Count ?? 0}");
                     _progressInfo.Stage = 1;
                     _progressInfo.StageName = "Loaded from cache";
                     _progressInfo.ProgressPercentage = 100;
@@ -79,18 +78,19 @@ public class FastPly
                 {
                     var swMiss = Stopwatch.StartNew();
                     var arrays = await DiskCache.GetOrCreateAsync(
-                        cacheNamespace: "ply",
-                        key: key,
-                        serializer: new PlyArraysCacheSerializer(),
-                        buildAsync: async ct =>
+                        "ply",
+                        key,
+                        new PlyArraysCacheSerializer(),
+                        async ct =>
                         {
                             var swBuild = Stopwatch.StartNew();
                             await FastPlyReader.LoadInBackgroundAsync(FilePath, _progressInfo);
                             swBuild.Stop();
-                            Log($"[FastPly] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
+                            Log(
+                                $"[FastPly] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
                             return _progressInfo.Result;
                         },
-                        ct: CancellationToken.None);
+                        CancellationToken.None);
                     swMiss.Stop();
                     Log($"[FastPly] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms.");
                     // progress info already filled by FastPlyReader
@@ -102,7 +102,8 @@ public class FastPly
                 _loadingTask = FastPlyReader.LoadInBackgroundAsync(FilePath, _progressInfo);
                 await _loadingTask;
                 swNoCache.Stop();
-                Log($"[FastPly] Loaded without cache in {swNoCache.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
+                Log(
+                    $"[FastPly] Loaded without cache in {swNoCache.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
             }
         }
         catch (Exception ex)
@@ -121,4 +122,6 @@ public class FastPly
     {
         if (Debug) Console.WriteLine(message);
     }
+
+    // Output pins
 }

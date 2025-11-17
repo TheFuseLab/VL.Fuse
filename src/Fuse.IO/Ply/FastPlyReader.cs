@@ -4,9 +4,10 @@ using System.Text;
 
 #pragma warning disable CS1591
 
+namespace Fuse.IO.Ply;
+
 public class FastPlyReader
 {
-    
     private static readonly Dictionary<PropertyType, PropertyReader> PropertyReaders = new()
     {
         {
@@ -230,7 +231,7 @@ public class FastPlyReader
         stream.Position = totalBytesRead;
 
         // Parse header content efficiently
-        string[] headerLines = headerBuilder.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var headerLines = headerBuilder.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         var currentOffset = 0;
         var inVertexElement = false;
@@ -494,7 +495,7 @@ public class FastPlyReader
         public string CurrentField { get; set; } = string.Empty;
         public TimeSpan Elapsed { get; set; }
         public bool IsCompleted { get; set; }
-        public Dictionary<string, float[]> Result { get; set; } = new Dictionary<string, float[]>(0);
+        public Dictionary<string, float[]> Result { get; set; } = new(0);
         public Exception? Error { get; set; }
     }
 }

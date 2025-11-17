@@ -1,7 +1,10 @@
 using System.Runtime.InteropServices;
+
 #pragma warning disable CS1591
 
 // High-performance octree optimized for memory efficiency and cache performance
+namespace Fuse.IO.Ply;
+
 public class GPUOctree
 {
     #region Public Structures and Configuration
@@ -60,11 +63,11 @@ public class GPUOctree
         public int ParentIndex;
     }
 
-    private List<OctreeNode> _nodes = new List<OctreeNode>(0);
+    private List<OctreeNode> _nodes = new(0);
     private int[] _pointIndices = Array.Empty<int>();
     private float[] _xCoords = Array.Empty<float>(), _yCoords = Array.Empty<float>(), _zCoords = Array.Empty<float>();
     private int _totalPoints;
-    private BuildConfig _config = new BuildConfig();
+    private BuildConfig _config = new();
 
     // Reusable arrays to avoid allocations
     private int[] _tempOctants = Array.Empty<int>();
@@ -115,10 +118,7 @@ public class GPUOctree
             var dataScale = Math.Max(Math.Max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY),
                 bounds.maxZ - bounds.minZ);
 
-            if (_config.SubdivisionEpsilon == 1e-4f)
-            {
-                _config.SubdivisionEpsilon = dataScale * 1e-7f;
-            }
+            if (_config.SubdivisionEpsilon == 1e-4f) _config.SubdivisionEpsilon = dataScale * 1e-7f;
 
             // Initialize point indices
             _pointIndices = new int[_totalPoints];

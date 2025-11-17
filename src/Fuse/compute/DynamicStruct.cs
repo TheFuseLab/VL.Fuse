@@ -11,7 +11,7 @@ public class DynamicStruct<T> : ShaderNode<T>
     private readonly string _sourceTemplate = "";
     private readonly string _structName;
 
-    public DynamicStruct(NodeContext nodeContext, IEnumerable<AbstractShaderNode> theInputs, string theName, T instance)
+    public DynamicStruct(NodeContext nodeContext, IEnumerable<AbstractShaderNode> theInputs, string theName, T instance, bool addStructDefinition = true)
         : base(nodeContext, "GPUAttributeStruct")
     {
         _structName = theName;
@@ -20,7 +20,7 @@ public class DynamicStruct<T> : ShaderNode<T>
             @"    struct ${structName}{
 ${structMembers}
     };";
-
+        
         var myStride = 0;
         var call = new StringBuilder();
         theInputs.ForEach(input =>
@@ -44,7 +44,8 @@ ${structMembers}
             { "structMembers", call.ToString() }
         });
 
-        SetProperty(Structs, structString);
+        if(addStructDefinition)SetProperty(Structs, structString);
+        
         Stride = myStride;
 
         TypeOverride = theName;
@@ -53,7 +54,7 @@ ${structMembers}
     }
 
     public DynamicStruct(NodeContext nodeContext, Dictionary<string, AbstractShaderNode> theInputs, T instance,
-        bool AddTypesToName = false) : base(nodeContext, "GPUAttributeStruct")
+        bool AddTypesToName = false, bool addStructDefinition = true) : base(nodeContext, "GPUAttributeStruct")
     {
         var _name = TypeHelpers.GetGpuType<T>();
         Name = ShaderNodesUtil.FirstLetterToLower(_name);
@@ -98,7 +99,7 @@ ${structMembers}
                 { "resultType", _structName }
             });
 
-        SetProperty(Structs, structString);
+        if(addStructDefinition)SetProperty(Structs, structString);
         Stride = myStride;
 
         TypeOverride = _structName;
