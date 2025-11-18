@@ -8,6 +8,34 @@ shader FuseCommonOctreeCulling{
     // 4. Corrected point stride calculation
     // 5. Added bounds validation
 
+    // Debug bits
+    // Debug bits for NodeDebugFlags
+    static const int DBG_TOUCHED_PASS1        = 1 << 0;
+    static const int DBG_INVALID_NODE         = 1 << 1;
+
+    static const int DBG_FRUSTUM_OUTSIDE      = 1 << 2;
+    static const int DBG_FRUSTUM_INTERSECT    = 1 << 3;
+    static const int DBG_FRUSTUM_INSIDE       = 1 << 4;
+
+    static const int DBG_LEAF_WORKITEM        = 1 << 5;
+    static const int DBG_INTERNAL_WORKITEM    = 1 << 6;
+
+    static const int DBG_TRAVERSE_DEEPER      = 1 << 7;
+    static const int DBG_DEFAULT_CHILDREN     = 1 << 8;
+
+    // for Pass 2:
+    static const int DBG_TOUCHED_PASS2          = 1 << 9;
+    static const int DBG_TOO_SMALL_LOD          = 1 << 10;
+    static const int DBG_P2_TRAVERSE_DEEPER     = 1 << 11;
+    static const int DBG_P2_RENDER_AT_THIS_LOD  = 1 << 12;
+    static const int DBG_P2_LOD_DESCENDANT      = 1 << 13;
+    static const int DBG_VISIBLE_NODE           = 1 << 14;
+
+    bool HasFlag(int flags, int bit)
+    {
+        return (flags & bit) != 0;
+    }
+
     //--------------------------------------------------------------------------------------
     // Data Structures - These must EXACTLY match the C# struct definitions
     //--------------------------------------------------------------------------------------
@@ -132,9 +160,11 @@ shader FuseCommonOctreeCulling{
         int startID,
         StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
         RWStructuredBuffer<int> WorkItems, 
-        RWStructuredBuffer<int> WorkItemCounter
+        RWStructuredBuffer<int> WorkItemCounter,
+        RWStructuredBuffer<int> NodeDebugFlags
     )
     {
+
         int nodeStack[1024];
         int stackTop = 0;
         
@@ -147,10 +177,14 @@ shader FuseCommonOctreeCulling{
         {
             int nodeID = nodeStack[--stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
+
+            
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS1);
             
             // FIXED: Validate node first
             if (!IsValidNode(node))
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
             }
             
@@ -158,7 +192,16 @@ shader FuseCommonOctreeCulling{
             uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
             if (frustumTest == 0)
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
                 continue; // Skip nodes completely outside the frustum
+            }
+            else if (frustumTest == 1)
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INTERSECT);
+            }
+            else // 2
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
             }
 
             // If it's a leaf node, add it as a work item
@@ -169,6 +212,9 @@ shader FuseCommonOctreeCulling{
                     uint writeIndex;
                     InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
                     WorkItems[writeIndex] = nodeID;
+
+                    
+                    InterlockedOr(NodeDebugFlags[nodeID], DBG_LEAF_WORKITEM);
                 }
                 continue;
             }
@@ -183,6 +229,8 @@ shader FuseCommonOctreeCulling{
             
             if (shouldTraverseDeeper)
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_TRAVERSE_DEEPER);
+
                 // Add children to stack for deeper traversal
                 for (uint i = 0; i < 8; ++i)
                 {
@@ -198,9 +246,12 @@ shader FuseCommonOctreeCulling{
                 uint writeIndex;
                 InterlockedAdd(WorkItemCounter[0], 1, writeIndex);
                 WorkItems[writeIndex] = nodeID;
+
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_INTERNAL_WORKITEM);
             }
             else
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_DEFAULT_CHILDREN);
                 // Default: add children if we can't decide
                 for (uint i = 0; i < 8; ++i)
                 {
@@ -214,27 +265,27 @@ shader FuseCommonOctreeCulling{
     }
 
     //======================================================================================
-    // PASS 2 FUNCTION: PROCESS WORK ITEMS AND SELECT FOR LOD - FIXED
+    // PASS 2 FUNCTION: PROCESS WORK ITEMS AND SELECT FOR LOD - with debug flags
     //======================================================================================
     void ProcessWorkItem_AndSelectLOD(
-        int globalThreadID,
+        int  globalThreadID,
         float4x4 ViewProjection, 
-        float3 CameraPositionWS, 
-        float LODScreenSpaceThreshold, 
-        float ViewportHeight,
-        RWStructuredBuffer<int> WorkItems, 
-        RWStructuredBuffer<int> WorkItemCounter, 
-        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
-        RWStructuredBuffer<int> VisibleNodeIDs, 
-        RWStructuredBuffer<int> VisibleNodeCounter,
-        RWStructuredBuffer<int> TotalPointCounter)
-    {
+        float3   CameraPositionWS, 
+        float    LODScreenSpaceThreshold, 
+        float    ViewportHeight,
+        RWStructuredBuffer<int>          WorkItems, 
+        RWStructuredBuffer<int>          WorkItemCounter, 
+        StructuredBuffer<GPUOctreeNode>  GpuOctreeNodes,
+        RWStructuredBuffer<int>          VisibleNodeIDs, 
+        RWStructuredBuffer<int>          VisibleNodeCounter,
+        RWStructuredBuffer<int>          TotalPointCounter,
+        RWStructuredBuffer<int>          NodeDebugFlags
+    ){
         int numWorkItems = WorkItemCounter[0];
-
         if (globalThreadID >= numWorkItems) return;
 
         int workNodeID = WorkItems[globalThreadID];
-        
+
         int nodeStack[512];
         int stackTop = 0;
         nodeStack[stackTop++] = workNodeID;
@@ -243,31 +294,49 @@ shader FuseCommonOctreeCulling{
         {
             int nodeID = nodeStack[--stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
-            
-            // FIXED: Validate node
+
+            // Mark that this node was processed in Pass 2
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS2);
+
+            // Validate node
             if (!IsValidNode(node))
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
             }
-            
-            // FIXED: Proper frustum culling
+
+            // Frustum culling
             uint frustumTest = TestAABBFrustum(node.BoundsMin, node.BoundsMax, ViewProjection);
             if (frustumTest == 0)
             {
-                continue; // Skip nodes outside frustum
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
+                continue; // outside frustum
+            }
+            else if (frustumTest == 1)
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INTERSECT);
+            }
+            else // 2
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
             }
 
             float3 center = (node.BoundsMin + node.BoundsMax) * 0.5f;
-            float screenSize = CalculateScreenSpaceSize(center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight);
+            float  screenSize = CalculateScreenSpaceSize(
+                center, node.BoundsSize, ViewProjection, CameraPositionWS, ViewportHeight
+            );
 
-            // FIXED: Better LOD threshold check
+            // Too small for this LOD
             if (screenSize < LODScreenSpaceThreshold * 0.5f)
             {
-                continue; // Too small to be visible
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_TOO_SMALL_LOD);
+                continue;
             }
-            
-            // If it's a leaf node, add it to visible nodes
-            if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
+
+            bool isLeaf = (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1);
+
+            // Leaf node → directly visible
+            if (isLeaf)
             {
                 if (node.IndexCount > 0)
                 {
@@ -275,14 +344,18 @@ shader FuseCommonOctreeCulling{
                     InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
                     InterlockedAdd(TotalPointCounter[0], node.IndexCount);
                     VisibleNodeIDs[writeIndex] = nodeID;
+
+                    InterlockedOr(NodeDebugFlags[nodeID], DBG_VISIBLE_NODE);
                 }
             }
-            else 
+            else
             {
-                // Internal node: decide whether to traverse deeper or render this level
+                // Internal node: decide whether to traverse deeper or render this LOD level
                 if (screenSize > LODScreenSpaceThreshold * 2.0f)
                 {
                     // Traverse deeper
+                    InterlockedOr(NodeDebugFlags[nodeID], DBG_P2_TRAVERSE_DEEPER);
+
                     for (int i = 0; i < 8; ++i)
                     {
                         if (stackTop < 511)
@@ -293,7 +366,9 @@ shader FuseCommonOctreeCulling{
                 }
                 else
                 {
-                    // Render at this LOD level - find leaf descendants
+                    // "Render at this LOD level" – collect leaf descendants
+                    InterlockedOr(NodeDebugFlags[nodeID], DBG_P2_RENDER_AT_THIS_LOD);
+
                     int lodStack[256];
                     int lodStackTop = 0;
                     lodStack[lodStackTop++] = nodeID;
@@ -302,16 +377,20 @@ shader FuseCommonOctreeCulling{
                     {
                         int lodNodeID = lodStack[--lodStackTop];
                         GPUOctreeNode lodNode = GpuOctreeNodes[lodNodeID];
-                        
-                        if (lodNode.ChildStartIndex == 0xFFFFFFFF || lodNode.ChildStartIndex == -1)
+
+                        bool lodIsLeaf = (lodNode.ChildStartIndex == 0xFFFFFFFF || lodNode.ChildStartIndex == -1);
+
+                        if (lodIsLeaf)
                         {
-                            // It's a leaf - add to visible nodes
                             if (lodNode.IndexCount > 0)
                             {
                                 uint writeIndex;
                                 InterlockedAdd(VisibleNodeCounter[0], 1, writeIndex);
                                 InterlockedAdd(TotalPointCounter[0], lodNode.IndexCount);
                                 VisibleNodeIDs[writeIndex] = lodNodeID;
+
+                                // Mark both as visible + "descendant of LOD stop"
+                                InterlockedOr(NodeDebugFlags[lodNodeID], DBG_VISIBLE_NODE | DBG_P2_LOD_DESCENDANT);
                             }
                         }
                         else
@@ -330,6 +409,7 @@ shader FuseCommonOctreeCulling{
             }
         }
     }
+
 
     // SDSL-freundlicher 32-bit Hash ohne große Literale oder 'u'-Suffix
 int Hash32i(int v)
