@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -5,6 +6,24 @@ using System.Text;
 #pragma warning disable CS1591
 
 namespace Fuse.IO.Ply;
+
+public enum PlyDecimationStrategy
+{
+    None,
+
+    /// <summary>
+    /// Deterministic. Takes every Nth point.
+    /// Fast, but might create moire patterns on structured scanner data.
+    /// </summary>
+    Stride,
+
+    /// <summary>
+    /// Probabilistic (Statistically Random). 
+    /// Uses a fast integer hash to pick points.
+    /// Removes aliasing artifacts on ordered point clouds.
+    /// </summary>
+    Random
+}
 
 public class FastPlyReader
 {
@@ -85,10 +104,13 @@ public class FastPlyReader
     };
 
     // Backward-compatible synchronous method
-    public static Dictionary<string, float[]> ReadBinaryPly(string filePath)
+    public static Dictionary<string, float[]> ReadBinaryPly(
+        string filePath,
+        PlyDecimationStrategy decimationStrategy = PlyDecimationStrategy.None,
+        int decimationFactor = 1)
     {
         var progressInfo = new ProgressInfo();
-        var task = LoadInBackgroundAsync(filePath, progressInfo);
+        var task = LoadInBackgroundAsync(filePath, progressInfo, decimationStrategy, decimationFactor);
         task.Wait();
 
         if (progressInfo.Error != null)
@@ -98,11 +120,19 @@ public class FastPlyReader
     }
 
     // Optimized background loading method
-    public static async Task LoadInBackgroundAsync(string filePath, ProgressInfo progressInfo)
+    public static async Task LoadInBackgroundAsync(
+        string filePath,
+        ProgressInfo progressInfo,
+        PlyDecimationStrategy decimationStrategy,
+        int decimationFactor)
     {
         var startTime = DateTime.UtcNow;
         var fileInfo = new FileInfo(filePath);
         var totalFileSize = fileInfo.Length;
+
+        // Validation
+        if (decimationFactor < 1) decimationFactor = 1;
+        if (decimationStrategy == PlyDecimationStrategy.None) decimationFactor = 1;
 
         try
         {
@@ -130,6 +160,20 @@ public class FastPlyReader
                 vertexSize += properties[i].Size;
             }
 
+            // Estimate target size based on decimation strategy to save memory
+            int estimatedTargetCount = vertexCount;
+            if (decimationStrategy != PlyDecimationStrategy.None && decimationFactor > 1)
+            {
+                estimatedTargetCount = vertexCount / decimationFactor;
+                // Add a small safety buffer for probabilistic variance if using Random
+                if (decimationStrategy == PlyDecimationStrategy.Random)
+                {
+                    estimatedTargetCount = (int)(estimatedTargetCount * 1.1f);
+                }
+                estimatedTargetCount = Math.Min(estimatedTargetCount, vertexCount);
+            }
+            estimatedTargetCount = Math.Max(1, estimatedTargetCount);
+
             // Stage 2: Pre-allocate arrays with better memory layout
             progressInfo.Stage = 1;
             progressInfo.StageName = "Allocating memory";
@@ -146,11 +190,15 @@ public class FastPlyReader
                 var prop = properties[i];
                 allocationTasks[i] = Task.Run(() =>
                 {
-                    scalarFields[prop.Name] = GC.AllocateArray<float>(vertexCount, true);
+                    // Allocate uninitialized memory for speed
+                    scalarFields[prop.Name] = GC.AllocateArray<float>(estimatedTargetCount, true);
                 });
             }
 
             await Task.WhenAll(allocationTasks);
+
+            // Context for atomic writing across threads
+            var context = new LoadContext { GlobalWriteIndex = 0 };
 
             // Stage 3: Parallel binary data reading
             progressInfo.Stage = 1;
@@ -162,14 +210,31 @@ public class FastPlyReader
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
 
             await ReadBinaryDataParallelAsync(fileStream, headerSize, optimizedProperties, scalarFields,
-                vertexCount, vertexSize, progressInfo, startTime, totalFileSize, bufferSize);
+                vertexCount, vertexSize, progressInfo, startTime, totalFileSize, bufferSize,
+                decimationStrategy, decimationFactor, context);
+
+            // Finalize Memory: Resize arrays if we over-allocated during estimation
+            int finalVertexCount = context.GlobalWriteIndex;
+            if (finalVertexCount != estimatedTargetCount)
+            {
+                progressInfo.StageName = "Compacting memory";
+                foreach (var key in scalarFields.Keys.ToList())
+                {
+                    var originalArray = scalarFields[key];
+                    if (originalArray.Length != finalVertexCount)
+                    {
+                        Array.Resize(ref originalArray, finalVertexCount);
+                        scalarFields[key] = originalArray;
+                    }
+                }
+            }
 
             // Completion
             progressInfo.Stage = 1;
             progressInfo.StageName = "Complete";
             progressInfo.ProgressPercentage = 100;
             progressInfo.TotalVertices = vertexCount;
-            progressInfo.VerticesProcessed = vertexCount;
+            progressInfo.VerticesProcessed = finalVertexCount;
             progressInfo.TotalBytes = totalFileSize;
             progressInfo.BytesProcessed = totalFileSize;
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
@@ -182,6 +247,11 @@ public class FastPlyReader
             progressInfo.StageName = "Error";
             progressInfo.IsCompleted = true;
         }
+    }
+
+    private class LoadContext
+    {
+        public int GlobalWriteIndex;
     }
 
     // Optimized header parsing - read in chunks instead of byte-by-byte
@@ -297,14 +367,18 @@ public class FastPlyReader
     private static async Task ReadBinaryDataParallelAsync(
         FileStream stream, long headerSize, PropertyInfo[] properties,
         Dictionary<string, float[]> scalarFields, int vertexCount, int vertexSize,
-        ProgressInfo progressInfo, DateTime startTime, long totalFileSize, int bufferSize)
+        ProgressInfo progressInfo, DateTime startTime, long totalFileSize, int bufferSize,
+        PlyDecimationStrategy strategy, int factor, LoadContext context)
     {
         stream.Position = headerSize;
 
         // Calculate optimal parallel processing parameters
         var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 8); // Cap at 8 threads
+
+        // Increase chunk size when decimating to reduce atomic contention overhead
+        var chunkMultiplier = factor > 1 ? 4 : 1;
         var verticesPerChunk =
-            Math.Max(1000, vertexCount / (maxDegreeOfParallelism * 4)); // Ensure reasonable chunk sizes
+            Math.Max(4096, (vertexCount / (maxDegreeOfParallelism * 4)) * chunkMultiplier); // Ensure reasonable chunk sizes
 
         // Pre-compile property readers for each property
         var readers = new PropertyReader[properties.Length];
@@ -313,15 +387,15 @@ public class FastPlyReader
         // Progress reporting variables
         var lastProgressUpdate = DateTime.UtcNow;
         const int progressUpdateIntervalMs = 50; // Faster updates for large files
-        var processedVertices = 0;
+        var processedSourceVertices = 0;
 
         // Process data in parallel chunks
         var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
         var tasks = new List<Task>();
 
-        while (processedVertices < vertexCount)
+        while (processedSourceVertices < vertexCount)
         {
-            var chunkVertices = Math.Min(verticesPerChunk, vertexCount - processedVertices);
+            var chunkVertices = Math.Min(verticesPerChunk, vertexCount - processedSourceVertices);
             var chunkBytes = chunkVertices * vertexSize;
 
             // Read chunk data
@@ -330,7 +404,7 @@ public class FastPlyReader
             if (bytesRead == 0) break;
 
             var actualVertices = bytesRead / vertexSize;
-            var chunkStartVertex = processedVertices;
+            var chunkStartVertex = processedSourceVertices;
 
             // Process chunk in parallel
             await semaphore.WaitAsync();
@@ -338,8 +412,8 @@ public class FastPlyReader
             {
                 try
                 {
-                    ProcessChunkOptimized(chunkBuffer, properties, readers, scalarFields,
-                        chunkStartVertex, actualVertices, vertexSize);
+                    ProcessChunkDecimated(chunkBuffer, properties, readers, scalarFields,
+                        chunkStartVertex, actualVertices, vertexSize, strategy, factor, context);
                 }
                 finally
                 {
@@ -348,7 +422,7 @@ public class FastPlyReader
             });
 
             tasks.Add(task);
-            processedVertices += actualVertices;
+            processedSourceVertices += actualVertices;
 
             // Clean up completed tasks periodically
             if (tasks.Count > maxDegreeOfParallelism * 2)
@@ -361,12 +435,12 @@ public class FastPlyReader
             var now = DateTime.UtcNow;
             if ((now - lastProgressUpdate).TotalMilliseconds >= progressUpdateIntervalMs)
             {
-                var progressPercent = 10 + (double)processedVertices / vertexCount * 90;
+                var progressPercent = 10 + (double)processedSourceVertices / vertexCount * 90;
 
                 progressInfo.Stage = 1;
                 progressInfo.StageName = "Loading vertex data";
                 progressInfo.ProgressPercentage = progressPercent;
-                progressInfo.VerticesProcessed = processedVertices;
+                progressInfo.VerticesProcessed = processedSourceVertices;
                 progressInfo.TotalVertices = vertexCount;
                 progressInfo.BytesProcessed = stream.Position;
                 progressInfo.TotalBytes = totalFileSize;
@@ -380,72 +454,155 @@ public class FastPlyReader
         await Task.WhenAll(tasks);
     }
 
-    // Optimized chunk processing with SIMD where possible
-    private static unsafe void ProcessChunkOptimized(byte[] chunkBuffer, PropertyInfo[] properties,
+    // Optimized chunk processing with SIMD where possible and decimation support
+    private static unsafe void ProcessChunkDecimated(byte[] chunkBuffer, PropertyInfo[] properties,
         PropertyReader[] readers, Dictionary<string, float[]> scalarFields,
-        int startVertex, int vertexCount, int vertexSize)
+        int startVertex, int chunkVertexCount, int vertexSize,
+        PlyDecimationStrategy strategy, int factor, LoadContext context)
     {
-        fixed (byte* bufferPtr = chunkBuffer)
-        {
-            // Check if we can use SIMD for common cases (all float properties)
-            var canUseSIMD = properties.Length >= 3 &&
-                             properties.All(p => p.Type == PropertyType.Float) &&
-                             Vector.IsHardwareAccelerated;
+        // STEP 1: Calculate which indices in this chunk we want to keep.
+        // We do this locally to avoid locking the shared array during calculation.
 
-            if (canUseSIMD && properties.Length == 3) // Common case: x, y, z coordinates
-                ProcessXYZFloatsSIMD(bufferPtr, scalarFields, properties, startVertex, vertexCount, vertexSize);
-            else
-                // General case with optimized property reading
-                ProcessGeneralCase(bufferPtr, properties, readers, scalarFields, startVertex, vertexCount, vertexSize);
+        int* keepIndices = stackalloc int[chunkVertexCount];
+        int keepCount = 0;
+        int[]? heapIndices = null;
+
+        // Fallback to heap allocation for very large chunks
+        if (chunkVertexCount > 2048)
+        {
+            heapIndices = new int[chunkVertexCount];
+        }
+
+        fixed (int* heapPtr = heapIndices)
+        {
+            int* targetIndices = heapIndices != null ? heapPtr : keepIndices;
+
+            if (strategy == PlyDecimationStrategy.None || factor <= 1)
+            {
+                // Keep all
+                keepCount = chunkVertexCount;
+                for (int i = 0; i < chunkVertexCount; i++) targetIndices[i] = i;
+            }
+            else if (strategy == PlyDecimationStrategy.Stride)
+            {
+                // Calculate offset to maintain global stride pattern across chunks
+                int globalOffset = startVertex % factor;
+                int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
+
+                for (int i = firstInChunk; i < chunkVertexCount; i += factor)
+                {
+                    targetIndices[keepCount++] = i;
+                }
+            }
+            else if (strategy == PlyDecimationStrategy.Random)
+            {
+                // Probabilistic Decimation using Integer Hashing (Wang Hash)
+                uint threshold = (uint)(uint.MaxValue / factor);
+
+                for (int i = 0; i < chunkVertexCount; i++)
+                {
+                    uint x = (uint)(startVertex + i);
+                    // Wang hash
+                    x = (x ^ 61) ^ (x >> 16);
+                    x = x + (x << 3);
+                    x = x ^ (x >> 4);
+                    x = x * 0x27d4eb2d;
+                    x = x ^ (x >> 15);
+
+                    if (x < threshold)
+                    {
+                        targetIndices[keepCount++] = i;
+                    }
+                }
+            }
+
+            if (keepCount == 0) return;
+
+            // STEP 2: Reserve space in the global array atomically
+            int writeStart = Interlocked.Add(ref context.GlobalWriteIndex, keepCount) - keepCount;
+
+            // Bounds check
+            int maxCapacity = scalarFields.Values.First().Length;
+            if (writeStart >= maxCapacity) return;
+
+            if (writeStart + keepCount > maxCapacity)
+            {
+                keepCount = maxCapacity - writeStart;
+            }
+
+            // STEP 3: Write data
+            fixed (byte* bufferPtr = chunkBuffer)
+            {
+                // Check if we can use SIMD for common cases (all float properties)
+                var canUseSIMD = properties.Length >= 3 &&
+                                 properties.All(p => p.Type == PropertyType.Float) &&
+                                 Vector.IsHardwareAccelerated;
+
+                if (canUseSIMD && properties.Length == 3) // Common case: x, y, z coordinates
+                    CopyDecimatedSIMD(bufferPtr, scalarFields, properties,
+                        targetIndices, keepCount, writeStart, vertexSize);
+                else
+                    // General case with optimized property reading
+                    CopyDecimatedGeneric(bufferPtr, scalarFields, properties, readers,
+                        targetIndices, keepCount, writeStart, vertexSize);
+            }
         }
     }
 
     // SIMD-optimized processing for XYZ float coordinates
-    private static unsafe void ProcessXYZFloatsSIMD(byte* bufferPtr, Dictionary<string, float[]> scalarFields,
-        PropertyInfo[] properties, int startVertex, int vertexCount, int vertexSize)
+    private static unsafe void CopyDecimatedSIMD(byte* bufferPtr, Dictionary<string, float[]> scalarFields,
+        PropertyInfo[] properties, int* indices, int count, int writeStart, int vertexSize)
     {
         var xArray = scalarFields[properties[0].Name];
         var yArray = scalarFields[properties[1].Name];
         var zArray = scalarFields[properties[2].Name];
 
-        fixed (float* xPtr = &xArray[startVertex])
-        fixed (float* yPtr = &yArray[startVertex])
-        fixed (float* zPtr = &zArray[startVertex])
+        fixed (float* xBase = xArray)
+        fixed (float* yBase = yArray)
+        fixed (float* zBase = zArray)
         {
-            for (var v = 0; v < vertexCount; v++)
-            {
-                var vertexPtr = bufferPtr + v * vertexSize;
+            float* xPtr = xBase + writeStart;
+            float* yPtr = yBase + writeStart;
+            float* zPtr = zBase + writeStart;
 
+            int ox = properties[0].Offset;
+            int oy = properties[1].Offset;
+            int oz = properties[2].Offset;
+
+            for (var v = 0; v < count; v++)
+            {
                 // Direct memory copy for aligned float data
-                xPtr[v] = *(float*)(vertexPtr + properties[0].Offset);
-                yPtr[v] = *(float*)(vertexPtr + properties[1].Offset);
-                zPtr[v] = *(float*)(vertexPtr + properties[2].Offset);
+                byte* vertexPtr = bufferPtr + (indices[v] * vertexSize);
+
+                xPtr[v] = *(float*)(vertexPtr + ox);
+                yPtr[v] = *(float*)(vertexPtr + oy);
+                zPtr[v] = *(float*)(vertexPtr + oz);
             }
         }
     }
 
     // Optimized general case processing
-    private static unsafe void ProcessGeneralCase(byte* bufferPtr, PropertyInfo[] properties,
-        PropertyReader[] readers, Dictionary<string, float[]> scalarFields,
-        int startVertex, int vertexCount, int vertexSize)
+    private static unsafe void CopyDecimatedGeneric(byte* bufferPtr, Dictionary<string, float[]> scalarFields,
+        PropertyInfo[] properties, PropertyReader[] readers,
+        int* indices, int count, int writeStart, int vertexSize)
     {
         // Cache array references for better performance
         var arrays = new float*[properties.Length];
         var handles = new GCHandle[properties.Length];
 
-        for (var i = 0; i < properties.Length; i++)
-        {
-            var array = scalarFields[properties[i].Name];
-            handles[i] = GCHandle.Alloc(array, GCHandleType.Pinned);
-            arrays[i] = (float*)handles[i].AddrOfPinnedObject() + startVertex;
-        }
-
         try
         {
-            // Process vertices with minimal overhead
-            for (var v = 0; v < vertexCount; v++)
+            for (var i = 0; i < properties.Length; i++)
             {
-                var vertexPtr = bufferPtr + v * vertexSize;
+                var array = scalarFields[properties[i].Name];
+                handles[i] = GCHandle.Alloc(array, GCHandleType.Pinned);
+                arrays[i] = (float*)handles[i].AddrOfPinnedObject() + writeStart;
+            }
+
+            // Process vertices with minimal overhead
+            for (var v = 0; v < count; v++)
+            {
+                byte* vertexPtr = bufferPtr + (indices[v] * vertexSize);
 
                 for (var p = 0; p < properties.Length; p++)
                     arrays[p][v] = readers[p]((IntPtr)(vertexPtr + properties[p].Offset));
