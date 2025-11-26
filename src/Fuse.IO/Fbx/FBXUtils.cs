@@ -49,6 +49,7 @@ public struct ClipInfoRaster
 public sealed class AnimBankGpu
 {
     public ClipInfoRaster[] Clips = [];
+    public string[] ClipNames = [];
 
     // delta-local DQs: animLocal = restInvLocal * currentLocal
     public DualQuat[] LocalDeltaDq = [];
@@ -244,15 +245,17 @@ public static class FBXLoader
 
             var finalDqBuffer = new List<DualQuat>();
             var finalClips = new List<ClipInfoRaster>();
+            var finalClipNames = new List<string>();
 
             // animations from this main file
             BuildAnimationsInto(scene, orderedBones, bindPoseDecomposed, fpsIfNeeded, sceneScale, finalDqBuffer,
-                finalClips);
+                finalClips, finalClipNames);
 
             var anim = new AnimBankGpu
             {
                 LocalDeltaDq = finalDqBuffer.ToArray(),
-                Clips = finalClips.ToArray()
+                Clips = finalClips.ToArray(),
+                ClipNames = finalClipNames.ToArray()
             };
 
             return new ModelGpu
@@ -360,6 +363,7 @@ public static class FBXLoader
             // ---------- 2) Build combined animation bank ----------
             var finalDqBuffer = new List<DualQuat>();
             var finalClips = new List<ClipInfoRaster>();
+            var finalClipNames = new List<string>();
 
             // 2a) animations from main file
             BuildAnimationsInto(
@@ -369,7 +373,8 @@ public static class FBXLoader
                 fpsIfNeeded,
                 sceneScale,
                 finalDqBuffer,
-                finalClips);
+                finalClips,
+                finalClipNames);
 
             // 2b) animations from extra FBX files
             if (extraAnimationPaths != null)
@@ -407,13 +412,15 @@ public static class FBXLoader
                         fpsIfNeeded,
                         sceneScale,
                         finalDqBuffer,
-                        finalClips);
+                        finalClips,
+                        finalClipNames);
                 }
 
             var animBank = new AnimBankGpu
             {
                 LocalDeltaDq = finalDqBuffer.ToArray(),
-                Clips = finalClips.ToArray()
+                Clips = finalClips.ToArray(),
+                ClipNames = finalClipNames.ToArray()
             };
 
             // ---------- 3) Final ModelGpu ----------
@@ -535,7 +542,8 @@ public static class FBXLoader
         float fpsIfNeeded,
         float sceneScale,
         List<DualQuat> finalDqBuffer,
-        List<ClipInfoRaster> finalClips)
+        List<ClipInfoRaster> finalClips,
+        List<string> finalClipNames)
     {
         var boneIndex = orderedBones
             .Select((n, i) => (n, i))
@@ -618,6 +626,7 @@ public static class FBXLoader
                 StepTick = step,
                 DurationSeconds = (float)(tps > 0 ? durTicks / tps : 0)
             });
+            finalClipNames.Add(anim.Name);
         }
     }
 
@@ -714,7 +723,8 @@ public static class FBXLoader
                     StepTick = 1,
                     DurationSeconds = 0
                 }
-            ]
+            ],
+            ClipNames = ["DefaultClip"]
         };
 
         return new ModelGpu
