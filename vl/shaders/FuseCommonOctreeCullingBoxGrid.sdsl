@@ -1,14 +1,20 @@
 shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOctreeCulling{
 
-    // Transform a world-space point into the BoxGrid space used by your BoxGrid shader.
-    // This matches: mul(float4(pposition, 1), input_1112030763).xyz
-    float3 WorldToBoxGrid_Pos(
-        float3 worldPos,
-        float4x4 ParticleToBoxGrid  // == input_1112030763
-    ){
-        return mul(float4(worldPos, 1.0), ParticleToBoxGrid).xyz;
-    }
+    // BoxGrid-specific debug bits
+    static const int DBG_BG_ROOM_AABB_FAIL   = 1 << 16;  // early-out in room AABB test
+    static const int DBG_BG_CORNER_TESTED    = 1 << 17;  // at least one corner processed
+    static const int DBG_BG_ANY_CORNER_HIT   = 1 << 18;  // some corner projected to a face
+    static const int DBG_BG_ALL_CORNERS_FAIL = 1 << 19;  // BoxGridNodeIsVisible returned false
+    static const int DBG_BG_USED_IN_PASS1    = 1 << 20;
+    static const int DBG_BG_USED_IN_PASS2    = 1 << 21;
 
+    bool RectsOverlap(float2 rMin, float2 rMax, float2 gMin, float2 gMax)
+    {
+        return (rMin.x <= gMax.x && rMax.x >= gMin.x) &&
+           (rMin.y <= gMax.y && rMax.y >= gMin.y);
+    }
+    
+    
     // Returns true if ANY corner of the node's AABB projects onto the boxgrid
     // (i.e. ray from viewer → corner hits one of the 6 faces AND inside zoomRegion / faceLayout).
     bool BoxGridNodeIsVisible(
@@ -19,22 +25,12 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         float3 roomDimensions,
         float4 zoomRegion,
         float3 viewerPosition,
-        StructuredBuffer<float4> faceLayoutInfo
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo
     ){
-        // Optional: small early out if node AABB is far from room AABB
-        float3 halfSize = roomDimensions * 0.5f;
-        float3 roomMin = roomCenter - halfSize;
-        float3 roomMax = roomCenter + halfSize;
-
-        // AABB–AABB overlap; if you want to be super conservative, you can remove this
-        if (boundsMax.x < roomMin.x || boundsMin.x > roomMax.x ||
-            boundsMax.y < roomMin.y || boundsMin.y > roomMax.y ||
-            boundsMax.z < roomMin.z || boundsMin.z > roomMax.z)
-        {
-            // Node completely outside room volume; most likely invisible
-            // If you want to allow rays from viewer → node intersecting room, remove this check.
-            return false;
-        }
+        // Initialize inverted Min/Max
+        float2 minUV = float2(1e20, 1e20);
+        float2 maxUV = float2(-1e20, -1e20);
 
         // Test all 8 corners like your CPU CullBoundingBox
         [unroll]
@@ -46,34 +42,94 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                 (i & 4) != 0 ? boundsMax.z : boundsMin.z
             );
 
-            // Transform corner into BoxGrid space (like pposition → mulXyz_1320…)
-            float3 cornerBox = WorldToBoxGrid_Pos(
+            int tempFaceIndex;
+            float2 tempFaceUV01;
+            float2 normalizedUV; 
+
+            // Use RAW projection to get the true, unclamped UV coordinates
+            projectParticleRaw(
                 cornerWS,
-                ParticleToBoxGrid
+                ParticleToBoxGrid,
+                roomCenter,
+                roomDimensions,
+                zoomRegion,
+                viewerPosition,
+                tempFaceIndex,
+                tempFaceUV01,
+                normalizedUV,
+                faceLayoutInfo,
+                crossLayoutInfo
             );
 
-            int   faceIndex;
-            float2 faceUV01;
+            minUV = min(minUV, normalizedUV);
+            maxUV = max(maxUV, normalizedUV);            
+        }
 
-            float3 proj = projectParticleByViewPositionAABB(
-                cornerBox,
+        return RectsOverlap(minUV,maxUV,float2(0.0,0.0),float2(1.0,1.0));
+    }
+
+    void projectNode(
+        int nodeID,
+        float4x4 ParticleToBoxGrid,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo,
+        RWStructuredBuffer<float3> NodeDraw
+    ){
+        int   faceIndex;
+        float2 faceUV01;
+        float2 UV;
+        GPUOctreeNode node = GpuOctreeNodes[nodeID];
+
+        NodeDraw[nodeID *9] = projectParticleByViewPositionAABB(
+                (node.BoundsMax + node.BoundsMin) / 2.0,
+                ParticleToBoxGrid,
                 roomCenter,
                 roomDimensions,
                 zoomRegion,
                 viewerPosition,
                 faceIndex,
                 faceUV01,
-                faceLayoutInfo
+                UV,
+                faceLayoutInfo,
+                crossLayoutInfo
+            );
+            //NodeDraw[nodeID *9] = float3(UV,0.0);
+
+        [unroll]
+        for (int i = 0; i < 8; ++i)
+        {
+            float3 cornerWS = float3(
+                (i & 1) != 0 ? node.BoundsMax.x : node.BoundsMin.x,
+                (i & 2) != 0 ? node.BoundsMax.y : node.BoundsMin.y,
+                (i & 4) != 0 ? node.BoundsMax.z : node.BoundsMin.z
             );
 
-            // projectParticleByViewPositionAABB sets faceIndex >= 0 on hit
-            if (faceIndex >= 0)
-            {
-                return true; // this node contributes to the boxgrid
-            }
-        }
+            NodeDraw[nodeID *9 + 1 + i] = projectParticleByViewPositionAABB(
+                cornerWS,
+                ParticleToBoxGrid,
+                roomCenter,
+                roomDimensions,
+                zoomRegion,
+                viewerPosition,
+                faceIndex,
+                faceUV01,
+                UV,
+                faceLayoutInfo,
+                crossLayoutInfo
+            );
+            //NodeDraw[nodeID *9 + 1 + i] = float3(UV,0.0);
 
-        return false; // no corner projects onto any face
+
+
+            
+
+            
+        }
     }
 
 
@@ -109,8 +165,10 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         int    startID,
         StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
         StructuredBuffer<float4> FaceLayoutInfo,
+        float4 crossLayoutInfo,
         RWStructuredBuffer<int> WorkItems,
-        RWStructuredBuffer<int> WorkItemCounter
+        RWStructuredBuffer<int> WorkItemCounter,
+        RWStructuredBuffer<int> NodeDebugFlags
     ){
         int nodeStack[1024];
         int stackTop = 0;
@@ -123,8 +181,15 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
             int nodeID = nodeStack[--stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
 
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS1);
+            
+            // FIXED: Validate node first
             if (!IsValidNode(node))
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
+            }
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_BG_USED_IN_PASS1);
 
             // --- NEW: BoxGrid visibility test
             if (!BoxGridNodeIsVisible(
@@ -135,11 +200,14 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                     roomDimensions,
                     zoomRegion,
                     viewerPosition,
-                    FaceLayoutInfo))
+                    FaceLayoutInfo,
+                    crossLayoutInfo))
             {
                 // node is completely invisible in the boxgrid
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
                 continue;
             }
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
 
             // Leaf node => always create work item if it has points
             if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
@@ -210,9 +278,11 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         RWStructuredBuffer<int> WorkItemCounter,
         StructuredBuffer<GPUOctreeNode> GpuOctreeNodes,
         StructuredBuffer<float4> FaceLayoutInfo,
+        float4 crossLayoutInfo,
         RWStructuredBuffer<int> VisibleNodeIDs,
         RWStructuredBuffer<int> VisibleNodeCounter,
-        RWStructuredBuffer<int> TotalPointCounter)
+        RWStructuredBuffer<int> TotalPointCounter,
+        RWStructuredBuffer<int> NodeDebugFlags)
     {
         int numWorkItems = WorkItemCounter[0];
         if (globalThreadID >= numWorkItems) return;
@@ -228,8 +298,17 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
             int nodeID = nodeStack[--stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
 
+            // Mark that this node was processed in Pass 2
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS2);
+
+            // Validate node
             if (!IsValidNode(node))
+            {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
+            }
+
+            InterlockedOr(NodeDebugFlags[nodeID], DBG_BG_USED_IN_PASS2);
 
             // BoxGrid visibility check
             if (!BoxGridNodeIsVisible(
@@ -240,10 +319,13 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                     roomDimensions,
                     zoomRegion,
                     viewerPosition,
-                    FaceLayoutInfo))
+                    FaceLayoutInfo,
+                    crossLayoutInfo))
             {
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
                 continue;
             }
+                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
 
             // LOD metric
             float screenSize = ComputeBoxGridScreenSize(
