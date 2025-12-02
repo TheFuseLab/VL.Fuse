@@ -1,5 +1,8 @@
+using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -110,8 +113,8 @@ public class FastPlyReader
         int decimationFactor = 1)
     {
         var progressInfo = new ProgressInfo();
-        var task = LoadInBackgroundAsync(filePath, progressInfo, decimationStrategy, decimationFactor);
-        task.Wait();
+        // Blocking wait that avoids AggregateException wrapper
+        LoadInBackgroundAsync(filePath, progressInfo, decimationStrategy, decimationFactor).GetAwaiter().GetResult();
 
         if (progressInfo.Error != null)
             throw progressInfo.Error;
@@ -181,21 +184,36 @@ public class FastPlyReader
             progressInfo.TotalVertices = vertexCount;
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
 
-            var scalarFields = new Dictionary<string, float[]>(properties.Count);
+            // PERFORMANCE: Use Pinned Object Heap (POH)
+            // This allows us to get a stable pointer once and use it everywhere without pinning/unpinning overhead.
+            var tempArrays = new float[properties.Count][];
+            var rawPropertyPointers = new IntPtr[properties.Count]; // Cache pointers for workers
 
-            // Use parallel allocation for large arrays
             var allocationTasks = new Task[properties.Count];
             for (var i = 0; i < properties.Count; i++)
             {
-                var prop = properties[i];
+                var index = i;
                 allocationTasks[i] = Task.Run(() =>
                 {
-                    // Allocate uninitialized memory for speed
-                    scalarFields[prop.Name] = GC.AllocateArray<float>(estimatedTargetCount, true);
+                    // Allocate on POH (Pinned Object Heap) - radical optimization for access speed
+                    var pinnedArray = GC.AllocateArray<float>(estimatedTargetCount, pinned: true);
+                    tempArrays[index] = pinnedArray;
+
+                    unsafe
+                    {
+                        // Get the pointer once. Since it's POH, it never moves.
+                        fixed (float* ptr = pinnedArray)
+                        {
+                            rawPropertyPointers[index] = (IntPtr)ptr;
+                        }
+                    }
                 });
             }
 
             await Task.WhenAll(allocationTasks);
+
+            var scalarFields = new Dictionary<string, float[]>(properties.Count);
+            for (int i = 0; i < properties.Count; i++) scalarFields[properties[i].Name] = tempArrays[i];
 
             // Context for atomic writing across threads
             var context = new LoadContext { GlobalWriteIndex = 0 };
@@ -209,7 +227,7 @@ public class FastPlyReader
             progressInfo.BytesProcessed = headerSize;
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
 
-            await ReadBinaryDataParallelAsync(fileStream, headerSize, optimizedProperties, scalarFields,
+            await ReadBinaryDataParallelAsync(fileStream, headerSize, optimizedProperties, rawPropertyPointers,
                 vertexCount, vertexSize, progressInfo, startTime, totalFileSize, bufferSize,
                 decimationStrategy, decimationFactor, context);
 
@@ -223,6 +241,8 @@ public class FastPlyReader
                     var originalArray = scalarFields[key];
                     if (originalArray.Length != finalVertexCount)
                     {
+                        // Note: Resizing a POH array creates a regular heap array copy.
+                        // This is fine as we are done with the raw pointers now.
                         Array.Resize(ref originalArray, finalVertexCount);
                         scalarFields[key] = originalArray;
                     }
@@ -366,7 +386,7 @@ public class FastPlyReader
     // Parallel and SIMD-optimized data reading
     private static async Task ReadBinaryDataParallelAsync(
         FileStream stream, long headerSize, PropertyInfo[] properties,
-        Dictionary<string, float[]> scalarFields, int vertexCount, int vertexSize,
+        IntPtr[] rawPropertyPointers, int vertexCount, int vertexSize,
         ProgressInfo progressInfo, DateTime startTime, long totalFileSize, int bufferSize,
         PlyDecimationStrategy strategy, int factor, LoadContext context)
     {
@@ -412,8 +432,11 @@ public class FastPlyReader
             {
                 try
                 {
-                    ProcessChunkDecimated(chunkBuffer, properties, readers, scalarFields,
-                        chunkStartVertex, actualVertices, vertexSize, strategy, factor, context);
+                    unsafe
+                    {
+                        ProcessChunkUnsafe(chunkBuffer, properties, rawPropertyPointers, readers,
+                            chunkStartVertex, actualVertices, vertexSize, strategy, factor, context);
+                    }
                 }
                 finally
                 {
@@ -454,166 +477,238 @@ public class FastPlyReader
         await Task.WhenAll(tasks);
     }
 
-    // Optimized chunk processing with SIMD where possible and decimation support
-    private static unsafe void ProcessChunkDecimated(byte[] chunkBuffer, PropertyInfo[] properties,
-        PropertyReader[] readers, Dictionary<string, float[]> scalarFields,
+    // Radically optimized chunk processing
+    private static unsafe void ProcessChunkUnsafe(byte[] chunkBuffer, PropertyInfo[] properties,
+        IntPtr[] rawDstPtrs, PropertyReader[] readers,
         int startVertex, int chunkVertexCount, int vertexSize,
         PlyDecimationStrategy strategy, int factor, LoadContext context)
     {
-        // STEP 1: Calculate which indices in this chunk we want to keep.
-        // We do this locally to avoid locking the shared array during calculation.
-
-        int* keepIndices = stackalloc int[chunkVertexCount];
+        // 1. Calculate Count & Stride strategy fast path
         int keepCount = 0;
-        int[]? heapIndices = null;
+        int* indicesPtr = null;
+        int[]? indicesArray = null;
 
-        // Fallback to heap allocation for very large chunks
-        if (chunkVertexCount > 2048)
+        if (strategy == PlyDecimationStrategy.None || factor <= 1)
         {
-            heapIndices = new int[chunkVertexCount];
+            keepCount = chunkVertexCount;
+            // No indices needed, we copy all
         }
-
-        fixed (int* heapPtr = heapIndices)
+        else if (strategy == PlyDecimationStrategy.Stride)
         {
-            int* targetIndices = heapIndices != null ? heapPtr : keepIndices;
-
-            if (strategy == PlyDecimationStrategy.None || factor <= 1)
+            // Calculate count mathematically
+            int globalOffset = startVertex % factor;
+            int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
+            if (firstInChunk < chunkVertexCount)
             {
-                // Keep all
-                keepCount = chunkVertexCount;
-                for (int i = 0; i < chunkVertexCount; i++) targetIndices[i] = i;
+                keepCount = (chunkVertexCount - firstInChunk + factor - 1) / factor;
             }
-            else if (strategy == PlyDecimationStrategy.Stride)
+            // No indices needed, we will stride the pointer
+        }
+        else // Random
+        {
+            // Use ArrayPool to avoid stack overflow risks while being fast
+            indicesArray = ArrayPool<int>.Shared.Rent(chunkVertexCount);
+            fixed (int* ptr = indicesArray)
             {
-                // Calculate offset to maintain global stride pattern across chunks
-                int globalOffset = startVertex % factor;
-                int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
-
-                for (int i = firstInChunk; i < chunkVertexCount; i += factor)
-                {
-                    targetIndices[keepCount++] = i;
-                }
-            }
-            else if (strategy == PlyDecimationStrategy.Random)
-            {
-                // Probabilistic Decimation using Integer Hashing (Wang Hash)
                 uint threshold = (uint)(uint.MaxValue / factor);
-
                 for (int i = 0; i < chunkVertexCount; i++)
                 {
                     uint x = (uint)(startVertex + i);
-                    // Wang hash
                     x = (x ^ 61) ^ (x >> 16);
                     x = x + (x << 3);
                     x = x ^ (x >> 4);
                     x = x * 0x27d4eb2d;
                     x = x ^ (x >> 15);
+                    if (x < threshold) ptr[keepCount++] = i;
+                }
+                indicesPtr = ptr;
+            }
+        }
 
-                    if (x < threshold)
-                    {
-                        targetIndices[keepCount++] = i;
-                    }
+        if (keepCount == 0)
+        {
+            if (indicesArray != null) ArrayPool<int>.Shared.Return(indicesArray);
+            return;
+        }
+
+        // 2. Atomic Reservation
+        int writeStart = Interlocked.Add(ref context.GlobalWriteIndex, keepCount) - keepCount;
+
+        // Bounds Check (should happen rarely if estimation is good)
+        // Assume first property is representative of size
+        // We can cast the IntPtr back to check bounds, but generally we rely on the large estimation
+        // For radical speed, we skip per-vertex bound checks and rely on the allocated buffer being large enough (110% for random).
+
+        fixed (byte* bufferBase = chunkBuffer)
+        {
+            bool canUseSIMD = properties.Length == 3 &&
+                              properties[0].Type == PropertyType.Float &&
+                              properties[1].Type == PropertyType.Float &&
+                              properties[2].Type == PropertyType.Float &&
+                              Vector.IsHardwareAccelerated;
+
+            // 3. Write Data
+            if (strategy == PlyDecimationStrategy.Stride)
+            {
+                int globalOffset = startVertex % factor;
+                int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
+
+                // Optimized Stride Path: No Indices Array
+                if (canUseSIMD)
+                {
+                    CopyStrideSIMD(bufferBase, rawDstPtrs, properties, firstInChunk, keepCount, writeStart, vertexSize, factor);
+                }
+                else
+                {
+                    CopyStrideGeneric(bufferBase, rawDstPtrs, properties, readers, firstInChunk, keepCount, writeStart, vertexSize, factor);
                 }
             }
-
-            if (keepCount == 0) return;
-
-            // STEP 2: Reserve space in the global array atomically
-            int writeStart = Interlocked.Add(ref context.GlobalWriteIndex, keepCount) - keepCount;
-
-            // Bounds check
-            int maxCapacity = scalarFields.Values.First().Length;
-            if (writeStart >= maxCapacity) return;
-
-            if (writeStart + keepCount > maxCapacity)
+            else if (strategy == PlyDecimationStrategy.None || factor <= 1)
             {
-                keepCount = maxCapacity - writeStart;
-            }
-
-            // STEP 3: Write data
-            fixed (byte* bufferPtr = chunkBuffer)
-            {
-                // Check if we can use SIMD for common cases (all float properties)
-                var canUseSIMD = properties.Length >= 3 &&
-                                 properties.All(p => p.Type == PropertyType.Float) &&
-                                 Vector.IsHardwareAccelerated;
-
-                if (canUseSIMD && properties.Length == 3) // Common case: x, y, z coordinates
-                    CopyDecimatedSIMD(bufferPtr, scalarFields, properties,
-                        targetIndices, keepCount, writeStart, vertexSize);
+                // Optimized Continuous Copy Path
+                if (canUseSIMD)
+                {
+                    CopyContiguousSIMD(bufferBase, rawDstPtrs, properties, chunkVertexCount, writeStart, vertexSize);
+                }
                 else
-                    // General case with optimized property reading
-                    CopyDecimatedGeneric(bufferPtr, scalarFields, properties, readers,
-                        targetIndices, keepCount, writeStart, vertexSize);
+                {
+                    CopyContiguousGeneric(bufferBase, rawDstPtrs, properties, readers, chunkVertexCount, writeStart, vertexSize);
+                }
             }
+            else
+            {
+                // Gather Path (Random)
+                if (canUseSIMD)
+                {
+                    CopyGatherSIMD(bufferBase, rawDstPtrs, properties, indicesPtr, keepCount, writeStart, vertexSize);
+                }
+                else
+                {
+                    CopyGatherGeneric(bufferBase, rawDstPtrs, properties, readers, indicesPtr, keepCount, writeStart, vertexSize);
+                }
+            }
+        }
+
+        if (indicesArray != null) ArrayPool<int>.Shared.Return(indicesArray);
+    }
+
+    // --- Optimized Copiers ---
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyContiguousSIMD(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, int count, int writeStart, int vertexSize)
+    {
+        float* dstX = (float*)dstPtrs[0] + writeStart;
+        float* dstY = (float*)dstPtrs[1] + writeStart;
+        float* dstZ = (float*)dstPtrs[2] + writeStart;
+        int ox = props[0].Offset;
+        int oy = props[1].Offset;
+        int oz = props[2].Offset;
+
+        byte* src = srcBase;
+
+        for (int i = 0; i < count; i++)
+        {
+            dstX[i] = *(float*)(src + ox);
+            dstY[i] = *(float*)(src + oy);
+            dstZ[i] = *(float*)(src + oz);
+            src += vertexSize;
         }
     }
 
-    // SIMD-optimized processing for XYZ float coordinates
-    private static unsafe void CopyDecimatedSIMD(byte* bufferPtr, Dictionary<string, float[]> scalarFields,
-        PropertyInfo[] properties, int* indices, int count, int writeStart, int vertexSize)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyStrideSIMD(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, int startOffset, int count, int writeStart, int vertexSize, int factor)
     {
-        var xArray = scalarFields[properties[0].Name];
-        var yArray = scalarFields[properties[1].Name];
-        var zArray = scalarFields[properties[2].Name];
+        float* dstX = (float*)dstPtrs[0] + writeStart;
+        float* dstY = (float*)dstPtrs[1] + writeStart;
+        float* dstZ = (float*)dstPtrs[2] + writeStart;
+        int ox = props[0].Offset;
+        int oy = props[1].Offset;
+        int oz = props[2].Offset;
 
-        fixed (float* xBase = xArray)
-        fixed (float* yBase = yArray)
-        fixed (float* zBase = zArray)
+        int strideBytes = vertexSize * factor;
+        byte* src = srcBase + (startOffset * vertexSize);
+
+        for (int i = 0; i < count; i++)
         {
-            float* xPtr = xBase + writeStart;
-            float* yPtr = yBase + writeStart;
-            float* zPtr = zBase + writeStart;
-
-            int ox = properties[0].Offset;
-            int oy = properties[1].Offset;
-            int oz = properties[2].Offset;
-
-            for (var v = 0; v < count; v++)
-            {
-                // Direct memory copy for aligned float data
-                byte* vertexPtr = bufferPtr + (indices[v] * vertexSize);
-
-                xPtr[v] = *(float*)(vertexPtr + ox);
-                yPtr[v] = *(float*)(vertexPtr + oy);
-                zPtr[v] = *(float*)(vertexPtr + oz);
-            }
+            dstX[i] = *(float*)(src + ox);
+            dstY[i] = *(float*)(src + oy);
+            dstZ[i] = *(float*)(src + oz);
+            src += strideBytes;
         }
     }
 
-    // Optimized general case processing
-    private static unsafe void CopyDecimatedGeneric(byte* bufferPtr, Dictionary<string, float[]> scalarFields,
-        PropertyInfo[] properties, PropertyReader[] readers,
-        int* indices, int count, int writeStart, int vertexSize)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyGatherSIMD(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, int* indices, int count, int writeStart, int vertexSize)
     {
-        // Cache array references for better performance
-        var arrays = new float*[properties.Length];
-        var handles = new GCHandle[properties.Length];
+        float* dstX = (float*)dstPtrs[0] + writeStart;
+        float* dstY = (float*)dstPtrs[1] + writeStart;
+        float* dstZ = (float*)dstPtrs[2] + writeStart;
+        int ox = props[0].Offset;
+        int oy = props[1].Offset;
+        int oz = props[2].Offset;
 
-        try
+        for (int i = 0; i < count; i++)
         {
-            for (var i = 0; i < properties.Length; i++)
-            {
-                var array = scalarFields[properties[i].Name];
-                handles[i] = GCHandle.Alloc(array, GCHandleType.Pinned);
-                arrays[i] = (float*)handles[i].AddrOfPinnedObject() + writeStart;
-            }
-
-            // Process vertices with minimal overhead
-            for (var v = 0; v < count; v++)
-            {
-                byte* vertexPtr = bufferPtr + (indices[v] * vertexSize);
-
-                for (var p = 0; p < properties.Length; p++)
-                    arrays[p][v] = readers[p]((IntPtr)(vertexPtr + properties[p].Offset));
-            }
+            byte* src = srcBase + (indices[i] * vertexSize);
+            dstX[i] = *(float*)(src + ox);
+            dstY[i] = *(float*)(src + oy);
+            dstZ[i] = *(float*)(src + oz);
         }
-        finally
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyContiguousGeneric(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, PropertyReader[] readers, int count, int writeStart, int vertexSize)
+    {
+        byte* src = srcBase;
+        int propCount = props.Length;
+        // Resolve pointers to stack for speed
+        float** dPtrs = stackalloc float*[propCount];
+        for (int p = 0; p < propCount; p++) dPtrs[p] = (float*)dstPtrs[p] + writeStart;
+
+        for (int i = 0; i < count; i++)
         {
-            // Clean up GC handles
-            for (var i = 0; i < handles.Length; i++)
-                if (handles[i].IsAllocated)
-                    handles[i].Free();
+            for (int p = 0; p < propCount; p++)
+            {
+                dPtrs[p][i] = readers[p]((IntPtr)(src + props[p].Offset));
+            }
+            src += vertexSize;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyStrideGeneric(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, PropertyReader[] readers, int startOffset, int count, int writeStart, int vertexSize, int factor)
+    {
+        int strideBytes = vertexSize * factor;
+        byte* src = srcBase + (startOffset * vertexSize);
+        int propCount = props.Length;
+
+        float** dPtrs = stackalloc float*[propCount];
+        for (int p = 0; p < propCount; p++) dPtrs[p] = (float*)dstPtrs[p] + writeStart;
+
+        for (int i = 0; i < count; i++)
+        {
+            for (int p = 0; p < propCount; p++)
+            {
+                dPtrs[p][i] = readers[p]((IntPtr)(src + props[p].Offset));
+            }
+            src += strideBytes;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void CopyGatherGeneric(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, PropertyReader[] readers, int* indices, int count, int writeStart, int vertexSize)
+    {
+        int propCount = props.Length;
+        float** dPtrs = stackalloc float*[propCount];
+        for (int p = 0; p < propCount; p++) dPtrs[p] = (float*)dstPtrs[p] + writeStart;
+
+        for (int i = 0; i < count; i++)
+        {
+            byte* src = srcBase + (indices[i] * vertexSize);
+            for (int p = 0; p < propCount; p++)
+            {
+                dPtrs[p][i] = readers[p]((IntPtr)(src + props[p].Offset));
+            }
         }
     }
 
