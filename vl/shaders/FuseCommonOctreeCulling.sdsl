@@ -61,41 +61,44 @@ shader FuseCommonOctreeCulling{
         float3 extents,
         StructuredBuffer<float4> frustumPlanes,
         int baseIndex,
-        int PlanesPerFrustum)
+        int PlanesPerFrustum,
+        float Margin)     // world-space margin for side planes only
     {
-        uint result = 2; // assume inside
+        uint result = 2; // assume fully inside
 
         [loop]
         for (int i = 0; i < PlanesPerFrustum; ++i)
         {
             float4 plane = frustumPlanes[baseIndex + i];
 
-            // Normalize plane
             float planeLength = length(plane.xyz);
             if (planeLength > 0.0001f)
                 plane /= planeLength;
 
-            // distance from center to plane
             float distance = dot(float4(center, 1.0f), plane);
+            float radius   = dot(extents, abs(plane.xyz));
 
-            // projected radius of extents onto plane normal
-            float radius = dot(extents, abs(plane.xyz));
+            // Decide which planes get margin:
+            // assuming layout: 0=L,1=R,2=B,3=T,4=Near,5=Far
+            bool isNearOrFar = (i >= (PlanesPerFrustum - 2));
+            float planeMargin = isNearOrFar ? 0.0f : Margin;
 
-            // completely outside this plane
-            if (distance < -radius)
+            // Outside test: expand only side planes
+            if (distance < -radius - planeMargin)
             {
-                return 0;
+                return 0; // outside
             }
 
-            // intersects this plane
-            if (abs(distance) < radius)
+            // Intersection band: also only widened for side planes
+            if (abs(distance) < radius + planeMargin)
             {
-                result = 1;
+                result = 1; // intersecting
             }
         }
 
-        return result;
+        return result; // 0=outside, 1=intersect, 2=inside
     }
+
 
     // PUBLIC: test against a single frustum (by index) – pure culling
     uint TestAABBFrustumSingle(
@@ -103,6 +106,7 @@ shader FuseCommonOctreeCulling{
         float3 boundsMax,
         StructuredBuffer<float4> frustumPlanes,
         int PlanesPerFrustum,
+        float Margin,
         int FrustumIndex)
     {
         float3 center  = (boundsMax + boundsMin) * 0.5f;
@@ -114,7 +118,8 @@ shader FuseCommonOctreeCulling{
             extents,
             frustumPlanes,
             baseIndex,
-            PlanesPerFrustum);
+            PlanesPerFrustum,
+            Margin);
     }
 
     // Combined multi-frustum culling + LOD evaluation:
@@ -133,6 +138,7 @@ shader FuseCommonOctreeCulling{
         StructuredBuffer<float2> FrustumProjParams,
         int    FrustumCount,
         int    PlanesPerFrustum,
+        float Margin,
         float3 CameraPositionWS,
         out uint  frustumTest,
         out float maxScreenSize)
@@ -153,7 +159,8 @@ shader FuseCommonOctreeCulling{
                 extents,
                 frustumPlanes,
                 baseIndex,
-                PlanesPerFrustum);
+                PlanesPerFrustum,
+                Margin);
 
             if (res == 0)
             {
@@ -208,6 +215,7 @@ shader FuseCommonOctreeCulling{
         StructuredBuffer<float2>        FrustumProjParams, // x=FocalY, y=ViewportHeight
         int                             FrustumCount,
         int                             PlanesPerFrustum,
+        float                           Margin,
         float3                          CameraPositionWS, 
         float                           LODScreenSpaceThreshold, 
         int                             MinWorkItemDepth,
@@ -244,6 +252,7 @@ shader FuseCommonOctreeCulling{
                 FrustumProjParams,
                 FrustumCount,
                 PlanesPerFrustum,
+                Margin,
                 CameraPositionWS,
                 frustumTest,
                 screenSize);
@@ -317,6 +326,7 @@ shader FuseCommonOctreeCulling{
         StructuredBuffer<float2>        FrustumProjParams,
         int                             FrustumCount,
         int                             PlanesPerFrustum,
+        float                           Margin,
         float3                          CameraPositionWS, 
         float                           LODScreenSpaceThreshold, 
         RWStructuredBuffer<int>         WorkItems, 
@@ -355,6 +365,7 @@ shader FuseCommonOctreeCulling{
                 FrustumProjParams,
                 FrustumCount,
                 PlanesPerFrustum,
+                Margin,
                 CameraPositionWS,
                 frustumTest,
                 screenSize);

@@ -1,414 +1,266 @@
 shader FuseRenderingBoxGridProject {
 
-    // Function to determine if a ray from viewer intersects with a plane
-    bool rayPlaneIntersection(float3 rayOrigin, float3 rayDir, float3 planePos, float3 planeNormal, out float3 intersection) {
-        float denom = dot(rayDir, planeNormal);
-        
-        // Ray is parallel to the plane or points away
-        if (abs(denom) < 0.0001f)
-            return false;
-            
-        float t = dot(planePos - rayOrigin, planeNormal) / denom;
-        
-        // Intersection is behind the ray origin
-        if (t < 0.0f)
-            return false;
-            
-        intersection = rayOrigin + rayDir * t;
-        return true;
+    // -----------------------------------------------------------------------------
+    // 1. HELPER: Pure 2D Zoom Logic
+    // -----------------------------------------------------------------------------
+    float2 applyAtlasZoom(float2 uv01, float4 zoomRegion) {
+        return (uv01 - zoomRegion.xy) / (zoomRegion.zw - zoomRegion.xy);
     }
 
-    // Function to check if a point is within a rectangle defined by center, dimensions, and orientation
-    bool isPointInRectangle(float3 position, float3 rectCenter, float3 rectDimensions, float3 normalAxis) {
-        float3 localPos = position - rectCenter;
-        
-        // Define the axes of the rectangle based on the normal
-        float3 up, right;
-        
-        // Determine up and right vectors based on the normal axis
-        if (abs(normalAxis.y) > 0.99f) {
-            // Floor or ceiling
-            up = float3(0, 0, 1);
-            right = float3(1, 0, 0);
-            
-            // Check if point is within rectangle bounds using width(x) and depth(z)
-            return abs(dot(localPos, right)) <= rectDimensions.x * 0.5f && 
-                abs(dot(localPos, up)) <= rectDimensions.z * 0.5f;
-        }
-        else if (abs(normalAxis.x) > 0.99f) {
-            // Left or right wall
-            up = float3(0, 1, 0);
-            right = float3(0, 0, 1);
-            
-            // Check if point is within rectangle bounds using height(y) and depth(z)
-            return abs(dot(localPos, right)) <= rectDimensions.z * 0.5f && 
-                abs(dot(localPos, up)) <= rectDimensions.y * 0.5f;
-        }
-        else if (abs(normalAxis.z) > 0.99f) {
-            // Front or back wall
-            up = float3(0, 1, 0);
-            right = float3(1, 0, 0);
-            
-            // Check if point is within rectangle bounds using width(x) and height(y)
-            return abs(dot(localPos, right)) <= rectDimensions.x * 0.5f && 
-                abs(dot(localPos, up)) <= rectDimensions.y * 0.5f;
-        }
-        
-        // If none of the conditions match (shouldn't happen), return false
-        return false;
+    // -----------------------------------------------------------------------------
+    // 2. HELPER: Face Basis Vectors
+    // -----------------------------------------------------------------------------
+    void GetFaceBasis(int index, out float3 tangent, out float3 bitangent) {
+        // 0: Floor, 1: Ceil, 2: Right, 3: Back, 4: Left, 5: Front
+        if (index == 0) { tangent = float3(1, 0, 0);  bitangent = float3(0, 0, -1); } // Floor
+        else if (index == 1) { tangent = float3(1, 0, 0);  bitangent = float3(0, 0, 1); }  // Ceil
+        else if (index == 2) { tangent = float3(0, 0, 1);  bitangent = float3(0, 1, 0); }  // Right
+        else if (index == 3) { tangent = float3(-1, 0, 0); bitangent = float3(0, 1, 0); }  // Back
+        else if (index == 4) { tangent = float3(0, 0, -1); bitangent = float3(0, 1, 0); }  // Left
+        else                 { tangent = float3(1, 0, 0);  bitangent = float3(0, 1, 0); }  // Front
     }
 
-    // Function to map a point on a room surface to texture coordinates
-    float4 mapToTexture(
+    // -----------------------------------------------------------------------------
+    // 3. MAIN FUNCTION: Map 3D Point -> 2D Atlas
+    // -----------------------------------------------------------------------------
+    float4 mapSurfaceToAtlas(
         float3 pointOnSurface, 
         int surfaceIndex,
-        // Buffer data passed as parameters
         StructuredBuffer<float4> faceLayoutInfo,
         float3 roomCenter,
         float3 roomDimensions,
-        // Zoom parameter (optional)
-        float4 zoomRegion   // Region to zoom into: (minU, minV, maxU, maxV) in normalized cross layout space
+        float4 zoomRegion
     ) {
-        // Convert point to local room coordinates (relative to room's min corner)
-        float3 localPoint = pointOnSurface - (roomCenter - roomDimensions * 0.5f);
-        
-        float u = 0.0f;
-        float v = 0.0f;
-        
-        // Map based on the surface index
-        switch(surfaceIndex) {
-            case 0: // Floor (Green)
-                u = (localPoint.x / roomDimensions.x);
-                v = 1.0f - (localPoint.z / roomDimensions.z);
-                break;
-                
-            case 1: // Ceiling (Yellow)
-                u = (localPoint.x / roomDimensions.x);
-                v = (localPoint.z / roomDimensions.z);
-                break;
-                
-            case 2: // Right wall (Magenta)
-                u = (localPoint.z / roomDimensions.z);
-                v = (localPoint.y / roomDimensions.y);
-                break;
-                
-            case 3: // Back wall (Cyan)
-                u = 1.0f - (localPoint.x / roomDimensions.x);
-                v = (localPoint.y / roomDimensions.y);
-                break;
-                
-            case 4: // Left wall (Red)
-                u = 1.0f - (localPoint.z / roomDimensions.z);
-                v = (localPoint.y / roomDimensions.y);
-                break;
-                
-            case 5: // Front wall (Blue)
-                u = (localPoint.x / roomDimensions.x);
-                v = (localPoint.y / roomDimensions.y);
-                break;
-                
-            default:
-                // Default case (shouldn't happen)
-                u = v = 0.0f;
-                break;
-        }
+        float3 localPoint = pointOnSurface - roomCenter;
+        float3 t, b;
+        GetFaceBasis(surfaceIndex, t, b);
 
-        // Store normalized per-face UVs in [0,1]
-        float2 faceUV01 = float2(u, v);
-        
-        // Get layout info for this face (startX, startY, width, height)
+        float dimU = dot(roomDimensions, abs(t));
+        float dimV = dot(roomDimensions, abs(b));
+
+        float2 faceUV01 = float2(
+            (dot(localPoint, t) / dimU) + 0.5f,
+            (dot(localPoint, b) / dimV) + 0.5f
+        );
+
         float4 layout = faceLayoutInfo[surfaceIndex];
         
-        // Map normalized coordinates to the cross layout
         float2 texCoord;
-        texCoord.x = layout.x + u * layout.z;
-        texCoord.y = layout.y + v * layout.w;
+        texCoord.x = layout.x + faceUV01.x * layout.z;
+        texCoord.y = layout.y + faceUV01.y * layout.w;
 
-        // Normalize coordinates
         texCoord = texCoord / float2(4.0, 3.0);
-
-        texCoord.xy = (texCoord.xy - zoomRegion.xy) / (zoomRegion.zw - zoomRegion.xy);
-
-        // Scale back to cross layout size
+        texCoord = applyAtlasZoom(texCoord, zoomRegion);
         texCoord = texCoord * float2(4.0, 3.0);
         
-        // Return atlas UVs (xy) + face-local UVs (zw)
         return float4(texCoord, faceUV01);
     }
 
-    // Function to project and draw a particle on the texture
+    // -----------------------------------------------------------------------------
+    // 4. INTERSECTION LOGIC (FIXED INITIALIZATION)
+    // -----------------------------------------------------------------------------
+    bool rayBoxIntersection(
+        float3 ro, float3 rd, 
+        float3 roomCenter, float3 roomDimensions, 
+        out float3 hitPoint, out int hitIndex) 
+    {
+        // --- FIX: Initialize OUT variables immediately to prevent X4000/X4580 errors ---
+        hitPoint = float3(0, 0, 0); 
+        hitIndex = -1;
+
+        float3 halfExt = roomDimensions * 0.5f;
+        float3 boxMin  = roomCenter - halfExt;
+        float3 boxMax  = roomCenter + halfExt;
+
+        float3 invDir = 1.0f / rd;
+        float3 t0 = (boxMin - ro) * invDir;
+        float3 t1 = (boxMax - ro) * invDir;
+
+        float3 tminVec = min(t0, t1);
+        float3 tmaxVec = max(t0, t1);
+
+        float tEnter = max(max(tminVec.x, tminVec.y), tminVec.z);
+        float tExit  = min(min(tmaxVec.x, tmaxVec.y), tmaxVec.z);
+
+        // Check for miss
+        if (tExit < 0.0f || tEnter > tExit) return false;
+
+        float t = (tEnter > 0.0f) ? tEnter : tExit;
+        hitPoint = ro + rd * t;
+
+        // Robust Face Check (Seam Fix)
+        const float eps = 0.0001f;
+        
+        if      (abs(hitPoint.y - boxMin.y) < eps) hitIndex = 0; // Floor
+        else if (abs(hitPoint.y - boxMax.y) < eps) hitIndex = 1; // Ceil
+        else if (abs(hitPoint.x - boxMax.x) < eps) hitIndex = 2; // Right
+        else if (abs(hitPoint.z - boxMax.z) < eps) hitIndex = 3; // Back
+        else if (abs(hitPoint.x - boxMin.x) < eps) hitIndex = 4; // Left
+        else if (abs(hitPoint.z - boxMin.z) < eps) hitIndex = 5; // Front
+
+        return (hitIndex >= 0);
+    }
+
+    // -----------------------------------------------------------------------------
+    // 5. 2D PROJECTION HELPER
+    // -----------------------------------------------------------------------------
+    float3 projectParticle2DDirect(float2 particlePos01, float4 zoomRegion) 
+    {
+        float2 zoomedUV = applyAtlasZoom(particlePos01, zoomRegion);
+        float2 finalPos = zoomedUV * float2(4.0, 3.0);
+        float2 zoomSize = zoomRegion.zw - zoomRegion.xy;
+        float scaleFactor = 1.0 / max(max(zoomSize.x, zoomSize.y), 0.0001);
+        return float3(finalPos, scaleFactor);
+    }
+
+    // -----------------------------------------------------------------------------
+    // 6. MAIN 3D PROJECTION FUNCTION
+    // -----------------------------------------------------------------------------
     float3 projectParticleByViewPosition(
         float3 particlePos,
         float3 roomCenter,
         float3 roomDimensions,
         float4 zoomRegion,
-        // Line parameters
         float3 viewerPosition,
         out int hitSurfaceIndex,
         out float2 out_faceUV01,
-        // Buffer data passed as parameters
         StructuredBuffer<float4> surfacePositionsAndType,
         StructuredBuffer<float4> surfaceNormalsAndSize,
         StructuredBuffer<float4> surfaceDimensions,
         StructuredBuffer<float4> surfaceColorsAndScale,
         StructuredBuffer<float4> faceLayoutInfo
     ) {
-        
-        // Calculate ray direction from our line-based view position
         float3 rayDir = normalize(particlePos - viewerPosition);
+        float3 hitPoint;
+        int hitIndex;
         
-        // Initialize for closest hit
-        float closestDistance = 1.0e10f;
-        float3 projectionResult = float3(0.0, 0.0,0.0);
-        bool foundIntersection = false;
-        hitSurfaceIndex = -1; // Track which surface was hit
-        
-        float3 intersection;
-        // Test intersection with each surface
-        for (int i = 0; i < 6; i++) {
-            // Extract position and normal from packed structures
-            float3 surfacePos = surfacePositionsAndType[i].xyz;
-            float3 surfaceNormal = surfaceNormalsAndSize[i].xyz;
-            
-            if (rayPlaneIntersection(viewerPosition, rayDir, surfacePos, surfaceNormal, intersection)) {
-                // Check if intersection point is within the rectangle
-                if (isPointInRectangle(intersection, surfacePos, surfaceDimensions[i].xyz, surfaceNormal)) {
-                    // Calculate distance to intersection
-                    float intersectionViewDistance = length(intersection - viewerPosition);
-                    
-                    // If this is the closest intersection so far, save it
-                    if (intersectionViewDistance < closestDistance) {
-                        closestDistance = intersectionViewDistance;
-                        hitSurfaceIndex = i; // Save which surface was hit
+        bool hit = rayBoxIntersection(viewerPosition, rayDir, roomCenter, roomDimensions, hitPoint, hitIndex);
 
-                        float4 uvPack = mapToTexture(intersection, i, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
-                        projectionResult = float3(uvPack.xy, distance(intersection,particlePos));
-                        out_faceUV01 = uvPack.zw;
-                        foundIntersection = true;
-                    }
-                }
-            }
+        if (hit) {
+            hitSurfaceIndex = hitIndex;
+            float4 uvPack = mapSurfaceToAtlas(hitPoint, hitIndex, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
+            out_faceUV01 = uvPack.zw;
+            return float3(uvPack.xy, distance(hitPoint, particlePos));
         }
 
-        // Return the texture coordinate for the closest intersection
-        return projectionResult;
-    }
-
-// -----------------------------------------------------------------------------
-// RAW version: performs room ray-box intersection, face detection and
-// layout/zoom mapping – but does NOT reject anything based on UV.
-// UV can be outside [0,1] here.
-// -----------------------------------------------------------------------------
-float3 projectParticleRaw(
-    float3 particlePos,
-    float4x4 roomTransform,
-    float3 roomCenter,
-    float3 roomDimensions,
-    float4 zoomRegion,
-    float3 viewerPosition,
-    out int   hitSurfaceIndex,
-    out float2 out_faceUV01,
-    out float2 UV,
-    StructuredBuffer<float4> faceLayoutInfo,
-    float4 crossLayoutInfo
-)
-{
-    // transform into room space
-    particlePos = mul(float4(particlePos, 1.0), roomTransform).xyz;
-
-    // safe defaults
-    hitSurfaceIndex = -1;
-    out_faceUV01 = float2(0.0, 0.0);
-    UV = float2(0.0, 0.0);
-
-    float3 ro = viewerPosition;
-    float3 rd = normalize(particlePos - viewerPosition);
-
-    float3 halfExt = roomDimensions * 0.5f;
-    float3 boxMin  = roomCenter - halfExt;
-    float3 boxMax  = roomCenter + halfExt;
-
-    // ---------- slab intersection ----------
-    float3 invDir = 1.0 / rd;
-
-    float3 t0 = (boxMin - ro) * invDir;
-    float3 t1 = (boxMax - ro) * invDir;
-
-    float3 tmin = min(t0, t1);
-    float3 tmax = max(t0, t1);
-
-    float tEnter = max(max(tmin.x, tmin.y), tmin.z);
-    float tExit  = min(min(tmax.x, tmax.y), tmax.z);
-
-    // no hit or fully behind camera
-    if (tExit < 0.0 || tEnter > tExit)
-        return float3(0.0, 0.0, 0.0);
-
-    float t = (tEnter > 0.0) ? tEnter : tExit;
-    if (t <= 0.0)
-        return float3(0.0, 0.0, 0.0);
-
-    float3 p = ro + rd * t;
-
-    // ---------- classify face ----------
-    const float eps = 1e-4;
-
-    // 0: floor (Green)    -> y = boxMin.y
-    // 1: ceiling (Yellow) -> y = boxMax.y
-    // 2: right (Magenta)  -> x = boxMax.x
-    // 3: back (Cyan)      -> z = boxMax.z
-    // 4: left (Red)       -> x = boxMin.x
-    // 5: front (Blue)     -> z = boxMin.z
-
-    if      (abs(p.y - boxMin.y) < eps) hitSurfaceIndex = 0;
-    else if (abs(p.y - boxMax.y) < eps) hitSurfaceIndex = 1;
-    else if (abs(p.x - boxMax.x) < eps) hitSurfaceIndex = 2;
-    else if (abs(p.z - boxMax.z) < eps) hitSurfaceIndex = 3;
-    else if (abs(p.x - boxMin.x) < eps) hitSurfaceIndex = 4;
-    else if (abs(p.z - boxMin.z) < eps) hitSurfaceIndex = 5;
-
-    // if for numerical reasons we didn't classify a face, treat as no hit
-    if (hitSurfaceIndex < 0)
-        return float3(0.0, 0.0, 0.0);
-
-    // ---------- UV & atlas (no clipping here!) ----------
-    float4 uvPack = mapToTexture(
-        p,
-        hitSurfaceIndex,
-        faceLayoutInfo,
-        roomCenter,
-        roomDimensions,
-        zoomRegion
-    );
-
-    // per-face UV in [0,1] (already includes zoomRegion behavior)
-    out_faceUV01 = uvPack.zw;
-
-    // atlas-normalized UV (4x3 layout → [0,1]²), y flipped
-    UV = uvPack.xy / crossLayoutInfo.xy;
-    UV = float2(UV.x, 1.0 - UV.y);
-
-    // distance from hit point to the original particle position
-    float offsetDist = distance(p, particlePos);
-
-    // like before: uvPack.xy in layout space, z = distance
-    return float3(uvPack.xy, offsetDist);
-}
-
-
-
-// -----------------------------------------------------------------------------
-// WRAPPER: legacy behavior. Uses projectParticleRaw but enforces that the
-// final atlas UV lies inside [0,1]². If not, it clears hitSurfaceIndex.
-// Existing code that relied on the old function can keep using this.
-// -----------------------------------------------------------------------------
-float3 projectParticleByViewPositionAABB(
-    float3 particlePos,
-    float4x4 roomTransform,
-    float3 roomCenter,
-    float3 roomDimensions,
-    float4 zoomRegion,
-    float3 viewerPosition,
-    out int   hitSurfaceIndex,
-    out float2 out_faceUV01,
-    out float2 UV,
-    StructuredBuffer<float4> faceLayoutInfo,
-    float4 crossLayoutInfo
-)
-{
-    // do the full geometric + layout projection without clipping
-    float3 result = projectParticleRaw(
-        particlePos,
-        roomTransform,
-        roomCenter,
-        roomDimensions,
-        zoomRegion,
-        viewerPosition,
-        hitSurfaceIndex,
-        out_faceUV01,
-        UV,
-        faceLayoutInfo,
-        crossLayoutInfo
-    );
-
-    // if the ray didn't hit the box at all
-    if (hitSurfaceIndex < 0)
-        return result;
-
-    // now apply the old clipping behavior in atlas UV space
-    if (UV.x < 0.0 || UV.x > 1.0 || UV.y < 0.0 || UV.y > 1.0)
-    {
         hitSurfaceIndex = -1;
+        out_faceUV01 = float2(0,0);
+        return float3(0,0,0);
+    }
+
+    // -----------------------------------------------------------------------------
+    // 7. LEGACY / RAW WRAPPERS
+    // -----------------------------------------------------------------------------
+    float3 projectParticleRaw(
+        float3 particlePos,
+        float4x4 roomTransform,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        out int   hitSurfaceIndex,
+        out float2 out_faceUV01,
+        out float2 UV,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo
+    )
+    {
+        // --- FIX: Initialize OUT variables immediately ---
+        hitSurfaceIndex = -1;
+        out_faceUV01 = float2(0,0);
+        UV = float2(0,0);
+
+        float3 roomSpacePos = mul(float4(particlePos, 1.0), roomTransform).xyz;
+        float3 rayDir = normalize(roomSpacePos - viewerPosition);
+        float3 hitPoint;
+        
+        bool hit = rayBoxIntersection(viewerPosition, rayDir, roomCenter, roomDimensions, hitPoint, hitSurfaceIndex);
+
+        if (!hit) {
+            return float3(0,0,0);
+        }
+
+        float4 uvPack = mapSurfaceToAtlas(hitPoint, hitSurfaceIndex, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
+        
+        out_faceUV01 = uvPack.zw;
+        UV = uvPack.xy / crossLayoutInfo.xy;
+        UV = float2(UV.x, 1.0 - UV.y); 
+
+        return float3(uvPack.xy, distance(hitPoint, roomSpacePos));
+    }
+
+    float3 projectParticleByViewPositionAABB(
+        float3 particlePos,
+        float4x4 roomTransform,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        out int   hitSurfaceIndex,
+        out float2 out_faceUV01,
+        out float2 UV,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo
+    )
+    {
+        float3 result = projectParticleRaw(
+            particlePos, roomTransform, roomCenter, roomDimensions, zoomRegion,
+            viewerPosition, hitSurfaceIndex, out_faceUV01, UV,
+            faceLayoutInfo, crossLayoutInfo
+        );
+
+        if (hitSurfaceIndex >= 0) {
+            if (UV.x < 0.0 || UV.x > 1.0 || UV.y < 0.0 || UV.y > 1.0) {
+                hitSurfaceIndex = -1;
+            }
+        }
         return result;
     }
 
-    return result;
-}
-
-
-
-    /// <summary>
-    /// Projects a 3D particle position orthogonally onto all 6 faces of a box.
-    /// Outputs projection data (UVs, distance) and color for each face via out parameters.
-    /// For invalid projections (outside face bounds), distance is -1.0f.
-    /// </summary>
+    // -----------------------------------------------------------------------------
+    // 8. ORTHOGONAL PROJECTION & UTILS
+    // -----------------------------------------------------------------------------
     float3 projectParticleOrthogonallyToAllFaces(
         float3 particlePos,
         float3 roomCenter,
         float3 roomDimensions,
         float4 zoomRegion,
-        // Buffer data
-        StructuredBuffer<float4> surfacePositionsAndType,   // .xyz = center of face i
-        StructuredBuffer<float4> surfaceNormalsAndSize,     // .xyz = normal of face i (ensure unit length)
-        StructuredBuffer<float4> surfaceDimensions,         // .xyz = dimensions of face i for isPointInRectangle
-        StructuredBuffer<float4> surfaceColorsAndScale,     // .xyz = color of face i
-        StructuredBuffer<float4> faceLayoutInfo,            // Layout info for face i in the texture atlas
-        // Output parameters
+        StructuredBuffer<float4> surfacePositionsAndType,
+        StructuredBuffer<float4> surfaceNormalsAndSize,
+        StructuredBuffer<float4> surfaceDimensions,
+        StructuredBuffer<float4> surfaceColorsAndScale,
+        StructuredBuffer<float4> faceLayoutInfo,
         out float3 out_projectionFace1,
         out float3 out_projectionFace2, out float3 out_projectionFace3,
         out float3 out_projectionFace4, out float3 out_projectionFace5
     ) {
-        // Temporary arrays to store results before assigning to specific out variables.
-        // HLSL doesn't allow arrays of 'out' parameters directly for loop assignment.
         float3 temp_projections[6];
-        float3 temp_colors[6];
 
-        for (int i = 0; i < 6; i++) { // Iterate through each of the 6 box faces
+        for (int i = 0; i < 6; i++) {
             float3 faceCenter = surfacePositionsAndType[i].xyz;
-            float3 faceNormal = normalize(surfaceNormalsAndSize[i].xyz); // Ensure unit normal
-            float3 faceDimsForRectCheck = surfaceDimensions[i].xyz;
-            temp_colors[i] = surfaceColorsAndScale[i].xyz;
+            float3 faceNormal = normalize(surfaceNormalsAndSize[i].xyz); 
+            float3 faceDims = surfaceDimensions[i].xyz;
 
-            float signedDistanceToPlane = dot(particlePos - faceCenter, faceNormal);
-            float calculatedOrthogonalDistance = abs(signedDistanceToPlane);
-            float3 pointProjectedOntoInfinitePlane = particlePos - faceNormal * signedDistanceToPlane;
+            float signedDist = dot(particlePos - faceCenter, faceNormal);
+            float3 projPoint = particlePos - faceNormal * signedDist;
+            float3 localPos = projPoint - faceCenter;
+            
+            float3 t, b; 
+            GetFaceBasis(i, t, b);
+            
+            float limitU = dot(faceDims, abs(t)) * 0.5f;
+            float limitV = dot(faceDims, abs(b)) * 0.5f;
+            float distU = abs(dot(localPos, t));
+            float distV = abs(dot(localPos, b));
 
-            bool isWithinFaceRectangle = isPointInRectangle(
-                pointProjectedOntoInfinitePlane,
-                faceCenter,
-                faceDimsForRectCheck,
-                faceNormal
-            );
-
-            if (isWithinFaceRectangle) {
-                float2 uv_coords = mapToTexture(
-                    pointProjectedOntoInfinitePlane,
-                    i, // surfaceIndex
-                    faceLayoutInfo,
-                    roomCenter,
-                    roomDimensions,
-                    zoomRegion
-                );
-                temp_projections[i] = float3(uv_coords.x, uv_coords.y, calculatedOrthogonalDistance);
+            if (distU <= limitU && distV <= limitV) {
+                float4 uvPack = mapSurfaceToAtlas(projPoint, i, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
+                temp_projections[i] = float3(uvPack.x, uvPack.y, abs(signedDist));
             } else {
-                // Mark as invalid projection (out of bounds for this face)
-                // UVs are default (0,0), distance is -1.0
                 temp_projections[i] = float3(0.0f, 0.0f, -1.0f);
             }
         }
 
-        // Assign temporary results to the specific out variables
-        
         out_projectionFace1 = temp_projections[1]; 
         out_projectionFace2 = temp_projections[2]; 
         out_projectionFace3 = temp_projections[3]; 
@@ -416,97 +268,28 @@ float3 projectParticleByViewPositionAABB(
         out_projectionFace5 = temp_projections[5]; 
         return temp_projections[0];
     }
-
-    /// <summary>
-    /// Projects a vertexPosition along its vertexNormal to the surface of an axis-aligned sharp box.
-    /// Assumes vertexPosition is inside or on the surface of the outer box.
-    /// </summary>
-    /// <param name="vertexPosition">The current position of the vertex.</param>
-    /// <param name="vertexNormal">The surface normal at vertexPosition.</param>
-    /// <param name="boxCenter">The center of the target sharp outer box.</param>
-    /// <param name="boxSize">The full dimensions (width, height, depth) of the outer box.</param>
-    /// <returns>The position on the surface of the sharp outer box.</returns>
-    float3 convertToSharpBox(
-        float3 vertexPosition,
-        float3 vertexNormal,
-        float3 boxCenter,
-        float3 boxSize)
+    
+    float3 convertToSharpBox(float3 vertexPosition, float3 vertexNormal, float3 boxCenter, float3 boxSize)
     {
-        float3 halfBoxSize = abs(boxSize) * 0.5f; // Ensure positive dimensions for safety
+        float3 halfBoxSize = abs(boxSize) * 0.5f;
         float3 boxMin = boxCenter - halfBoxSize;
         float3 boxMax = boxCenter + halfBoxSize;
+        float t_intersect = 1.0e10f; 
+        float dir_epsilon = 1.0e-5f;
 
-        float t_intersect = 1.0f / 0.0f; // Positive infinity in HLSL
+        if (dot(vertexNormal, vertexNormal) < dir_epsilon) return vertexPosition;
 
-        // Epsilon values for floating point comparisons
-        float dir_epsilon = 0.00001f;  // To check if normal component is non-zero
-        float hit_epsilon = 0.00001f;  // To allow for t being slightly negative if it should be zero
+        if (vertexNormal.x > dir_epsilon) t_intersect = min(t_intersect, (boxMax.x - vertexPosition.x) / vertexNormal.x);
+        else if (vertexNormal.x < -dir_epsilon) t_intersect = min(t_intersect, (boxMin.x - vertexPosition.x) / vertexNormal.x);
 
-        // Check if normal is valid (non-zero length)
-        if (dot(vertexNormal, vertexNormal) < dir_epsilon * dir_epsilon) {
-            // Fallback: If normal is zero, cannot project.
-            // Optionally, you could clamp vertexPosition to the box here.
-            // For now, return original position.
-            return vertexPosition;
-        }
+        if (vertexNormal.y > dir_epsilon) t_intersect = min(t_intersect, (boxMax.y - vertexPosition.y) / vertexNormal.y);
+        else if (vertexNormal.y < -dir_epsilon) t_intersect = min(t_intersect, (boxMin.y - vertexPosition.y) / vertexNormal.y);
 
-        // Calculate t (distance along normal) to hit each of the 6 box planes
-        // We only consider hits in the direction the normal component is pointing.
+        if (vertexNormal.z > dir_epsilon) t_intersect = min(t_intersect, (boxMax.z - vertexPosition.z) / vertexNormal.z);
+        else if (vertexNormal.z < -dir_epsilon) t_intersect = min(t_intersect, (boxMin.z - vertexPosition.z) / vertexNormal.z);
 
-        // --- X Faces ---
-        if (vertexNormal.x > dir_epsilon) { // Ray is moving towards +X face
-            float tx = (boxMax.x - vertexPosition.x) / vertexNormal.x;
-            // tx should be >= 0 if vertexPosition is inside or on boxMax.x plane
-            // Allow slightly negative tx due to precision if it should be 0
-            if (tx >= -hit_epsilon) {
-                t_intersect = min(t_intersect, tx);
-            }
-        } else if (vertexNormal.x < -dir_epsilon) { // Ray is moving towards -X face
-            float tx = (boxMin.x - vertexPosition.x) / vertexNormal.x;
-            if (tx >= -hit_epsilon) {
-                t_intersect = min(t_intersect, tx);
-            }
-        }
-        // If abs(vertexNormal.x) <= dir_epsilon, ray is parallel to X-faces; no intersection with them.
-
-        // --- Y Faces ---
-        if (vertexNormal.y > dir_epsilon) { // Ray is moving towards +Y face
-            float ty = (boxMax.y - vertexPosition.y) / vertexNormal.y;
-            if (ty >= -hit_epsilon) {
-                t_intersect = min(t_intersect, ty);
-            }
-        } else if (vertexNormal.y < -dir_epsilon) { // Ray is moving towards -Y face
-            float ty = (boxMin.y - vertexPosition.y) / vertexNormal.y;
-            if (ty >= -hit_epsilon) {
-                t_intersect = min(t_intersect, ty);
-            }
-        }
-
-        // --- Z Faces ---
-        if (vertexNormal.z > dir_epsilon) { // Ray is moving towards +Z face
-            float tz = (boxMax.z - vertexPosition.z) / vertexNormal.z;
-            if (tz >= -hit_epsilon) {
-                t_intersect = min(t_intersect, tz);
-            }
-        } else if (vertexNormal.z < -dir_epsilon) { // Ray is moving towards -Z face
-            float tz = (boxMin.z - vertexPosition.z) / vertexNormal.z;
-            if (tz >= -hit_epsilon) {
-                t_intersect = min(t_intersect, tz);
-            }
-        }
-
-        // After checking all 6 planes, t_intersect holds the smallest non-negative distance.
-        // Clamp t_intersect to be >= 0 to handle precision issues where t might be very slightly negative.
         t_intersect = max(0.0f, t_intersect);
-
-        // Check if a valid intersection was found (t_intersect is not infinity)
-        // isinf() is available in Shader Model 5.0+. For older models, check against a very large float.
-        if (isinf(t_intersect)) {
-            // Fallback: This might happen if normal was degenerate in a way not caught by the initial check,
-            // or vertexPosition is outside and normal points away from all faces (not the assumed scenario).
-            // If inside, this means normal components were too small for all directions.
-            return vertexPosition;
-        }
+        if (t_intersect > 1.0e9f) return vertexPosition;
 
         return vertexPosition + vertexNormal * t_intersect;
     }
@@ -544,5 +327,5 @@ float3 projectParticleByViewPositionAABB(
 
         // stretch into rect
         return r.xy + faceUV01 * r.zw;     // still normalized (0..1)
-    }  
+    }
 };

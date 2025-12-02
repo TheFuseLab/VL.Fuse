@@ -48,8 +48,8 @@ public struct ClipInfoRaster
 
 public sealed class AnimBankGpu
 {
-    public ClipInfoRaster[] Clips = [];
     public string[] ClipNames = [];
+    public ClipInfoRaster[] Clips = [];
 
     // delta-local DQs: animLocal = restInvLocal * currentLocal
     public DualQuat[] LocalDeltaDq = [];
@@ -73,6 +73,18 @@ public sealed class ModelGpu
     public string[] BoneNames = [];
     public MeshGpu Mesh = new();
     public SkeletonGpu Skeleton;
+}
+
+public sealed class TriangleAliasTable
+{
+    /// <summary>Alias index per triangle.</summary>
+    public int[] Alias = [];
+
+    /// <summary>Probability per triangle (Walker alias method, normalized so expected value is 1).</summary>
+    public float[] Prob = [];
+
+    /// <summary>Number of triangles this table was built for.</summary>
+    public int TriangleCount => Prob.Length;
 }
 
 // -------------------- Loader --------------------
@@ -158,20 +170,20 @@ public static class FBXLoader
         };
     }
 
-    static float DetermineSceneScale(Scene scene)
+    private static float DetermineSceneScale(Scene scene)
     {
         if (scene.Metadata != null &&
             scene.Metadata.TryGetValue("GlobalScale", out var meta))
         {
             // FBX stores GlobalScale in centimeters
             if (meta.Data is float f)
-                return f * 0.01f;              // cm → m
+                return f * 0.01f; // cm → m
 
             if (meta.Data is double d)
-                return (float)d * 0.01f;       // cm → m
+                return (float)d * 0.01f; // cm → m
 
             // Unexpected type: warn but continue
-            System.Diagnostics.Debug.WriteLine(
+            Debug.WriteLine(
                 $"[FBXLoader] Warning: GlobalScale found but type was {meta.Data.GetType()}.");
         }
 
@@ -288,7 +300,7 @@ public static class FBXLoader
     public static ModelGpu LoadFbxWithExtraAnimations(
         string mainPath,
         IEnumerable<string> extraAnimationPaths,
-        float sceneScale = 0.01f, 
+        float sceneScale = 0.01f,
         float fpsIfNeeded = 30f)
     {
         try
@@ -328,7 +340,7 @@ public static class FBXLoader
             foreach (var bone in mesh.Bones)
                 invBindByName[bone.Name] = ToM(bone.OffsetMatrix);
 
-            
+
             var invBind = new Matrix[nb];
             var scaleMatrix = Matrix.Scaling(sceneScale);
             var inverseScaleMatrix = Matrix.Scaling(1.0f / sceneScale);
@@ -819,4 +831,122 @@ public static class GpuPacking
     {
         return (start + frame * boneCount + bone) * 2;
     }
+
+    #region TriangleAliasTable
+
+    private static TriangleAliasTable BuildTriangleAliasTable(float[] weights)
+    {
+        var n = weights.Length;
+        var table = new TriangleAliasTable
+        {
+            Prob = new float[n],
+            Alias = new int[n]
+        };
+
+        if (n == 0)
+            return table;
+
+        var prob = table.Prob;
+        var alias = table.Alias;
+
+        // 1) sum weights
+        var sum = 0.0;
+        for (var i = 0; i < n; i++)
+            sum += weights[i];
+
+        if (sum <= 0.0)
+        {
+            // fallback: uniform
+            for (var i = 0; i < n; i++)
+            {
+                prob[i] = 1.0f;
+                alias[i] = i;
+            }
+
+            return table;
+        }
+
+        var invSum = 1.0 / sum;
+
+        var small = new Queue<int>();
+        var large = new Queue<int>();
+
+        // 2) normalize to expected value 1.0 (prob[i] ~ weights[i]/sum * n)
+        for (var i = 0; i < n; i++)
+        {
+            var p = weights[i] * invSum * n;
+            prob[i] = (float)p;
+
+            if (p < 1.0) small.Enqueue(i);
+            else large.Enqueue(i);
+        }
+
+        // 3) distribute probability mass
+        while (small.Count > 0 && large.Count > 0)
+        {
+            var s = small.Dequeue();
+            var l = large.Dequeue();
+
+            alias[s] = l;
+
+            var newP = prob[l] + prob[s] - 1.0;
+            prob[l] = (float)newP;
+
+            if (newP < 1.0) small.Enqueue(l);
+            else large.Enqueue(l);
+        }
+
+        // 4) leftover entries
+        while (large.Count > 0)
+        {
+            var i = large.Dequeue();
+            prob[i] = 1.0f;
+            alias[i] = i;
+        }
+
+        while (small.Count > 0)
+        {
+            var i = small.Dequeue();
+            prob[i] = 1.0f;
+            alias[i] = i;
+        }
+
+        return table;
+    }
+
+    public static TriangleAliasTable BuildTriangleAliasTableForMesh(MeshGpu mesh)
+    {
+        ArgumentNullException.ThrowIfNull(mesh);
+
+        if (mesh.Vertices == null || mesh.Indices == null)
+            throw new InvalidOperationException("MeshGpu must have Vertices and Indices set.");
+
+        var triCount = mesh.Indices.Length / 3;
+        if (triCount <= 0)
+            return new TriangleAliasTable();
+
+        var triAreas = new float[triCount];
+
+        for (var t = 0; t < triCount; t++)
+        {
+            var i0 = mesh.Indices[t * 3 + 0];
+            var i1 = mesh.Indices[t * 3 + 1];
+            var i2 = mesh.Indices[t * 3 + 2];
+
+            var p0 = mesh.Vertices[i0].Position;
+            var p1 = mesh.Vertices[i1].Position;
+            var p2 = mesh.Vertices[i2].Position;
+
+            var e1 = p1 - p0;
+            var e2 = p2 - p0;
+            var cross = Vector3.Cross(e1, e2);
+
+            var area = 0.5f * cross.Length(); // degenerate tris -> 0
+            triAreas[t] = area;
+        }
+
+        return BuildTriangleAliasTable(triAreas);
+    }
+
+    #endregion
 }
