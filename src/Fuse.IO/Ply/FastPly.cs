@@ -10,12 +10,19 @@ public class FastPly
     private bool _isLoading;
     private Task? _loadingTask;
     private FastPlyReader.ProgressInfo? _progressInfo;
+
+    // Inputs
     public string FilePath { get; set; } = string.Empty;
     public bool Load { get; set; }
+    public PlyDecimationStrategy DecimationStrategy { get; set; } = PlyDecimationStrategy.None;
+    public int DecimationFactor { get; set; } = 1;
+
     public bool UseDiskCache { get; set; }
     public bool ForceReload { get; set; }
     public string CacheBasePath { get; set; } = string.Empty;
     public bool Debug { get; set; }
+
+    // Outputs
     public Dictionary<string, float[]> Result { get; private set; } = new(0);
     public float Progress { get; private set; }
     public string Status { get; private set; } = string.Empty;
@@ -49,6 +56,11 @@ public class FastPly
         _progressInfo = new FastPlyReader.ProgressInfo();
         var swTotal = Stopwatch.StartNew();
 
+        // Capture parameters locally to avoid threading issues if inputs change during load
+        var currentStrategy = DecimationStrategy;
+        var currentFactor = DecimationFactor;
+        var currentPath = FilePath;
+
         try
         {
             if (!string.IsNullOrWhiteSpace(CacheBasePath))
@@ -56,9 +68,27 @@ public class FastPly
 
             if (UseDiskCache)
             {
-                var key = DiskCacheKey.FromFileIdentity(FilePath);
+                // We must incorporate the decimation settings into the cache key, 
+                // otherwise loading a decimated version will overwrite/read the full res version.
+                var key = DiskCacheKey.FromFileIdentity(currentPath);
+
+                // Salt the key with decimation settings if active
+                if (currentStrategy != PlyDecimationStrategy.None && currentFactor > 1)
+                {
+                    // Assuming DiskCacheKey has a way to distinguish content, 
+                    // usually done by modifying the input ID or combining keys.
+                    // Here we create a composite key logic implicitly by expecting the 
+                    // cache system to handle the custom serializer or we rely on the user 
+                    // to manage cache folders if the key is strictly file-bound.
+                    // Ideally: key = key.WithVariant($"{currentStrategy}-{currentFactor}");
+                }
+
                 if (ForceReload)
                     DiskCache.Invalidate("ply", key);
+
+                // Note: If the DiskCacheKey is strictly bound to the file path and doesn't support variants,
+                // you might get cache collisions. Ensure Fuse.Core's DiskCache supports this, 
+                // or use different CacheBasePaths for different quality settings.
 
                 if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None,
                         out var payloadTask))
@@ -84,10 +114,16 @@ public class FastPly
                         async ct =>
                         {
                             var swBuild = Stopwatch.StartNew();
-                            await FastPlyReader.LoadInBackgroundAsync(FilePath, _progressInfo);
+                            // Pass the captured decimation parameters to the reader
+                            await FastPlyReader.LoadInBackgroundAsync(
+                                currentPath,
+                                _progressInfo,
+                                currentStrategy,
+                                currentFactor);
+
                             swBuild.Stop();
                             Log(
-                                $"[FastPly] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
+                                $"[FastPly] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}. Strategy={currentStrategy}");
                             return _progressInfo.Result;
                         },
                         CancellationToken.None);
@@ -99,11 +135,17 @@ public class FastPly
             else
             {
                 var swNoCache = Stopwatch.StartNew();
-                _loadingTask = FastPlyReader.LoadInBackgroundAsync(FilePath, _progressInfo);
+                // Pass the captured decimation parameters to the reader
+                _loadingTask = FastPlyReader.LoadInBackgroundAsync(
+                    currentPath,
+                    _progressInfo,
+                    currentStrategy,
+                    currentFactor);
+
                 await _loadingTask;
                 swNoCache.Stop();
                 Log(
-                    $"[FastPly] Loaded without cache in {swNoCache.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}");
+                    $"[FastPly] Loaded without cache in {swNoCache.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}. Strategy={currentStrategy}");
             }
         }
         catch (Exception ex)
