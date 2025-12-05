@@ -113,6 +113,44 @@ shader FuseRenderingBoxGridProject {
         return float3(finalPos, scaleFactor);
     }
 
+    float4x4 get2DProjectionMatrix(float4 zoomRegion)
+    {
+        // 1. Calculate the size of the zoom region
+        float2 zoomSize = zoomRegion.zw - zoomRegion.xy;
+        
+        // 2. Handle the division safety (matching the original code's logic)
+        //    We calculate the inverse size to multiply instead of divide.
+        float2 safeZoomSize = max(zoomSize, 0.0001);
+        float2 invZoomSize = 1.0f / safeZoomSize;
+
+        // 3. Define the final aspect ratio scale (4.0, 3.0)
+        float2 aspectScale = float2(4.0, 3.0);
+
+        // 4. Calculate the Combined Scale (Diagonal elements)
+        //    Logic: uv * (1/zoomSize) * aspectScale
+        float2 mScale = invZoomSize * aspectScale;
+
+        // 5. Calculate the Combined Translation (Row 3)
+        //    Logic: -zoomRegion.xy * (1/zoomSize) * aspectScale
+        float2 mOffset = -zoomRegion.xy * mScale;
+
+        // 6. Calculate the Z component (Scale Factor)
+        //    This is constant regardless of input position, so it goes into the translation row.
+        float scaleFactor = 1.0 / max(max(zoomSize.x, zoomSize.y), 0.0001);
+
+        // 7. Construct Matrix (Column-Major logic for mul(vec, mat))
+        //    Row 0: X Scale
+        //    Row 1: Y Scale
+        //    Row 2: Unused
+        //    Row 3: Translation (X, Y) and constant Z (ScaleFactor)
+        return float4x4(
+            mScale.x,  0.0,       0.0,         0.0,
+            0.0,       mScale.y,  0.0,         0.0,
+            0.0,       0.0,       0.0,         0.0,
+            mOffset.x, mOffset.y, scaleFactor, 1.0
+        );
+    }
+
     // -----------------------------------------------------------------------------
     // 6. MAIN 3D PROJECTION FUNCTION
     // -----------------------------------------------------------------------------
