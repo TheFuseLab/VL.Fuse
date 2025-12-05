@@ -1,0 +1,389 @@
+// ============================================================================
+// OpticalFlowLib: condensed mixin for coarse-to-fine Horn–Schunck style flow
+// ----------------------------------------------------------------------------
+// Contains three main compute kernels as functions:
+//
+//   1) Derivatives_Compute
+//        - Builds (Ix, Iy, It) from two input frames.
+//
+//   2) HSGroup_Compute
+//        - Performs LOCAL_ITER Horn–Schunck iterations on a tile using
+//          groupshared memory (fast, tiled smoothing).
+//
+//   3) Warp_Compute
+//        - Warps one frame using a flow field.
+//
+// All functions are in a single mixin and take *all resources/params as
+// arguments*. No cbuffers or uniforms are defined inside the mixin.
+// You provide those when you wrap them in a shader.
+//
+// ============================================================================
+
+shader  FuseComputeOpticalFlow
+{
+    
+
+    // ------------------------------------------------------------
+    // Helper: RGB -> Luminance
+    // ------------------------------------------------------------
+    float OpticalFlow_Luma(float3 rgb)
+    {
+        // Standard Rec.601; adjust if needed
+        return dot(rgb, float3(0.299, 0.587, 0.114));
+    }
+
+    // ------------------------------------------------------------
+    // Helper: per-pixel derivatives between two frames
+    //
+    //  pixel        : pixel coordinate (0..width-1, 0..height-1)
+    //  levelSize    : int2(width, height)
+    //  tex0, tex1   : frames (e.g. current & previous)
+    //  samp         : sampler (linear or point, clamp)
+    //  outDeriv.xyz : (Ix, Iy, It)
+    // ------------------------------------------------------------
+    void Derivatives_Pixel(
+        int2                    pixel,
+        int2                    levelSize,
+        Texture2D<float4>       tex0,
+        Texture2D<float4>       tex1,
+        RWTexture2D<float4>     derivOut,
+        SamplerState            samp)
+    {
+        float2 size  = float2(levelSize);
+        float2 texel = 1.0 / size;
+        float2 uv    = (float2(pixel) + 0.5) / size;
+
+        // Luminance at this pixel in both frames
+        float3 c0 = tex0.SampleLevel(samp, uv, 0.0).rgb;
+        float3 c1 = tex1.SampleLevel(samp, uv, 0.0).rgb;
+
+        float I0 = OpticalFlow_Luma(c0);
+        float I1 = OpticalFlow_Luma(c1);
+
+        // Spatial derivatives on tex0 (central difference)
+        float Ix = (OpticalFlow_Luma(tex0.SampleLevel(samp, uv + float2(texel.x, 0), 0.0).rgb) -
+                    OpticalFlow_Luma(tex0.SampleLevel(samp, uv - float2(texel.x, 0), 0.0).rgb)) * 0.5;
+
+        float Iy = (OpticalFlow_Luma(tex0.SampleLevel(samp, uv + float2(0, texel.y), 0.0).rgb) -
+                    OpticalFlow_Luma(tex0.SampleLevel(samp, uv - float2(0, texel.y), 0.0).rgb)) * 0.5;
+
+        // Temporal derivative: brightness change
+        float It = I0 - I1;
+
+        derivOut[pixel] = float4(Ix, Iy, It, 1);
+    }
+
+        // ------------------------------------------------------------
+    // CONFIG (you can tweak these)
+    // ------------------------------------------------------------
+    static const uint BLOCK_SIZE = 16;   // thread group size (x,y)
+    static const uint RADIUS     = 1;    // neighborhood radius for HS (1 => 5-point)
+    static const uint LOCAL_ITER = 4;    // HS iterations per dispatch
+
+    // Shared tiles for HS solver (only used by HSGroup_Compute)
+    groupshared float2 shFlowA[BLOCK_SIZE + 2 * RADIUS][BLOCK_SIZE + 2 * RADIUS];
+    groupshared float2 shFlowB[BLOCK_SIZE + 2 * RADIUS][BLOCK_SIZE + 2 * RADIUS];
+    groupshared float3 shDeriv[BLOCK_SIZE][BLOCK_SIZE]; // (Ix, Iy, It)
+
+    // ------------------------------------------------------------
+    // KERNEL 2: HSGroup compute (tiled Horn–Schunck with groupshared)
+    //
+    //  dtId          : SV_DispatchThreadID
+    //  gtId          : SV_GroupThreadID
+    //  levelSize     : int2(width, height)
+    //  derivTex      : Texture2D<float4> (Ix, Iy, It, _)
+    //  flowIn        : Texture2D<float2>  (u, v) initial flow
+    //  flowOut       : RWTexture2D<float2> result flow
+    //  linearSampler : sampler
+    //  lambda        : smoothness parameter (0.01..0.5 typical)
+    //  eps           : small epsilon (1e-3)
+    //
+    // [numthreads] MUST match BLOCK_SIZE, BLOCK_SIZE,1
+    //
+    // Dispatch:
+    //   groupsX = ceil(width  / BLOCK_SIZE)
+    //   groupsY = ceil(height / BLOCK_SIZE)
+    // ------------------------------------------------------------
+    void HornSchunk(
+        int2                    pixel,         // DispatchThreadId.xy
+        int2                    local,         // GroupThreadId.xy
+        int2                    levelSize,     // (width, height)
+        Texture2D<float4>       derivTex,      // (Ix, Iy, It, _)
+        Texture2D<float2>       flowIn,        // current flow (u,v)
+        RWTexture2D<float2>     flowOut,       // updated flow (u,v)
+        SamplerState            linearSampler,
+        float                   lambda,
+        float                   eps)
+    {
+        // Is this pixel inside the valid image region?
+        bool active = (pixel.x >= 0 && pixel.x < levelSize.x &&
+                    pixel.y >= 0 && pixel.y < levelSize.y);
+
+        // Clamp pixel for sampling so even out-of-bounds threads read valid data
+        int2 pixelClamped = int2(
+            clamp(pixel.x, 0, levelSize.x - 1),
+            clamp(pixel.y, 0, levelSize.y - 1)
+        );
+
+        float2 size = float2(levelSize);
+        float2 uv   = (float2(pixelClamped) + 0.5) / size;
+
+        // Local shared index for this thread (with halo border)
+        int2 sCenter = local + int2(RADIUS, RADIUS);
+
+        // -------------------------------------------------------------------------
+        // 1) Load derivatives & flow into shared memory
+        // -------------------------------------------------------------------------
+        float4 d = derivTex.SampleLevel(linearSampler, uv, 0.0);
+        shDeriv[local.y][local.x] = d.xyz; // Ix, Iy, It
+
+        float2 centerFlow = flowIn[pixelClamped];
+
+        // Initialize BOTH A and B with the same initial flow
+        shFlowA[sCenter.y][sCenter.x] = centerFlow;
+        shFlowB[sCenter.y][sCenter.x] = centerFlow;
+
+        // -------------------------------------------------------------------------
+        // 2) Load halo from global flow into BOTH shared buffers
+        // -------------------------------------------------------------------------
+        if (local.x == 0)
+        {
+            int2 pL = int2(max(pixelClamped.x - 1, 0), pixelClamped.y);
+            float2 val = flowIn[pL];
+            shFlowA[sCenter.y][sCenter.x - 1] = val;
+            shFlowB[sCenter.y][sCenter.x - 1] = val;
+        }
+        if (local.x == BLOCK_SIZE - 1)
+        {
+            int2 pR = int2(min(pixelClamped.x + 1, levelSize.x - 1), pixelClamped.y);
+            float2 val = flowIn[pR];
+            shFlowA[sCenter.y][sCenter.x + 1] = val;
+            shFlowB[sCenter.y][sCenter.x + 1] = val;
+        }
+
+        if (local.y == 0)
+        {
+            int2 pT = int2(pixelClamped.x, max(pixelClamped.y - 1, 0));
+            float2 val = flowIn[pT];
+            shFlowA[sCenter.y - 1][sCenter.x] = val;
+            shFlowB[sCenter.y - 1][sCenter.x] = val;
+        }
+        if (local.y == BLOCK_SIZE - 1)
+        {
+            int2 pB = int2(pixelClamped.x, min(pixelClamped.y + 1, levelSize.y - 1));
+            float2 val = flowIn[pB];
+            shFlowA[sCenter.y + 1][sCenter.x] = val;
+            shFlowB[sCenter.y + 1][sCenter.x] = val;
+        }
+
+        // (Optional) add 4 corner halo loads for 8-neighbour smoothing.
+
+        GroupMemoryBarrierWithGroupSync();
+
+        // -------------------------------------------------------------------------
+        // 3) HS iterations in shared memory (Jacobi ping-pong A/B)
+        // -------------------------------------------------------------------------
+        bool useA = true; // true: read A → write B, false: read B → write A
+
+        [loop]
+        for (int iter = 0; iter < LOCAL_ITER; ++iter)
+        {
+            float3 deriv = shDeriv[local.y][local.x];
+            float  Ix    = deriv.x;
+            float  Iy    = deriv.y;
+            float  It    = deriv.z;
+
+            float2 Uav;
+            if (useA)
+            {
+                float2 c = shFlowA[sCenter.y][sCenter.x];
+                float2 l = shFlowA[sCenter.y][sCenter.x - 1];
+                float2 r = shFlowA[sCenter.y][sCenter.x + 1];
+                float2 t = shFlowA[sCenter.y - 1][sCenter.x];
+                float2 b = shFlowA[sCenter.y + 1][sCenter.x];
+                Uav = (c + l + r + t + b) / 5.0;
+            }
+            else
+            {
+                float2 c = shFlowB[sCenter.y][sCenter.x];
+                float2 l = shFlowB[sCenter.y][sCenter.x - 1];
+                float2 r = shFlowB[sCenter.y][sCenter.x + 1];
+                float2 t = shFlowB[sCenter.y - 1][sCenter.x];
+                float2 b = shFlowB[sCenter.y + 1][sCenter.x];
+                Uav = (c + l + r + t + b) / 5.0;
+            }
+
+            float Ix2 = Ix * Ix;
+            float Iy2 = Iy * Iy;
+            float P   = Ix * Uav.x + Iy * Uav.y + It;
+            float D   = lambda + Ix2 + Iy2 + eps;
+
+            float2 uvNew;
+            uvNew.x = Uav.x - Ix * (P / D);
+            uvNew.y = Uav.y - Iy * (P / D);
+
+            if (useA)
+                shFlowB[sCenter.y][sCenter.x] = uvNew;
+            else
+                shFlowA[sCenter.y][sCenter.x] = uvNew;
+
+            GroupMemoryBarrierWithGroupSync();
+            useA = !useA;
+        }
+
+        // -------------------------------------------------------------------------
+        // 4) Write back final flow (only for active pixels)
+        // -------------------------------------------------------------------------
+        float2 finalFlow =
+            useA
+            ? shFlowA[sCenter.y][sCenter.x]
+            : shFlowB[sCenter.y][sCenter.x];
+
+        if (active)
+            flowOut[pixel] = finalFlow;
+    }
+
+        // ------------------------------------------------------------
+    // KERNEL 3: Warp compute
+    //
+    //  dtId          : SV_DispatchThreadID
+    //  levelSize     : int2(width, height)
+    //  src           : original frame
+    //  flowTex       : flow field (u,v) in pixels
+    //  warpedOut     : RWTexture2D<float4> warped result
+    //  samp          : sampler
+    //  flowToUvScale : float2(1/width, 1/height) or similar
+    //
+    // Dispatch:
+    //   groupsX = ceil(width  / groupSizeX)
+    //   groupsY = ceil(height / groupSizeY)
+    // ------------------------------------------------------------
+    void Warp(
+        int2                    pixel,
+        int2                    levelSize,
+        Texture2D<float4>       src,
+        Texture2D<float2>       flowTex,
+        RWTexture2D<float4>     warpedOut,
+        SamplerState            samp,
+        float2                  flowToUvScale)
+    {
+
+        float2 size = float2(levelSize);
+        float2 uv   = (float2(pixel) + 0.5) / size;
+
+        float2 flow   = flowTex.SampleLevel(samp, uv, 0.0);   // in pixels
+        float2 uvWarp = uv + flow * flowToUvScale;          // convert to UV offset
+
+        warpedOut[pixel] = src.SampleLevel(samp, uvWarp, 0.0);
+    }
+
+    // ------------------------------------------------------------
+    // KERNEL 4: Upscale Flow (Bilinear + Mult 2.0)
+    // Use this to go from Level N+1 to Level N
+    // ------------------------------------------------------------
+    void UpscaleFlow(
+        int2                    pixel,
+        int2                    levelSize,     // Target High-Res Size
+        Texture2D<float2>       lowResFlow,    // Input Low-Res Flow
+        RWTexture2D<float2>     highResFlow,   // Output High-Res Flow
+        SamplerState            linearSampler)
+    {
+        float2 size = float2(levelSize);
+        float2 uv   = (float2(pixel) + 0.5) / size;
+
+        // Hardware Bilinear Interpolation
+        float2 flow = lowResFlow.SampleLevel(linearSampler, uv, 0);
+
+        // OPTICAL FLOW SCALING:
+        // When you double the image resolution, the flow vectors (in pixels)
+        // must also be doubled to point to the same relative location.
+        highResFlow[pixel] = flow * 2.0; 
+    }
+
+    // ------------------------------------------------------------
+    // KERNEL 5: Downscale Image (Simple Bilinear)
+    // Use this if you don't want to use GenerateMips()
+    // ------------------------------------------------------------
+    void DownscaleImage(
+        int2                    pixel,
+        int2                    levelSize,     // Target Low-Res Size
+        Texture2D<float4>       highResTex,    // Input High-Res
+        RWTexture2D<float4>     lowResTex,     // Output Low-Res
+        SamplerState            linearSampler)
+    {
+        float2 size = float2(levelSize);
+        float2 uv   = (float2(pixel) + 0.5) / size;
+
+        // Hardware Bilinear Interpolation
+        lowResTex[pixel] = highResTex.SampleLevel(linearSampler, uv, 0);
+
+        // 3. Filtered Downscaling (Gaussian-weighted 5-tap)
+        // Eliminates temporal jitter/shimmering by blurring high-frequency noise.
+        // Uses weights: Center(0.4) + 4xDiagonalNeighbors(0.15).
+        float2 texel = 1.0 / size; 
+
+        float4 acc = highResTex.SampleLevel(linearSampler, uv, 0) * 0.4;
+        acc += highResTex.SampleLevel(linearSampler, uv + float2(-texel.x, -texel.y), 0) * 0.15;
+        acc += highResTex.SampleLevel(linearSampler, uv + float2( texel.x, -texel.y), 0) * 0.15;
+        acc += highResTex.SampleLevel(linearSampler, uv + float2(-texel.x,  texel.y), 0) * 0.15;
+        acc += highResTex.SampleLevel(linearSampler, uv + float2( texel.x,  texel.y), 0) * 0.15;
+
+        lowResTex[pixel] = acc;
+    }
+
+        // ------------------------------------------------------------
+    // KERNEL 4: Advect a texture by the flow field
+    //
+    //  pixel         : DispatchThreadId.xy
+    //  levelSize     : int2(width, height) of this level
+    //  level         : mip level if using mipmapped textures (0 if not)
+    //  advectedPrev  : previous advected texture (at same resolution)
+    //  injectTex     : source of fresh color/noise (can be same as advectedPrev)
+    //  flowTex       : flow field (u,v) in *pixels per frame*
+    //  advectedOut   : RW output texture (same res as levelSize)
+    //  samp          : linear + clamp sampler
+    //  advectStrength: scale factor for how much of the flow to apply (1 = full)
+    //  injectAmount  : how much new color to blend in [0..1]
+    //
+    //  Typical usage:
+    //      - advectStrength ~ 1.0 for "full" advection
+    //      - injectAmount   ~ 0.01..0.1 to slowly refresh pattern
+    //
+    //  Dispatch:
+    //      groupsX = ceil(levelSize.x / groupSizeX)
+    //      groupsY = ceil(levelSize.y / groupSizeY)
+    // ------------------------------------------------------------
+    void AdvectTexture(
+        int2                    pixel,
+        int2                    levelSize,
+        Texture2D<float2>       advectedPrev,
+        Texture2D<float2>       injectTex,
+        Texture2D<float2>       flowTex,
+        RWTexture2D<float2>     advectedOut,
+        SamplerState            samp,
+        float                   advectStrength,
+        float                   injectAmount)
+    {
+
+        float2 size  = float2(levelSize);
+        float2 uv    = (float2(pixel) + 0.5) / size;
+
+        // Flow is assumed to be in *pixels per frame* at this level.
+        // Convert to UV offset: pixels -> [0..1] domain.
+        float2 flowPx = flowTex.SampleLevel(samp, uv, 0.0);   // (u,v) in pixels
+        float2 uvOld  = uv - flowPx * advectStrength / size;
+
+        // Sample previous advected texture at back-traced position.
+        // Sampler should be CLAMP to keep inside domain.
+        float2 advectedColor = advectedPrev.SampleLevel(samp, uvOld, 0.0);
+
+        // Optional: inject fresh pattern/noise at current position
+        float2 injectColor   = injectTex.SampleLevel(samp, uv, 0.0);
+
+        // Blend: mostly old advected color, plus a bit of new injection
+        float2 outColor = lerp(advectedColor, injectColor, saturate(injectAmount));
+
+        advectedOut[pixel] = outColor;
+    }
+
+};
