@@ -760,6 +760,64 @@ public static class BoxGridProjection
 
         return normalizedCrossCoord;
     }
+    
+    /// <summary>
+    /// Creates a matrix that mimics the 'projectParticle2DDirect' HLSL shader logic.
+    /// Maps a 0-1 particle position into the zoomed Atlas space (4x3 aspect).
+    /// </summary>
+    /// <param name="zoomRegion">X,Y = Min Bounds | Z,W = Max Bounds</param>
+    /// <returns>A matrix representing the 2D Projection and Z-ScaleFactor</returns>
+    public static Matrix Get2DProjectionMatrix(Vector4 zoomRegion)
+    {
+        // 1. Extract min/max from the float4 (Vector4)
+        var zoomMin = new Vector2(zoomRegion.X, zoomRegion.Y);
+        var zoomMax = new Vector2(zoomRegion.Z, zoomRegion.W);
+
+        // 2. Calculate Size
+        var zoomSize = zoomMax - zoomMin;
+
+        // 3. Safety Check (epsilon) - matching HLSL max(size, 0.0001)
+        const float epsilon = 0.0001f;
+        var safeZoomSize = new Vector2(
+            System.Math.Max(zoomSize.X, epsilon), 
+            System.Math.Max(zoomSize.Y, epsilon)
+        );
+
+        // 4. Calculate Scales
+        //    Target is strictly 4.0 x 3.0 units
+        var aspectScale = new Vector2(4.0f, 3.0f);
+        var mScale = aspectScale / safeZoomSize;
+
+        // 5. Calculate Offsets (Translation)
+        //    Logic: (0 - Min) * Scale
+        var mOffset = -zoomMin * mScale;
+
+        // 6. Calculate constant Z (Scale Factor)
+        //    Based on the largest dimension of the zoom window
+        var scaleFactor = 1.0f / System.Math.Max(safeZoomSize.X, safeZoomSize.Y);
+
+        // 7. Construct Matrix
+        //    Stride uses Row-Major memory layout. 
+        //    Translation goes into the 4th Row (M41, M42, M43).
+        var projection = Matrix.Identity;
+
+        // Scale X
+        projection.M11 = mScale.X;
+        
+        // Scale Y
+        projection.M22 = mScale.Y;
+
+        // Translation X
+        projection.M41 = mOffset.X;
+
+        // Translation Y
+        projection.M42 = mOffset.Y;
+
+        // Translation Z (The ScaleFactor output)
+        projection.M43 = scaleFactor;
+
+        return projection;
+    }
 
     #endregion
 }
