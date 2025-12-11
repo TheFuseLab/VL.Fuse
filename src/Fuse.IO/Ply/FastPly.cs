@@ -1,14 +1,18 @@
-using System.Diagnostics;
-
 namespace Fuse.IO.Ply;
+
 #pragma warning disable CS1591
 
-// In VVVV, create a new C# node
+/// <summary>
+/// Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
+/// Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
+/// 
+/// This is the original FastPly loader with optimized parallel loading, decimation,
+/// and disk caching support.
+/// </summary>
 [ProcessNode]
 public class FastPly
 {
     private bool _isLoading;
-    private Task? _loadingTask;
     private FastPlyReader.ProgressInfo? _progressInfo;
 
     // Inputs
@@ -22,13 +26,35 @@ public class FastPly
     public string CacheBasePath { get; set; } = string.Empty;
     public bool Debug { get; set; }
 
-    // Outputs
+    // Outputs - SoA data
+    /// <summary>
+    /// Dictionary of field name to float array. Each field is stored separately.
+    /// For example: Result["x"] contains all X coordinates, Result["red"] contains all red values.
+    /// </summary>
     public Dictionary<string, float[]> Result { get; private set; } = new(0);
+    
+    /// <summary>
+    /// Number of vertices in the loaded point cloud.
+    /// </summary>
+    public int VertexCount { get; private set; }
+    
+    /// <summary>
+    /// Names of fields in order as they appear in the PLY header.
+    /// For example: ["x", "y", "z", "red", "green", "blue"]
+    /// </summary>
+    public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+
+    // Outputs - progress/status
     public float Progress { get; private set; }
     public string Status { get; private set; } = string.Empty;
     public bool IsCompleted { get; private set; }
     public bool HasError { get; private set; }
     public string ErrorMessage { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Returns this instance for chaining or downstream reference.
+    /// </summary>
+    public FastPly Output => this;
 
     public void Update()
     {
@@ -46,7 +72,7 @@ public class FastPly
 
         if (!_progressInfo.IsCompleted) return;
 
-        Result = _progressInfo.Result;
+        // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
         _isLoading = false;
     }
 
@@ -54,7 +80,6 @@ public class FastPly
     {
         _isLoading = true;
         _progressInfo = new FastPlyReader.ProgressInfo();
-        var swTotal = Stopwatch.StartNew();
 
         // Capture parameters locally to avoid threading issues if inputs change during load
         var currentStrategy = DecimationStrategy;
@@ -63,100 +88,43 @@ public class FastPly
 
         try
         {
-            if (!string.IsNullOrWhiteSpace(CacheBasePath))
-                DiskCachePaths.BasePath = CacheBasePath;
+            // Use the shared PlyLoadCore helper for loading and caching
+            var loadResult = await PlyLoadCore.LoadSoAAsync(
+                currentPath,
+                _progressInfo,
+                currentStrategy,
+                currentFactor,
+                UseDiskCache,
+                ForceReload,
+                CacheBasePath,
+                Debug);
 
-            if (UseDiskCache)
-            {
-                // We must incorporate the decimation settings into the cache key, 
-                // otherwise loading a decimated version will overwrite/read the full res version.
-                var key = DiskCacheKey.FromFileIdentity(currentPath);
-
-                // Salt the key with decimation settings if active
-                if (currentStrategy != PlyDecimationStrategy.None && currentFactor > 1)
-                {
-                    // Assuming DiskCacheKey has a way to distinguish content, 
-                    // usually done by modifying the input ID or combining keys.
-                    // Here we create a composite key logic implicitly by expecting the 
-                    // cache system to handle the custom serializer or we rely on the user 
-                    // to manage cache folders if the key is strictly file-bound.
-                    // Ideally: key = key.WithVariant($"{currentStrategy}-{currentFactor}");
-                }
-
-                if (ForceReload)
-                    DiskCache.Invalidate("ply", key);
-
-                // Note: If the DiskCacheKey is strictly bound to the file path and doesn't support variants,
-                // you might get cache collisions. Ensure Fuse.Core's DiskCache supports this, 
-                // or use different CacheBasePaths for different quality settings.
-
-                if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None,
-                        out var payloadTask))
-                {
-                    var swHit = Stopwatch.StartNew();
-                    var arrays = await payloadTask;
-                    swHit.Stop();
-                    Log(
-                        $"[FastPly] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrays?.Count ?? 0}");
-                    _progressInfo.Stage = 1;
-                    _progressInfo.StageName = "Loaded from cache";
-                    _progressInfo.ProgressPercentage = 100;
-                    if (arrays != null) _progressInfo.Result = arrays;
-                    _progressInfo.IsCompleted = true;
-                }
-                else
-                {
-                    var swMiss = Stopwatch.StartNew();
-                    var arrays = await DiskCache.GetOrCreateAsync(
-                        "ply",
-                        key,
-                        new PlyArraysCacheSerializer(),
-                        async ct =>
-                        {
-                            var swBuild = Stopwatch.StartNew();
-                            // Pass the captured decimation parameters to the reader
-                            await FastPlyReader.LoadInBackgroundAsync(
-                                currentPath,
-                                _progressInfo,
-                                currentStrategy,
-                                currentFactor);
-
-                            swBuild.Stop();
-                            Log(
-                                $"[FastPly] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}. Strategy={currentStrategy}");
-                            return _progressInfo.Result;
-                        },
-                        CancellationToken.None);
-                    swMiss.Stop();
-                    Log($"[FastPly] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms.");
-                    // progress info already filled by FastPlyReader
-                }
-            }
-            else
-            {
-                var swNoCache = Stopwatch.StartNew();
-                // Pass the captured decimation parameters to the reader
-                _loadingTask = FastPlyReader.LoadInBackgroundAsync(
-                    currentPath,
-                    _progressInfo,
-                    currentStrategy,
-                    currentFactor);
-
-                await _loadingTask;
-                swNoCache.Stop();
-                Log(
-                    $"[FastPly] Loaded without cache in {swNoCache.ElapsedMilliseconds} ms. Arrays={_progressInfo.Result?.Count ?? 0}. Strategy={currentStrategy}");
-            }
+            // Update outputs from load result
+            Result = loadResult.Arrays;
+            VertexCount = loadResult.VertexCount;
+            FieldOrder = loadResult.FieldOrder;
+            _progressInfo.Result = loadResult.Arrays;
+            
+            Log($"[FastPly] Load complete. Arrays={loadResult.Arrays.Count}, Vertices={loadResult.VertexCount}, CacheHit={loadResult.WasCacheHit}");
         }
         catch (Exception ex)
         {
             _progressInfo.Error = ex;
             _progressInfo.IsCompleted = true;
         }
-        finally
+    }
+    
+    /// <summary>
+    /// Releases CPU data to free memory. Call after uploading to GPU.
+    /// </summary>
+    public void ReleaseCpuData()
+    {
+        Result = new Dictionary<string, float[]>(0);
+        VertexCount = 0;
+        FieldOrder = Array.Empty<string>();
+        if (_progressInfo != null)
         {
-            swTotal.Stop();
-            Log($"[FastPly] Total elapsed {swTotal.ElapsedMilliseconds} ms.");
+            _progressInfo.Result = new Dictionary<string, float[]>(0);
         }
     }
 

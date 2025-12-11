@@ -213,7 +213,13 @@ public class FastPlyReader
             await Task.WhenAll(allocationTasks);
 
             var scalarFields = new Dictionary<string, float[]>(properties.Count);
-            for (int i = 0; i < properties.Count; i++) scalarFields[properties[i].Name] = tempArrays[i];
+            var fieldOrder = new string[properties.Count];
+            for (int i = 0; i < properties.Count; i++)
+            {
+                scalarFields[properties[i].Name] = tempArrays[i];
+                fieldOrder[i] = properties[i].Name;
+            }
+            progressInfo.FieldOrder = fieldOrder;
 
             // Context for atomic writing across threads
             var context = new LoadContext { GlobalWriteIndex = 0 };
@@ -748,6 +754,11 @@ public class FastPlyReader
         public TimeSpan Elapsed { get; set; }
         public bool IsCompleted { get; set; }
         public Dictionary<string, float[]> Result { get; set; } = new(0);
+        /// <summary>
+        /// Field names in the order they appear in the PLY header.
+        /// This preserves the original property order for AoS interleaving.
+        /// </summary>
+        public string[] FieldOrder { get; set; } = Array.Empty<string>();
         public Exception? Error { get; set; }
     }
 }
