@@ -1,799 +1,590 @@
 shader FuseCoreTransform : FuseCoreMath, FuseCommonTypes
 {
-	////////////////////////////////////////////////////////////////
-	//
-	//          Transformation Functions
-	// 	
-	////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    //
+    //          Helpers
+    //  
+    ////////////////////////////////////////////////////////////////
+    float3 getPos(float4x4 m) { return float3(m._41,m._42,m._43); }
+    
+    float3 getScale(float4x4 m) { 
+        return float3(
+            length(float3(m._11, m._12, m._13)), 
+            length(float3(m._21, m._22, m._23)), 
+            length(float3(m._31, m._32, m._33))
+        ); 
+    }
+    
+    float getMaxScale(float4x4 m){ return maxComponent(getScale(m)); }
 
-	// may need to take Stride coord system into account
+    float4x4 identity4x4()
+    {
+        return float4x4(1, 0, 0, 0, 
+                        0, 1, 0, 0, 
+                        0, 0, 1, 0, 
+                        0, 0, 0, 1);
+    }
 
-	////////////////////////////////////////////////////////////////
+    float3x3 identity3x3()
+    {
+        return float3x3(1, 0, 0,   
+                        0, 1, 0,   
+                        0, 0, 1);
+    }
 
-	////////////////////////////////////////////////////////////////
-	//
-	//          Helpers
-	// 	
-	////////////////////////////////////////////////////////////////
-	float3 getPos(float4x4 m) { return float3(m._41,m._42,m._43); }
-	float3 getScale(float4x4 m) { return float3(length(float3(m._11, m._12, m._13)), length(float3(m._21, m._22, m._23)), length(float3(m._31, m._32, m._33))); }
-	float getMaxScale(float4x4 m){ return maxComponent(getScale(m)); }
+    float4x4 as4x4(float3x3 m)
+    {
+        return float4x4(m._11,  m._12,  m._13, 0, 
+                        m._21,  m._22,  m._23, 0, 
+                        m._31,  m._32,  m._33, 0, 
+                        0,      0,      0,     1);
+    }
 
-	float4x4 identity4x4()
-	{
-		float4x4 m = {  1, 0, 0,  0, 
-						0, 1, 0,  0, 
-						0, 0, 1,  0, 
-						0, 0, 0,  1  };
-		return m;
-	}
+    // IMPROVED: Added safety check for parallel vectors to prevent NaN
+    float3x3 lookat(float3 dir, float3 up = float3(0,1,0))
+    {
+        float3 z = normalize(dir);
+        
+        // Safety: If z is too close to up, pick a different axis
+        if (abs(dot(z, up)) > 0.999) up = float3(0, 0, 1);
 
-	float3x3 identity3x3()
-	{
-		float3x3 m = {  1, 0, 0,   
-						0, 1, 0,   
-						0, 0, 1, };
-		return m;
-	}
+        float3 x = normalize(cross(up, z));
+        float3 y = normalize(cross(z, x));
+        return float3x3(x, y, z);
+    } 
 
-	float4x4 as4x4(float3x3 m)
-	{
-			float4x4 newM =	{m._11,  m._12,  m._13, 0, 
-							 m._21,  m._22,  m._23, 0, 
-							 m._31,  m._32,  m._33, 0, 
-							 0,   	 0,    	0,  	1 };
-			return newM;
-	}
+    float4x4 lookat4x4(float3 dir, float3 up = float3(0,1,0))
+    {
+        return as4x4(lookat(dir, up));
+    }
 
-	float3x3 lookat(float3 dir,float3 up=float3(0,1,0)){float3 z=normalize(dir);float3 x=normalize(cross(up,z));float3 y=normalize(cross(z,x));return float3x3(x,y,z);} 
+    // [NEW] The function you requested
+    // Combines rotation and position into one matrix efficiently
+    float4x4 ComposeTransform(float3 forward, float3 position, float3 up = float3(0,1,0))
+    {
+        float4x4 mat = lookat4x4(forward, up);
+        mat._41_42_43 = position;
+        return mat;
+    }
 
-	float4x4 lookat4x4(float3 dir,float3 up=float3(0,1,0))
-	{
-		return as4x4(lookat(dir, up));
-	}
-	////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    //
+    //          Transformations
+    //  
+    ////////////////////////////////////////////////////////////////
 
+    // 2D rotation
+    void pR(inout float2 p, float a) 
+    {
+        float s, c;
+        sincos(a, s, c);
+        p = c * p + s * float2(p.y, -p.x);
+    }
 
-	////////////////////////////////////////////////////////////////
-	//
-	//          Transformations
-	// 	
-	////////////////////////////////////////////////////////////////
+    // Shortcut for 45-degrees rotation
+    void pR45(inout float2 p) 
+    {
+        p = (p + float2(p.y, -p.x)) * 0.70710678; // 1/sqrt(2)
+    }
 
+    float2 r2d(float2 pt, float a)
+    {
+        float s, c;
+        sincos(a * TWOPI, s, c);
+        return float2(c * pt.x + s * pt.y, c * pt.y - s * pt.x);
+    }
 
-	// 2D rotation
+    // offset version
+    float2 r2d(float2 pt, float2 o, float a)
+    {
+        float s, c;
+        sincos(a * TWOPI, s, c);
+        float2 p = pt - o;
+        return float2(c * p.x + s * p.y + o.x, c * p.y - s * p.x + o.y);
+    }
 
-	void pR(inout float2 p, float a) // demo style
-	{
-		p = cos(a)*p + sin(a)*float2(p.y, -p.x);
-	}
+    float4x4 scaleM (float3 scale, float4x4 m)
+    {
+        m._11_21_31_41 *= scale.x;
+        m._12_22_32_42 *= scale.y;
+        m._13_23_33_43 *= scale.z;
+        return m;
+    }
 
-	// Shortcut for 45-degrees rotation
-	void pR45(inout float2 p) 
-	{
-		p = (p + float2(p.y, -p.x))*sqrt(0.5);
-	}
+    float4x4 translateM (float3 pos, float4x4 m)
+    {
+        // Optimized: Row-major translation applies to the last row
+        // If m is the incoming matrix, and we translate IT, we typically mean T * M
+        float4x4 mT = identity4x4();
+        mT._41_42_43 = pos;
+        return mul(mT, m);
+    }
 
+    float4x4 translation (float3 pos)
+    {
+        float4x4 mT = identity4x4();
+        mT._41_42_43 = pos;
+        return mT;
+    }
 
-	float2 r2d(float2 pt, float a)
-	{
-		a *= TWOPI; // convert to rotation units
-		float x = cos(a) * pt.x + sin(a) * pt.y;
-		float y = cos(a) * pt.y - sin(a) * pt.x;
-		return float2(x,y);
-	}
+    // IMPROVED: Use sincos
+    float3x3 rot3x3(float pitch, float yaw, float roll)
+    {
+        float3 z = float3(-pitch, yaw, -roll) * TWOPI;
+        float3 x, y;
+        sincos(z, y, x); // y=sin, x=cos
 
+        return float3x3(
+            x.y * x.z + y.x * y.y * y.z, -x.x * y.z,  y.x * x.y * y.z - y.y * x.z, 
+            x.y * y.z - y.x * y.y * x.z,  x.x * x.z, -y.y * y.z - y.x * x.y * x.z,
+            x.x * y.y, y.x, x.x * x.y
+        );
+    }
 
-	//offset version
-	float2 r2d(float2 pt, float2 o, float a)
-	{
-		a *= TWOPI; // convert to rotation units
-		float x = cos(a) * (pt.x - o.x) + sin(a) * (pt.y - o.y) + o.x;
-		float y = cos(a) * (pt.y - o.y) - sin(a) * (pt.x - o.x) + o.y;
-		return float2(x,y);
-	}
-
-
-	float4x4 scaleM (float3 scale, float4x4 m)
-	{
-		m._11 *= scale.x;  m._21 *= scale.x;  m._31 *= scale.x; m._41 *= scale.x;
-		m._12 *= scale.y;  m._22 *= scale.y;  m._32 *= scale.y; m._42 *= scale.y;
-		m._13 *= scale.z;  m._23 *= scale.z;  m._33 *= scale.z; m._43 *= scale.z;
-		return m;
-	}
-
-	float4x4 translateM (float3 pos,float4x4 m)
-	{
-		float4x4 mT = identity4x4();
-		mT._41 = pos.x;
-		mT._42 = pos.y;
-		mT._43 = pos.z;
-		return mul(mT, m);
-	}
-
-	float4x4 translation (float3 pos)
-	{
-		float4x4 mT = identity4x4();
-		mT._41 = pos.x;
-		mT._42 = pos.y;
-		mT._43 = pos.z;
-		return mT;
-	}
-
-
-	float3x3 rot3x3(float pitch, float yaw, float roll)
-	{
-		float3 z=float3(-pitch,yaw,-roll)*acos(-1)*2;float3 x=cos(z),y=sin(z);
-		return float3x3(
-			x.y * x.z + y.x * y.y * y.z, -x.x * y.z,  y.x * x.y * y.z-y.y * x.z, 
-			x.y * y.z - y.x * y.y * x.z,  x.x * x.z, -y.y * y.z - y.x * x.y * x.z,
-			x.x * y.y, y.x, x.x * x.y
-		);
-	}
-
-	float3x3 GetEulerMatrix(float3 angles)
+    float3x3 GetEulerMatrix(float3 angles)
     {
         float3 s, c;
         sincos(angles, s, c);
 
         return float3x3(
              c.y * c.z + s.x * s.y * s.z, c.z * s.x * s.y - c.y * s.z, c.x * s.y,
-             c.x * s.z,                   c.x * c.z, -s.x,
-            -c.z * s.y + c.y * s.x * s.z, c.y * c.z * s.x + s.y * s.z, c.x * c.y);
+             c.x * s.z,                   c.x * c.z,                   -s.x,
+            -c.z * s.y + c.y * s.x * s.z, c.y * c.z * s.x + s.y * s.z, c.x * c.y
+        );
     }
 
-	float3x3 rot3x3(float3 rotation)
-	{
-		float3 z=float3(-rotation.x,rotation.y,-rotation.z)*acos(-1)*2;float3 x=cos(z),y=sin(z);
-		return float3x3(x.y*x.z+y.x*y.y*y.z,-x.x*y.z,y.x*x.y*y.z-y.y*x.z,x.y*y.z-y.x*y.y*x.z,x.x*x.z,-y.y*y.z-y.x*x.y*x.z,x.x*y.y,y.x,x.x*x.y);
-	}
-
-	float4x4 rot4x4(float pitch, float yaw, float roll)
-	{
-		return as4x4(rot3x3(pitch, yaw, roll));
-	}
-
-	float4x4 rot4x4(float3 rotation)
-	{
-		return as4x4(rot3x3(rotation));
-	}
-
-
-	float3 rX(float3 p, float a) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p;
-		c = cos(a); s = sin(a);
-		p.y = c * q.y - s * q.z;
-		p.z = s * q.y + c * q.z;
-		return p;
-	}
-
-	float3 rY(float3 p, float a) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p;
-		c = cos(a); s = sin(a);
-		p.x = c * q.x + s * q.z;
-		p.z = -s * q.x + c * q.z;
-		return p;
-	}
-
-	float3 rZ(float3 p, float a) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p;
-		c = cos(a); s = sin(a);
-		p.x = c * q.x - s * q.y;
-		p.y = s * q.x + c * q.y;
-		return p;
-	}
-
-	float3 rCX(float3 p, float a,float3 ce) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p-ce;
-		c = cos(a); s = sin(a);
-		p.y = c * q.y - s * q.z;
-		p.z = s * q.y + c * q.z;
-		return p+ce;
-	}
-
-	float3 rCY(float3 p, float a,float3 ce) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p-ce;
-		c = cos(a); s = sin(a);
-		p.x = c * q.x + s * q.z;
-		p.z = -s * q.x + c * q.z;
-		return p+ce;
-	}
-
-	float3 rCZ(float3 p, float a,float3 ce) 
-	{
-		a *= 6.2831854820251465; // convert to cycle
-		float c,s;float3 q=p-ce;
-		c = cos(a); s = sin(a);
-		p.x = c * q.x - s * q.y;
-		p.y = s * q.x + c * q.y;
-		return p+ce;
-	}
-	////////////////////////////////////////////////////////////////
-
-
-	////////////////////////////////////////////////////////////////
-	//
-	//          Quaternions
-	// 	
-	////////////////////////////////////////////////////////////////
-
-	float4 invertQuat(float4 q)
-	{ 
-	  return float4(-q.x, -q.y, -q.z, q.w); 
-	}
-
-	float4 mulQuat(float4 q1, float4 q2)
-	{
-		return float4
-		(
-			q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
-			q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
-			q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
-			q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
-		);
-	}
-
-	/**
-	* Normalizes a quaternion to unit length.
-	* Required for quaternions representing rotations.
-	* Returns identity quaternion (0,0,0,1) for zero-length input.
-	*/
-	float4 qNormalize(float4 q)
-	{
-		float len = length(q);
-		if (len > 1e-6f) // Avoid division by zero or near-zero
-		{
-			return q / len;
-		}
-		return float4(0.0f, 0.0f, 0.0f, 1.0f); // Return identity
-	}
-
-	float3 rotateVector( float4 q, float3 v ) {
-		// Assumes q is normalized.
-    	float3 t = 2.0 * cross(q.xyz, v);
-    	return v + q.w * t + cross(q.xyz, t);
-	}
-
-	float3x3 qRot3x3(float4 q)
-	{
-		float3x3 m = identity3x3();
-		m[0][0] = 1 - 2*q.y*q.y - 2*q.z*q.z;
-		m[0][1] = 2*q.x*q.y + 2*q.w*q.z;
-		m[0][2] = 2*q.x*q.z - 2*q.w*q.y;
-		m[1][0] = 2*q.x*q.y - 2*q.w*q.z;
-		m[1][1] = 1 - 2*q.x*q.x - 2*q.z*q.z;
-		m[1][2] = 2*q.y*q.z + 2*q.w*q.x;
-		m[2][0] = 2*q.x*q.z + 2*q.w*q.y;
-		m[2][1] = 2*q.y*q.z - 2*q.w*q.x;
-		m[2][2] = 1 - 2*q.x*q.x - 2*q.y*q.y;
-		return m;
-	}
-
-	float4x4 qRot4x4(float4 q)
-	{
-		return as4x4(qRot3x3(q));
-	}
-
-	/**
-	* Spherical Linear Interpolation between two unit quaternions.
-	* Provides constant angular velocity interpolation along the shortest arc.
-	* More expensive than Nlerp (Normalized Linear Interpolation).
-	*/
-	float4 qSlerp(float4 q1, float4 q2, float t)
-	{
-		// Ensure inputs are normalized (optional, but good practice)
-		// q1 = QuatNormalize(q1);
-		// q2 = QuatNormalize(q2);
-
-		// Clamp interpolation factor
-		t = saturate(t);
-
-		// Calculate cosine of the angle between the quaternions
-		float cosTheta = dot(q1, q2);
-
-		// If angle is very small, use linear interpolation (Nlerp)
-		// to avoid numerical instability (division by sin(theta) near zero)
-		// and for performance.
-		const float SLERP_DOT_THRESHOLD = 0.9995f;
-
-		// Handle shortest path interpolation: If cosTheta is negative,
-		// the quaternions are more than 90 degrees apart on the 4D sphere.
-		// Interpolating to -q2 will take the shorter path.
-		if (cosTheta < 0.0f)
-		{
-			q2 = -q2; // Flip the second quaternion
-			cosTheta = -cosTheta; // Angle is now < 90 degrees
-		}
-
-		if (cosTheta > SLERP_DOT_THRESHOLD) // Check after potential flip
-		{
-			// Angle is small, use Nlerp
-			return qNormalize(lerp(q1, q2, t));
-		}
-		else
-		{
-			// Clamp cosTheta to prevent domain errors with acos
-			cosTheta = clamp(cosTheta, -1.0f, 1.0f);
-
-			// Standard Slerp formula
-			float theta = acos(cosTheta);       // Angle between quaternions
-			// Note: sin(theta) should not be zero here due to the threshold check above.
-			float sinTheta = sin(theta);
-			float invSinTheta = 1.0f / sinTheta;
-
-			float scale0 = sin((1.0f - t) * theta) * invSinTheta;
-			float scale1 = sin(t * theta) * invSinTheta;
-
-			// Perform the interpolation
-			return (q1 * scale0) + (q2 * scale1);
-			// The result *should* be normalized if inputs are, but can re-normalize for safety:
-			// return QuatNormalize((q1 * scale0) + (q2 * scale1));
-		}
-	}
-
-	/**
-	* Normalized Linear Interpolation between two unit quaternions.
-	* Faster than Slerp but does not maintain constant angular velocity.
-	* Often visually acceptable, especially for small rotations or when speed matters.
-	*/
-	float4 qNlerp(float4 q1, float4 q2, float t)
-	{
-		t = saturate(t);
-		float cosTheta = dot(q1, q2);
-
-		// Ensure shortest path (optional but recommended for consistency)
-		if (cosTheta < 0.0f) {
-			q2 = -q2;
-		}
-
-		return qNormalize(lerp(q1, q2, t));
-	}
-
-
-	/// <summary>
-	/// Creates a quaternion given a yaw, pitch, and roll value (angles in radians).
-	/// </summary>
-	/// <param name="yaw">The yaw of rotation in radians.</param>
-	/// <param name="pitch">The pitch of rotation in radians.</param>
-	/// <param name="roll">The roll of rotation in radians.</param>
-	float4 CreateQuatRotationYawPitchRoll(float yawRad, float pitchRad, float rollRad){
-    	float sinRoll, cosRoll, sinPitch, cosPitch, sinYaw, cosYaw;
-
-    	float halfRoll = rollRad * 0.5f;
-    	float halfPitch = pitchRad * 0.5f;
-    	float halfYaw = yawRad * 0.5f;
-
-    	sincos(halfRoll, sinRoll, cosRoll);
-    	sincos(halfPitch, sinPitch, cosPitch);
-    	sincos(halfYaw, sinYaw, cosYaw);
-
-		// ... rest of the formula using sin/cos variables ...
-		float cosYawPitch = cosYaw * cosPitch;
-		float sinYawPitch = sinYaw * sinPitch;
-		return float4 ( // Assuming XYZW order output
-			(cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll), // X
-			(sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll), // Y
-			(cosYawPitch * sinRoll) - (sinYawPitch * cosRoll),             // Z
-			(cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)              // W
-		);
-	}
-
-	/// <summary>
-	/// Creates a quaternion given a rotation and an axis.
-	/// </summary>
-	/// <param name="axis">The axis of rotation.</param>
-	/// <param name="angle">The angle of rotation.</param>
-	float4 CreateQuatRotationAxis(float3 axis, float angle)
-	{
-		float3 normAxis = normalize(axis); // Ensure unit axis
-    	float halfAngle = angle * 0.5f;
-    	float s, c;
-    	sincos(halfAngle, s, c);
-    	return float4(normAxis * s, c);
-	}
-
-	/// <summary>
-	/// This function calculates the unit quaternion that represents the rotation from the start orientation (start) to the end orientation (end).
-	/// </summary>
-	/// <param name="start">The start orientation.</param>
-	/// <param name="end">The end orientation.</param>
-	float4 CreateQuatFromVectors(float3 fromVec, float3 toVec)
-	{
-		// Normalize input vectors to be safe
-		fromVec = normalize(fromVec);
-		toVec = normalize(toVec);
-
-		float d = dot(fromVec, toVec);
-
-		// Check for parallel vectors (within tolerance)
-		if (d >= 1.0f - 1e-6f)
-		{
-			// Vectors are already aligned - return identity rotation
-			return float4(0.0f, 0.0f, 0.0f, 1.0f);
-		}
-		// Check for anti-parallel vectors (within tolerance)
-		else if (d <= -1.0f + 1e-6f)
-		{
-			// Vectors are diametrically opposite.
-			// We need an arbitrary axis orthogonal to fromVec to rotate around by 180 degrees.
-			// Try crossing with the world X-axis.
-			float3 axis = float3(1.0f, 0.0f, 0.0f);
-			// If fromVec is aligned with X-axis, cross product will be zero. Use world Y-axis instead.
-			if (abs(fromVec.x) > 0.999f) // Check if roughly aligned with X
-			{
-				axis = float3(0.0f, 1.0f, 0.0f);
-			}
-			// Calculate the orthogonal axis and create 180-degree rotation quaternion
-			axis = normalize(cross(fromVec, axis));
-			return CreateQuatRotationAxis(axis, 3.1415926535f); // PI radians = 180 degrees
-		}
-		// General case: Use cross product for axis and calculate w component
-		else
-		{
-			float3 rotAxis = cross(fromVec, toVec);
-
-			// Use the formulation q = (cross(from, to), 1 + dot(from, to)) and normalize.
-			// This avoids square roots and is generally robust.
-			// The resulting quaternion needs to be normalized.
-			// float4 q = float4(rotAxis.x, rotAxis.y, rotAxis.z, 1.0f + d);
-			// return QuatNormalize(q);
-
-			// Alternative formulation using half-angle properties directly (verified earlier):
-			float s = sqrt((1.0f + d) * 2.0f); // This is 2 * cos(angle/2)
-			float invs = 1.0f / s;
-			// xyz = cross(from, to) * sin(angle/2) / sin(angle) ... simplifies
-			return float4(rotAxis.x * invs, rotAxis.y * invs, rotAxis.z * invs, s * 0.5f);
-			// This form is already normalized.
-		}				
-	}
-
-	/// <summary>
-	/// Creates a quaternion that rotates around the x-axis.
-	/// </summary>
-	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationX(float angle)
-	{
-		float halfAngle = angle * 0.5f;
-		return(sin(halfAngle), 0.0f, 0.0f, cos(halfAngle));
-	}
-
-	/// <summary>
-	/// Creates a quaternion that rotates around the y-axis.
-	/// </summary>
-	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationY(float angle)
-	{
-		//angle *= TWOPI; // radians to revolutions
-		float halfAngle = angle * 0.5f;
-		return(0.0f, sin(halfAngle), 0.0f, cos(halfAngle));
-	}
-
-	/// <summary>
-	/// Creates a quaternion that rotates around the z-axis.
-	/// </summary>
-	/// <param name="angle">Angle of rotation in radians.</param>
-	float4 CreateQuatRotationZ(float angle)
-	{
-		//angle *= TWOPI; // radians to revolutions
-		float halfAngle = angle * 0.5f;
-		return(0.0f, 0.0f, sin(halfAngle), cos(halfAngle));
-	}
-
-	// Convert a 3x3 rotation matrix to a quaternion
-	// Returns quaternion as float4(x, y, z, w)
-	// Handles scaled matrices by normalizing the basis vectors
-	float4 MatrixToQuaternion3(float3x3 m)
-	{
-		// Normalize the matrix columns to remove scale
-		float3 col0 = normalize(float3(m[0][0], m[1][0], m[2][0]));
-		float3 col1 = normalize(float3(m[0][1], m[1][1], m[2][1]));
-		float3 col2 = normalize(float3(m[0][2], m[1][2], m[2][2]));
-		
-		// Reconstruct normalized matrix
-		m[0][0] = col0.x; m[1][0] = col0.y; m[2][0] = col0.z;
-		m[0][1] = col1.x; m[1][1] = col1.y; m[2][1] = col1.z;
-		m[0][2] = col2.x; m[1][2] = col2.y; m[2][2] = col2.z;
-		
-		float4 q;
-		float trace = m[0][0] + m[1][1] + m[2][2];
-		
-		if (trace > 0.0)
-		{
-			// w is the largest component
-			float s = sqrt(trace + 1.0) * 2.0; // s = 4 * w
-			q.w = 0.25 * s;
-			q.x = (m[2][1] - m[1][2]) / s;
-			q.y = (m[0][2] - m[2][0]) / s;
-			q.z = (m[1][0] - m[0][1]) / s;
-		}
-		else if ((m[0][0] > m[1][1]) && (m[0][0] > m[2][2]))
-		{
-			// x is the largest component
-			float s = sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2.0; // s = 4 * x
-			q.w = (m[2][1] - m[1][2]) / s;
-			q.x = 0.25 * s;
-			q.y = (m[0][1] + m[1][0]) / s;
-			q.z = (m[0][2] + m[2][0]) / s;
-		}
-		else if (m[1][1] > m[2][2])
-		{
-			// y is the largest component
-			float s = sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2.0; // s = 4 * y
-			q.w = (m[0][2] - m[2][0]) / s;
-			q.x = (m[0][1] + m[1][0]) / s;
-			q.y = 0.25 * s;
-			q.z = (m[1][2] + m[2][1]) / s;
-		}
-		else
-		{
-			// z is the largest component
-			float s = sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2.0; // s = 4 * z
-			q.w = (m[1][0] - m[0][1]) / s;
-			q.x = (m[0][2] + m[2][0]) / s;
-			q.y = (m[1][2] + m[2][1]) / s;
-			q.z = 0.25 * s;
-		}
-		
-		return q;
-	}
-
-	// Overload for 4x4 matrices (extracts the 3x3 rotation part)
-	float4 MatrixToQuaternion4(float4x4 m)
-	{
-		float3x3 rot = float3x3(
-			m[0].xyz,
-			m[1].xyz,
-			m[2].xyz
-		);
-		return MatrixToQuaternion3(rot);
-	}
-
-
-	////////////////////////////////////////////////////////////////
-	//
-	//          Transformations w/ inverse
-	// 	
-	////////////////////////////////////////////////////////////////
-
-	void TransformTSWithInverse(float3 translation, float3 scaling, out float4x4 m, out float4x4 im)
-	{
-		float3 inverseScaling = 1.0 / scaling;
-
-		m = identity4x4();
-		im = identity4x4();
-
-		// scale rows
-		m[0][0] = scaling.x;
-		m[1][1] = scaling.y;
-		m[2][2] = scaling.z;
-
-		// set position
-		m[3].xyz = translation.xyz;
-
-		// inv position
-		im[3].xyz = -translation.xyz * inverseScaling;
-
-		// inv scale
-		im[0][0] = inverseScaling.x;
-		im[1][1] = inverseScaling.y;
-		im[2][2] = inverseScaling.z;
-	}
-
-	void TransformTRWithInverse(float3 translation, float3 rotation, out float4x4 m, out float4x4 im)
-	{
-		im = identity4x4();
-
-		// calc rotation
-		m = rot4x4(rotation);
-		float4x4 inverseRotation = transpose(m);
-
-		// set position
-		m[3].xyz = translation.xyz;
-
-		// inv position
-		im[3].xyz = -translation.xyz;
-
-		// inv rotation
-		im = mul(im, inverseRotation);
-	}
-
-	// quaternion rotation
-	void TransformTRWithInverse(float3 translation, float4 rotation, out float4x4 m, out float4x4 im)
-	{
-		im = identity4x4();
-
-		// calc rotation
-		m = qRot4x4(rotation);
-		float4x4 inverseRotation = transpose(m);
-
-		// set position
-		m[3].xyz = translation.xyz;
-
-		// inv position
-		im[3].xyz = -translation.xyz;
-
-		// inv rotation
-		im = mul(im, inverseRotation);
-	}
-
-	void TransformTRSWithInverse(float3 translation, float3 rotation, float3 scaling, out float4x4 m, out float4x4 im)
-	{
-		float3 inverseScaling = 1.0 / scaling;
-
-		im = identity4x4();
-
-		// calc rotation
-		m = rot4x4(rotation);
-		float4x4 inverseRotation = transpose(m);
-
-		// scale rows
-		m[0] *= scaling.x;
-		m[1] *= scaling.y;
-		m[2] *= scaling.z;
-
-		// set position
-		m[3].xyz = translation.xyz;
-
-		// inv position
-		im[3].xyz = -translation.xyz;
-
-		// inv rotation
-		im = mul(im, inverseRotation);
-
-		// inv scale
-		im._11_21_31_41 *= inverseScaling.x;
-		im._12_22_32_42 *= inverseScaling.y;
-		im._13_23_33_43 *= inverseScaling.z;
-	}
-
-	// quaternion rotation
-	void TransformTRSWithInverse(float3 translation, float4 rotation, float3 scaling, out float4x4 m, out float4x4 im)
-	{
-		float3 inverseScaling = 1.0 / scaling;
-
-		im = identity4x4();
-
-		// calc rotation
-		m = qRot4x4(rotation);
-		float4x4 inverseRotation = transpose(m);
-
-		// scale rows
-		m[0] *= scaling.x;
-		m[1] *= scaling.y;
-		m[2] *= scaling.z;
-
-		// set position
-		m[3].xyz = translation.xyz;
-
-		// inv position
-		im[3].xyz = -translation.xyz;
-
-		// inv rotation
-		im = mul(im, inverseRotation);
-
-		// inv scale
-		im._11_21_31_41 *= inverseScaling.x;
-		im._12_22_32_42 *= inverseScaling.y;
-		im._13_23_33_43 *= inverseScaling.z;
-	}
-
-	// Invert 3D transformation matrix (not perspective). Adapted from graphics gems 2.
-	// Inverts upper left by calculating its determinant and multiplying it to the symmetric
-	// adjust matrix of each element. Finally deals with the translation by transforming the
-	// original translation using by the calculated inverse.
-	//https://github.com/erich666/GraphicsGems/blob/master/gemsii/inverse.c
-	float4x4 InverseTRSMatrix(float4x4 input)
-	{
-		float4x4 output = (float4x4)0;
-
-		//Fill output with cofactor
-		output._m00 = input._m11 * input._m22 - input._m12 * input._m21;
-		output._m10 = input._m12 * input._m20 - input._m10 * input._m22;
-		output._m20 = input._m10 * input._m21 - input._m11 * input._m20;
-		output._m01 = input._m02 * input._m21 - input._m01 * input._m22;
-		output._m11 = input._m00 * input._m22 - input._m02 * input._m20;
-		output._m21 = input._m01 * input._m20 - input._m00 * input._m21;
-		output._m02 = input._m01 * input._m12 - input._m02 * input._m11;
-		output._m12 = input._m02 * input._m10 - input._m00 * input._m12;
-		output._m22 = input._m00 * input._m11 - input._m01 * input._m10;
-
-		//Multiply by reciprocal determinant
-		float det = determinant((float3x3)input);
-		const bool degenerate = (det * det) < 1e-25 ; //Condition consistent with C++ InvertMatrix4x4_General3D()
-		output *= degenerate ? 0.0f :  rcp(det) ;
-
-		// Do the translation part
-		output._m30_m31_m32 = -mul((float3x3)output, input._m30_m31_m32);
-		output._m33 = degenerate ? 0.0f : 1.0f;
-
-		return output;
-	}
-
-	float4x4 RigidInverse(float4x4 M)
-	{
-		// extract translation (safe)
-		float3 t = mul(float4(0,0,0,1), M).xyz;
-
-		// extract/orthonormalize rotation basis from M’s linear part
-		float3 x = mul(float3(1,0,0), (float3x3)M);
-		float3 y = mul(float3(0,1,0), (float3x3)M);
-		float3 z = mul(float3(0,0,1), (float3x3)M);
-		x = normalize(x);
-		y = normalize(y - x*dot(x,y));
-		z = normalize(cross(x,y));
-
-		float3x3 R  = float3x3(x,y,z);
-		float3x3 Rt = transpose(R);
-
-		// row-vector convention: inverse translation is  -t * Rt
-		float3 tInv = -mul(t, Rt);
-
-		// assemble rows
-		float4 r0 = float4(Rt[0], 0.0);
-		float4 r1 = float4(Rt[1], 0.0);
-		float4 r2 = float4(Rt[2], 0.0);
-		float4 r3 = float4(tInv, 1.0);
-		return float4x4(r0, r1, r2, r3);
-	}
-
-	// Robust 3x3 inverse that returns ROWS of A^{-1} explicitly
-	void Inverse3x3_Rows(float3 r0, float3 r1, float3 r2, out float3 i0, out float3 i1, out float3 i2)
-	{
-		// Build columns of A from the given ROWS
-		float3 a = float3(r0.x, r1.x, r2.x); // col 0
-		float3 b = float3(r0.y, r1.y, r2.y); // col 1
-		float3 c = float3(r0.z, r1.z, r2.z); // col 2
-
-		// Cofactors from columns
-		float3 R0 = cross(b, c);
-		float3 R1 = cross(c, a);
-		float3 R2 = cross(a, b);
-		float det = dot(a, R0);
-		float invDet = (abs(det) < 1e-12) ? 0.0 : 1.0 / det;
-
-		// ROWS of A^{-1}
-		i0 = R0 * invDet;
-		i1 = R1 * invDet;
-		i2 = R2 * invDet;
-	}
-
-	// Row-vector affine inverse: v' = v * M
-	// M = [ A  0 ]
-	//     [ t  1 ]
-	// M^{-1} = [ A^{-1}      0 ]
-	//           [ -t*A^{-1}  1 ]
-	float4x4 AffineInverse_Row(float4x4 M)
-	{
-		// Extract ROWS of the linear part and translation row
-		float3 r0 = float3(M._11, M._12, M._13);
-		float3 r1 = float3(M._21, M._22, M._23);
-		float3 r2 = float3(M._31, M._32, M._33);
-		float3 t  = float3(M._41, M._42, M._43);
-
-		// Inverse linear part (as ROWS)
-		float3 i0, i1, i2;
-		Inverse3x3_Rows(r0, r1, r2, i0, i1, i2);
-
-		// Row-vector translation: -t * A^{-1}  (row * matrix = sum(t_k * row_k))
-		float3 tInv = -(t.x * i0 + t.y * i1 + t.z * i2);
-
-		// Assemble with ROWS
-		return float4x4(
-			float4(i0, 0.0),
-			float4(i1, 0.0),
-			float4(i2, 0.0),
-			float4(tInv, 1.0)
-		);
-	}
-
+    float3x3 rot3x3(float3 rotation)
+    {
+        return rot3x3(rotation.x, rotation.y, rotation.z);
+    }
+
+    float4x4 rot4x4(float pitch, float yaw, float roll)
+    {
+        return as4x4(rot3x3(pitch, yaw, roll));
+    }
+
+    float4x4 rot4x4(float3 rotation)
+    {
+        return as4x4(rot3x3(rotation));
+    }
+
+    // IMPROVED: Use sincos and TWOPI
+    float3 rX(float3 p, float a) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p;
+        p.y = c * q.y - s * q.z;
+        p.z = s * q.y + c * q.z;
+        return p;
+    }
+
+    float3 rY(float3 p, float a) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p;
+        p.x = c * q.x + s * q.z;
+        p.z = -s * q.x + c * q.z;
+        return p;
+    }
+
+    float3 rZ(float3 p, float a) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p;
+        p.x = c * q.x - s * q.y;
+        p.y = s * q.x + c * q.y;
+        return p;
+    }
+
+    float3 rCX(float3 p, float a, float3 ce) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p - ce;
+        p.y = c * q.y - s * q.z;
+        p.z = s * q.y + c * q.z;
+        return p + ce;
+    }
+
+    float3 rCY(float3 p, float a, float3 ce) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p - ce;
+        p.x = c * q.x + s * q.z;
+        p.z = -s * q.x + c * q.z;
+        return p + ce;
+    }
+
+    float3 rCZ(float3 p, float a, float3 ce) 
+    {
+        float c, s;
+        sincos(a * TWOPI, s, c);
+        float3 q = p - ce;
+        p.x = c * q.x - s * q.y;
+        p.y = s * q.x + c * q.y;
+        return p + ce;
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //
+    //          Quaternions
+    //  
+    ////////////////////////////////////////////////////////////////
+
+    float4 invertQuat(float4 q)
+    { 
+      return float4(-q.x, -q.y, -q.z, q.w); 
+    }
+
+    float4 mulQuat(float4 q1, float4 q2)
+    {
+        return float4
+        (
+            q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
+            q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
+            q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
+            q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+        );
+    }
+
+    float4 qNormalize(float4 q)
+    {
+        float len = length(q);
+        return (len > 1e-6f) ? (q / len) : float4(0, 0, 0, 1);
+    }
+
+    float3 rotateVector( float4 q, float3 v ) {
+        float3 t = 2.0 * cross(q.xyz, v);
+        return v + q.w * t + cross(q.xyz, t);
+    }
+
+    float3x3 qRot3x3(float4 q)
+    {
+        float3x3 m;
+        float x2 = q.x + q.x; float y2 = q.y + q.y; float z2 = q.z + q.z;
+        float xx = q.x * x2;  float xy = q.x * y2;  float xz = q.x * z2;
+        float yy = q.y * y2;  float yz = q.y * z2;  float zz = q.z * z2;
+        float wx = q.w * x2;  float wy = q.w * y2;  float wz = q.w * z2;
+
+        m[0][0] = 1.0 - (yy + zz); m[0][1] = xy + wz;         m[0][2] = xz - wy;
+        m[1][0] = xy - wz;         m[1][1] = 1.0 - (xx + zz); m[1][2] = yz + wx;
+        m[2][0] = xz + wy;         m[2][1] = yz - wx;         m[2][2] = 1.0 - (xx + yy);
+        return m;
+    }
+
+    float4x4 qRot4x4(float4 q)
+    {
+        return as4x4(qRot3x3(q));
+    }
+
+    float4 qSlerp(float4 q1, float4 q2, float t)
+    {
+        t = saturate(t);
+        float cosTheta = dot(q1, q2);
+        const float SLERP_DOT_THRESHOLD = 0.9995f;
+
+        if (cosTheta < 0.0f)
+        {
+            q2 = -q2;
+            cosTheta = -cosTheta;
+        }
+
+        if (cosTheta > SLERP_DOT_THRESHOLD)
+        {
+            return qNormalize(lerp(q1, q2, t));
+        }
+        else
+        {
+            cosTheta = clamp(cosTheta, -1.0f, 1.0f);
+            float theta = acos(cosTheta);
+            float sinTheta = sin(theta);
+            float invSinTheta = 1.0f / sinTheta;
+
+            float scale0 = sin((1.0f - t) * theta) * invSinTheta;
+            float scale1 = sin(t * theta) * invSinTheta;
+
+            return (q1 * scale0) + (q2 * scale1);
+        }
+    }
+
+    float4 qNlerp(float4 q1, float4 q2, float t)
+    {
+        t = saturate(t);
+        float cosTheta = dot(q1, q2);
+        if (cosTheta < 0.0f) q2 = -q2;
+        return qNormalize(lerp(q1, q2, t));
+    }
+
+    float4 CreateQuatRotationYawPitchRoll(float yawRad, float pitchRad, float rollRad)
+    {
+        float sinRoll, cosRoll, sinPitch, cosPitch, sinYaw, cosYaw;
+        sincos(rollRad * 0.5f, sinRoll, cosRoll);
+        sincos(pitchRad * 0.5f, sinPitch, cosPitch);
+        sincos(yawRad * 0.5f, sinYaw, cosYaw);
+
+        float cosYawPitch = cosYaw * cosPitch;
+        float sinYawPitch = sinYaw * sinPitch;
+        
+        return float4 (
+            (cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll), // X
+            (sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll), // Y
+            (cosYawPitch * sinRoll) - (sinYawPitch * cosRoll),             // Z
+            (cosYawPitch * cosRoll) + (sinYawPitch * sinRoll)              // W
+        );
+    }
+
+    float4 CreateQuatRotationAxis(float3 axis, float angle)
+    {
+        float s, c;
+        sincos(angle * 0.5f, s, c);
+        return float4(normalize(axis) * s, c);
+    }
+
+    float4 CreateQuatFromVectors(float3 fromVec, float3 toVec)
+    {
+        fromVec = normalize(fromVec);
+        toVec = normalize(toVec);
+        float d = dot(fromVec, toVec);
+
+        if (d >= 1.0f - 1e-6f) return float4(0, 0, 0, 1);
+        else if (d <= -1.0f + 1e-6f)
+        {
+            float3 axis = cross(fromVec, float3(1, 0, 0));
+            if (length(axis) < 1e-6f) axis = cross(fromVec, float3(0, 1, 0));
+            return CreateQuatRotationAxis(normalize(axis), 3.1415926535f);
+        }
+        else
+        {
+            float3 rotAxis = cross(fromVec, toVec);
+            float s = sqrt((1.0f + d) * 2.0f);
+            float invs = 1.0f / s;
+            return float4(rotAxis * invs, s * 0.5f);
+        }                       
+    }
+
+    float4 CreateQuatRotationX(float angle)
+    {
+        float s, c;
+        sincos(angle * 0.5f, s, c);
+        return float4(s, 0.0f, 0.0f, c);
+    }
+
+    float4 CreateQuatRotationY(float angle)
+    {
+        float s, c;
+        sincos(angle * 0.5f, s, c);
+        return float4(0.0f, s, 0.0f, c);
+    }
+
+    float4 CreateQuatRotationZ(float angle)
+    {
+        float s, c;
+        sincos(angle * 0.5f, s, c);
+        return float4(0.0f, 0.0f, s, c);
+    }
+
+    float4 MatrixToQuaternion3(float3x3 m)
+    {
+        float3 col0 = normalize(float3(m[0][0], m[1][0], m[2][0]));
+        float3 col1 = normalize(float3(m[0][1], m[1][1], m[2][1]));
+        float3 col2 = normalize(float3(m[0][2], m[1][2], m[2][2]));
+        
+        m[0][0] = col0.x; m[1][0] = col0.y; m[2][0] = col0.z;
+        m[0][1] = col1.x; m[1][1] = col1.y; m[2][1] = col1.z;
+        m[0][2] = col2.x; m[1][2] = col2.y; m[2][2] = col2.z;
+        
+        float4 q;
+        float trace = m[0][0] + m[1][1] + m[2][2];
+        
+        if (trace > 0.0)
+        {
+            float s = sqrt(trace + 1.0) * 2.0;
+            q.w = 0.25 * s;
+            q.x = (m[2][1] - m[1][2]) / s;
+            q.y = (m[0][2] - m[2][0]) / s;
+            q.z = (m[1][0] - m[0][1]) / s;
+        }
+        else if ((m[0][0] > m[1][1]) && (m[0][0] > m[2][2]))
+        {
+            float s = sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2.0;
+            q.w = (m[2][1] - m[1][2]) / s;
+            q.x = 0.25 * s;
+            q.y = (m[0][1] + m[1][0]) / s;
+            q.z = (m[0][2] + m[2][0]) / s;
+        }
+        else if (m[1][1] > m[2][2])
+        {
+            float s = sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2.0;
+            q.w = (m[0][2] - m[2][0]) / s;
+            q.x = (m[0][1] + m[1][0]) / s;
+            q.y = 0.25 * s;
+            q.z = (m[1][2] + m[2][1]) / s;
+        }
+        else
+        {
+            float s = sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2.0;
+            q.w = (m[1][0] - m[0][1]) / s;
+            q.x = (m[0][2] + m[2][0]) / s;
+            q.y = (m[1][2] + m[2][1]) / s;
+            q.z = 0.25 * s;
+        }
+        return q;
+    }
+
+    float4 MatrixToQuaternion4(float4x4 m)
+    {
+        return MatrixToQuaternion3((float3x3)m);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //
+    //          Transformations w/ inverse
+    //  
+    ////////////////////////////////////////////////////////////////
+
+    void TransformTSWithInverse(float3 translation, float3 scaling, out float4x4 m, out float4x4 im)
+    {
+        float3 inverseScaling = 1.0 / scaling;
+        m = identity4x4();
+        im = identity4x4();
+
+        m[0][0] = scaling.x; m[1][1] = scaling.y; m[2][2] = scaling.z;
+        m[3].xyz = translation;
+
+        im[3].xyz = -translation * inverseScaling;
+        im[0][0] = inverseScaling.x; im[1][1] = inverseScaling.y; im[2][2] = inverseScaling.z;
+    }
+
+    void TransformTRWithInverse(float3 translation, float3 rotation, out float4x4 m, out float4x4 im)
+    {
+        im = identity4x4();
+        m = rot4x4(rotation);
+        float4x4 inverseRotation = transpose(m);
+        m[3].xyz = translation;
+        im[3].xyz = -translation;
+        im = mul(im, inverseRotation);
+    }
+
+    void TransformTRWithInverse(float3 translation, float4 rotation, out float4x4 m, out float4x4 im)
+    {
+        im = identity4x4();
+        m = qRot4x4(rotation);
+        float4x4 inverseRotation = transpose(m);
+        m[3].xyz = translation;
+        im[3].xyz = -translation;
+        im = mul(im, inverseRotation);
+    }
+
+    void TransformTRSWithInverse(float3 translation, float3 rotation, float3 scaling, out float4x4 m, out float4x4 im)
+    {
+        float3 inverseScaling = 1.0 / scaling;
+        im = identity4x4();
+        m = rot4x4(rotation);
+        float4x4 inverseRotation = transpose(m);
+
+        m[0] *= scaling.x; m[1] *= scaling.y; m[2] *= scaling.z;
+        m[3].xyz = translation;
+
+        im[3].xyz = -translation;
+        im = mul(im, inverseRotation);
+        im._11_21_31_41 *= inverseScaling.x;
+        im._12_22_32_42 *= inverseScaling.y;
+        im._13_23_33_43 *= inverseScaling.z;
+    }
+
+    void TransformTRSWithInverse(float3 translation, float4 rotation, float3 scaling, out float4x4 m, out float4x4 im)
+    {
+        float3 inverseScaling = 1.0 / scaling;
+        im = identity4x4();
+        m = qRot4x4(rotation);
+        float4x4 inverseRotation = transpose(m);
+
+        m[0] *= scaling.x; m[1] *= scaling.y; m[2] *= scaling.z;
+        m[3].xyz = translation;
+
+        im[3].xyz = -translation;
+        im = mul(im, inverseRotation);
+        im._11_21_31_41 *= inverseScaling.x;
+        im._12_22_32_42 *= inverseScaling.y;
+        im._13_23_33_43 *= inverseScaling.z;
+    }
+
+    // Inverts general 4x4 matrix (Graphics Gems II)
+    float4x4 InverseTRSMatrix(float4x4 input)
+    {
+        float4x4 output = (float4x4)0;
+
+        output._m00 = input._m11 * input._m22 - input._m12 * input._m21;
+        output._m10 = input._m12 * input._m20 - input._m10 * input._m22;
+        output._m20 = input._m10 * input._m21 - input._m11 * input._m20;
+        output._m01 = input._m02 * input._m21 - input._m01 * input._m22;
+        output._m11 = input._m00 * input._m22 - input._m02 * input._m20;
+        output._m21 = input._m01 * input._m20 - input._m00 * input._m21;
+        output._m02 = input._m01 * input._m12 - input._m02 * input._m11;
+        output._m12 = input._m02 * input._m10 - input._m00 * input._m12;
+        output._m22 = input._m00 * input._m11 - input._m01 * input._m10;
+
+        float det = determinant((float3x3)input);
+        const bool degenerate = (det * det) < 1e-25 ; 
+        output *= degenerate ? 0.0f : rcp(det);
+
+        output._m30_m31_m32 = -mul((float3x3)output, input._m30_m31_m32);
+        output._m33 = degenerate ? 0.0f : 1.0f;
+
+        return output;
+    }
+
+    float4x4 RigidInverse(float4x4 M)
+    {
+        float3 t = mul(float4(0,0,0,1), M).xyz;
+        float3 x = normalize(mul(float3(1,0,0), (float3x3)M));
+        float3 y = normalize(mul(float3(0,1,0), (float3x3)M) - x * dot(x, mul(float3(0,1,0), (float3x3)M)));
+        float3 z = normalize(cross(x, y));
+
+        float3x3 Rt = transpose(float3x3(x, y, z));
+        float3 tInv = -mul(t, Rt);
+
+        return float4x4(
+            float4(Rt[0], 0.0),
+            float4(Rt[1], 0.0),
+            float4(Rt[2], 0.0),
+            float4(tInv, 1.0)
+        );
+    }
+
+    void Inverse3x3_Rows(float3 r0, float3 r1, float3 r2, out float3 i0, out float3 i1, out float3 i2)
+    {
+        float3 a = float3(r0.x, r1.x, r2.x);
+        float3 b = float3(r0.y, r1.y, r2.y);
+        float3 c = float3(r0.z, r1.z, r2.z);
+
+        float3 R0 = cross(b, c);
+        float3 R1 = cross(c, a);
+        float3 R2 = cross(a, b);
+        float det = dot(a, R0);
+        float invDet = (abs(det) < 1e-12) ? 0.0 : 1.0 / det;
+
+        i0 = R0 * invDet;
+        i1 = R1 * invDet;
+        i2 = R2 * invDet;
+    }
+
+    float4x4 AffineInverse_Row(float4x4 M)
+    {
+        float3 i0, i1, i2;
+        Inverse3x3_Rows(M[0].xyz, M[1].xyz, M[2].xyz, i0, i1, i2);
+        float3 t = M[3].xyz;
+        float3 tInv = -(t.x * i0 + t.y * i1 + t.z * i2);
+
+        return float4x4(
+            float4(i0, 0.0),
+            float4(i1, 0.0),
+            float4(i2, 0.0),
+            float4(tInv, 1.0)
+        );
+    }
 };
