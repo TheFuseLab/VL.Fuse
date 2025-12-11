@@ -31,6 +31,104 @@
         <member name="M:Fuse.IO.Fbx.GpuPacking.DQIndex(System.Int32,System.Int32,System.Int32,System.Int32)">
             Convert a frame selection (frame, boneIndex) to the packed float4 index.
         </member>
+        <member name="T:Fuse.IO.Ply.FastPly">
+            <summary>
+            Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
+            Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
+            
+            This is the original FastPly loader with optimized parallel loading, decimation,
+            and disk caching support.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPly.Result">
+            <summary>
+            Dictionary of field name to float array. Each field is stored separately.
+            For example: Result["x"] contains all X coordinates, Result["red"] contains all red values.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPly.VertexCount">
+            <summary>
+            Number of vertices in the loaded point cloud.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPly.FieldOrder">
+            <summary>
+            Names of fields in order as they appear in the PLY header.
+            For example: ["x", "y", "z", "red", "green", "blue"]
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPly.Output">
+            <summary>
+            Returns this instance for chaining or downstream reference.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FastPly.ReleaseCpuData">
+            <summary>
+            Releases CPU data to free memory. Call after uploading to GPU.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.FastPlyInterleaved">
+            <summary>
+            Process node that loads PLY files into an interleaved Array-of-Structs (AoS) layout.
+            All PLY fields are stored in subsequent order in one big array:
+            [x0, y0, z0, r0, g0, b0, x1, y1, z1, r1, g1, b1, ...]
+            
+            This node mirrors the behavior of FastPly but outputs data in AoS format instead of SoA.
+            It reuses the same caching, decimation, and performance optimizations as FastPly.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPlyInterleaved.Result">
+            <summary>
+            The interleaved result array containing all vertices with all fields in sequence:
+            [x0, y0, z0, r0, g0, b0, x1, y1, z1, r1, g1, b1, ...]
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPlyInterleaved.VertexCount">
+            <summary>
+            Number of vertices in the loaded point cloud.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPlyInterleaved.FieldsPerVertex">
+            <summary>
+            Number of fields per vertex (e.g., 6 for x, y, z, r, g, b).
+            Result.Length == VertexCount * FieldsPerVertex
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPlyInterleaved.FieldOrder">
+            <summary>
+            Names of fields in order as they appear in each vertex struct.
+            For example: ["x", "y", "z", "red", "green", "blue"]
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.FastPlyInterleaved.Output">
+            <summary>
+            Returns this instance for chaining or downstream reference.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FastPlyInterleaved.ConvertSoAToInterleaved(System.Collections.Generic.Dictionary{System.String,System.Single[]},System.String[])">
+            <summary>
+            Converts SoA (Struct of Arrays) data to AoS (Array of Structs) interleaved format.
+            High-performance implementation that pre-resolves array references and uses
+            cache-friendly access patterns.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FastPlyInterleaved.ConvertSequential(System.Single[][],System.Single[],System.Int32,System.Int32)">
+            <summary>
+            Sequential conversion - optimal for smaller datasets where parallelization overhead
+            would outweigh benefits.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FastPlyInterleaved.ConvertParallel(System.Single[][],System.Single[],System.Int32,System.Int32)">
+            <summary>
+            Parallel conversion - splits work across CPU cores for large datasets.
+            Each worker processes a contiguous range of vertices.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FastPlyInterleaved.ReleaseCpuData">
+            <summary>
+            Releases CPU data to free memory. Call after uploading to GPU.
+            </summary>
+        </member>
         <member name="F:Fuse.IO.Ply.PlyDecimationStrategy.Stride">
             <summary>
             Deterministic. Takes every Nth point.
@@ -44,6 +142,12 @@
             Removes aliasing artifacts on ordered point clouds.
             </summary>
         </member>
+        <member name="P:Fuse.IO.Ply.FastPlyReader.ProgressInfo.FieldOrder">
+            <summary>
+            Field names in the order they appear in the PLY header.
+            This preserves the original property order for AoS interleaving.
+            </summary>
+        </member>
         <member name="P:Fuse.IO.Ply.OctreeBuilder.EnablePrecomputedLeafLODs">
             <summary>
                 Aktiviert die CPU-seitige Progressive-LOD-Permutation für Leaf-Nodes.
@@ -53,6 +157,81 @@
             <summary>
                 Grobe Zielanzahl Zellen auf längster Kante pro Leaf (steuert die Grob→Fein-Layer).
                 Größer = mehr Grobstruktur zuerst. 24–48 sind gute Startwerte.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.PlyLayoutUtils">
+            <summary>
+            Utility methods for working with PLY data layouts (SoA and AoS).
+            Provides conversion and validation helpers.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.InterleavedToSoA(System.Single[],System.Int32,System.String[])">
+            <summary>
+            Converts an interleaved AoS array back to SoA dictionary format.
+            Useful for testing equivalence between FastPly and FastPlyInterleaved outputs.
+            </summary>
+            <param name="interleaved">The interleaved float array from FastPlyInterleaved</param>
+            <param name="vertexCount">Number of vertices</param>
+            <param name="fieldOrder">Field names in order</param>
+            <returns>Dictionary mapping field names to float arrays (SoA format)</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.SoAToInterleaved(System.Collections.Generic.Dictionary{System.String,System.Single[]},System.String[])">
+            <summary>
+            Converts SoA dictionary format to an interleaved AoS array.
+            Same as the internal conversion in FastPlyInterleaved, exposed for utility use.
+            </summary>
+            <param name="soaArrays">Dictionary of field arrays</param>
+            <param name="fieldOrder">Order of fields in the interleaved output</param>
+            <returns>Tuple of (interleaved array, vertex count, fields per vertex)</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.VerifySoAEquivalence(System.Collections.Generic.Dictionary{System.String,System.Single[]},System.Collections.Generic.Dictionary{System.String,System.Single[]},System.Single)">
+            <summary>
+            Verifies that two SoA dictionaries contain equivalent data.
+            Compares field names, vertex counts, and actual values.
+            </summary>
+            <param name="a">First SoA dictionary</param>
+            <param name="b">Second SoA dictionary</param>
+            <param name="tolerance">Maximum allowed difference for float comparison</param>
+            <returns>Tuple of (areEqual, errorMessage)</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.VerifySoAAoSEquivalence(System.Collections.Generic.Dictionary{System.String,System.Single[]},System.Single[],System.Int32,System.String[],System.Single)">
+            <summary>
+            Verifies that SoA and AoS data are equivalent by converting AoS back to SoA
+            and comparing field by field.
+            </summary>
+            <param name="soaResult">SoA dictionary from FastPly</param>
+            <param name="aosInterleaved">Interleaved array from FastPlyInterleaved</param>
+            <param name="vertexCount">Vertex count from FastPlyInterleaved</param>
+            <param name="fieldOrder">Field order from FastPlyInterleaved</param>
+            <param name="tolerance">Maximum allowed difference for float comparison</param>
+            <returns>Tuple of (areEqual, errorMessage)</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.GetLayoutSummary(System.Collections.Generic.Dictionary{System.String,System.Single[]},System.String[])">
+            <summary>
+            Gets a summary of the data layout for debugging purposes.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLayoutUtils.GetInterleavedSummary(System.Single[],System.Int32,System.Int32,System.String[])">
+            <summary>
+            Gets a summary of the interleaved data layout for debugging purposes.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.PlyLoadCore">
+            <summary>
+            Internal helper that encapsulates the shared PLY loading and caching logic
+            used by both FastPly (SoA) and FastPlyInterleaved (AoS) nodes.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.PlyLoadCore.LoadResult">
+            <summary>
+            Result of loading PLY data, including the SoA dictionary, field order from header,
+            and metadata about the load operation.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyLoadCore.LoadSoAAsync(System.String,Fuse.IO.Ply.FastPlyReader.ProgressInfo,Fuse.IO.Ply.PlyDecimationStrategy,System.Int32,System.Boolean,System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Loads PLY data using disk cache when enabled, returning decimated SoA arrays.
+            This is the shared core used by both FastPly and FastPlyInterleaved nodes.
             </summary>
         </member>
     </members>
