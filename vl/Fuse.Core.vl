@@ -127296,10 +127296,16 @@
     ************************ Advect ************************
 
 -->
-          <Node Name="Advect" Bounds="1553,990" Id="L7FQuIheRBgNYqllax1lOS">
+          <Node Name="Advect" Aspects="Internal" Bounds="1553,990" Id="L7FQuIheRBgNYqllax1lOS">
             <p:NodeReference>
-              <Choice Kind="ContainerDefinition" />
+              <Choice Kind="ClassDefinition" Name="Class" />
+              <CategoryReference Kind="Category" Name="Primitive" />
             </p:NodeReference>
+            <p:Interfaces>
+              <TypeReference LastCategoryFullName="Fuse.Compute" LastDependency="VL.Fuse.vl">
+                <Choice Kind="InterfaceTypeFlag" Name="IComputeStageProvider" />
+              </TypeReference>
+            </p:Interfaces>
             <Patch Id="AU05xxjWItoM69Dg97Uozy">
               <Canvas Id="CUDxKWjmJP8LxJQanO7vDq" CanvasType="Group">
                 <Node Bounds="1394,1160,285,19" Id="J3bzHenYgfTQBDYm0iy8Az">
@@ -127538,7 +127544,7 @@
                 </Node>
                 <ControlPoint Id="DdjxFGrlI4QPEs1w63K1zh" Bounds="1578,1030" />
                 <ControlPoint Id="M5nhRMdk8vDQEKVl2ZsPd8" Bounds="1656,1050" />
-                <ControlPoint Id="Hvk0K4vYuHnNQF7gV0fbpY" Bounds="1262,300" />
+                <ControlPoint Id="Hvk0K4vYuHnNQF7gV0fbpY" Bounds="1221,320" />
                 <Pad Id="DpfFi4CILmLNIbwGprHf5r" Comment="Address U" Bounds="1571,910,81,15" ShowValueBox="true" isIOBox="true" Value="Clamp">
                   <p:TypeAnnotation LastCategoryFullName="Stride.API.Graphics" LastDependency="VL.Stride.Runtime.vl">
                     <Choice Kind="TypeFlag" Name="TextureAddressMode" />
@@ -127604,6 +127610,18 @@
                   <Pin Id="EOf8CiEMRYMOHPwD2MGUE3" Name="Input 2" Kind="InputPin" />
                   <Pin Id="J82tmQ5e74oOapp68YOxD3" Name="Output" Kind="OutputPin" />
                 </Node>
+                <Node Bounds="1595,1591,94,19" Id="FXyzIw9KGRSQcIt4s3J7iG">
+                  <p:NodeReference LastCategoryFullName="Fuse.Compute" LastDependency="VL.Fuse.vl">
+                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                    <Choice Kind="ProcessAppFlag" Name="ToComputeStage (IRenderer)" />
+                  </p:NodeReference>
+                  <Pin Id="Syo0OEULob9OWryonWIngX" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                  <Pin Id="VWWeiGfKjJrNpsHFgi6Rdu" Name="Input" Kind="InputPin" />
+                  <Pin Id="FmtJkGKBjaZMMorAcBRZX3" Name="Enabled" Kind="InputPin" />
+                  <Pin Id="QOGq0MEax4ILnz5tMGzQaC" Name="Output" Kind="StateOutputPin" />
+                </Node>
+                <Pad Id="MgxXUXIOPFtMMob67xRlRH" SlotId="He3H65CFuDCQWwHQGBpZ8d" Bounds="1597,1660" />
+                <ControlPoint Id="EF1OCS6ie5tMBOcNecdaea" Bounds="1597,1740" />
               </Canvas>
               <Patch Id="Kz6WWy2PXLTNqJ95QX7PC0" Name="Create" />
               <Patch Id="OtCK5pg7uFZL0x2aJnpW0H" Name="Update" ManuallySortedPins="true">
@@ -127624,9 +127642,10 @@
                 </Pin>
                 <Pin Id="G7ceVxGmiBzMy2f9mIhy8c" Name="Enabled" Kind="InputPin" />
               </Patch>
-              <ProcessDefinition Id="E7FCiBwYfdrMGmZHMY0sof">
+              <ProcessDefinition Id="E7FCiBwYfdrMGmZHMY0sof" HasStateOut="true">
                 <Fragment Id="UkzHMjRpZUjLi6YkOUfRtV" Patch="Kz6WWy2PXLTNqJ95QX7PC0" Enabled="true" />
                 <Fragment Id="MsOt9kL6yy9M4Qf2v99V1G" Patch="OtCK5pg7uFZL0x2aJnpW0H" Enabled="true" />
+                <Fragment Id="LrRieuFk9JyPmgKJ5Q9NvC" Patch="QjoQ6fFPD85NyPFzA0fEbR" />
               </ProcessDefinition>
               <Link Id="Nd4RTI8CkTqPz9Cs8Amj3A" Ids="Tw1N9e1q8uvNtidvoj5Chw,B8MZLJ8WP9dPaKbrxUbBhy" />
               <Link Id="Lk6ZM78Zd0cOPaK7ggEnrJ" Ids="FiCS8hOWuWqMBAiDNwysAK,Qrmp7Y46ABXMHOa22LQUPX" />
@@ -127680,6 +127699,15 @@
               <Link Id="CVzKVL0chKTMYQNkTrbm2x" Ids="IPiItI9GxfiMgmUVwmsefY,MmYjXXCvk8tMc274RUhA9z" />
               <Link Id="Iw2nlPO16BCNL904ElY9wh" Ids="FeSaP1rvBo3OLStnMqegLF,KReHL6vUj7jNkUjQOBHrSY" />
               <Link Id="VwaPZ82u4dtOoTzr6E5dcs" Ids="J82tmQ5e74oOapp68YOxD3,SaMxEEDiQ1YNm2QB9SAUX7" />
+              <Slot Id="He3H65CFuDCQWwHQGBpZ8d" Name="Output" />
+              <Link Id="NR1O6bzh1p3QAxqhnvd0KU" Ids="QOGq0MEax4ILnz5tMGzQaC,MgxXUXIOPFtMMob67xRlRH" />
+              <Link Id="IZpJElxigowNlHKPtObEgS" Ids="IPiItI9GxfiMgmUVwmsefY,VWWeiGfKjJrNpsHFgi6Rdu" />
+              <Link Id="OlUa8b4quLaMhlYlwRmltg" Ids="LnxsVSdnz5dMpEzzYNatsF,FmtJkGKBjaZMMorAcBRZX3" />
+              <Link Id="CISPIJB5oYrNWxT2cFq9rN" Ids="MgxXUXIOPFtMMob67xRlRH,EF1OCS6ie5tMBOcNecdaea" />
+              <Link Id="LwnVrFJjgLJPIigHgKJuJP" Ids="EF1OCS6ie5tMBOcNecdaea,HiCykNy6UiENmDdOB3PWpN" IsHidden="true" />
+              <Patch Id="QjoQ6fFPD85NyPFzA0fEbR" Name="GetComputeStage">
+                <Pin Id="HiCykNy6UiENmDdOB3PWpN" Name="Output" Kind="OutputPin" />
+              </Patch>
             </Patch>
           </Node>
           <!--
@@ -128392,6 +128420,7 @@
                   <Pin Id="A0baqfwCZaHNK7tUTcz1x4" Name="Output" Kind="StateOutputPin" />
                 </Node>
                 <ControlPoint Id="HDRP3NdVC3jNUTRqaLUfIe" Bounds="557,1450" />
+                <Pad Id="QOqUWK64Y85LYMbPasfSkH" Bounds="557,1420" />
               </Canvas>
               <Link Id="MyZv9ueYS1ONDnQjzcXRWC" Ids="U3sQ3AuLY0HPyihIuyAvcf,LtcNMCYyqalMWiufQdJKi6" />
               <Link Id="VAUkog9mQWVLhcMIKT8Trg" Ids="A5HyIpWYXrGOZJ4ZQuDI8l,ScR0FYhxZInPjA84AISVsU" />
@@ -128482,12 +128511,14 @@
               <Link Id="DSUwVBoqhe1PRbtvg6FgfI" Ids="UrMRfBCI7R5OhGJ2G8eBRh,M6sy6BBhOCqQWWgGqCJtg2" />
               <Link Id="OV6helB11LBQdPiJ5FVcFV" Ids="KnZlK4Mtth3MycVZkjJ0Q8,ESt01FYesBjPeXk55Q9YLG" />
               <Link Id="Orp4CQxp0VWLrSAN62g59b" Ids="GexbcYtk3NTMjvYN6R0RSQ,KnZlK4Mtth3MycVZkjJ0Q8" IsHidden="true" />
-              <Link Id="I02f4WNgVOEMYOgIjzlHtC" Ids="UrMRfBCI7R5OhGJ2G8eBRh,LRp6uVuTfbfLh0gHvFdvN8" />
-              <Link Id="OzhamCJ7TpdOgdCOESqbOb" Ids="A0baqfwCZaHNK7tUTcz1x4,HDRP3NdVC3jNUTRqaLUfIe" />
-              <Patch Id="L2p0K5b6Ik2NZ7iB1cAv3v" Name="GetComputeStage" ParticipatingElements="Vs3FcEsCFW3NXWX4fmW4Zl,I02f4WNgVOEMYOgIjzlHtC,OzhamCJ7TpdOgdCOESqbOb">
+              <Link Id="OzhamCJ7TpdOgdCOESqbOb" Ids="A0baqfwCZaHNK7tUTcz1x4,QOqUWK64Y85LYMbPasfSkH" />
+              <Patch Id="L2p0K5b6Ik2NZ7iB1cAv3v" Name="GetComputeStage" ParticipatingElements="Vs3FcEsCFW3NXWX4fmW4Zl,OzhamCJ7TpdOgdCOESqbOb">
                 <Pin Id="IhfBH6aykfoN4z0u35xsV5" Name="Output" Kind="OutputPin" />
               </Patch>
               <Link Id="DxTb2z49Qw0QFU5ir6KR0O" Ids="HDRP3NdVC3jNUTRqaLUfIe,IhfBH6aykfoN4z0u35xsV5" IsHidden="true" />
+              <Link Id="G3UxD5FDo3FLhixCjFeU7W" Ids="QOqUWK64Y85LYMbPasfSkH,HDRP3NdVC3jNUTRqaLUfIe" />
+              <Link Id="RzuocBrEO4MNTYMA1KYo4f" Ids="Q7c6emFOYRkNdYhtfTp7ty,LRp6uVuTfbfLh0gHvFdvN8" />
+              <Link Id="LqsyZrAZV5NQDg1Qbu4j9m" Ids="P1ZEhEnTPGALBsPiRMm902,HCZsLPFVj6nQUt0EEtSs6i" />
             </Patch>
           </Node>
         </Canvas>
