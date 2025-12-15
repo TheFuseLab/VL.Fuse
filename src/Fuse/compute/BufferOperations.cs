@@ -16,7 +16,10 @@ public class BufferGet<T> : ShaderNode<T>
     private readonly IBufferInput<T> _buffer;
     private readonly ShaderNode<int> _index;
 
-    public BufferGet(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<int> theIndex,
+    public BufferGet(
+        NodeContext nodeContext, 
+        IBufferInput<T> theBuffer, 
+        ShaderNode<int> theIndex,
         ShaderNode<T> theType) : base(nodeContext, "getBuffer")
     {
         _buffer = theBuffer;
@@ -48,7 +51,10 @@ public class BufferSet<T> : ShaderNode<GpuVoid>, IComputeVoid
     private readonly ShaderNode<int> _index;
     private readonly ShaderNode<T> _value;
 
-    public BufferSet(NodeContext nodeContext, IBufferInput<T> theBuffer, ShaderNode<int> theIndex,
+    public BufferSet(
+        NodeContext nodeContext, 
+        IBufferInput<T> theBuffer, 
+        ShaderNode<int> theIndex,
         ShaderNode<T> theValue) : base(nodeContext, "setBuffer")
     {
         _buffer = theBuffer;
