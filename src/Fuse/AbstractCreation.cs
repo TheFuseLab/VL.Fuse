@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Fuse.compute;
 using Fuse.function;
 using Stride.Graphics;
 using VL.Core;
+using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse;
 
@@ -152,6 +154,82 @@ public static class AbstractCreation
         var getType = baseType.MakeGenericType(dataType);
         return Activator.CreateInstance(getType, theSubContextFactory.NextSubContext(), theTexture, theIndex, theValue)
             as AbstractShaderNode;
+    }
+    
+    public static AbstractShaderNode AbstractBufferGet(
+        NodeSubContextFactory theSubContextFactory,
+        ChangeableObjectInput<Buffer> theBuffer, 
+        ShaderNode<int> theIndex, 
+        AbstractShaderNode theValue)
+    {
+        var valueType = GetBaseType(theValue);
+        var genericArg = valueType.GetGenericArguments()[0];
+
+        var baseType = typeof(BufferGet<>);
+        var getType = baseType.MakeGenericType(genericArg);
+        
+        // Use explicit constructor invocation to handle IBufferInput<T> interface parameter
+        // Activator.CreateInstance doesn't match interface parameters correctly
+        var constructor = getType.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+        return constructor.Invoke(new object[] { theSubContextFactory.NextSubContext(), theBuffer, theIndex, null }) as AbstractShaderNode;
+    }
+
+    public static AbstractShaderNode AbstractBufferSet(
+        NodeSubContextFactory theSubContextFactory,
+        ChangeableObjectInput<Buffer> theBuffer, 
+        ShaderNode<int> theIndex, 
+        AbstractShaderNode theValue)
+    {
+        var valueType = GetBaseType(theValue);
+        var genericArg = valueType.GetGenericArguments()[0];
+
+        var baseType = typeof(BufferSet<>);
+        var getType = baseType.MakeGenericType(genericArg);
+        
+        // Use explicit constructor invocation to handle IBufferInput<T> interface parameter
+        var constructor = getType.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+        return constructor.Invoke(new object[] { theSubContextFactory.NextSubContext(), theBuffer, theIndex, theValue }) as AbstractShaderNode;
+    }
+    
+    public static ChangeableObjectInput<Buffer> AbstractBufferInput(
+        NodeSubContextFactory theSubContextFactory,
+        AbstractShaderNode theValue)
+    {
+        // Generic definitions
+        var bufferInputBaseType = typeof(BufferInput<>);
+        var trackerBaseType = typeof(BufferTypeTracker<>);
+
+        // Extract T from ShaderNode<T>
+        var valueType = GetBaseType(theValue);
+        var genericArg = valueType.GetGenericArguments()[0];  // Get T from ShaderNode<T>
+        var genericArgs = new[] { genericArg };
+
+        // Make closed generic types
+        var bufferInputType = bufferInputBaseType.MakeGenericType(genericArgs);
+        var trackerType = trackerBaseType.MakeGenericType(genericArgs);
+
+        // Get NodeContext from the sub-context factory
+        var nodeContext = theSubContextFactory.NextSubContext();
+
+        // Construct BufferTypeTracker<T> with (ShaderNode<T> theType, BufferType theBufferType)
+        // Pass theValue so the tracker can use theValue.TypeName() for the buffer type declaration
+        var trackerConstructor = trackerType.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+        var trackerInstance = trackerConstructor.Invoke(new object[] { theValue, BufferType.Normal });
+        
+        // IMPORTANT: Call CheckDeclaration to initialize GpuType and ComputeGpuType
+        // Without this, the type strings remain empty and the shader declaration is invalid
+        var checkDeclarationMethod = trackerType.GetMethod("CheckDeclaration");
+        checkDeclarationMethod?.Invoke(trackerInstance, new object[] { null });
+        
+        // Debug logging
+        var gpuTypeProperty = trackerType.GetProperty("GpuType");
+        var computeGpuTypeProperty = trackerType.GetProperty("ComputeGpuType");
+        Console.WriteLine($"[AbstractBufferInput] GenericArg: {genericArg.Name}, GpuType: {gpuTypeProperty?.GetValue(trackerInstance)}, ComputeGpuType: {computeGpuTypeProperty?.GetValue(trackerInstance)}");
+
+        // Construct BufferInput<T>(NodeContext, BufferTypeTracker<T>, ShaderNode<T>)
+        // Pass theValue so the buffer input has access to the type information
+        var bufferInputConstructor = bufferInputType.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+        return bufferInputConstructor.Invoke(new object[] { nodeContext, trackerInstance, theValue }) as ChangeableObjectInput<Buffer>;
     }
 
     public static AbstractShaderNode AbstractShaderNodePassThrough(NodeSubContextFactory theSubContextFactory,
