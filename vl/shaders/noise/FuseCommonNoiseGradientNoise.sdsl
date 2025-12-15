@@ -8,7 +8,7 @@
 // info here: http://iquilezles.org/www/articles/gradientnoise/gradientnoise.htm
 
 
-shader FuseCommonNoiseGradientNoise : FuseCoreMathHash
+shader FuseCommonNoiseGradientNoise : FuseCommonNoise, FuseCoreMathHash
 {
 	// 1D
 	float gradientNoise(float p)
@@ -49,13 +49,13 @@ shader FuseCommonNoiseGradientNoise : FuseCoreMathHash
 		
 		// scale to ~ -1 to 1
 		return 2. * lerp(lerp(lerp( dot( hash33( i + float3(0.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,0.0) ), 
-							   dot( hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,0.0) ), u.x),
-						 lerp( dot( hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,0.0) ), 
-							   dot( hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,0.0) ), u.x), u.y),
-					lerp(lerp( dot( hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,1.0) ), 
-							   dot( hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,1.0) ), u.x),
-						 lerp( dot( hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,1.0) ), 
-							   dot( hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,1.0) ), u.x), u.y), u.z );
+						   dot( hash33( i + float3(1.0,0.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,0.0) ), u.x),
+					 lerp( dot( hash33( i + float3(0.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,0.0) ), 
+						   dot( hash33( i + float3(1.0,1.0,0.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,0.0) ), u.x), u.y),
+				lerp(lerp( dot( hash33( i + float3(0.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,0.0,1.0) ), 
+						   dot( hash33( i + float3(1.0,0.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,0.0,1.0) ), u.x),
+					 lerp( dot( hash33( i + float3(0.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(0.0,1.0,1.0) ), 
+						   dot( hash33( i + float3(1.0,1.0,1.0) ) * 2.0 - 1.0, f - float3(1.0,1.0,1.0) ), u.x), u.y), u.z );
 	}
 
 	//4D
@@ -130,7 +130,123 @@ shader FuseCommonNoiseGradientNoise : FuseCoreMathHash
 					 du * (float3(vb,vc,ve) - va + u.yzx*float3(va-vb-vc+vd,va-vc-ve+vg,va-vb-ve+vf) + u.zxy*float3(va-vb-ve+vf,va-vb-vc+vd,va-vc-ve+vg) + u.yzx*u.zxy*(-va+vb+vc-vd+ve-vf-vg+vh) ));
 	}
 
+	////////////////////////////////////////////////////////////////
+	//
+	//          1D to 4D Input/Output Variants
+	// 
+	////////////////////////////////////////////////////////////////
 
+	// 1D Output
+	float gradientNoise11 (float p)
+	{ return gradientNoise(p); }
 
+	float gradientNoise12 (float2 p)
+	{ return gradientNoise(p); }
+
+	float gradientNoise13 (float3 p)
+	{ return gradientNoise(p); }
+
+	float gradientNoise14 (float4 p)
+	{ return gradientNoise(p); }
+
+	// 2D Output
+	float2 gradientNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	float2 gradientNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(gradientNoise(p), gradientNoise(p2));
+	}
+
+	// 3D Output
+	float3 gradientNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	float3 gradientNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(gradientNoise(p), gradientNoise(p2), gradientNoise(p3));
+	}
+
+	// 4D Output
+	float4 gradientNoise41(float p)
+	{
+		float1 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise42(float2 p)
+	{
+		float2 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise43(float3 p)
+	{
+		float3 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	float4 gradientNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(gradientNoise(p), gradientNoise(p2), gradientNoise(p3), gradientNoise(p4));
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Divergence-Free Vector Field
+	// 
+	////////////////////////////////////////////////////////////////
+
+	float3 gradientNoiseDFV(float3 p)
+	{
+	    float4 n1 = gradientNoiseGrad(p);
+		float4 n2 = gradientNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
 
 };

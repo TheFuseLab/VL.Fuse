@@ -1,4 +1,4 @@
-shader FuseCommonNoiseWorley : FuseCoreMathHash
+shader FuseCommonNoiseWorley : FuseCommonNoise, FuseCoreMathHash
 {
 	/*
 	Just a simple one first, that fits the interface of the general noise node.  Several nodes can deal with more advanded versions
@@ -763,6 +763,125 @@ shader FuseCommonNoiseWorley : FuseCoreMathHash
 		cellPosition += targetPosition;
 
 		return minEdgeDistance;
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          1D to 4D Input/Output Variants
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// 1D Output
+	float worleySimpleNoise11 (float p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise12 (float2 p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise13 (float3 p)
+	{ return worleySimpleNoise(p); }
+
+	float worleySimpleNoise14 (float4 p)
+	{ return worleySimpleNoise(p); }
+
+	// 2D Output
+	float2 worleySimpleNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	float2 worleySimpleNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(worleySimpleNoise(p), worleySimpleNoise(p2));
+	}
+
+	// 3D Output
+	float3 worleySimpleNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	float3 worleySimpleNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3));
+	}
+
+	// 4D Output
+	float4 worleySimpleNoise41(float p)
+	{
+		float p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise42(float2 p)
+	{
+		float2 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise43(float3 p)
+	{
+		float3 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	float4 worleySimpleNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(worleySimpleNoise(p), worleySimpleNoise(p2), worleySimpleNoise(p3), worleySimpleNoise(p4));
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Divergence-Free Vector Field
+	// 
+	////////////////////////////////////////////////////////////////
+
+	float3 worleysimpleNoiseDFV(float3 p)
+	{
+	    float4 n1 = worleySimpleNoiseGrad(p);
+		float4 n2 = worleySimpleNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
 	}
 
 };

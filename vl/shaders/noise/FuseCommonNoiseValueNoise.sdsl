@@ -20,7 +20,7 @@
 // with a smooth interpolant (line 31 and 33).
 
 
-shader FuseCommonNoiseValueNoise : FuseCoreMathHash
+shader FuseCommonNoiseValueNoise : FuseCommonNoise, FuseCoreMathHash
 {
 	
 
@@ -135,6 +135,125 @@ shader FuseCommonNoiseValueNoise : FuseCoreMathHash
 					 du * float3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
 								k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
 								k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          1D to 4D Input/Output Variants
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// 1D Output
+	float valueNoise11 (float p)
+	{ return valueNoise(p); }
+
+	float valueNoise12 (float2 p)
+	{ return valueNoise(p); }
+
+	float valueNoise13 (float3 p)
+	{ return valueNoise(p); }
+
+	float valueNoise14 (float4 p)
+	{ return valueNoise(p); }
+
+	// 2D Output
+	float2 valueNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
+	}
+
+	float2 valueNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
+	}
+
+	float2 valueNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
+	}
+
+	float2 valueNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(valueNoise(p), valueNoise(p2));
+	}
+
+	// 3D Output
+	float3 valueNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	float3 valueNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(valueNoise(p), valueNoise(p2), valueNoise(p3));
+	}
+
+	// 4D Output
+	float4 valueNoise41(float p)
+	{
+		float p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise42(float2 p)
+	{
+		float2 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise43(float3 p)
+	{
+		float3 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	float4 valueNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(valueNoise(p), valueNoise(p2), valueNoise(p3), valueNoise(p4));
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Divergence-Free Vector Field
+	// 
+	////////////////////////////////////////////////////////////////
+
+	float3 valueNoiseDFV(float3 p)
+	{
+	    float4 n1 = valueNoiseGrad(p);
+		float4 n2 = valueNoiseGrad(p+vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
 	}
 
 };
