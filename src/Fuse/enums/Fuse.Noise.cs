@@ -3,6 +3,7 @@
 public enum NoiseBasisType
 {
     Sine,
+    Triangle,
     ValueNoise,
     GradientNoise,
     Simplex,

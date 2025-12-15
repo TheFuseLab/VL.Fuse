@@ -1,0 +1,185 @@
+////////////////////////////////////////////////////////////////
+//
+//             Triangle / Folding Noise Basis 
+//
+//  Sharp, geometric, electric noise based on folding space
+//  with abs(fract(...) - 0.5). Creates a lattice structure.
+//
+////////////////////////////////////////////////////////////////
+
+shader FuseCommonNoiseTri : FuseCommonNoise
+{
+	////////////////////////////////////////////////////////////////
+	//
+	//          Triangle Noise Base Functions
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// 1D
+	float triNoise (float p)
+	{
+		float f = abs(frac(p) - 0.5);
+		// Range is [0.0, 0.5], remap to [-1, 1]
+		return f * 4.0 - 1.0;
+	}
+
+	// 2D
+	float triNoise (float2 p)
+	{
+		float2 f = abs(frac(p) - 0.5);
+		// Sum creates lattice, range [0.0, 1.0], remap to [-1, 1]
+		return (f.x + f.y) * 2.0 - 1.0;
+	}
+
+	// 3D
+	float triNoise (float3 p)
+	{
+		float3 f = abs(frac(p) - 0.5);
+		// Sum creates lattice, range [0.0, 1.5], remap to [-1, 1]
+		return (f.x + f.y + f.z) * 1.333333333 - 1.0;
+	}
+
+	// 4D
+	float triNoise (float4 p)
+	{
+		float4 f = abs(frac(p) - 0.5);
+		// Sum creates lattice, range [0.0, 2.0], remap to [-1, 1]
+		return (f.x + f.y + f.z + f.w) - 1.0;
+	}
+
+	// 3D with gradient (numerical approximation)
+	float4 triNoiseGrad (float3 p)
+	{
+		float n = triNoise(p);
+		float3 result = n.xxx;
+		float e = 0.001;
+		for(int i = 0; i < 3; i++)
+		{
+			float3 offset = 0.0;
+			offset[i] = e;
+			result[i] = (triNoise(p + offset) - result[i]) / e;
+		}
+		return float4(n, result);
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          1D to 4D Input/Output Variants
+	// 
+	////////////////////////////////////////////////////////////////
+
+	// 1D Output
+	float triNoise11 (float p)
+	{ return triNoise(p); }
+
+	float triNoise12 (float2 p)
+	{ return triNoise(p); }
+
+	float triNoise13 (float3 p)
+	{ return triNoise(p); }
+
+	float triNoise14 (float4 p)
+	{ return triNoise(p); }
+
+	// 2D Output
+	float2 triNoise21 (float p)
+	{
+		float p2;
+		noiseDomainOffset(p, p2);
+		return float2(triNoise(p), triNoise(p2));
+	}
+
+	float2 triNoise22 (float2 p)
+	{
+		float2 p2;
+		noiseDomainOffset(p, p2);
+		return float2(triNoise(p), triNoise(p2));
+	}
+
+	float2 triNoise23 (float3 p)
+	{
+		float3 p2;
+		noiseDomainOffset(p, p2);
+		return float2(triNoise(p), triNoise(p2));
+	}
+
+	float2 triNoise24 (float4 p)
+	{
+		float4 p2;
+		noiseDomainOffset(p, p2);
+		return float2(triNoise(p), triNoise(p2));
+	}
+
+	// 3D Output
+	float3 triNoise31 (float p)
+	{
+		float p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(triNoise(p), triNoise(p2), triNoise(p3));
+	}
+
+	float3 triNoise32 (float2 p)
+	{
+		float2 p2, p3; 
+		noiseDomainOffset(p, p2, p3);
+		return float3(triNoise(p), triNoise(p2), triNoise(p3));
+	}
+
+	float3 triNoise33 (float3 p)
+	{
+		float3 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(triNoise(p), triNoise(p2), triNoise(p3));
+	}
+
+	float3 triNoise34 (float4 p)
+	{
+		float4 p2, p3;
+		noiseDomainOffset(p, p2, p3);
+		return float3(triNoise(p), triNoise(p2), triNoise(p3));
+	}
+
+	// 4D Output
+	float4 triNoise41(float p)
+	{
+		float p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(triNoise(p), triNoise(p2), triNoise(p3), triNoise(p4));
+	}
+
+	float4 triNoise42(float2 p)
+	{
+		float2 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(triNoise(p), triNoise(p2), triNoise(p3), triNoise(p4));
+	}
+
+	float4 triNoise43(float3 p)
+	{
+		float3 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(triNoise(p), triNoise(p2), triNoise(p3), triNoise(p4));
+	}
+
+	float4 triNoise44(float4 p)
+	{
+		float4 p2, p3, p4;
+		noiseDomainOffset(p, p2, p3, p4);
+		return float4(triNoise(p), triNoise(p2), triNoise(p3), triNoise(p4));
+	}
+
+	////////////////////////////////////////////////////////////////
+	//
+	//          Divergence-Free Vector Field
+	// 
+	////////////////////////////////////////////////////////////////
+
+	float3 triNoiseDFV(float3 p)
+	{
+		float4 n1 = triNoiseGrad(p);
+		float4 n2 = triNoiseGrad(p + vectorValuedNoiseOffsets);
+		return cross(n1.yzw, n2.yzw);
+	}
+
+};
+
