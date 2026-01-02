@@ -1,0 +1,461 @@
+shader FuseCommonFroxel
+{
+    // ============================================================================
+    // FuseCommonFroxelFog — froxel/frustum grid helpers (NO struct params)
+    //
+    // Fixes applied (based on our debugging):
+    // - UVWToPosition: uses pFarVS * (viewZ / -pFarVS.z)  (NO normalize * viewZ)
+    // - ViewRayDirVSFromUV: kept for "direction" use, but UVWToPosition does NOT use it
+    // - SliceToDepth: fixed bug (was using S.Near/S.Far; now uses Near/Far params)
+    // - PositionToCell / CellToPosition / FrustumCellScale / UVWToCellSpace: removed struct usage
+    // - Clamp ranges use Resolution-1 where appropriate
+    //
+    // Conventions:
+    // - View forward is -Z (Stride typical). If in your pass it's +Z, flip signs in
+    //   ViewZFromWS and the denom in UVWToPosition.
+    // - Depth01 is LINEAR depth fraction in [0..1] (not device depth).
+    // ============================================================================
+
+    // ============================================================================
+    // 1) Low-level helpers
+    // ============================================================================
+
+    float Saturate01(float x) { return saturate(x); }
+
+    int ClampInt(int v, int lo, int hi) { return max(lo, min(hi, v)); }
+
+    int3 ClampInt3(int3 v, int3 lo, int3 hi)
+    {
+        return int3(
+            ClampInt(v.x, lo.x, hi.x),
+            ClampInt(v.y, lo.y, hi.y),
+            ClampInt(v.z, lo.z, hi.z)
+        );
+    }
+
+    float Depth01FromViewZ(float viewZ, float nearZ, float farZ)
+    {
+        return Saturate01((viewZ - nearZ) / max(farZ - nearZ, 1e-6));
+    }
+
+    float ViewZFromDepth01(float depth01, float nearZ, float farZ)
+    {
+        return lerp(nearZ, farZ, Saturate01(depth01));
+    }
+
+    // ViewZ in meters (>0). With -Z forward: viewZ = -viewPos.z
+    float ViewZFromWS(float4x4 View, float3 positionWS)
+    {
+        float3 viewPos = mul(View, float4(positionWS, 1.0)).xyz;
+        return -viewPos.z; // if +Z forward: return +viewPos.z
+    }
+
+    // ============================================================================
+    // 2) Ray reconstruction helpers (key for UVWToPosition)
+    // ============================================================================
+
+    // Unnormalized point on far plane in View Space (pFarVS), derived from UV.
+    // This is the thing you MUST use for correct reconstruction.
+    float3 ViewRayPointVSFromUV(bool FlipY, float4x4 InvProj, float2 uv)
+    {
+        float2 u = uv;
+        if (FlipY) u.y = 1.0 - u.y;
+
+        float2 ndcXY = u * 2.0 - 1.0;
+
+        // Far plane clip point (z=1, w=1)
+        float4 clip = float4(ndcXY, 1.0, 1.0);
+
+        float4 v = mul(InvProj, clip);
+        return v.xyz / max(v.w, 1e-6); // NOT normalized
+    }
+
+    // Normalized ray direction (useful for phase, not for reconstruct-at-viewZ)
+    float3 ViewRayDirVSFromUV(bool FlipY, float4x4 InvProj, float2 uv)
+    {
+        float3 pFarVS = ViewRayPointVSFromUV(FlipY, InvProj, uv);
+        return normalize(pFarVS);
+    }
+
+    // Given UV and viewZ (>0 meters), reconstruct VS position (assuming -Z forward).
+    float3 PositionVSFromUVAndViewZ(bool FlipY, float4x4 InvProj, float2 uv, float viewZ)
+    {
+        float3 pFarVS = ViewRayPointVSFromUV(FlipY, InvProj, uv);
+
+        // With -Z forward, far points have pFarVS.z < 0.
+        float denom = max(-pFarVS.z, 1e-6);  // if +Z forward: max(+pFarVS.z, 1e-6)
+        float s = viewZ / denom;
+
+        return pFarVS * s;
+    }
+
+    // ============================================================================
+    // 3) Slice mapping (DepthToSlice / SliceToDepth)
+    // ============================================================================
+
+    float LogNormFromViewZ(float viewZ, float nearZ, float farZ)
+    {
+        float nz = max(nearZ, 1e-6);
+        float fz = max(farZ, nz + 1e-3);
+
+        float ratio = fz / nz;
+        return Saturate01(log(viewZ / nz) / log(ratio));
+    }
+
+    float ViewZFromLogNorm(float t, float nearZ, float farZ)
+    {
+        float nz = max(nearZ, 1e-6);
+        float fz = max(farZ, nz + 1e-3);
+
+        float ratio = fz / nz;
+        return nz * pow(ratio, Saturate01(t));
+    }
+
+    void DepthToSlice(
+        int   SliceMode,      // 0=Linear, 1=Log, 2=Mixed
+        float SliceLambda,    // only used in Mixed
+        int3  Resolution,
+        float Near,
+        float Far,
+        float depth01,
+        out float sliceF,
+        out int   sliceIdx,
+        out float sliceT
+    ){
+        int ResZ = max(Resolution.z, 1);
+
+        float viewZ = ViewZFromDepth01(depth01, Near, Far);
+
+        float tLin = Saturate01(depth01);
+        float tLog = LogNormFromViewZ(viewZ, Near, Far);
+
+        float t;
+        if (SliceMode == 0)      t = tLin;
+        else if (SliceMode == 1) t = tLog;
+        else                      t = lerp(tLin, tLog, Saturate01(SliceLambda));
+
+        float z = t * ResZ;
+        z = min(z, (float)ResZ - 1e-6);
+
+        sliceIdx = (int)floor(z);
+        sliceT   = frac(z);
+        sliceF   = z;
+    }
+
+    void SliceToDepth(
+        int   SliceMode,      // 0=Linear, 1=Log, 2=Mixed
+        float SliceLambda,
+        int3  Resolution,
+        float Near,
+        float Far,
+        int   sliceIdx,
+        float sliceT,
+        out float depth01,
+        out float viewZ
+    ){
+        int ResZ = max(Resolution.z, 1);
+        float zCont = (float)sliceIdx + Saturate01(sliceT);
+        float t = zCont / ResZ;
+
+        float tLin = t;
+
+        if (SliceMode == 1 || (SliceMode == 2 && SliceLambda > 0.0))
+        {
+            float vzLog = ViewZFromLogNorm(t, Near, Far);
+            float dLog  = Depth01FromViewZ(vzLog, Near, Far);
+
+            if (SliceMode == 1)
+            {
+                depth01 = dLog;
+                viewZ   = vzLog;
+                return;
+            }
+            else
+            {
+                float lam = Saturate01(SliceLambda);
+                depth01 = lerp(tLin, dLog, lam);
+                viewZ   = ViewZFromDepth01(depth01, Near, Far);
+                return;
+            }
+        }
+
+        depth01 = tLin;
+        viewZ   = ViewZFromDepth01(depth01, Near, Far); // FIXED: was S.Near/S.Far
+    }
+
+    void SliceZBounds(
+        int   SliceMode,
+        float SliceLambda,
+        int3  Resolution,
+        float Near,
+        float Far,
+        int   sliceIdx,
+        out float zNear,
+        out float zFar
+    ){
+        float d0, vz0;
+        float d1, vz1;
+
+        SliceToDepth(SliceMode, SliceLambda, Resolution, Near, Far, sliceIdx, 0.0, d0, vz0);
+        SliceToDepth(SliceMode, SliceLambda, Resolution, Near, Far, sliceIdx, 1.0, d1, vz1);
+
+        zNear = min(vz0, vz1);
+        zFar  = max(vz0, vz1);
+    }
+
+    // ============================================================================
+    // 4) Cell mapping (ID<->Cell, UVW<->Cell)
+    // ============================================================================
+
+    int CellToID(int3 Resolution, int3 cell)
+    {
+        int ResX = max(Resolution.x, 1);
+        int ResY = max(Resolution.y, 1);
+
+        cell = ClampInt3(cell, int3(0,0,0), Resolution - 1);
+
+        return cell.x + ResX * (cell.y + ResY * cell.z);
+    }
+
+    int3 IDToCell(int3 Resolution, int id)
+    {
+        int ResX = max(Resolution.x, 1);
+        int ResY = max(Resolution.y, 1);
+        int ResZ = max(Resolution.z, 1);
+
+        int sliceArea = ResX * ResY;
+        id = ClampInt(id, 0, ResX * ResY * ResZ - 1);
+
+        int z = id / sliceArea;
+        int rem = id - z * sliceArea;
+
+        int y = rem / ResX;
+        int x = rem - y * ResX;
+
+        return int3(x,y,z);
+    }
+
+    void UVWToCell(
+        int   SliceMode,
+        float SliceLambda,
+        int3  Resolution,
+        float Near,
+        float Far,
+        float3 UVW,
+        out int3   cell,
+        out float3 cellLocal
+    ){
+        int ResX = max(Resolution.x, 1);
+        int ResY = max(Resolution.y, 1);
+
+        float2 uv = saturate(UVW.xy);
+
+        float fx = uv.x * ResX;
+        float fy = uv.y * ResY;
+
+        int cx = ClampInt((int)floor(fx), 0, ResX - 1);
+        int cy = ClampInt((int)floor(fy), 0, ResY - 1);
+
+        float lx = frac(fx);
+        float ly = frac(fy);
+
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, UVW.z, sliceF, sliceIdx, sliceT);
+
+        cell = int3(cx, cy, sliceIdx);
+        cellLocal = float3(lx, ly, sliceT);
+    }
+
+    float3 CellToUVW(
+        int   SliceMode,
+        float SliceLambda,
+        int3  Resolution,
+        float Near,
+        float Far,
+        int3  cell,
+        float3 cellLocal
+    ){
+        int ResX = max(Resolution.x, 1);
+        int ResY = max(Resolution.y, 1);
+
+        cell = ClampInt3(cell, int3(0,0,0), Resolution - 1);
+        cellLocal = saturate(cellLocal);
+
+        float2 uv = (float2(cell.xy) + cellLocal.xy) / float2(ResX, ResY);
+
+        float depth01, viewZ;
+        SliceToDepth(SliceMode, SliceLambda, Resolution, Near, Far, cell.z, cellLocal.z, depth01, viewZ);
+
+        return float3(uv, depth01);
+    }
+
+    // ============================================================================
+    // 5) Position mapping (PositionToUVW / UVWToPosition / PositionToCell / CellToPosition)
+    // ============================================================================
+
+    float3 PositionToUVW(
+        float4x4 Proj,
+        float4x4 View,
+        bool     FlipY,
+        float Near,
+        float Far,
+        float3 positionWS
+    ){
+        float4 clip = mul(Proj, mul(View, float4(positionWS, 1.0)));
+        float invW = 1.0 / max(clip.w, 1e-6);
+        float3 ndc = clip.xyz * invW;
+
+        float2 uv = ndc.xy * 0.5 + 0.5;
+        if (FlipY) uv.y = 1.0 - uv.y;
+
+        float viewZ = ViewZFromWS(View, positionWS);
+        float depth01 = Depth01FromViewZ(viewZ, Near, Far);
+
+        return float3(uv, depth01);
+    }
+
+    // FIXED UVWToPosition:
+    // - Uses pFarVS scaling by viewZ / -pFarVS.z (no normalization)
+    // - Does NOT assume device depth
+    float3 UVWToPosition(
+        float4x4 InvView,
+        float4x4 InvProj,
+        bool     FlipY,
+        float Near,
+        float Far,
+        float3 UVW
+    ){
+        float2 uv = saturate(UVW.xy);
+        float depth01 = Saturate01(UVW.z);
+
+        float viewZ = ViewZFromDepth01(depth01, Near, Far);
+
+        float3 posVS = PositionVSFromUVAndViewZ(FlipY, InvProj, uv, viewZ);
+        float3 posWS = mul(InvView, float4(posVS, 1.0)).xyz;
+        return posWS;
+    }
+
+    void PositionToCell(
+        float4x4 Proj,
+        float4x4 View,
+        bool     FlipY,
+        int      SliceMode,
+        float    SliceLambda,
+        int3     Resolution,
+        float    Near,
+        float    Far,
+        float3   positionWS,
+        out int3   cell,
+        out int    cellID,
+        out float3 UVW,
+        out float3 cellLocal
+    ){
+        UVW = PositionToUVW(Proj, View, FlipY, Near, Far, positionWS);
+        UVWToCell(SliceMode, SliceLambda, Resolution, Near, Far, UVW, cell, cellLocal);
+        cellID = CellToID(Resolution, cell);
+    }
+
+    float3 CellToPosition(
+        float4x4 InvView,
+        float4x4 InvProj,
+        bool     FlipY,
+        int      SliceMode,
+        float    SliceLambda,
+        int3     Resolution,
+        float    Near,
+        float    Far,
+        int3     cell,
+        float3   cellLocal
+    ){
+        float3 uvw = CellToUVW(SliceMode, SliceLambda, Resolution, Near, Far, cell, cellLocal);
+        return UVWToPosition(InvView, InvProj, FlipY, Near, Far, uvw);
+    }
+
+    // ============================================================================
+    // 6) FrustumCellScale (depends on SliceToDepth)
+    // ============================================================================
+
+    float3 FrustumCellScale(
+        float4x4 Proj,
+        int      SliceMode,
+        float    SliceLambda,
+        int3     Resolution,
+        float    Near,
+        float    Far,
+        int      sliceIdx
+    ){
+        int ResX = max(Resolution.x, 1);
+        int ResY = max(Resolution.y, 1);
+
+        float depth01, viewZ;
+        SliceToDepth(SliceMode, SliceLambda, Resolution, Near, Far, sliceIdx, 0.5, depth01, viewZ);
+
+        float fx = Proj._11;
+        float fy = Proj._22;
+
+        fx = max(abs(fx), 1e-6);
+        fy = max(abs(fy), 1e-6);
+
+        float viewWidth  = 2.0 * viewZ / fx;
+        float viewHeight = 2.0 * viewZ / fy;
+
+        float cellX = viewWidth  / ResX;
+        float cellY = viewHeight / ResY;
+
+        float zNear, zFar;
+        SliceZBounds(SliceMode, SliceLambda, Resolution, Near, Far, sliceIdx, zNear, zFar);
+        float cellZ = max(zFar - zNear, 1e-6);
+
+        return float3(cellX, cellY, cellZ);
+    }
+
+    // ============================================================================
+    // 7) UVWToCellSpace (finite-diff basis), no struct
+    // ============================================================================
+
+    void UVWToCellSpace(
+        float4x4 InvView,
+        float4x4 InvProj,
+        float4x4 Proj,
+        bool     FlipY,
+        int      SliceMode,
+        float    SliceLambda,
+        int3     Resolution,
+        float    Near,
+        float    Far,
+        float3   UVW,
+        out int3    cell,
+        out float3  localCoordinates,
+        out float3  cellScaleWS,
+        out float4x4 localCellSpace
+    ){
+        float3 cellLocal;
+        UVWToCell(SliceMode, SliceLambda, Resolution, Near, Far, UVW, cell, cellLocal);
+        localCoordinates = cellLocal;
+
+        cellScaleWS = FrustumCellScale(Proj, SliceMode, SliceLambda, Resolution, Near, Far, cell.z);
+
+        float3 uvw0 = CellToUVW(SliceMode, SliceLambda, Resolution, Near, Far, cell, cellLocal);
+        float3 p0   = UVWToPosition(InvView, InvProj, FlipY, Near, Far, uvw0);
+
+        float3 clx = cellLocal + float3(1.0, 0.0, 0.0);
+        float3 cly = cellLocal + float3(0.0, 1.0, 0.0);
+        float3 clz = cellLocal + float3(0.0, 0.0, 1.0);
+
+        float3 pX = UVWToPosition(InvView, InvProj, FlipY, Near, Far, CellToUVW(SliceMode, SliceLambda, Resolution, Near, Far, cell, clx));
+        float3 pY = UVWToPosition(InvView, InvProj, FlipY, Near, Far, CellToUVW(SliceMode, SliceLambda, Resolution, Near, Far, cell, cly));
+        float3 pZ = UVWToPosition(InvView, InvProj, FlipY, Near, Far, CellToUVW(SliceMode, SliceLambda, Resolution, Near, Far, cell, clz));
+
+        float3 bx = (pX - p0);
+        float3 by = (pY - p0);
+        float3 bz = (pZ - p0);
+
+        // Column construction (matches mul(M, v) usage above)
+        localCellSpace = float4x4(
+            float4(bx, 0.0),
+            float4(by, 0.0),
+            float4(bz, 0.0),
+            float4(p0, 1.0)
+        );
+    }
+};
