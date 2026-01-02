@@ -366,4 +366,226 @@ shader FuseRenderingBoxGridProject {
         // stretch into rect
         return r.xy + faceUV01 * r.zw;     // still normalized (0..1)
     }
+
+    // -----------------------------------------------------------------------------
+    // INVERSE HELPERS
+    // -----------------------------------------------------------------------------
+
+    float2 inverseAtlasZoom(float2 zoomedUV, float4 zoomRegion) {
+        return zoomedUV * (zoomRegion.zw - zoomRegion.xy) + zoomRegion.xy;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Detect which face an atlas UV belongs to
+    // -----------------------------------------------------------------------------
+    int getSurfaceIndexFromAtlasUV(
+        float2 atlasUV,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 zoomRegion,
+        float4 crossLayoutInfo
+    ) {
+        // Reverse the UV transformation from projectParticleRaw
+        // Original: UV = uvPack.xy / crossLayoutInfo.xy; UV.y = 1.0 - UV.y;
+        float2 texCoord;
+        texCoord.x = atlasUV.x * crossLayoutInfo.x;
+        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+
+        // Now texCoord is uvPack.xy, undo zoom
+        texCoord = texCoord / float2(4.0, 3.0);
+        texCoord = inverseAtlasZoom(texCoord, zoomRegion);
+        texCoord = texCoord * float2(4.0, 3.0);
+
+        // Check which face rectangle contains this UV
+        for (int i = 0; i < 6; i++) {
+            float4 layout = faceLayoutInfo[i];
+            
+            float2 minBound = layout.xy;
+            float2 maxBound = layout.xy + layout.zw;
+            
+            if (texCoord.x >= minBound.x && texCoord.x <= maxBound.x &&
+                texCoord.y >= minBound.y && texCoord.y <= maxBound.y) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Atlas UV -> Surface Hit Point (in room space)
+    // -----------------------------------------------------------------------------
+    float3 atlasToSurfacePoint(
+        float2 atlasUV,
+        int surfaceIndex,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float4 crossLayoutInfo
+    ) {
+        // --- Step 1: Reverse UV transformation ---
+        // Original: UV = uvPack.xy / crossLayoutInfo.xy; UV.y = 1.0 - UV.y;
+        float2 texCoord;
+        texCoord.x = atlasUV.x * crossLayoutInfo.x;
+        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+
+        // --- Step 2: Reverse the zoom transformation ---
+        texCoord = texCoord / float2(4.0, 3.0);
+        texCoord = inverseAtlasZoom(texCoord, zoomRegion);
+        texCoord = texCoord * float2(4.0, 3.0);
+
+        // --- Step 3: Reverse the layout transformation ---
+        float4 layout = faceLayoutInfo[surfaceIndex];
+        
+        float2 faceUV01;
+        faceUV01.x = (texCoord.x - layout.x) / layout.z;
+        faceUV01.y = (texCoord.y - layout.y) / layout.w;
+
+        // --- Step 4: Reconstruct 3D position from face UV ---
+        float3 t, b;
+        GetFaceBasis(surfaceIndex, t, b);
+
+        float3 halfExt = roomDimensions * 0.5f;
+        
+        float dimU = dot(roomDimensions, abs(t));
+        float dimV = dot(roomDimensions, abs(b));
+
+        float u = (faceUV01.x - 0.5f) * dimU;
+        float v = (faceUV01.y - 0.5f) * dimV;
+
+        float3 localPoint = t * u + b * v;
+        float3 surfacePoint = roomCenter + localPoint;
+        
+        // Set the fixed axis to the face position
+        if (surfaceIndex == 0)      surfacePoint.y = roomCenter.y - halfExt.y; // Floor
+        else if (surfaceIndex == 1) surfacePoint.y = roomCenter.y + halfExt.y; // Ceil
+        else if (surfaceIndex == 2) surfacePoint.x = roomCenter.x + halfExt.x; // Right
+        else if (surfaceIndex == 3) surfacePoint.z = roomCenter.z + halfExt.z; // Back
+        else if (surfaceIndex == 4) surfacePoint.x = roomCenter.x - halfExt.x; // Left
+        else if (surfaceIndex == 5) surfacePoint.z = roomCenter.z - halfExt.z; // Front
+
+        return surfacePoint;
+    }
+
+    // -----------------------------------------------------------------------------
+    // MAIN INVERSE: Matches projectParticleByViewPositionAABB
+    // -----------------------------------------------------------------------------
+    float3 inverseProjectParticleAABB(
+        float3 atlasUVPlusDepth,          // .xy = UV (normalized), .z = depth
+        float4x4 roomTransformInverse,     // INVERSE of roomTransform
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo,
+        out int detectedSurfaceIndex,
+        out float2 out_faceUV01
+    ) {
+        // Initialize outputs
+        detectedSurfaceIndex = -1;
+        out_faceUV01 = float2(0, 0);
+        
+        float2 atlasUV = atlasUVPlusDepth.xy;
+        float depth = atlasUVPlusDepth.z;
+        
+        // Bounds check (matching the original AABB function)
+        if (atlasUV.x < 0.0 || atlasUV.x > 1.0 || atlasUV.y < 0.0 || atlasUV.y > 1.0) {
+            return float3(0, 0, 0);
+        }
+        
+        // Step 1: Find which face this UV belongs to
+        detectedSurfaceIndex = getSurfaceIndexFromAtlasUV(
+            atlasUV, faceLayoutInfo, zoomRegion, crossLayoutInfo
+        );
+        
+        if (detectedSurfaceIndex < 0) {
+            return float3(0, 0, 0);
+        }
+        
+        // Step 2: Get the hit point on the surface (in room space)
+        float3 hitPoint = atlasToSurfacePoint(
+            atlasUV,
+            detectedSurfaceIndex,
+            faceLayoutInfo,
+            roomCenter,
+            roomDimensions,
+            zoomRegion,
+            crossLayoutInfo
+        );
+        
+        // Step 3: Reconstruct ray direction and extend by depth
+        // Original: rayDir = normalize(roomSpacePos - viewerPosition)
+        // Original: depth = distance(hitPoint, roomSpacePos)
+        float3 rayDir = normalize(hitPoint - viewerPosition);
+        
+        // roomSpacePos is hitPoint + rayDir * depth
+        float3 roomSpacePos = hitPoint + rayDir * depth;
+        
+        // Step 4: Transform back from room space to world space
+        // Original: roomSpacePos = mul(float4(particlePos, 1.0), roomTransform).xyz
+        // Inverse:  particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz
+        float3 particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz;
+        
+        // Calculate faceUV01 for output
+        float2 texCoord;
+        texCoord.x = atlasUV.x * crossLayoutInfo.x;
+        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+        texCoord = texCoord / float2(4.0, 3.0);
+        texCoord = inverseAtlasZoom(texCoord, zoomRegion);
+        texCoord = texCoord * float2(4.0, 3.0);
+        float4 layout = faceLayoutInfo[detectedSurfaceIndex];
+        out_faceUV01.x = (texCoord.x - layout.x) / layout.z;
+        out_faceUV01.y = (texCoord.y - layout.y) / layout.w;
+        
+        return particlePos;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Version with known surfaceIndex (faster)
+    // -----------------------------------------------------------------------------
+    float3 inverseProjectParticleAABBWithIndex(
+        float3 atlasUVPlusDepth,
+        int surfaceIndex,
+        float4x4 roomTransformInverse,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo,
+        out float2 out_faceUV01
+    ) {
+        out_faceUV01 = float2(0, 0);
+        
+        float2 atlasUV = atlasUVPlusDepth.xy;
+        float depth = atlasUVPlusDepth.z;
+        
+        float3 hitPoint = atlasToSurfacePoint(
+            atlasUV,
+            surfaceIndex,
+            faceLayoutInfo,
+            roomCenter,
+            roomDimensions,
+            zoomRegion,
+            crossLayoutInfo
+        );
+        
+        float3 rayDir = normalize(hitPoint - viewerPosition);
+        float3 roomSpacePos = hitPoint + rayDir * depth;
+        float3 particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz;
+        
+        // Calculate faceUV01
+        float2 texCoord;
+        texCoord.x = atlasUV.x * crossLayoutInfo.x;
+        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+        texCoord = texCoord / float2(4.0, 3.0);
+        texCoord = inverseAtlasZoom(texCoord, zoomRegion);
+        texCoord = texCoord * float2(4.0, 3.0);
+        float4 layout = faceLayoutInfo[surfaceIndex];
+        out_faceUV01.x = (texCoord.x - layout.x) / layout.z;
+        out_faceUV01.y = (texCoord.y - layout.y) / layout.w;
+        
+        return particlePos;
+    }
 };
