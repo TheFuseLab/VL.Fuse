@@ -107,6 +107,9 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         //MeasureProfiler.StartCollectingData();
         _stopwatch.Reset();
 
+        // Reset caches for new compilation
+        AbstractShaderNode.ResetBuildSourceCodeCache();
+
         _stopwatch.Start();
         var watch = new Stopwatch();
         watch.Start();
@@ -118,10 +121,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         foreach (var kv in Inputs)
         {
             var shaderInput = kv.Value;
-            shaderInput.CheckHashCodes();
-            shaderInput.CheckContext(theContext);
-
-            HandleShader(_isCompute, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
+            // Use unified compilation that does CheckHashCodes + CheckContext + property collection in one pass
+            HandleShader(_isCompute, theContext, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
             sourceStream.Add(kv.Key, (source, stream));
             streamDefinesBuilder.AppendLine(streamDefines);
         }
@@ -206,7 +207,7 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         _streams.ForEach(stream => streamBuilder.AppendLine(stream));
 
         var mixinBuilder = new StringBuilder();
-        _mixins.ForEach(mixin => mixinBuilder.Append(", " + mixin));
+        _mixins.ForEach(mixin => mixinBuilder.Append(", ").Append(mixin));
 
         var compositionBuilder = new StringBuilder();
         _compositions.ForEach(composition => compositionBuilder.AppendLine(composition));
@@ -241,7 +242,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         if (!_functionMap.ContainsKey(theKeyFunction.Key)) _functionMap.Add(theKeyFunction.Key, theKeyFunction.Value);
     }
 
-    private void HandleShader(bool theIsComputeShader, AbstractShaderNode theShaderInput, string theKey,
+    private void HandleShader(bool theIsComputeShader, ShaderGeneratorContext theContext,
+        AbstractShaderNode theShaderInput, string theKey,
         out string theSource, out string theStreams, out string theDefinedStreams)
     {
         var handleShaderWatch = new Stopwatch();
@@ -250,40 +252,23 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         var streamBuilder = new StringBuilder();
         var streamDeclareBuilder = new StringBuilder();
 
+        // Single unified traversal that collects all properties, validates IDs, and passes context
+        // This replaces 9 separate graph traversals with 1
+        _stopwatch.Restart();
+        var compiled = theShaderInput.CompileProperties(theContext);
+        if (ShaderNodesUtil.TimeShaderGeneration)
+            Console.WriteLine($"     CompileProperties (unified): {_stopwatch.ElapsedMilliseconds} ms");
 
+        // Process collected properties
         _stopwatch.Restart();
-        theShaderInput.DeclarationList().ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+        compiled.Declarations.ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
+        compiled.Structs.ForEach(value => _structs.Add(value));
+        compiled.ConstantArrays.ForEach(value => _constantArrays.Add(value));
+        compiled.Streams.ForEach(value => _streams.Add(value));
+        compiled.Mixins.ForEach(value => _mixins.Add(value));
+        compiled.Functions.ForEach(HandleFunction);
         if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     Declaration: {_stopwatch.ElapsedMilliseconds} ms");
-
-        _stopwatch.Restart();
-        theShaderInput.StructList().ForEach(value => _structs.Add(value));
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     Structs: {_stopwatch.ElapsedMilliseconds} ms");
-
-        _stopwatch.Restart();
-        theShaderInput.ConstantArrayList().ForEach(value => _constantArrays.Add(value));
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     Arrays: {_stopwatch.ElapsedMilliseconds} ms");
-
-        _stopwatch.Restart();
-        theShaderInput.StreamList().ForEach(value => _streams.Add(value));
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     streams: {_stopwatch.ElapsedMilliseconds} ms");
-
-        _stopwatch.Restart();
-        theShaderInput.MixinList().ForEach(value => _mixins.Add(value));
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     Mixins: {_stopwatch.ElapsedMilliseconds} ms");
-        /*
-        _stopwatch.Restart();
-        theShaderInput.CompositionList().ForEach(value => _compositions.Add(value));
-        if(ShaderNodesUtil.TimeShaderGeneration)Console.WriteLine($"     Compositions: {_stopwatch.ElapsedMilliseconds} ms");
-        */
-        _stopwatch.Restart();
-        theShaderInput.FunctionMap().ForEach(HandleFunction);
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"     Functions: {_stopwatch.ElapsedMilliseconds} ms");
+            Console.WriteLine($"     Process properties: {_stopwatch.ElapsedMilliseconds} ms");
 
         _stopwatch.Restart();
         streamBuilder.AppendLine("        streams. = " + theKey + theShaderInput.ID + ";");

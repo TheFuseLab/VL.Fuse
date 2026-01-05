@@ -65,3 +65,10 @@ public enum SphericalMapping
     EqualAreaCylindrical,
     Spherical
 }
+
+public enum SliceMode
+{
+    Linear,
+    Logarithmic,
+    Mixed
+}

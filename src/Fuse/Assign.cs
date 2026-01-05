@@ -27,6 +27,8 @@ public class AssignValue<T> : ShaderNode<GpuVoid>, IComputeVoid
     protected override string SourceTemplate()
     {
         if (_target == null || _source == null) return "";
+        // Skip self-assignment (dead code elimination)
+        if (_target.ID == _source.ID) return "";
         return ShaderNodesUtil.Evaluate("${target} = ${source};", new Dictionary<string, string>
         {
             { "target", _target.ID },
@@ -62,6 +64,8 @@ public class SetAbstract : ShaderNode<GpuVoid>, IComputeVoid
     protected override string SourceTemplate()
     {
         if (_target == null || _source == null) return "";
+        // Skip self-assignment (dead code elimination)
+        if (_target.ID == _source.ID) return "";
         return ShaderNodesUtil.Evaluate("${target} = ${source};", new Dictionary<string, string>
         {
             { "target", _target.ID },

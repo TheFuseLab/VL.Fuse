@@ -4,6 +4,87 @@
         <name>Fuse</name>
     </assembly>
     <members>
+        <member name="M:Fuse.compute.AttributeMap.Prepare">
+            <summary>
+            --- Patch: Prepare ---
+            Clears Instances dictionary,
+            clears _attributesToRemove and fills it with all keys from _attributeSet.
+            Resets _changedAttributes.
+            Call once per "evaluation/frame" before you feed attributes.
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.HandleAttribute(Fuse.ComputeSystem.IAttribute)">
+            <summary>
+            --- Patch: HandleAttribute ---
+            If attribute is NOT overridden, run HandleCheckedAttribute.
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.HandleCheckedAttribute(Fuse.ComputeSystem.IAttribute)">
+            <summary>
+            --- Patch: HandleCheckedAttribute (Internal) ---
+            - remove attribute.Name from _attributesToRemove (it's used)
+            - if not in _attributeSet: add and mark Changed
+            - ensure a list exists in _attributeInstances for this name (create if missing)
+            - add this instance to the list
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.SyncAttributes">
+            <summary>
+            --- Patch: SyncAttributes ---
+            For each entry in _attributeSet, lookup instances and call SyncFrom(canonical) if supported.
+            This matches the "SyncAttribute" node behavior conceptually.
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.GetAttributeInstances">
+            <summary>
+            --- Patch: GetAttributeInstances ---
+            Flattens the dictionary-of-lists into a single list (AddRange in loop).
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.ApplyPadding">
+             <summary>
+             --- Patch: ApplyPadding ---
+             Computes total struct size in bytes (sum of CatSizeInBytes) and adds one of Padding1/2/3
+             if needed to align to 16 bytes (HLSL cbuffer packing style).
+            
+             Returns true if it modified _attributeSet.
+             </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.RemoveUnusedAttributes">
+            <summary>
+            --- Patch: RemoveUnusedAttributes (Internal) ---
+            Removes all keys still in _attributesToRemove from _attributeSet.
+            Returns true if anything was removed.
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.Finish(System.Boolean,System.Boolean)">
+            <summary>
+            --- Patch: Finish ---
+            removedUnused OR _changedAttributes
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.AttributeMap.GetPaddingFloatCount(System.Int32)">
+            <summary>
+            --- Patch: GetPadding ---
+            Equivalent of:
+            rem = size % 16
+            padBytes = rem == 0 ? 0 : (16 - rem)
+            padFloats = padBytes / 4   // 0..3
+            </summary>
+        </member>
+        <member name="M:Fuse.ValueInput`1.#ctor(VL.Core.NodeContext)">
+            <summary>
+            Creates a value input with a default name.
+            </summary>
+        </member>
+        <member name="M:Fuse.ValueInput`1.#ctor(VL.Core.NodeContext,System.String)">
+            <summary>
+            Creates a value input with an optional semantic name for better shader code readability.
+            </summary>
+            <param name="nodeContext">The VL node context.</param>
+            <param name="semanticName">Optional human-readable name (e.g., "boxSize", "intensity").
+            When set, generated shader code will use this name instead of "input_123456".</param>
+        </member>
         <member name="M:Fuse.io.ply.PlyExport.ExportBinaryPlyWithSphereFrustumCullingAndTransforms(System.Collections.Generic.List{System.Single[]},System.Collections.Generic.List{Stride.Core.Mathematics.Matrix},System.Collections.Generic.IReadOnlyList{System.String},Stride.Core.Mathematics.BoundingFrustum,System.Boolean,System.Single,System.String)">
             <summary>
                 Exports multiple vertex-data arrays as a single binary PLY,
@@ -36,6 +117,90 @@
                 The output path for the final, merged binary PLY file.
             </param>
             <param name="checkFrustum">enable to apply frustum culling</param>
+        </member>
+        <member name="T:Fuse.Logging.IFuseLogger">
+            <summary>
+            Interface for logging throughout the Fuse library.
+            Implement this interface to integrate with your preferred logging framework.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.IFuseLogger.Debug(System.String)">
+            <summary>
+            Logs a debug message. Use for detailed diagnostic information.
+            </summary>
+            <param name="message">The message to log.</param>
+        </member>
+        <member name="M:Fuse.Logging.IFuseLogger.Info(System.String)">
+            <summary>
+            Logs an informational message.
+            </summary>
+            <param name="message">The message to log.</param>
+        </member>
+        <member name="M:Fuse.Logging.IFuseLogger.Warning(System.String)">
+            <summary>
+            Logs a warning message. Use for potentially harmful situations.
+            </summary>
+            <param name="message">The message to log.</param>
+        </member>
+        <member name="M:Fuse.Logging.IFuseLogger.Error(System.String,System.Exception)">
+            <summary>
+            Logs an error message with an optional exception.
+            </summary>
+            <param name="message">The message to log.</param>
+            <param name="ex">Optional exception that caused the error.</param>
+        </member>
+        <member name="T:Fuse.Logging.DefaultFuseLogger">
+            <summary>
+            Default logger implementation that writes to Debug output and Console.
+            </summary>
+        </member>
+        <member name="F:Fuse.Logging.DefaultFuseLogger.Instance">
+            <summary>
+            Singleton instance of the default logger.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.DefaultFuseLogger.Debug(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Fuse.Logging.DefaultFuseLogger.Info(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Fuse.Logging.DefaultFuseLogger.Warning(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Fuse.Logging.DefaultFuseLogger.Error(System.String,System.Exception)">
+            <inheritdoc />
+        </member>
+        <member name="T:Fuse.Logging.FuseLogger">
+            <summary>
+            Global logger configuration for the Fuse library.
+            </summary>
+        </member>
+        <member name="P:Fuse.Logging.FuseLogger.Instance">
+            <summary>
+            Gets or sets the current logger instance.
+            Set this to integrate with your preferred logging framework.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.FuseLogger.Debug(System.String)">
+            <summary>
+            Logs a debug message.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.FuseLogger.Info(System.String)">
+            <summary>
+            Logs an informational message.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.FuseLogger.Warning(System.String)">
+            <summary>
+            Logs a warning message.
+            </summary>
+        </member>
+        <member name="M:Fuse.Logging.FuseLogger.Error(System.String,System.Exception)">
+            <summary>
+            Logs an error message with optional exception.
+            </summary>
         </member>
         <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.CreateCylindricalSliceMatrix2(System.Int32,System.Int32,System.Single,System.Single,System.Single,Stride.Core.Mathematics.Matrix@,Stride.Core.Mathematics.Matrix@)">
             <summary>
@@ -97,6 +262,130 @@
                 row-major fill => typical in Stride for M*(v) usage
             </summary>
         </member>
+        <member name="T:Fuse.ShaderConstants">
+            <summary>
+            Constants used throughout the shader generation system.
+            </summary>
+            <remarks>
+            Centralizes magic strings to improve maintainability and reduce typos.
+            These constants are referenced by shader nodes and code generation utilities.
+            </remarks>
+        </member>
+        <member name="T:Fuse.ShaderConstants.PropertyKeys">
+            <summary>
+            Property key constants for shader node dependencies.
+            </summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Mixins">
+            <summary>Property key for required shader mixins.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Inputs">
+            <summary>Property key for GPU input parameters (uniforms, buffers, textures).</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Compositions">
+            <summary>Property key for shader compositions.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Declarations">
+            <summary>Property key for field declarations.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Structs">
+            <summary>Property key for custom struct definitions.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.ConstantArrays">
+            <summary>Property key for constant array definitions.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.Streams">
+            <summary>Property key for shader stream definitions.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.PropertyKeys.ViewerID">
+            <summary>Property key for viewer ID (debugging).</summary>
+        </member>
+        <member name="T:Fuse.ShaderConstants.Placeholders">
+            <summary>
+            Template placeholder names used in shader code generation.
+            </summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Placeholders.ResultType">
+            <summary>Placeholder for the result type (e.g., "float", "float3").</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Placeholders.ResultName">
+            <summary>Placeholder for the result variable name.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Placeholders.Default">
+            <summary>Placeholder for the default value.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Placeholders.Arguments">
+            <summary>Placeholder for comma-separated argument list.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Placeholders.Implementation">
+            <summary>Placeholder for the implementation expression.</summary>
+        </member>
+        <member name="T:Fuse.ShaderConstants.Mixins">
+            <summary>
+            Common shader mixin names.
+            </summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCommonBuffer">
+            <summary>Common buffer utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCommonDraw">
+            <summary>Common draw utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCommonSDF">
+            <summary>Common SDF utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCommonSDG">
+            <summary>Common SDG utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCommonTypes">
+            <summary>Common types mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCoreTransform">
+            <summary>Core transform utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCoreColor">
+            <summary>Core color utilities mixin.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.Mixins.FuseCoreTexture">
+            <summary>Core texture utilities mixin.</summary>
+        </member>
+        <member name="T:Fuse.ShaderConstants.BufferTypes">
+            <summary>
+            Buffer type identifiers used in shader generation.
+            </summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.BufferTypes.StructuredBuffer">
+            <summary>Structured buffer (read-only).</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.BufferTypes.RWStructuredBuffer">
+            <summary>Read-write structured buffer.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.BufferTypes.AppendStructuredBuffer">
+            <summary>Append structured buffer.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.BufferTypes.ConsumeStructuredBuffer">
+            <summary>Consume structured buffer.</summary>
+        </member>
+        <member name="T:Fuse.ShaderConstants.NodeNames">
+            <summary>
+            Node name prefixes for common operations.
+            </summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.NodeNames.GetBuffer">
+            <summary>Buffer get operation.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.NodeNames.SetBuffer">
+            <summary>Buffer set operation.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.NodeNames.AppendBuffer">
+            <summary>Buffer append operation.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.NodeNames.ConsumeBuffer">
+            <summary>Buffer consume operation.</summary>
+        </member>
+        <member name="F:Fuse.ShaderConstants.NodeNames.BufferGetDimension">
+            <summary>Buffer get dimensions operation.</summary>
+        </member>
         <member name="M:Fuse.ShaderFX.AbstractToShaderFX`1.GetChildren(System.Object)">
             <summary>
                 Gets the children.
@@ -104,8 +393,561 @@
             <param name="context">The context to get the children.</param>
             <returns>The list of children.</returns>
         </member>
+        <member name="T:Fuse.ShaderFX.GenerationUtil">
+            <summary>
+            Utility class for shader generation operations.
+            </summary>
+            <remarks>
+            This class is currently a placeholder. Future shader generation utilities
+            should be added here or this class should be removed if not needed.
+            </remarks>
+        </member>
+        <member name="T:Fuse.IPrepareGraph">
+            <summary>
+            Interface for components that need to prepare the shader graph before compilation.
+            </summary>
+        </member>
+        <member name="T:Fuse.ShaderCompilationResult">
+            <summary>
+            Result of a unified shader compilation pass that collects all properties,
+            validates IDs, and passes context in a single traversal.
+            </summary>
+        </member>
+        <member name="T:Fuse.ShaderCompilationVisitor">
+            <summary>
+            Unified visitor that collects all shader properties, validates IDs, and passes context
+            in a single graph traversal. This replaces 9 separate traversals with 1.
+            </summary>
+            <remarks>
+            Combines the functionality of:
+            - CheckIdsVisitor (ID validation)
+            - CheckContextVisitor (context passing)
+            - PropertyOfTypeAndIdVisitor for each property type
+            - FunctionMapVisitor
+            </remarks>
+        </member>
+        <member name="T:Fuse.ResetUseCountVisitor">
+            <summary>
+            Resets the UseCount property of all nodes to 0 before a compilation pass.
+            </summary>
+        </member>
+        <member name="T:Fuse.UseCountVisitor">
+            <summary>
+            Counts how many times each node's output is used by incrementing UseCount
+            for each input reference. Run after ResetUseCountVisitor.
+            </summary>
+            <remarks>
+            After this visitor runs:
+            - UseCount == 0: Node output is unused (dead code candidate)
+            - UseCount == 1: Node output used once (inline candidate)
+            - UseCount > 1: Node output used multiple times (must emit variable)
+            </remarks>
+        </member>
+        <member name="T:Fuse.HandleNullInputMode">
+            <summary>
+            Specifies how null inputs are handled during shader node processing.
+            </summary>
+        </member>
+        <member name="F:Fuse.HandleNullInputMode.ReplaceWithDefault">
+            <summary>
+            Replace null inputs with the node's default value.
+            </summary>
+        </member>
+        <member name="F:Fuse.HandleNullInputMode.Remove">
+            <summary>
+            Remove null inputs from the input list entirely.
+            </summary>
+        </member>
+        <member name="F:Fuse.HandleNullInputMode.SetOff">
+            <summary>
+            Mark the node as having null input, causing it to generate default source code.
+            This is the default behavior.
+            </summary>
+        </member>
+        <member name="T:Fuse.InlineDecision">
+            <summary>
+            Specifies whether an expression should be inlined or assigned to a variable.
+            </summary>
+            <remarks>
+            Used by <see cref="M:Fuse.AbstractShaderNode.ShouldInline(System.Int32,System.Int32)"/> to decide code generation strategy.
+            </remarks>
+        </member>
+        <member name="F:Fuse.InlineDecision.Inline">
+            <summary>
+            Inline the expression at the use site, avoiding a separate variable declaration.
+            Best for simple, single-use expressions.
+            </summary>
+        </member>
+        <member name="F:Fuse.InlineDecision.CreateVariable">
+            <summary>
+            Create a variable and assign the expression to it.
+            Required for multi-use expressions or complex operations.
+            </summary>
+        </member>
+        <member name="T:Fuse.ViewerID">
+            <summary>
+            Represents a viewer identifier for debugging and visualization purposes.
+            </summary>
+        </member>
+        <member name="T:Fuse.AbstractShaderNode">
+             <summary>
+             Base class for all shader graph nodes in VL.Fuse.
+             </summary>
+             <remarks>
+             <para>
+             AbstractShaderNode is the foundation of the VL.Fuse shader generation system.
+             Each node represents an operation that generates SDSL (Stride Shading Language) code.
+             </para>
+             <para>
+             Nodes are connected in a directed acyclic graph (DAG) where:
+             <list type="bullet">
+               <item><description>The <see cref="F:Fuse.AbstractShaderNode.Ins"/> list contains input connections</description></item>
+               <item><description><see cref="M:Fuse.AbstractShaderNode.SourceTemplate"/> returns the SDSL code template with ${placeholders}</description></item>
+               <item><description><see cref="P:Fuse.AbstractShaderNode.Property"/> tracks dependencies (mixins, inputs, declarations, etc.)</description></item>
+             </list>
+             </para>
+             <para>
+             To create a custom node, inherit from <see cref="T:Fuse.ShaderNode`1"/> or <see cref="T:Fuse.ResultNode`1"/>
+             and override <see cref="M:Fuse.AbstractShaderNode.SourceTemplate"/> to provide the shader code.
+             </para>
+             </remarks>
+             <example>
+             <code>
+             public class MyAddNode : ResultNode&lt;float&gt;
+             {
+                 public MyAddNode(NodeContext ctx, ShaderNode&lt;float&gt; a, ShaderNode&lt;float&gt; b)
+                     : base(ctx, "MyAdd")
+                 {
+                     SetInputs(new AbstractShaderNode[] { a, b });
+                 }
+            
+                 protected override string ImplementationTemplate() => "${a} + ${b}";
+             }
+             </code>
+             </example>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Mixins">
+            <summary>Property key for required shader mixins.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Inputs">
+            <summary>Property key for GPU input parameters (uniforms, buffers, textures).</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Compositions">
+            <summary>Property key for shader compositions.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Declarations">
+            <summary>Property key for field declarations.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Structs">
+            <summary>Property key for custom struct definitions.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.ConstantArrays">
+            <summary>Property key for constant array definitions.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Streams">
+            <summary>Property key for shader stream definitions.</summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.NodeContext">
+            <summary>
+            The VL node context that uniquely identifies this node instance.
+            Used for generating unique variable names and tracking node identity.
+            </summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.PrepareGraphListener">
+            <summary>
+            List of listeners that are notified when the graph needs preparation.
+            </summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.Ins">
+            <summary>
+            The list of input nodes connected to this node.
+            Use <see cref="M:Fuse.AbstractShaderNode.SetInputs(System.Collections.Generic.IEnumerable{Fuse.AbstractShaderNode})"/> to modify this list properly.
+            </summary>
+        </member>
+        <member name="F:Fuse.AbstractShaderNode.NullInputMode">
+            <summary>
+            Determines how null inputs are handled. Defaults to <see cref="F:Fuse.HandleNullInputMode.SetOff"/>.
+            </summary>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.#ctor(VL.Core.NodeContext,System.String)">
+            <summary>
+            Initializes a new instance of the shader node.
+            </summary>
+            <param name="nodeContext">The VL node context for unique identification. Must not be null.</param>
+            <param name="theId">The base name for this node, used in variable naming.</param>
+        </member>
+        <member name="P:Fuse.AbstractShaderNode.UseCount">
+            <summary>
+            Tracks how many times this node's output is used by other nodes.
+            Used for smart inlining decisions - nodes used only once can be inlined.
+            Reset before each compilation pass via <see cref="T:Fuse.ResetUseCountVisitor"/>.
+            </summary>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.ShouldInline(System.Int32,System.Int32)">
+            <summary>
+            Determines whether this node's expression should be inlined or assigned to a variable.
+            Override in derived classes to customize inlining behavior.
+            </summary>
+            <param name="maxDepth">Maximum nesting depth for inlined expressions (default 4).</param>
+            <param name="maxLength">Maximum character length for inlined expressions (default 60).</param>
+            <returns>
+            <see cref="F:Fuse.InlineDecision.Inline"/> if the expression can be inlined,
+            <see cref="F:Fuse.InlineDecision.CreateVariable"/> if a variable should be created.
+            </returns>
+            <remarks>
+            <para>Default rules:</para>
+            <list type="bullet">
+              <item><description>UseCount &gt; 1: Always create variable (avoid duplicate computation)</description></item>
+              <item><description>UseCount == 0: Unused node (dead code candidate)</description></item>
+              <item><description>UseCount == 1: Candidate for inlining based on complexity</description></item>
+            </list>
+            <para>Override this in node types like FunctionInvoke to always create variables for readability.</para>
+            </remarks>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.GetReference(System.Int32)">
+            <summary>
+            Gets a reference to this node's value - either the variable ID or an inline expression.
+            Use this in templates instead of <see cref="P:Fuse.AbstractShaderNode.ID"/> to enable expression inlining.
+            </summary>
+            <param name="depth">Current inlining depth to prevent excessive nesting (default 3).</param>
+            <returns>
+            The variable ID if the node should not be inlined, or the inline expression if it should.
+            </returns>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.GetInlineExpression(System.Int32)">
+            <summary>
+            Gets the inline expression for this node (the right-hand side of the assignment).
+            Override in derived classes to provide the actual expression.
+            </summary>
+            <param name="depth">Remaining depth for nested inlining.</param>
+            <returns>The expression wrapped in parentheses, or the ID if no expression available.</returns>
+        </member>
+        <member name="P:Fuse.AbstractShaderNode.SemanticName">
+            <summary>
+            Optional user-friendly name for this node, used to generate more readable shader code.
+            When set, the ID will use this name instead of the generic type-based name.
+            </summary>
+            <example>
+            Setting SemanticName = "boxSize" will generate "boxSize_123456" instead of "input_123456"
+            </example>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.ResetBuildSourceCodeCache">
+            <summary>
+            Increments the compilation version, invalidating all BuildSourceCode caches.
+            Call this at the start of a new shader compilation.
+            </summary>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.CompileProperties(Stride.Rendering.Materials.ShaderGeneratorContext)">
+            <summary>
+            Performs a unified compilation pass that collects all properties, validates IDs,
+            and passes context in a single graph traversal.
+            </summary>
+            <remarks>
+            This replaces separate calls to CheckHashCodes(), CheckContext(), and multiple
+            property collection methods (MixinList, DeclarationList, etc.) with a single traversal.
+            Use this for better performance when you need multiple property types.
+            </remarks>
+            <param name="context">The shader generator context.</param>
+            <returns>A result containing all collected properties and functions.</returns>
+        </member>
+        <member name="T:Fuse.ShaderNode`1">
+            <summary>
+            Generic typed shader node that represents a value of type <typeparamref name="T"/> on the GPU.
+            </summary>
+            <typeparam name="T">The C# type that maps to a GPU type (e.g., float, Vector3, Matrix).</typeparam>
+            <remarks>
+            <para>
+            ShaderNode&lt;T&gt; provides type safety for shader operations. The generic type parameter
+            maps to GPU types via <see cref="T:Fuse.TypeHelpers"/>:
+            </para>
+            <list type="bullet">
+              <item><description><c>float</c> → <c>float</c></description></item>
+              <item><description><c>Vector2</c> → <c>float2</c></description></item>
+              <item><description><c>Vector3</c> → <c>float3</c></description></item>
+              <item><description><c>Vector4</c> → <c>float4</c></description></item>
+              <item><description><c>Matrix</c> → <c>float4x4</c></description></item>
+              <item><description><c>int</c> → <c>int</c></description></item>
+              <item><description><c>bool</c> → <c>bool</c></description></item>
+            </list>
+            <para>
+            The node's unique ID is generated as <c>{Name}_{HashCode}</c> to ensure variable uniqueness
+            in the generated shader code.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Fuse.ShaderNode`1.#ctor(VL.Core.NodeContext,System.String,Fuse.ShaderNode{`0},System.Boolean)">
+            <summary>
+            Initializes a new shader node with the specified context and identifier.
+            </summary>
+            <param name="nodeContext">The VL node context for unique identification.</param>
+            <param name="theId">The base name for this node.</param>
+            <param name="theDefault">Optional default value node when inputs are null.</param>
+            <param name="theCreateDefault">If true and theDefault is null, creates a default value of 0.</param>
+        </member>
+        <member name="T:Fuse.ResultNode`1">
+             <summary>
+             Base class for shader nodes that produce a result value via an expression.
+             </summary>
+             <typeparam name="T">The result type of the node.</typeparam>
+             <remarks>
+             <para>
+             ResultNode automatically generates the assignment statement:
+             <c>${resultType} ${resultName} = ${implementation};</c>
+             </para>
+             <para>
+             Derived classes only need to override <see cref="M:Fuse.ResultNode`1.ImplementationTemplate"/> to provide
+             the expression that computes the result.
+             </para>
+             </remarks>
+             <example>
+             <code>
+             public class Multiply&lt;T&gt; : ResultNode&lt;T&gt; where T : struct
+             {
+                 public Multiply(NodeContext ctx, ShaderNode&lt;T&gt; a, ShaderNode&lt;T&gt; b)
+                     : base(ctx, "Multiply")
+                 {
+                     SetInputs(new AbstractShaderNode[] { a, b });
+                 }
+            
+                 protected override string ImplementationTemplate() => "${a} * ${b}";
+             }
+             </code>
+             </example>
+        </member>
+        <member name="M:Fuse.ResultNode`1.#ctor(VL.Core.NodeContext,System.String,Fuse.ShaderNode{`0},System.Boolean)">
+            <summary>
+            Initializes a new result node.
+            </summary>
+            <param name="nodeContext">The VL node context.</param>
+            <param name="theId">The base name for this node.</param>
+            <param name="theDefault">Optional default value.</param>
+            <param name="theCreateDefault">Whether to create a default value if none provided.</param>
+        </member>
+        <member name="M:Fuse.ResultNode`1.SourceTemplate">
+            <inheritdoc />
+        </member>
+        <member name="M:Fuse.ResultNode`1.GetInlineExpression(System.Int32)">
+            <inheritdoc />
+        </member>
         <member name="M:Fuse.ShaderNodesUtil.GetStableHashCode(System.String)">
             To be checked if hashes are persistent and individual
+        </member>
+        <member name="T:Fuse.TypeHelpers">
+            <summary>
+            Utility methods for type conversions between C# types and GPU/shader types.
+            </summary>
+            <remarks>
+            This class delegates to <see cref="T:Fuse.Types.TypeRegistry"/> for type mappings.
+            Pattern-matching overloads for <see cref="T:Fuse.AbstractShaderNode"/> are provided
+            for runtime type resolution.
+            </remarks>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetDefaultForType``1(``0)">
+            <summary>
+            Gets the default value string for a specific value of type T.
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetDefaultForType(System.Type)">
+            <summary>
+            Gets the default value string for a type.
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetDefaultForType``1">
+            <summary>
+            Gets the default value string for a type.
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetSignature(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the signature name for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetGpuType(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the GPU type name for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetCompositionType(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the composition type name for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetDimension(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the dimension for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetSizeInBytes(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the size in bytes for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetPixelFormat(Fuse.AbstractShaderNode)">
+            <summary>
+            Gets the pixel format for an AbstractShaderNode (runtime type resolution).
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.GetType(Stride.Graphics.PixelFormat)">
+            <summary>
+            Gets the C# type for a pixel format.
+            </summary>
+        </member>
+        <member name="T:Fuse.Types.TypeMapping">
+            <summary>
+            Represents a complete type mapping between C# types and GPU types.
+            </summary>
+            <param name="GpuType">The GPU/HLSL type name (e.g., "float3").</param>
+            <param name="DefaultValue">The default value as HLSL string (e.g., "float3(0.0, 0.0, 0.0)").</param>
+            <param name="Signature">The signature name used in shader function names (e.g., "Float3").</param>
+            <param name="CompositionType">The Stride composition type name (e.g., "ComputeFloat3").</param>
+            <param name="Dimension">Number of components (1 for scalar, 3 for float3, etc.).</param>
+            <param name="ByteSize">Size in bytes on the GPU.</param>
+            <param name="PixelFormat">Corresponding pixel format for textures, if applicable.</param>
+            <param name="IsIntegerType">Whether this is an integer type.</param>
+        </member>
+        <member name="M:Fuse.Types.TypeMapping.#ctor(System.String,System.String,System.String,System.String,System.Int32,System.Int32,System.Nullable{Stride.Graphics.PixelFormat},System.Boolean)">
+            <summary>
+            Represents a complete type mapping between C# types and GPU types.
+            </summary>
+            <param name="GpuType">The GPU/HLSL type name (e.g., "float3").</param>
+            <param name="DefaultValue">The default value as HLSL string (e.g., "float3(0.0, 0.0, 0.0)").</param>
+            <param name="Signature">The signature name used in shader function names (e.g., "Float3").</param>
+            <param name="CompositionType">The Stride composition type name (e.g., "ComputeFloat3").</param>
+            <param name="Dimension">Number of components (1 for scalar, 3 for float3, etc.).</param>
+            <param name="ByteSize">Size in bytes on the GPU.</param>
+            <param name="PixelFormat">Corresponding pixel format for textures, if applicable.</param>
+            <param name="IsIntegerType">Whether this is an integer type.</param>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.GpuType">
+            <summary>The GPU/HLSL type name (e.g., "float3").</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.DefaultValue">
+            <summary>The default value as HLSL string (e.g., "float3(0.0, 0.0, 0.0)").</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.Signature">
+            <summary>The signature name used in shader function names (e.g., "Float3").</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.CompositionType">
+            <summary>The Stride composition type name (e.g., "ComputeFloat3").</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.Dimension">
+            <summary>Number of components (1 for scalar, 3 for float3, etc.).</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.ByteSize">
+            <summary>Size in bytes on the GPU.</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.PixelFormat">
+            <summary>Corresponding pixel format for textures, if applicable.</summary>
+        </member>
+        <member name="P:Fuse.Types.TypeMapping.IsIntegerType">
+            <summary>Whether this is an integer type.</summary>
+        </member>
+        <member name="T:Fuse.Types.TypeRegistry">
+            <summary>
+            Central registry for all type mappings between C# and GPU types.
+            Consolidates type information that was previously scattered across multiple dictionaries.
+            </summary>
+            <remarks>
+            This registry is the single source of truth for type mappings in VL.Fuse.
+            </remarks>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.Get``1">
+            <summary>
+            Gets the type mapping for a given C# type.
+            </summary>
+            <typeparam name="T">The C# type to look up.</typeparam>
+            <returns>The type mapping.</returns>
+            <exception cref="T:System.NotSupportedException">Thrown when the type is not registered.</exception>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.Get(System.Type)">
+            <summary>
+            Gets the type mapping for a given C# type.
+            </summary>
+            <param name="type">The C# type to look up.</param>
+            <returns>The type mapping.</returns>
+            <exception cref="T:System.NotSupportedException">Thrown when the type is not registered.</exception>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.TryGet(System.Type,Fuse.Types.TypeMapping@)">
+            <summary>
+            Tries to get the type mapping for a given C# type.
+            </summary>
+            <param name="type">The C# type to look up.</param>
+            <param name="mapping">The type mapping if found.</param>
+            <returns>True if the type was found, false otherwise.</returns>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.TryGet``1(Fuse.Types.TypeMapping@)">
+            <summary>
+            Tries to get the type mapping for a given C# type.
+            </summary>
+            <typeparam name="T">The C# type to look up.</typeparam>
+            <param name="mapping">The type mapping if found.</param>
+            <returns>True if the type was found, false otherwise.</returns>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.IsRegistered(System.Type)">
+            <summary>
+            Checks if a type is registered in the registry.
+            </summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.IsRegistered``1">
+            <summary>
+            Checks if a type is registered in the registry.
+            </summary>
+        </member>
+        <member name="P:Fuse.Types.TypeRegistry.RegisteredTypes">
+            <summary>
+            Gets all registered types.
+            </summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetGpuType(System.Type)">
+            <summary>Gets the GPU type name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetGpuType``1">
+            <summary>Gets the GPU type name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetDefaultValue(System.Type)">
+            <summary>Gets the default value string for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetDefaultValue``1">
+            <summary>Gets the default value string for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetSignature(System.Type)">
+            <summary>Gets the signature name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetSignature``1">
+            <summary>Gets the signature name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetCompositionType(System.Type)">
+            <summary>Gets the composition type name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetCompositionType``1">
+            <summary>Gets the composition type name for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetDimension(System.Type)">
+            <summary>Gets the dimension (component count) for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetDimension``1">
+            <summary>Gets the dimension (component count) for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetByteSize(System.Type)">
+            <summary>Gets the byte size for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetByteSize``1">
+            <summary>Gets the byte size for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetPixelFormat(System.Type)">
+            <summary>Gets the pixel format for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetPixelFormat``1">
+            <summary>Gets the pixel format for a C# type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.IsIntegerType(System.Type)">
+            <summary>Checks if a type is an integer type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.IsIntegerType``1">
+            <summary>Checks if a type is an integer type.</summary>
+        </member>
+        <member name="M:Fuse.Types.TypeRegistry.GetTypeFromPixelFormat(Stride.Graphics.PixelFormat)">
+            <summary>Gets the C# type for a pixel format.</summary>
         </member>
         <member name="M:Fuse.util.BoxGridCull.projectParticleByViewPositionAABB(Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Matrix,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector4,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector3@,System.Int32@,Stride.Core.Mathematics.Vector2@,System.Single@,Stride.Core.Mathematics.Vector2@,Stride.Core.Mathematics.Vector4[],Stride.Core.Mathematics.Vector4,System.Func{Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Matrix,Stride.Core.Mathematics.Vector3})">
             <summary>

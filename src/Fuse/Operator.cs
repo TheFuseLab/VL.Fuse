@@ -22,7 +22,8 @@ public class Operator<T> : ResultNode<T> where T : struct
         var call = new StringBuilder();
         Ins.ForEach(input =>
         {
-            call.Append(input.ID);
+            // Use GetReference() for inlining support
+            call.Append(input.GetReference());
             call.Append(" " + _operator + " ");
         });
 

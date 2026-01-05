@@ -1,0 +1,154 @@
+shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHash, FuseCoreMath{
+
+    // =============================================================================
+    // BOX GRID: Reconstruct Box Depth from Ortho Hardware Depth
+    // =============================================================================
+    
+    // The vertex shader sets Z = -boxDepth
+    // Ortho projection maps Z to [0,1] based on near/far
+    // We need to invert this
+    float BoxDepthFromOrthoHardwareDepth(
+        float hardwareDepth,    // [0,1] from depth buffer
+        float orthoNear,        // Ortho camera near plane (e.g., 0 or -maxDepth)
+        float orthoFar          // Ortho camera far plane (e.g., maxDepth or 0)
+    ) {
+        // Reconstruct clip-space Z from hardware depth
+        // D3D style: hardwareDepth = (z - near) / (far - near)
+        // So: z = hardwareDepth * (far - near) + near
+        float z_clip = hardwareDepth * (orthoFar - orthoNear) + orthoNear;
+        
+        // We used -boxDepth as Z, so boxDepth = -z_clip
+        return z_clip;
+    }
+
+    // =============================================================================
+    // BOX GRID: Convert Screen UV to Atlas UV
+    // =============================================================================
+    
+    // If ortho camera shows full atlas [0,4]x[0,3] → screen [0,1]x[0,1]
+    // Then screen UV IS the normalized atlas UV
+    float2 ScreenUVToAtlasUV(
+        float2 screenUV,
+        float4 crossLayoutInfo,  // (4, 3, ?, ?)
+        bool flipY
+    ) {
+        float2 atlasUV = screenUV;
+        if (flipY) atlasUV.y = 1.0 - atlasUV.y;
+        return atlasUV;
+    }
+
+    // =============================================================================
+    // MAIN RESOLVE: Box Grid Ortho Version
+    // =============================================================================
+    
+    float4 ResolveVolumetricTransmittanceBoxGridOrtho(
+        // Scene inputs
+        Texture2D           SceneColor,
+        Texture2D           SceneDepth,      // Contains ortho-projected box depth
+        Texture3D           FogDensity,
+        Texture3D           FogLight,
+        SamplerState        LinearClamp,
+        
+        // Froxel parameters
+        bool                FlipY,
+        int                 SliceMode,
+        float               SliceLambda,
+        int3                Resolution,
+        float               FogNear,         // Box depth near for fog (typically 0)
+        float               FogFar,          // Box depth far for fog (max depth into box)
+        
+        // Fog parameters
+        float3              FogFallbackColor,
+        float2              screenUV,
+        float2              screenPx,
+        float               SigmaT,
+        
+        // Ortho camera parameters
+        float               OrthoNear,       // Near plane of ortho camera
+        float               OrthoFar,        // Far plane of ortho camera
+        
+        
+        // Box Grid parameters (for inverse projection if needed)
+        float4              crossLayoutInfo,
+        float4              zoomRegion,
+        StructuredBuffer<float4> faceLayoutInfo
+    )
+    {
+        float4 scene = SceneColor.Sample(LinearClamp, screenUV);
+        int3 res = Resolution;
+
+        // --- Step 1: Screen UV → Atlas UV ---
+        float2 atlasUV = ScreenUVToAtlasUV(screenUV, crossLayoutInfo, FlipY);
+        
+        // Check bounds
+        if (atlasUV.x < 0.0 || atlasUV.x > 1.0 || atlasUV.y < 0.0 || atlasUV.y > 1.0) {
+            return scene;
+        }
+
+        // --- Step 2: Hardware Depth → Box Depth ---
+        float hardwareDepth = SceneDepth.Sample(LinearClamp, screenUV).x;
+        float boxDepthScene = BoxDepthFromOrthoHardwareDepth(hardwareDepth, OrthoNear, 30);
+        
+        // Clamp to fog volume bounds
+        boxDepthScene = clamp(boxDepthScene, FogNear, FogFar);
+        
+        // --- Step 3: Box Depth → Slice Index ---
+        float depth01Scene = saturate((boxDepthScene - FogNear) / max(FogFar - FogNear, 1e-6));
+        
+        float sliceF; int maxSlice; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, res, FogNear, FogFar, depth01Scene, sliceF, maxSlice, sliceT);
+        maxSlice = clamp(maxSlice, 0, res.z - 1);
+
+        // --- Step 4: Raymarch through froxel slices ---
+        float T = 1.0;
+        float3 Lacc = 0.0;
+
+        [loop]
+        for (int z = 0; z <= maxSlice; z++)
+        {
+            // Get depth bounds for this slice (in box depth units)
+            float z0, z1;
+            SliceZBounds(SliceMode, SliceLambda, res, FogNear, FogFar, z, z0, z1);
+
+            float ds = max(z1 - z0, 1e-4);
+            if (z == maxSlice)
+            {
+                float zEnd = min(z1, boxDepthScene);
+                ds = max(zEnd - z0, 0.0);
+            }
+            if (ds <= 0.0) break;
+
+            // --- Sample fog volume using Atlas UV ---
+            float j = (hash12(screenPx + (float)z * 17.0) - 0.5) * 0.0; // jitter (disabled)
+            float zTex = ((float)z + 0.5 + j) / (float)res.z;
+            zTex = saturate(zTex);
+
+            // XY = Atlas UV, Z = Slice
+            float3 uvwTex = float3(atlasUV, zTex);
+
+            float density = FogDensity.SampleLevel(LinearClamp, uvwTex, 0).x;
+
+            // Extinction (Beer-Lambert)
+            float sigma = max(SigmaT * density, 0.0);
+            float absorb = sigma * ds;
+            float stepT = exp(-absorb);
+
+            float integral = (absorb > 1e-6) ? (1.0 - stepT) / sigma : ds;
+
+            // In-scattering from pre-computed light volume
+            float3 Li = FogLight.SampleLevel(LinearClamp, uvwTex, 0).rgb;
+            Lacc += T * Li * integral;
+
+            T *= stepT;
+            if (T < 1e-3) { T = 0.0; break; }
+        }
+
+        // --- Final composite ---
+        float3 haze = FogFallbackColor * (1.0 - T);
+        float3 outRgb = scene.rgb * T + Lacc + haze;
+        //outRgb = float3(boxDepthScene,boxDepthScene,boxDepthScene);
+        //return float4(hardwareDepth, hardwareDepth, hardwareDepth, 1.0);
+        //return float4(outRgb, scene.a);
+        return float4(Lacc + haze, 1.0 - T);
+    }
+};

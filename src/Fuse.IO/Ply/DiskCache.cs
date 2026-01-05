@@ -9,6 +9,25 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Fuse.IO.Ply;
 
+/// <summary>
+/// Simple logger for disk cache operations to avoid silent failures.
+/// </summary>
+internal static class CacheLogger
+{
+    internal static void LogWarning(string message, Exception? ex = null)
+    {
+        var exInfo = ex != null ? $" | {ex.GetType().Name}: {ex.Message}" : "";
+        Debug.WriteLine($"[DiskCache:WARN] {message}{exInfo}");
+    }
+
+    internal static void LogError(string message, Exception? ex = null)
+    {
+        var exInfo = ex != null ? $" | {ex.GetType().Name}: {ex.Message}" : "";
+        Console.WriteLine($"[DiskCache:ERROR] {message}{exInfo}");
+        Debug.WriteLine($"[DiskCache:ERROR] {message}{exInfo}");
+    }
+}
+
 public static class DiskCachePaths
 {
     public static string BasePath { get; set; } = Path.Combine(
@@ -85,8 +104,9 @@ public sealed class DiskCache
                     $"[DiskCache:{label}] Read {mb:F1} MB in {sw.Elapsed.TotalMilliseconds:F0} ms ({mbps:F1} MB/s)");
             }
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to log read stats for {label}", ex);
         }
     }
 
@@ -130,8 +150,9 @@ public sealed class DiskCache
             else
                 Console.WriteLine($"[DiskCache:{tag}] BasePath={basePath}");
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to log environment for {tag}", ex);
         }
     }
 
@@ -151,8 +172,9 @@ public sealed class DiskCache
                     return payload;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning($"Failed to read cache entry for key '{key}'", ex);
             }
 
         Directory.CreateDirectory(entry);
@@ -162,8 +184,9 @@ public sealed class DiskCache
             {
                 Directory.Delete(tmpDir, true);
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning($"Failed to delete temp directory '{tmpDir}'", ex);
             }
 
         Directory.CreateDirectory(tmpDir);
@@ -218,8 +241,9 @@ public sealed class DiskCache
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to get cache entry for key '{key}'", ex);
         }
 
         payloadTask = Task.FromResult(default(T)!);
@@ -233,8 +257,9 @@ public sealed class DiskCache
         {
             if (Directory.Exists(entry)) Directory.Delete(entry, true);
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to invalidate cache entry '{entry}'", ex);
         }
     }
 
@@ -248,12 +273,14 @@ public sealed class DiskCache
                 {
                     Directory.Delete(dir, true);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    CacheLogger.LogWarning($"Failed to delete cache directory '{dir}'", ex);
                 }
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to clear cache namespace '{cacheNamespace}'", ex);
         }
     }
 
@@ -286,8 +313,9 @@ public sealed class DiskCache
             var json = File.ReadAllText(path, Encoding.UTF8);
             return JsonSerializer.Deserialize<Manifest>(json);
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to read manifest from '{path}'", ex);
             return null;
         }
     }
@@ -300,8 +328,9 @@ public sealed class DiskCache
             man.Hits++;
             await WriteManifestAsync(manifestPath, man, ct);
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning($"Failed to update manifest access time at '{manifestPath}'", ex);
         }
     }
 
@@ -315,8 +344,9 @@ public sealed class DiskCache
             {
                 Directory.Delete(finalEntryDir, true);
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning($"Failed to delete existing entry during atomic swap: '{finalEntryDir}'", ex);
             }
 
         Directory.Move(staging, finalEntryDir);
@@ -444,8 +474,9 @@ public sealed class PlyArraysCacheSerializer : DiskCache.ICacheSerializer<Dictio
                 Console.WriteLine(
                     $"[DiskCache:PLY] Top fields by size: {string.Join(", ", top.Select(x => x.Name + ":" + x.MB.ToString("F1") + "MB"))}");
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning("Failed to log PLY field sizes", ex);
             }
         }
 
@@ -500,8 +531,9 @@ public sealed class PlyArraysCacheSerializer : DiskCache.ICacheSerializer<Dictio
                     $"Disk {swRead.ElapsedMilliseconds:F0} ms ({mbpsDisk:F1} MB/s), " +
                     $"Total {swTotal.Elapsed.TotalMilliseconds:F0} ms ({mbpsTotal:F1} MB/s)");
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning("Failed to log PLY fast read stats", ex);
             }
         }
         else
@@ -551,8 +583,9 @@ public sealed class PlyArraysCacheSerializer : DiskCache.ICacheSerializer<Dictio
                     $"[DiskCache:PLY] FALLBACK direct-to-float streaming {mb:F1} MB " +
                     $"Total {swTotal.Elapsed.TotalMilliseconds:F0} ms ({mbpsTotal:F1} MB/s)");
             }
-            catch
+            catch (Exception ex)
             {
+                CacheLogger.LogWarning("Failed to log PLY fallback read stats", ex);
             }
         }
 
@@ -677,8 +710,9 @@ public sealed class OctreeCacheSerializer : DiskCache.ICacheSerializer<OctreeCac
             Console.WriteLine(
                 $"[DiskCache:Octree] Read {totalMB:F1} MB in {sw.Elapsed.TotalMilliseconds:F0} ms ({mbps:F1} MB/s)");
         }
-        catch
+        catch (Exception ex)
         {
+            CacheLogger.LogWarning("Failed to log Octree read stats", ex);
         }
 
         MetaInfo? meta;

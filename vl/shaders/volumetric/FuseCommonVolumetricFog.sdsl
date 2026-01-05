@@ -1,0 +1,305 @@
+shader FuseCommonVolumetricFog : FuseCommonFroxel, FuseCoreMathHash, FuseCoreMath{
+
+    
+
+    // --- HG phase
+    float3 PhaseHG(
+        float3 viewDirWS,
+        float Density,
+        float SigmaS,
+        float PhaseG,
+        float PhaseScale,
+        float3 LightDir,
+        float3 LightColor,
+        float LightIntensity)
+    {
+        float  cosTheta = dot(LightDir, viewDirWS);
+        PhaseG = clamp(PhaseG, -0.99, 0.99);
+        float g2 = PhaseG * PhaseG;
+        float denom = 1.0 + g2 - 2.0 * PhaseG * cosTheta;
+        float phase = (1.0 - g2) / (4.0 * PI * pow(denom, 1.5));
+        float3 radiance = LightColor * LightIntensity;
+
+        return radiance * (SigmaS * Density)* phase* PhaseScale;
+    }
+
+    float SampleFogDensityWS(
+        Texture3D<float> FogDensity,
+        SamplerState LinearClamp,
+        float4x4 Proj,
+        float4x4 View,
+        bool FlipY,
+        int SliceMode,
+        float SliceLambda,
+        int3 Resolution,
+        float Near,
+        float Far,
+        float3 posWS
+    ){
+        // uvw.z = depth01 linear
+        float3 uvw = PositionToUVW(Proj, View, FlipY, Near, Far, posWS);
+
+        // außerhalb des View-Frustums -> keine Dichte
+        if (uvw.x < 0 || uvw.x > 1 || uvw.y < 0 || uvw.y > 1 || uvw.z < 0 || uvw.z > 1)
+            return 0.0;
+
+        // depth01 -> continuous sliceF (0..ResZ)
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, uvw.z, sliceF, sliceIdx, sliceT);
+
+        // Texture-Z Koordinate passend zu deinem Layout (wie z+0.5 im Resolve)
+        float zTex = (sliceF + 0.5) / (float)Resolution.z;
+
+        float3 uvwTex = float3(uvw.xy, saturate(zTex));
+        return FogDensity.SampleLevel(LinearClamp, uvwTex, 0).x;
+    }
+
+    float ComputeTransmittanceToDirectional(
+        Texture3D<float> FogDensity,
+        SamplerState LinearClamp,
+        float4x4 Proj,
+        float4x4 View,
+        bool FlipY,
+        int SliceMode,
+        float SliceLambda,
+        int3 Resolution,
+        float Near,
+        float Far,
+        float3 startWS,
+        float3 lightDirToLightWS,   // Richtung *zum* Licht
+        float sigmaT,
+        int steps,
+        float stepLen
+    ){
+        float T = 1.0;
+        float3 p = startWS;
+
+        [loop]
+        for (int i=0; i<steps; i++)
+        {
+            p += lightDirToLightWS * stepLen;
+
+            float d = SampleFogDensityWS(FogDensity, LinearClamp, Proj, View, FlipY, SliceMode, SliceLambda, Resolution, Near, Far, p);
+            float absorb = d * sigmaT * stepLen;
+            T *= exp(-absorb);
+
+            if (T < 1e-3) return 0.0;
+        }
+        return T;
+    }
+
+    // debugMode: 0=final, 1=T, 2=Lacc, 3=Li(mid slice), 4=density(mid slice)
+    float4 DebugOut(int debugMode, float3 sceneRgb, float T, float3 Lacc, float3 LiDbg, float densityDbg)
+    {
+        if (debugMode == 1) return float4(T.xxx, 1);
+        if (debugMode == 2) return float4(Lacc, 1);
+        if (debugMode == 3) return float4(LiDbg, 1);
+        if (debugMode == 4) return float4(densityDbg.xxx, 1);
+        return float4(sceneRgb, 1);
+    }
+
+    
+    float GetBlueNoise(
+        Texture2D<float4> BlueNoise,
+        float2 screenPx)
+    {
+        int2 coord = int2(screenPx) % 64;
+        return BlueNoise.Load(int3(coord, 0)).x;  // Use .x, .y, .z, or .w
+    }
+
+
+    float4 ResolveVolumetricTransmittance(
+        Texture2D   SceneColor,
+        Texture2D    SceneDepth,      // hardware depth
+        Texture3D   FogDensity,
+        Texture3D   FogLight,        // NEW: injected lighting (rgb)
+        SamplerState        LinearClamp,
+        float4x4            InvProj,
+        bool                FlipY,
+        int                 SliceMode,
+        float               SliceLambda,
+        int3                Resolution,
+        float               Near,
+        float               Far,
+        float3              FogFallbackColor, // used if FogLight is off / debug
+        float2              uv,
+        float2              screenPx,
+        float               SigmaT,            // extinction multiplier (>= SigmaS). start: 1.0
+        Texture2D<float4>           BlueNoise
+    )
+    {
+        float4 scene = SceneColor.Sample(LinearClamp, uv);
+
+        int3 res = Resolution;
+
+        float2 uvF = uv;
+        if (FlipY) uvF.y = 1.0 - uvF.y;
+
+        // --- Depth termination ---
+        float depthHw = SceneDepth.Sample(LinearClamp, uv).x;
+        float viewZScene = ViewZFromHardwareDepth_Row(uvF, depthHw, InvProj);
+
+        // After you compute viewZScene
+        float z0a, z1a;
+        SliceZBounds(SliceMode, SliceLambda, res, Near, Far, 0, z0a, z1a);
+        float firstDs = max(z1a - z0a, 1e-4);
+
+        // Jitter the ray termination depth a tiny bit (clamped)
+         float jitter01 = GetBlueNoise(BlueNoise,screenPx);          // [0..1)
+            float jitter   = (jitter01 - 0.5);          // [-0.5..+0.5]
+        viewZScene = clamp(viewZScene + jitter * firstDs, Near, Far);
+        float depth01Scene = Depth01FromViewZ(viewZScene, Near, Far);
+
+        float sliceF; int maxSlice; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, res, Near, Far, depth01Scene, sliceF, maxSlice, sliceT);
+        maxSlice = clamp(maxSlice, 0, res.z - 1);
+
+        float T = 1.0;
+        float3 Lacc = 0.0;
+
+        float3 LiDbg = 0;
+        float  densityDbg = 0;
+
+        [loop]
+        for (int z = 0; z <= maxSlice; z++)
+        {
+            float z0, z1;
+            SliceZBounds(SliceMode, SliceLambda, res, Near, Far, z, z0, z1);
+
+            float ds = max(z1 - z0, 1e-4);
+            if (z == maxSlice)
+            {
+                float zEnd = min(z1, viewZScene);
+                ds = max(zEnd - z0, 0.0);
+            }
+            if (ds <= 0.0) break;
+
+            // --- Trilinear sample with jittered z ---
+           
+            float zTex = ((float)z + 0.5) / (float)res.z;
+            zTex = saturate(zTex);
+            float3 uvwTex = float3(
+                (uvF.x * res.x + 0.5) / res.x,
+                (uvF.y * res.y + 0.5) / res.y,
+                zTex
+            );
+
+            float density = FogDensity.SampleLevel(LinearClamp, uvwTex, 0).x;
+
+            // Extinction (Beer-Lambert). SigmaT is your artistic "fog thickness".
+            float sigma = max(SigmaT * density, 0.0);
+            float absorb = sigma * ds;
+            float stepT  = exp(-absorb);
+
+            // stable factor:
+            float integral = (absorb > 1e-6) ? (1.0 - stepT) / sigma : ds;
+
+            // In-scattering integrate (single scattering)
+            // FogLight is already "per meter", so multiply by ds and current transmittance.
+            float3 Li = FogLight.SampleLevel(LinearClamp, uvwTex, 0).rgb;
+
+            // Option A (simple, looks good):
+            Lacc += T * Li * integral;
+
+            // If you want slightly more correct energy, you can weight by (1-stepT)/absorb,
+            // but keep it simple for now.
+
+            T *= stepT;
+            if (z == (maxSlice>>1)) { LiDbg = Li; densityDbg = density; }
+            if (T < 1e-3) { T = 0.0; break; }
+        }
+
+        // Final composite:
+        // Scene attenuated by T + accumulated fog light.
+        // Optional fallback tint for "haze" if no lights:
+        float3 haze = FogFallbackColor * (1.0 - T) * 1.0; // set to 1.0 if you want constant haze too
+        float3 outRgb = scene.rgb * T + Lacc + haze;
+
+        return float4(outRgb, scene.a);
+       // return DebugOut(0, outRgb, T, Lacc, LiDbg, densityDbg);
+    }
+
+    bool WorldToShadow(
+        float3 posWS,
+        float4x4 lightViewProj,
+        bool flipY,
+        bool remapZNeg1Pos1To01,
+        out float2 uv,
+        out float z01)
+    {
+        float4 clip = mul(float4(posWS, 1), lightViewProj); // row-vector
+        float3 ndc  = clip.xyz / clip.w;
+
+        uv = ndc.xy * 0.5 + 0.5;
+        if (flipY) uv.y = 1.0 - uv.y;
+
+        z01 = ndc.z;
+        if (remapZNeg1Pos1To01)
+            z01 = z01 * 0.5 + 0.5;
+
+        // valid range check
+        bool valid =
+            (uv.x >= 0.0 && uv.x <= 1.0) &&
+            (uv.y >= 0.0 && uv.y <= 1.0) &&
+            (z01  >= 0.0 && z01  <= 1.0) &&
+            (clip.w > 1e-6); // avoid nonsense
+
+        return valid;
+    }
+
+    float ShadowHard(
+        Texture2D<float> shadowDepth,
+        SamplerState shadowSampler,
+        float3 posWS,
+        float4x4 lightViewProj,
+        float bias,
+        bool flipY,
+        bool remapZNeg1Pos1To01)
+    {
+        float2 uv;
+        float z01;
+
+        if (!WorldToShadow(posWS, lightViewProj, flipY, remapZNeg1Pos1To01, uv, z01))
+            return 1.0; // outside => lit (good for fog)
+
+        float occ = shadowDepth.SampleLevel(shadowSampler, uv, 0);
+
+        // visibility: 1 = lit, 0 = shadowed
+        return (z01 - bias <= occ) ? 1.0 : 0.0;
+    }
+
+    float ShadowPCF3x3(
+        Texture2D<float> shadowDepth,
+        SamplerState shadowSampler,
+        float3 posWS,
+        float4x4 lightViewProj,
+        float bias,
+        float2 texelSize,
+        bool flipY,
+        bool remapZNeg1Pos1To01)
+    {
+        float2 uv;
+        float z01;
+
+        if (!WorldToShadow(posWS, lightViewProj, flipY, remapZNeg1Pos1To01, uv, z01))
+            return 1.0;
+
+        float sum = 0.0;
+
+        [unroll]
+        for (int y = -1; y <= 1; y++)
+        {
+            [unroll]
+            for (int x = -1; x <= 1; x++)
+            {
+                float2 uvt = uv + float2(x, y) * texelSize;
+                float occ  = shadowDepth.SampleLevel(shadowSampler, uvt, 0);
+                sum += (z01 - bias <= occ) ? 1.0 : 0.0;
+            }
+        }
+
+        return sum * (1.0 / 9.0);
+    }
+
+
+};

@@ -54,14 +54,15 @@ shader FuseCommonDraw : Texturing
 	    float4 deviceZ = theLowresTexture.GatherRed(theLowResSampler, UV);
 	
 	    // Linearize
-        return projection._43/(deviceZ - projection._33);
+        return -projection._43/(deviceZ - projection._33);
     }
+	
 
     float FetchFullResDepth(Texture2D theHighresTexture, Sampler theNearestSampler, float2 uv, float4x4 projection)
 	{
 		float deviceZ = theHighresTexture.SampleLevel(theNearestSampler, uv, 0).x;
 		// Linearize
-        return projection._43/(deviceZ - projection._33);
+        return -projection._43/(deviceZ - projection._33);
 	}
 
     void UpdateNearestSample(
@@ -101,7 +102,7 @@ shader FuseCommonDraw : Texturing
 
 	    // This corrects for cases where the hi-res texture doesn't correspond to 100% of the low-res
 	    // texture (e.g. 1023x1023 vs 512x512)
-	    float2 LoResUV = reductionFactor * LowResTexelSize * float2(w,h) * uv;
+	    float2 LoResUV = uv;
 
         // Check here
         uint2 tex = floor(uv * float2(w,h));
@@ -128,8 +129,8 @@ shader FuseCommonDraw : Texturing
 	    float2 UV11 = UV00 + LowResTexelSize;
 	    float Z11 = ZLo.y;
 	    UpdateNearestSample(MinDist, NearestUV, Z11, UV11, ZFull);
-	
-        //return float4(1,0,0,1);
+
+
 	    if (abs(Z00 - ZFull) < depthThreshold &&
 	        abs(Z10 - ZFull) < depthThreshold &&
 	        abs(Z01 - ZFull) < depthThreshold &&

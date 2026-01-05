@@ -49,6 +49,22 @@ public static class ShaderNodesUtil
 
     public static string DebugIdent = ". ";
 
+    // Pre-compiled regex patterns for performance (avoid recompilation on every call)
+    private static readonly Regex PlaceholderRegex = new(
+        @"\$\{(?<key>[^}]+)\}",
+        RegexOptions.Compiled
+    );
+
+    private static readonly Regex IdPlaceholderRegex = new(
+        @"\$\{#(?<key>[^}]+)\}",
+        RegexOptions.Compiled
+    );
+
+    private static readonly Regex CleanVlClassNameRegex = new(
+        "_.*",
+        RegexOptions.Compiled
+    );
+
     private static readonly PropertyKey<int> VarIDCounterKey =
         new("Fuse.FuseIDCounter", typeof(int), DefaultValueMetadata.Static(0, true));
 
@@ -76,7 +92,8 @@ public static class ShaderNodesUtil
         inputs.ForEach(input =>
         {
             if (input == null) return;
-            stringBuilder.Append(input.ID);
+            // Use GetReference() for inlining support
+            stringBuilder.Append(input.GetReference());
             stringBuilder.Append(", ");
         });
         if (stringBuilder.Length > 2) stringBuilder.Remove(stringBuilder.Length - 2, 2);
@@ -124,47 +141,40 @@ public static class ShaderNodesUtil
 
     public static string Evaluate(string theShaderTemplate, IDictionary<string, string> theKeys)
     {
-        return Regex.Replace(
+        return PlaceholderRegex.Replace(
             theShaderTemplate,
-            @"\$\{(?<key>[^}]+)\}",
-            m => theKeys.ContainsKey(m.Groups["key"].Value) ? theKeys[m.Groups["key"].Value] : m.Value
+            m => theKeys.TryGetValue(m.Groups["key"].Value, out var value) ? value : m.Value
         );
     }
 
     public static string Evaluate(string theShaderTemplate, MatchEvaluator theEvaluator)
     {
-        return Regex.Replace(
-            theShaderTemplate,
-            @"\$\{(?<key>[^}]+)\}",
-            theEvaluator
-        );
+        return PlaceholderRegex.Replace(theShaderTemplate, theEvaluator);
     }
 
     public static string EvaluateIDs(string theShaderTemplate)
     {
         var id = 0;
         var idMap = new Dictionary<string, string>();
-        return Regex.Replace(
+        return IdPlaceholderRegex.Replace(
             theShaderTemplate,
-            @"\$\{#(?<key>[^}]+)\}",
             m =>
             {
                 var key = m.Groups["key"].Value;
-                if (!idMap.ContainsKey(key))
+                if (!idMap.TryGetValue(key, out var existingId))
                 {
-                    idMap[key] = id + "";
+                    existingId = id.ToString();
+                    idMap[key] = existingId;
                     id++;
                 }
 
-                return idMap[key];
+                return existingId;
             });
     }
 
     public static string CleanVlClassName(string theVlClassName)
     {
-        const string pattern = "_.*";
-        const string replacement = "";
-        return Regex.Replace(theVlClassName, pattern, replacement);
+        return CleanVlClassNameRegex.Replace(theVlClassName, "");
     }
 
     public static string FixName(string theName)

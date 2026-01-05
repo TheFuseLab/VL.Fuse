@@ -87,13 +87,14 @@ public abstract class AbstractFunction<T> : ShaderNode<T>
         if (!_isGroupable || Ins.Count <= 2) return resultPart + "${function}(${arguments});";
 
         var inputList = new List<AbstractShaderNode>(Ins);
-        var call = new StringBuilder("${function}(" + inputList[0].ID + ", " + inputList[1].ID);
+        // Use GetReference() for inlining support
+        var call = new StringBuilder("${function}(" + inputList[0].GetReference() + ", " + inputList[1].GetReference());
 
         var optionIndex = inputList.Count - _groupOptions;
         for (var index = optionIndex; index < inputList.Count; index++)
         {
             call.Append(", ");
-            call.Append(inputList[index].ID);
+            call.Append(inputList[index].GetReference());
         }
 
         call.Append(')');
@@ -102,12 +103,12 @@ public abstract class AbstractFunction<T> : ShaderNode<T>
         {
             call.Insert(0, "${function}(");
             call.Append(", ");
-            call.Append(inputList[i].ID);
+            call.Append(inputList[i].GetReference());
 
             for (var index = optionIndex; index < inputList.Count; index++)
             {
                 call.Append(", ");
-                call.Append(inputList[index].ID);
+                call.Append(inputList[index].GetReference());
             }
 
             call.Append(')');
