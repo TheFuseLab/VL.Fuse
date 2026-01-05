@@ -63,8 +63,19 @@ public class OctreeBuilder
         var buildRisingEdge = Build && !_lastBuildTrigger;
         _lastBuildTrigger = Build;
 
-        if (buildRisingEdge && !_isBuilding && PLYData != null && PLYData.Count > 0)
-            StartBuilding();
+        if (buildRisingEdge && !_isBuilding)
+        {
+            if (PLYData == null || PLYData.Count == 0)
+            {
+                Console.WriteLine($"[OctreeBuilder] WARNING: Build triggered but PLYData is empty! PLYData={PLYData?.Count ?? 0} arrays. Check FastPly load - you may need ForceReload=true on the FastPly node.");
+            }
+            else
+            {
+                var firstFieldLength = PLYData.Values.FirstOrDefault()?.Length ?? 0;
+                Console.WriteLine($"[OctreeBuilder] Build triggered with PLYData: {PLYData.Count} arrays, {firstFieldLength:N0} vertices");
+                StartBuilding();
+            }
+        }
 
         UpdateOutputs();
 
@@ -124,10 +135,20 @@ public class OctreeBuilder
             if (UseDiskCache)
             {
                 var pcKey = !string.IsNullOrWhiteSpace(PointCloudKey) ? PointCloudKey : DerivePointCloudKey(PLYData);
+                Log($"[OctreeBuilder] PointCloudKey derived: {(pcKey.Length > 100 ? pcKey.Substring(0, 100) + "..." : pcKey)}");
+                
+                if (pcKey == "empty")
+                {
+                    Console.WriteLine("[OctreeBuilder] WARNING: PointCloudKey is 'empty' - PLYData has no arrays! Cache will use wrong key.");
+                }
+                
                 var octreeKey = DiskCacheKey.ForOctree(pcKey, MaxDepth, MaxPointsPerLeaf, 0f, config.OptimizeForSpeed,
                     config.EnableDetailedValidation);
                 if (ForceCacheUpdate)
+                {
+                    Log("[OctreeBuilder] ForceCacheUpdate=true, invalidating octree cache");
                     DiskCache.Invalidate("octree", octreeKey);
+                }
 
                 if (DiskCache.TryGet("octree", octreeKey, new OctreeCacheSerializer(), default, out var payloadTask))
                 {

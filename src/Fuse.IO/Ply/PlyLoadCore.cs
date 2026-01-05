@@ -46,19 +46,15 @@ internal static class PlyLoadCore
 
             if (useDiskCache)
             {
-                // We must incorporate the decimation settings into the cache key,
-                // otherwise loading a decimated version will overwrite/read the full res version.
-                var key = DiskCacheKey.FromFileIdentity(filePath);
-
-                // Salt the key with decimation settings if active
-                if (decimationStrategy != PlyDecimationStrategy.None && decimationFactor > 1)
-                {
-                    // Note: Ideally we'd have key = key.WithVariant($"{decimationStrategy}-{decimationFactor}");
-                    // For now, the cache system relies on user managing cache folders for different quality settings.
-                }
+                // Cache key includes decimation settings so different quality levels get separate cache entries
+                var key = DiskCacheKey.ForPly(filePath, decimationStrategy, decimationFactor);
+                Log(debug, $"[PlyLoadCore] Cache key: {key}");
 
                 if (forceReload)
+                {
+                    Log(debug, "[PlyLoadCore] ForceReload=true, invalidating cache");
                     DiskCache.Invalidate("ply", key);
+                }
 
                 if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None,
                         out var payloadTask))
@@ -66,8 +62,17 @@ internal static class PlyLoadCore
                     var swHit = Stopwatch.StartNew();
                     var arrays = await payloadTask;
                     swHit.Stop();
+                    
+                    var arrayCount = arrays?.Count ?? 0;
+                    var vertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
                     Log(debug,
-                        $"[PlyLoadCore] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrays?.Count ?? 0}");
+                        $"[PlyLoadCore] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrayCount}, Vertices={vertexCount}");
+                    
+                    // Validate cache integrity - if cache has 0 arrays/vertices but file exists, it's corrupted
+                    if (arrayCount == 0 || vertexCount == 0)
+                    {
+                        Console.WriteLine($"[PlyLoadCore] WARNING: Cache returned empty data (Arrays={arrayCount}, Vertices={vertexCount}). Cache may be corrupted from a previous buggy run. Use ForceReload=true to rebuild.");
+                    }
                     
                     progressInfo.Stage = 1;
                     progressInfo.StageName = "Loaded from cache";
@@ -103,13 +108,24 @@ internal static class PlyLoadCore
                                 decimationFactor);
 
                             swBuild.Stop();
+                            var builtArrays = progressInfo.Result ?? new Dictionary<string, float[]>(0);
+                            var builtVertexCount = builtArrays.Count > 0 ? builtArrays.Values.First().Length : 0;
                             Log(debug,
-                                $"[PlyLoadCore] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={progressInfo.Result?.Count ?? 0}. Strategy={decimationStrategy}");
-                            return progressInfo.Result ?? new Dictionary<string, float[]>(0);
+                                $"[PlyLoadCore] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={builtArrays.Count}, Vertices={builtVertexCount}. Strategy={decimationStrategy}");
+                            
+                            // Warn if we're about to cache empty data
+                            if (builtArrays.Count == 0 || builtVertexCount == 0)
+                            {
+                                Console.WriteLine($"[PlyLoadCore] WARNING: About to cache empty data! Arrays={builtArrays.Count}, Vertices={builtVertexCount}. This may indicate a loading bug.");
+                            }
+                            
+                            return builtArrays;
                         },
                         CancellationToken.None);
                     swMiss.Stop();
-                    Log(debug, $"[PlyLoadCore] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms.");
+                    
+                    var cachedVertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
+                    Log(debug, $"[PlyLoadCore] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms. Cached Arrays={arrays?.Count ?? 0}, Vertices={cachedVertexCount}");
                     
                     result.Arrays = arrays ?? new Dictionary<string, float[]>(0);
                     // Use field order from FastPlyReader (preserves PLY header order)

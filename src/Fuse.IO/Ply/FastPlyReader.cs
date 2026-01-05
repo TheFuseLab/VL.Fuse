@@ -134,8 +134,11 @@ public class FastPlyReader
         var totalFileSize = fileInfo.Length;
 
         // Validation
+        var originalFactor = decimationFactor;
         if (decimationFactor < 1) decimationFactor = 1;
         if (decimationStrategy == PlyDecimationStrategy.None) decimationFactor = 1;
+        
+        Console.WriteLine($"[FastPlyReader] Input: Strategy={decimationStrategy}, Factor={originalFactor} -> ValidatedFactor={decimationFactor}");
 
         try
         {
@@ -163,6 +166,9 @@ public class FastPlyReader
                 vertexSize += properties[i].Size;
             }
 
+            Console.WriteLine($"[FastPlyReader] Header parsed: Properties={properties.Count}, VertexCount={vertexCount:N0}, VertexSize={vertexSize} bytes, HeaderSize={headerSize}");
+            Console.WriteLine($"[FastPlyReader] Decimation: Strategy={decimationStrategy}, Factor={decimationFactor}");
+
             // Estimate target size based on decimation strategy to save memory
             int estimatedTargetCount = vertexCount;
             if (decimationStrategy != PlyDecimationStrategy.None && decimationFactor > 1)
@@ -176,6 +182,8 @@ public class FastPlyReader
                 estimatedTargetCount = Math.Min(estimatedTargetCount, vertexCount);
             }
             estimatedTargetCount = Math.Max(1, estimatedTargetCount);
+            
+            Console.WriteLine($"[FastPlyReader] Estimated target count: {estimatedTargetCount:N0} (ratio: {(double)estimatedTargetCount / vertexCount:P2})");
 
             // Stage 2: Pre-allocate arrays with better memory layout
             progressInfo.Stage = 1;
@@ -239,8 +247,16 @@ public class FastPlyReader
 
             // Finalize Memory: Resize arrays if we over-allocated during estimation
             int finalVertexCount = context.GlobalWriteIndex;
+            Console.WriteLine($"[FastPlyReader] Parallel read complete: GlobalWriteIndex={finalVertexCount:N0}, EstimatedTarget={estimatedTargetCount:N0}");
+            
+            if (finalVertexCount == 0)
+            {
+                Console.WriteLine($"[FastPlyReader] WARNING: No vertices written! Strategy={decimationStrategy}, Factor={decimationFactor}, SourceVertices={vertexCount:N0}");
+            }
+            
             if (finalVertexCount != estimatedTargetCount)
             {
+                Console.WriteLine($"[FastPlyReader] Compacting arrays from {estimatedTargetCount:N0} to {finalVertexCount:N0}");
                 progressInfo.StageName = "Compacting memory";
                 foreach (var key in scalarFields.Keys.ToList())
                 {
@@ -403,8 +419,20 @@ public class FastPlyReader
 
         // Increase chunk size when decimating to reduce atomic contention overhead
         var chunkMultiplier = factor > 1 ? 4 : 1;
-        var verticesPerChunk =
-            Math.Max(4096, (vertexCount / (maxDegreeOfParallelism * 4)) * chunkMultiplier); // Ensure reasonable chunk sizes
+        var verticesPerChunk = Math.Max(4096, (vertexCount / (maxDegreeOfParallelism * 4)) * chunkMultiplier);
+        
+        // CRITICAL: Ensure chunkBytes doesn't overflow int.MaxValue
+        // Max safe chunk size in bytes is ~2GB, so limit vertices accordingly
+        const int maxSafeChunkBytes = int.MaxValue - 1024; // Leave some margin
+        var maxVerticesPerChunk = maxSafeChunkBytes / vertexSize;
+        if (verticesPerChunk > maxVerticesPerChunk)
+        {
+            Console.WriteLine($"[FastPlyReader] Reducing verticesPerChunk from {verticesPerChunk:N0} to {maxVerticesPerChunk:N0} to prevent overflow");
+            verticesPerChunk = maxVerticesPerChunk;
+        }
+
+        Console.WriteLine($"[FastPlyReader] ReadBinaryDataParallel: VertexCount={vertexCount:N0}, VertexSize={vertexSize}, VerticesPerChunk={verticesPerChunk:N0}, Parallelism={maxDegreeOfParallelism}");
+        Console.WriteLine($"[FastPlyReader] Stream position before read: {stream.Position}, Stream length: {stream.Length}");
 
         // Pre-compile property readers for each property
         var readers = new PropertyReader[properties.Length];
@@ -414,26 +442,52 @@ public class FastPlyReader
         var lastProgressUpdate = DateTime.UtcNow;
         const int progressUpdateIntervalMs = 50; // Faster updates for large files
         var processedSourceVertices = 0;
+        var chunkCount = 0;
 
         // Process data in parallel chunks
         var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
         var tasks = new List<Task>();
 
+        Console.WriteLine($"[FastPlyReader] Starting chunk loop. processedSourceVertices={processedSourceVertices}, vertexCount={vertexCount}");
+
         while (processedSourceVertices < vertexCount)
         {
             var chunkVertices = Math.Min(verticesPerChunk, vertexCount - processedSourceVertices);
-            var chunkBytes = chunkVertices * vertexSize;
+            // Use long to prevent overflow, then safely cast
+            var chunkBytesLong = (long)chunkVertices * vertexSize;
+            if (chunkBytesLong > int.MaxValue)
+            {
+                Console.WriteLine($"[FastPlyReader] ERROR: chunkBytes overflow! {chunkVertices:N0} * {vertexSize} = {chunkBytesLong:N0}");
+                throw new InvalidOperationException($"Chunk size overflow: {chunkBytesLong} bytes exceeds int.MaxValue");
+            }
+            var chunkBytes = (int)chunkBytesLong;
+
+            if (chunkCount == 0)
+            {
+                Console.WriteLine($"[FastPlyReader] First chunk: chunkVertices={chunkVertices:N0}, chunkBytes={chunkBytes:N0}");
+            }
 
             // Read chunk data
             var chunkBuffer = new byte[chunkBytes];
             var bytesRead = await stream.ReadAsync(chunkBuffer, 0, chunkBytes);
-            if (bytesRead == 0) break;
+            
+            if (chunkCount == 0)
+            {
+                Console.WriteLine($"[FastPlyReader] First chunk read: bytesRead={bytesRead:N0}, expected={chunkBytes:N0}");
+            }
+            
+            if (bytesRead == 0)
+            {
+                Console.WriteLine($"[FastPlyReader] WARNING: bytesRead=0 at chunk {chunkCount}, breaking loop! Stream position: {stream.Position}");
+                break;
+            }
 
             var actualVertices = bytesRead / vertexSize;
             var chunkStartVertex = processedSourceVertices;
 
             // Process chunk in parallel
             await semaphore.WaitAsync();
+            var currentChunk = chunkCount;
             var task = Task.Run(() =>
             {
                 try
@@ -441,8 +495,13 @@ public class FastPlyReader
                     unsafe
                     {
                         ProcessChunkUnsafe(chunkBuffer, properties, rawPropertyPointers, readers,
-                            chunkStartVertex, actualVertices, vertexSize, strategy, factor, context);
+                            chunkStartVertex, actualVertices, vertexSize, strategy, factor, context, currentChunk);
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[FastPlyReader] EXCEPTION in chunk {currentChunk}: {ex.GetType().Name}: {ex.Message}");
+                    throw; // Re-throw to propagate the error
                 }
                 finally
                 {
@@ -452,6 +511,7 @@ public class FastPlyReader
 
             tasks.Add(task);
             processedSourceVertices += actualVertices;
+            chunkCount++;
 
             // Clean up completed tasks periodically
             if (tasks.Count > maxDegreeOfParallelism * 2)
@@ -480,18 +540,28 @@ public class FastPlyReader
         }
 
         // Wait for all processing tasks to complete
-        await Task.WhenAll(tasks);
+        Console.WriteLine($"[FastPlyReader] Waiting for {tasks.Count} tasks to complete...");
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FastPlyReader] EXCEPTION during Task.WhenAll: {ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
+        
+        Console.WriteLine($"[FastPlyReader] Chunk processing complete: TotalChunks={chunkCount}, ProcessedSourceVertices={processedSourceVertices:N0}, GlobalWriteIndex={context.GlobalWriteIndex:N0}");
     }
 
     // Radically optimized chunk processing
     private static unsafe void ProcessChunkUnsafe(byte[] chunkBuffer, PropertyInfo[] properties,
         IntPtr[] rawDstPtrs, PropertyReader[] readers,
         int startVertex, int chunkVertexCount, int vertexSize,
-        PlyDecimationStrategy strategy, int factor, LoadContext context)
+        PlyDecimationStrategy strategy, int factor, LoadContext context, int chunkIndex)
     {
         // 1. Calculate Count & Stride strategy fast path
         int keepCount = 0;
-        int* indicesPtr = null;
         int[]? indicesArray = null;
 
         if (strategy == PlyDecimationStrategy.None || factor <= 1)
@@ -508,31 +578,43 @@ public class FastPlyReader
             {
                 keepCount = (chunkVertexCount - firstInChunk + factor - 1) / factor;
             }
+            
+            // Debug logging for first few chunks
+            if (chunkIndex < 3)
+            {
+                Console.WriteLine($"[FastPlyReader] Chunk[{chunkIndex}] Stride: startVertex={startVertex}, chunkVertexCount={chunkVertexCount}, factor={factor}, globalOffset={globalOffset}, firstInChunk={firstInChunk}, keepCount={keepCount}");
+            }
             // No indices needed, we will stride the pointer
         }
         else // Random
         {
             // Use ArrayPool to avoid stack overflow risks while being fast
             indicesArray = ArrayPool<int>.Shared.Rent(chunkVertexCount);
-            fixed (int* ptr = indicesArray)
+            uint threshold = (uint)(uint.MaxValue / factor);
+            for (int i = 0; i < chunkVertexCount; i++)
             {
-                uint threshold = (uint)(uint.MaxValue / factor);
-                for (int i = 0; i < chunkVertexCount; i++)
-                {
-                    uint x = (uint)(startVertex + i);
-                    x = (x ^ 61) ^ (x >> 16);
-                    x = x + (x << 3);
-                    x = x ^ (x >> 4);
-                    x = x * 0x27d4eb2d;
-                    x = x ^ (x >> 15);
-                    if (x < threshold) ptr[keepCount++] = i;
-                }
-                indicesPtr = ptr;
+                uint x = (uint)(startVertex + i);
+                x = (x ^ 61) ^ (x >> 16);
+                x = x + (x << 3);
+                x = x ^ (x >> 4);
+                x = x * 0x27d4eb2d;
+                x = x ^ (x >> 15);
+                if (x < threshold) indicesArray[keepCount++] = i;
+            }
+            
+            // Debug logging for first few chunks
+            if (chunkIndex < 3)
+            {
+                Console.WriteLine($"[FastPlyReader] Chunk[{chunkIndex}] Random: startVertex={startVertex}, chunkVertexCount={chunkVertexCount}, factor={factor}, threshold={threshold}, keepCount={keepCount}");
             }
         }
 
         if (keepCount == 0)
         {
+            if (chunkIndex < 3)
+            {
+                Console.WriteLine($"[FastPlyReader] Chunk[{chunkIndex}] WARNING: keepCount=0, skipping chunk! Strategy={strategy}, Factor={factor}");
+            }
             if (indicesArray != null) ArrayPool<int>.Shared.Return(indicesArray);
             return;
         }
@@ -545,45 +627,19 @@ public class FastPlyReader
         // We can cast the IntPtr back to check bounds, but generally we rely on the large estimation
         // For radical speed, we skip per-vertex bound checks and rely on the allocated buffer being large enough (110% for random).
 
-        fixed (byte* bufferBase = chunkBuffer)
+        bool canUseSIMD = properties.Length == 3 &&
+                          properties[0].Type == PropertyType.Float &&
+                          properties[1].Type == PropertyType.Float &&
+                          properties[2].Type == PropertyType.Float &&
+                          Vector.IsHardwareAccelerated;
+
+        // 3. Write Data - fixed blocks must encompass all pointer usage
+        if (strategy == PlyDecimationStrategy.Random && indicesArray != null)
         {
-            bool canUseSIMD = properties.Length == 3 &&
-                              properties[0].Type == PropertyType.Float &&
-                              properties[1].Type == PropertyType.Float &&
-                              properties[2].Type == PropertyType.Float &&
-                              Vector.IsHardwareAccelerated;
-
-            // 3. Write Data
-            if (strategy == PlyDecimationStrategy.Stride)
+            // Random path: pin both chunkBuffer and indicesArray together
+            fixed (byte* bufferBase = chunkBuffer)
+            fixed (int* indicesPtr = indicesArray)
             {
-                int globalOffset = startVertex % factor;
-                int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
-
-                // Optimized Stride Path: No Indices Array
-                if (canUseSIMD)
-                {
-                    CopyStrideSIMD(bufferBase, rawDstPtrs, properties, firstInChunk, keepCount, writeStart, vertexSize, factor);
-                }
-                else
-                {
-                    CopyStrideGeneric(bufferBase, rawDstPtrs, properties, readers, firstInChunk, keepCount, writeStart, vertexSize, factor);
-                }
-            }
-            else if (strategy == PlyDecimationStrategy.None || factor <= 1)
-            {
-                // Optimized Continuous Copy Path
-                if (canUseSIMD)
-                {
-                    CopyContiguousSIMD(bufferBase, rawDstPtrs, properties, chunkVertexCount, writeStart, vertexSize);
-                }
-                else
-                {
-                    CopyContiguousGeneric(bufferBase, rawDstPtrs, properties, readers, chunkVertexCount, writeStart, vertexSize);
-                }
-            }
-            else
-            {
-                // Gather Path (Random)
                 if (canUseSIMD)
                 {
                     CopyGatherSIMD(bufferBase, rawDstPtrs, properties, indicesPtr, keepCount, writeStart, vertexSize);
@@ -593,9 +649,42 @@ public class FastPlyReader
                     CopyGatherGeneric(bufferBase, rawDstPtrs, properties, readers, indicesPtr, keepCount, writeStart, vertexSize);
                 }
             }
+            ArrayPool<int>.Shared.Return(indicesArray);
         }
+        else
+        {
+            // Non-random paths: only need to pin chunkBuffer
+            fixed (byte* bufferBase = chunkBuffer)
+            {
+                if (strategy == PlyDecimationStrategy.Stride)
+                {
+                    int globalOffset = startVertex % factor;
+                    int firstInChunk = globalOffset == 0 ? 0 : factor - globalOffset;
 
-        if (indicesArray != null) ArrayPool<int>.Shared.Return(indicesArray);
+                    // Optimized Stride Path: No Indices Array
+                    if (canUseSIMD)
+                    {
+                        CopyStrideSIMD(bufferBase, rawDstPtrs, properties, firstInChunk, keepCount, writeStart, vertexSize, factor);
+                    }
+                    else
+                    {
+                        CopyStrideGeneric(bufferBase, rawDstPtrs, properties, readers, firstInChunk, keepCount, writeStart, vertexSize, factor);
+                    }
+                }
+                else // None or factor <= 1
+                {
+                    // Optimized Continuous Copy Path
+                    if (canUseSIMD)
+                    {
+                        CopyContiguousSIMD(bufferBase, rawDstPtrs, properties, chunkVertexCount, writeStart, vertexSize);
+                    }
+                    else
+                    {
+                        CopyContiguousGeneric(bufferBase, rawDstPtrs, properties, readers, chunkVertexCount, writeStart, vertexSize);
+                    }
+                }
+            }
+        }
     }
 
     // --- Optimized Copiers ---

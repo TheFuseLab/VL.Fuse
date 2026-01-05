@@ -66,11 +66,11 @@ public class FastPly
 
         Progress = (float)_progressInfo.ProgressPercentage;
         Status = _progressInfo.StageName ?? Status;
-        IsCompleted = _progressInfo.IsCompleted;
+        // NOTE: IsCompleted is set in StartLoading AFTER Result is populated, not from progressInfo
         HasError = _progressInfo.Error != null;
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
-        if (!_progressInfo.IsCompleted) return;
+        if (!IsCompleted) return;
 
         // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
         _isLoading = false;
@@ -79,6 +79,7 @@ public class FastPly
     private async void StartLoading()
     {
         _isLoading = true;
+        IsCompleted = false; // Reset completion flag at start
         _progressInfo = new FastPlyReader.ProgressInfo();
 
         // Capture parameters locally to avoid threading issues if inputs change during load
@@ -99,11 +100,14 @@ public class FastPly
                 CacheBasePath,
                 Debug);
 
-            // Update outputs from load result
+            // Update outputs from load result - set Result BEFORE IsCompleted!
             Result = loadResult.Arrays;
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
             _progressInfo.Result = loadResult.Arrays;
+            
+            // NOW set IsCompleted - after Result is populated
+            IsCompleted = true;
             
             Log($"[FastPly] Load complete. Arrays={loadResult.Arrays.Count}, Vertices={loadResult.VertexCount}, CacheHit={loadResult.WasCacheHit}");
         }
@@ -111,6 +115,7 @@ public class FastPly
         {
             _progressInfo.Error = ex;
             _progressInfo.IsCompleted = true;
+            IsCompleted = true; // Also set on error
         }
     }
     

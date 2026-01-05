@@ -76,11 +76,11 @@ public class FastPlyInterleaved
 
         Progress = (float)_progressInfo.ProgressPercentage;
         Status = _progressInfo.StageName ?? Status;
-        IsCompleted = _progressInfo.IsCompleted;
+        // NOTE: IsCompleted is set in StartLoading AFTER Result is populated, not from progressInfo
         HasError = _progressInfo.Error != null;
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
-        if (!_progressInfo.IsCompleted) return;
+        if (!IsCompleted) return;
 
         // Result is set in StartLoading after conversion
         _isLoading = false;
@@ -89,6 +89,7 @@ public class FastPlyInterleaved
     private async void StartLoading()
     {
         _isLoading = true;
+        IsCompleted = false; // Reset completion flag at start
         _progressInfo = new FastPlyReader.ProgressInfo();
 
         // Capture parameters locally to avoid threading issues if inputs change during load
@@ -117,6 +118,7 @@ public class FastPlyInterleaved
                 ConvertSoAToInterleaved(loadResult.Arrays, loadResult.FieldOrder);
             swConvert.Stop();
 
+            // Set Result BEFORE IsCompleted!
             Result = interleaved;
             VertexCount = vertexCount;
             FieldsPerVertex = fieldsPerVertex;
@@ -125,6 +127,9 @@ public class FastPlyInterleaved
             _progressInfo.StageName = "Complete";
             _progressInfo.ProgressPercentage = 100;
             _progressInfo.IsCompleted = true;
+            
+            // NOW set IsCompleted - after Result is populated
+            IsCompleted = true;
 
             Log($"[FastPlyInterleaved] Load complete. Vertices={vertexCount}, Fields={fieldsPerVertex}, " +
                 $"InterleavedSize={interleaved.Length}, ConvertTime={swConvert.ElapsedMilliseconds}ms, " +
@@ -134,6 +139,7 @@ public class FastPlyInterleaved
         {
             _progressInfo.Error = ex;
             _progressInfo.IsCompleted = true;
+            IsCompleted = true; // Also set on error
         }
     }
 

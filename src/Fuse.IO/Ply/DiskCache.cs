@@ -771,6 +771,21 @@ public static class DiskCacheKey
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Creates a cache key for PLY files that includes decimation settings.
+    /// Different decimation strategies/factors will produce different cache entries.
+    /// </summary>
+    public static string ForPly(string filePath, PlyDecimationStrategy decimationStrategy, int decimationFactor)
+    {
+        var baseKey = FromFileIdentity(filePath);
+        // Only append decimation info if actually decimating
+        if (decimationStrategy != PlyDecimationStrategy.None && decimationFactor > 1)
+        {
+            return $"{baseKey}|dec={decimationStrategy}|factor={decimationFactor}";
+        }
+        return baseKey;
+    }
+
     public static string ForOctree(string pointCloudKey, int maxDepth, int maxPointsPerLeaf, float subdivisionEpsilon,
         bool optimizeForSpeed, bool enableDetailedValidation)
     {
