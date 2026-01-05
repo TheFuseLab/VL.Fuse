@@ -398,8 +398,23 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
 public class ValueInput<T> : AbstractInput<T, ValueParameterKey<T>, ValueParameterUpdater<T>>, AbstractSetValueInput
     where T : struct
 {
-    public ValueInput(NodeContext nodeContext) : base(nodeContext, "input", false)
+    /// <summary>
+    /// Creates a value input with a default name.
+    /// </summary>
+    public ValueInput(NodeContext nodeContext) : this(nodeContext, null)
     {
+    }
+
+    /// <summary>
+    /// Creates a value input with an optional semantic name for better shader code readability.
+    /// </summary>
+    /// <param name="nodeContext">The VL node context.</param>
+    /// <param name="semanticName">Optional human-readable name (e.g., "boxSize", "intensity").
+    /// When set, generated shader code will use this name instead of "input_123456".</param>
+    public ValueInput(NodeContext nodeContext, string semanticName) : base(nodeContext, "input", false)
+    {
+        if (!string.IsNullOrEmpty(semanticName))
+            SemanticName = ShaderNodesUtil.FixName(semanticName);
         ParameterKey = new ValueParameterKey<T>(ID);
         SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
     }
