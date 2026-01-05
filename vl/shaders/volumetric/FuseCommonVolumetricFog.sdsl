@@ -98,6 +98,15 @@ shader FuseCommonVolumetricFog : FuseCommonFroxel, FuseCoreMathHash, FuseCoreMat
         return float4(sceneRgb, 1);
     }
 
+    
+    float GetBlueNoise(
+        Texture2D<float4> BlueNoise,
+        float2 screenPx)
+    {
+        int2 coord = int2(screenPx) % 64;
+        return BlueNoise.Load(int3(coord, 0)).x;  // Use .x, .y, .z, or .w
+    }
+
 
     float4 ResolveVolumetricTransmittance(
         Texture2D   SceneColor,
@@ -115,7 +124,8 @@ shader FuseCommonVolumetricFog : FuseCommonFroxel, FuseCoreMathHash, FuseCoreMat
         float3              FogFallbackColor, // used if FogLight is off / debug
         float2              uv,
         float2              screenPx,
-        float               SigmaT            // extinction multiplier (>= SigmaS). start: 1.0
+        float               SigmaT,            // extinction multiplier (>= SigmaS). start: 1.0
+        Texture2D<float4>           BlueNoise
     )
     {
         float4 scene = SceneColor.Sample(LinearClamp, uv);
@@ -128,8 +138,16 @@ shader FuseCommonVolumetricFog : FuseCommonFroxel, FuseCoreMathHash, FuseCoreMat
         // --- Depth termination ---
         float depthHw = SceneDepth.Sample(LinearClamp, uv).x;
         float viewZScene = ViewZFromHardwareDepth_Row(uvF, depthHw, InvProj);
-        viewZScene = clamp(viewZScene, Near, Far);
 
+        // After you compute viewZScene
+        float z0a, z1a;
+        SliceZBounds(SliceMode, SliceLambda, res, Near, Far, 0, z0a, z1a);
+        float firstDs = max(z1a - z0a, 1e-4);
+
+        // Jitter the ray termination depth a tiny bit (clamped)
+         float jitter01 = GetBlueNoise(BlueNoise,screenPx);          // [0..1)
+            float jitter   = (jitter01 - 0.5);          // [-0.5..+0.5]
+        viewZScene = clamp(viewZScene + jitter * firstDs, Near, Far);
         float depth01Scene = Depth01FromViewZ(viewZScene, Near, Far);
 
         float sliceF; int maxSlice; float sliceT;
@@ -157,10 +175,9 @@ shader FuseCommonVolumetricFog : FuseCommonFroxel, FuseCoreMathHash, FuseCoreMat
             if (ds <= 0.0) break;
 
             // --- Trilinear sample with jittered z ---
-            float j = (hash12(screenPx + (float)z * 17.0) - 0.5) * 0.0;
-            float zTex = ((float)z + 0.5 + j) / (float)res.z;
+           
+            float zTex = ((float)z + 0.5) / (float)res.z;
             zTex = saturate(zTex);
-
             float3 uvwTex = float3(
                 (uvF.x * res.x + 0.5) / res.x,
                 (uvF.y * res.y + 0.5) / res.y,

@@ -1,0 +1,743 @@
+// ============================================================================
+// FuseCommonVolumetricFogEmissive.sdsl
+// 
+// Emissive map injection into froxel-based volumetric fog.
+// Uses integer atomics for DX11 compatibility with scatter-based injection.
+//
+// Architecture:
+//   Phase 1: Scatter emissive pixels into uint accumulation buffer
+//   Phase 2: Convert uint buffer to float FogLight texture
+//
+// Recommended: Use quarter-resolution emissive map (480×270 for 1080p)
+//              for optimal performance with 160×90×64 froxel grid.
+//
+// Usage:
+//   1. Clear AccumBuffer to 0
+//   2. Call ScatterEmissiveToAccum_RX (dispatch over emissive resolution)
+//   3. Call ConvertAccumToFogLight (dispatch over froxel resolution)
+//   4. Use FogLight in your resolve pass
+//
+// ============================================================================
+
+shader FuseCommonVolumetricFogEmissive : FuseCommonFroxel
+{
+    // ========================================================================
+    // CONSTANTS
+    // ========================================================================
+    
+    // Scale factor for float→uint conversion (10-bit precision)
+    // Max accumulated value before overflow: ~4 million (safe for typical scenes)
+    static const float EMISSIVE_SCALE = 1024.0;
+    static const float EMISSIVE_SCALE_INV = 1.0 / 1024.0;
+    
+    // ========================================================================
+    // HELPER FUNCTIONS
+    // ========================================================================
+    
+    float Luminance(float3 color)
+    {
+        return dot(color, float3(0.2126, 0.7152, 0.0722));
+    }
+    
+    // Convert float RGB to int4 for atomic accumulation (int4 for Fuse compatibility)
+    int4 FloatToInt4(float3 color, float scale)
+    {
+        // Clamp to prevent overflow (max ~2,000,000 before scale to stay in int range)
+        float3 clamped = clamp(color, 0.0, 2000000.0);
+        return int4(
+            (int)(clamped.r * scale),
+            (int)(clamped.g * scale),
+            (int)(clamped.b * scale),
+            0  // .w unused, ensures 128-bit alignment
+        );
+    }
+    
+    // Convert int4 back to float RGB
+    float3 Int4ToFloat(int4 accum, float scaleInv)
+    {
+        return float3(
+            (float)accum.r * scaleInv,
+            (float)accum.g * scaleInv,
+            (float)accum.b * scaleInv
+        );
+    }
+    
+    // Gaussian-ish weight for kernel splatting (normalized for 3×3)
+    float KernelWeight3x3(int dx, int dy)
+    {
+        // Center = 1.0, edges = 0.5, corners = 0.25
+        // Sum = 1 + 4*0.5 + 4*0.25 = 4.0
+        // Normalized: center = 0.25, edges = 0.125, corners = 0.0625
+        float w = 1.0;
+        if (abs(dx) == 1) w *= 0.5;
+        if (abs(dy) == 1) w *= 0.5;
+        return w * 0.25; // Normalize so sum = 1
+    }
+    
+    // Weight for 3×3×3 kernel (XY kernel × Z falloff)
+    float KernelWeight3x3x3(int dx, int dy, int dz)
+    {
+        float wXY = KernelWeight3x3(dx, dy);
+        // Z falloff: center = 1.0, neighbors = 0.5
+        float wZ = (dz == 0) ? 0.7 : 0.15;
+        // Renormalize: sum over 3 slices = 0.5 + 0.25 + 0.25 = 1.0
+        return wXY * wZ;
+    }
+
+    // 5×5 Gaussian-ish weights (sigma ≈ 1.2)
+    // For R3 kernel default - sum = 1.0
+    float KernelWeight5x5(int dx, int dy)
+    {
+        // Pre-computed 5×5 Gaussian-ish weights
+        // Can be replaced with buffer lookup for runtime adjustment
+        const float weights[5][5] = {
+            { 0.003, 0.013, 0.022, 0.013, 0.003 },
+            { 0.013, 0.059, 0.097, 0.059, 0.013 },
+            { 0.022, 0.097, 0.159, 0.097, 0.022 },
+            { 0.013, 0.059, 0.097, 0.059, 0.013 },
+            { 0.003, 0.013, 0.022, 0.013, 0.003 }
+        };
+        return weights[dy + 2][dx + 2];
+    }
+    
+    // 5×5×3 kernel weight
+    float KernelWeight5x5x3(int dx, int dy, int dz)
+    {
+        float wXY = KernelWeight5x5(dx, dy);
+        float wZ = (dz == 0) ? 0.5 : 0.25;
+        return wXY * wZ;
+    }
+    
+    float KernelWeight5x5x3_Crisp(int dx, int dy, int dz)
+    {
+        float wXY = KernelWeight5x5(dx, dy);
+        float wZ = (dz == 0) ? 0.7 : 0.15;
+        return wXY * wZ;
+    }
+    
+    // Linear buffer index from 3D cell coordinate
+    int CellToLinearIndex(int3 resolution, int3 cell)
+    {
+        cell = clamp(cell, int3(0,0,0), resolution - 1);
+        return cell.x + resolution.x * (cell.y + resolution.y * cell.z);
+    }
+    
+    // ========================================================================
+    // CLEAR ACCUMULATION BUFFER
+    // ========================================================================
+    
+    // Call before scatter pass. Dispatch: (Resolution.x, Resolution.y, Resolution.z)
+    void ClearAccumBuffer(
+        RWStructuredBuffer<uint3> AccumBuffer,
+        int3 Resolution,
+        uint3 dispatchThreadID
+    )
+    {
+        if (dispatchThreadID.x >= (uint)Resolution.x ||
+            dispatchThreadID.y >= (uint)Resolution.y ||
+            dispatchThreadID.z >= (uint)Resolution.z)
+            return;
+            
+        int idx = CellToLinearIndex(Resolution, int3(dispatchThreadID));
+        AccumBuffer[idx] = uint3(0, 0, 0);
+    }
+
+    
+    // ========================================================================
+    // SCATTER R0: Surface-Anchored (1 write per pixel)
+    // ========================================================================
+    
+    // Injects emissive at exact surface position. Fastest, crispest.
+    // Dispatch: (EmissiveWidth, EmissiveHeight, 1)
+    //
+    // Parameters:
+    //   AccumBuffer     - RWStructuredBuffer<uint3> sized Resolution.x * Resolution.y * Resolution.z
+    //   EmissiveMap     - Quarter-res HDR emissive texture
+    //   DepthMap        - Matching resolution depth texture (hardware depth 0..1)
+    //   LinearClamp     - Sampler for texture reads
+    //   InvProj         - Inverse projection matrix (ROW-VECTOR convention)
+    //   FlipY           - Y-flip for UV coordinates
+    //   SliceMode       - 0=linear, 1=log, 2=hybrid
+    //   SliceLambda     - Hybrid blend factor
+    //   Resolution      - Froxel grid resolution (e.g., 160×90×64)
+    //   EmissiveSize    - Emissive map dimensions (e.g., 480×270)
+    //   Near, Far       - Fog depth range
+    //   EmissiveStrength- Artist multiplier
+    //   EmissiveThreshold- Luminance cutoff to skip dark pixels
+    //   dispatchThreadID- SV_DispatchThreadID
+    
+    void ScatterEmissiveToAccum_R0(
+        RWStructuredBuffer<int4> AccumBuffer,
+        Texture2D<float4>         EmissiveMap,
+        Texture2D<float>          DepthMap,
+        SamplerState              LinearClamp,
+        float4x4                  InvProj,
+        bool                      FlipY,
+        int                       SliceMode,
+        float                     SliceLambda,
+        int3                      Resolution,
+        int2                      EmissiveSize,
+        float                     Near,
+        float                     Far,
+        float                     EmissiveStrength,
+        float                     EmissiveThreshold,
+        uint3                     dispatchThreadID,
+        Texture3D<float>         FogDensity,   
+        float                    DensityScale,      
+        float                    DensityBias
+    )
+    {
+        // Bounds check
+        if (dispatchThreadID.x >= (uint)EmissiveSize.x ||
+            dispatchThreadID.y >= (uint)EmissiveSize.y)
+            return;
+        
+        // Compute UV for this pixel
+        float2 uv = (float2(dispatchThreadID.xy) + 0.5) / float2(EmissiveSize);
+        float2 uvF = uv;
+        if (FlipY) uvF.y = 1.0 - uv.y;
+        
+        
+        // Sample emissive
+        float3 emissive = EmissiveMap.SampleLevel(LinearClamp, uvF, 0).rgb;
+        
+        // Early out for dark pixels
+        if (Luminance(emissive) < EmissiveThreshold)
+            return;
+        
+        // Sample depth and reconstruct viewZ
+        
+        float depthHw = DepthMap.SampleLevel(LinearClamp, uvF, 0).x;
+        float viewZ = ViewZFromHardwareDepth_Row(uvF, depthHw, InvProj);
+        viewZ = clamp(viewZ, Near, Far);
+        
+        // Compute slice index
+        float depth01 = Depth01FromViewZ(viewZ, Near, Far);
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, depth01, sliceF, sliceIdx, sliceT);
+        sliceIdx = clamp(sliceIdx, 0, Resolution.z - 1);
+        
+        // Compute froxel XY from UV
+        int fx = clamp((int)(uv.x * Resolution.x), 0, Resolution.x - 1);
+        int fy = clamp((int)(uv.y * Resolution.y), 0, Resolution.y - 1);
+        
+        // Scale emissive and convert to uint
+        int3 cell = int3(fx, fy, sliceIdx);
+
+        // Sample fog density at that cell
+        float density = FogDensity.SampleLevel(
+            LinearClamp,
+            (float3(cell) + 0.5) / float3(Resolution),
+            0
+        ).x;
+
+        // Compute weight from density
+        float wD = saturate(density * DensityScale + DensityBias);
+
+        // Optional: early-out if almost no fog
+        if (wD <= 1e-4) return;
+
+        float3 contrib = emissive * EmissiveStrength * wD;
+        int4 contribU = FloatToInt4(contrib, EMISSIVE_SCALE);
+        
+        // Atomic add to accumulation buffer
+        int idx = CellToLinearIndex(Resolution, int3(fx, fy, sliceIdx));
+        
+        InterlockedAdd(AccumBuffer[idx].r, contribU.r);
+        InterlockedAdd(AccumBuffer[idx].g, contribU.g);
+        InterlockedAdd(AccumBuffer[idx].b, contribU.b);
+    }
+    
+    // ========================================================================
+    // SCATTER R1: 3×3×1 Kernel (9 writes per pixel)
+    // ========================================================================
+    
+    // Spreads emissive into 3×3 XY neighborhood at surface slice.
+    // Good balance of softness and performance.
+    // Dispatch: (EmissiveWidth, EmissiveHeight, 1)
+    
+    void ScatterEmissiveToAccum_R1(
+        RWStructuredBuffer<int4> AccumBuffer,
+        Texture2D<float4>         EmissiveMap,
+        Texture2D<float>          DepthMap,
+        SamplerState              LinearClamp,
+        float4x4                  InvProj,
+        bool                      FlipY,
+        int                       SliceMode,
+        float                     SliceLambda,
+        int3                      Resolution,
+        int2                      EmissiveSize,
+        float                     Near,
+        float                     Far,
+        float                     EmissiveStrength,
+        float                     EmissiveThreshold,
+        uint3                     dispatchThreadID,
+        Texture3D<float>         FogDensity,      // NEW
+        float                    DensityScale,    // NEW
+        float                    DensityBias     // NEW
+    )
+    {
+        // Bounds check
+        if (dispatchThreadID.x >= (uint)EmissiveSize.x ||
+            dispatchThreadID.y >= (uint)EmissiveSize.y)
+            return;
+        
+        // Compute UV for this pixel
+        float2 uv = (float2(dispatchThreadID.xy) + 0.5) / float2(EmissiveSize);
+        float2 uvF = uv;
+        if (FlipY) uvF.y = 1.0 - uv.y;
+        
+        // Sample emissive
+        float3 emissive = EmissiveMap.SampleLevel(LinearClamp, uvF, 0).rgb;
+        
+        // Early out for dark pixels
+        if (Luminance(emissive) < EmissiveThreshold)
+            return;
+        
+        
+        // Sample depth and reconstruct viewZ
+        float depthHw = DepthMap.SampleLevel(LinearClamp, uvF, 0).x;
+        float viewZ = ViewZFromHardwareDepth_Row(uvF, depthHw, InvProj);
+        viewZ = clamp(viewZ, Near, Far);
+        
+        // Compute slice index
+        float depth01 = Depth01FromViewZ(viewZ, Near, Far);
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, depth01, sliceF, sliceIdx, sliceT);
+        sliceIdx = clamp(sliceIdx, 0, Resolution.z - 1);
+        
+        // Compute froxel XY from UV (center of kernel)
+        int fx = (int)(uv.x * Resolution.x);
+        int fy = (int)(uv.y * Resolution.y);
+        
+        // Scale emissive
+        float3 baseContrib = emissive * EmissiveStrength;
+        
+        // Splat to 3×3 XY neighborhood
+        [unroll]
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            [unroll]
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                int nx = fx + dx;
+                int ny = fy + dy;
+                
+                // Bounds check
+                if (nx < 0 || nx >= Resolution.x || ny < 0 || ny >= Resolution.y)
+                    continue;
+                
+                int3 cell = int3(nx, ny, sliceIdx);
+
+                float density = FogDensity.SampleLevel(
+                    LinearClamp,
+                    (float3(cell) + 0.5) / float3(Resolution),
+                    0
+                ).x;
+
+                float wD = saturate(density * DensityScale + DensityBias);
+                if (wD <= 1e-4) continue;
+
+                float weight = KernelWeight3x3(dx, dy) * wD;
+
+                float3 contrib = baseContrib * weight;
+                int4 contribU = FloatToInt4(contrib, EMISSIVE_SCALE);
+                
+                int idx = CellToLinearIndex(Resolution, cell);
+                
+                InterlockedAdd(AccumBuffer[idx].r, contribU.r);
+                InterlockedAdd(AccumBuffer[idx].g, contribU.g);
+                InterlockedAdd(AccumBuffer[idx].b, contribU.b);
+            }
+        }
+    }
+    
+    // ========================================================================
+    // SCATTER R2: 3×3×3 Kernel (27 writes per pixel)
+    // ========================================================================
+    
+    // Full volumetric spread: 3×3 XY × 3 slices.
+    // Maximum softness, true volumetric bloom effect.
+    // Dispatch: (EmissiveWidth, EmissiveHeight, 1)
+    
+    void ScatterEmissiveToAccum_R2(
+        RWStructuredBuffer<int4> AccumBuffer,
+        Texture2D<float4>         EmissiveMap,
+        Texture2D<float>          DepthMap,
+        SamplerState              LinearClamp,
+        float4x4                  InvProj,
+        bool                      FlipY,
+        int                       SliceMode,
+        float                     SliceLambda,
+        int3                      Resolution,
+        int2                      EmissiveSize,
+        float                     Near,
+        float                     Far,
+        float                     EmissiveStrength,
+        float                     EmissiveThreshold,
+        uint3                     dispatchThreadID,
+        Texture3D<float>         FogDensity,      // NEW
+        float                    DensityScale,    // NEW
+        float                    DensityBias     // NEW
+    )
+    {
+        // Bounds check
+        if (dispatchThreadID.x >= (uint)EmissiveSize.x ||
+            dispatchThreadID.y >= (uint)EmissiveSize.y)
+            return;
+        
+        // Compute UV for this pixel
+        float2 uv = (float2(dispatchThreadID.xy) + 0.5) / float2(EmissiveSize);
+        float2 uvF = uv;
+        if (FlipY) uvF.y = 1.0 - uv.y;
+        
+        // Sample emissive
+        float3 emissive = EmissiveMap.SampleLevel(LinearClamp, uvF, 0).rgb;
+        
+        // Early out for dark pixels
+        if (Luminance(emissive) < EmissiveThreshold)
+            return;
+        
+        // Sample depth and reconstruct viewZ
+        float depthHw = DepthMap.SampleLevel(LinearClamp, uvF, 0).x;
+        float viewZ = ViewZFromHardwareDepth_Row(uvF, depthHw, InvProj);
+        viewZ = clamp(viewZ, Near, Far);
+        
+        // Compute slice index
+        float depth01 = Depth01FromViewZ(viewZ, Near, Far);
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, depth01, sliceF, sliceIdx, sliceT);
+        sliceIdx = clamp(sliceIdx, 0, Resolution.z - 1);
+        
+        // Compute froxel XY from UV (center of kernel)
+        int fx = (int)(uv.x * Resolution.x);
+        int fy = (int)(uv.y * Resolution.y);
+        
+        // Scale emissive
+        float3 baseContrib = emissive * EmissiveStrength;
+        
+        // Splat to 3×3×3 neighborhood
+        [unroll]
+        for (int dz = -1; dz <= 1; dz++)
+        {
+            int nz = sliceIdx + dz;
+            
+            // Bounds check Z
+            if (nz < 0 || nz >= Resolution.z)
+                continue;
+            
+            [unroll]
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                [unroll]
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = fx + dx;
+                    int ny = fy + dy;
+                    
+                    // Bounds check XY
+                    if (nx < 0 || nx >= Resolution.x || ny < 0 || ny >= Resolution.y)
+                        continue;
+                    
+                    int3 cell = int3(nx, ny, nz);
+
+                    float density = FogDensity.SampleLevel(
+                        LinearClamp,
+                        (float3(cell) + 0.5) / float3(Resolution),
+                        0
+                    ).x;
+
+                    float wD = saturate(density * DensityScale + DensityBias);
+                    if (wD <= 1e-4) continue;
+
+                    float weight = KernelWeight3x3(dx, dy) * wD;
+
+                    float3 contrib = baseContrib * weight;
+                    int4 contribU = FloatToInt4(contrib, EMISSIVE_SCALE);
+                    
+                    int idx = CellToLinearIndex(Resolution,cell );
+                    
+                    InterlockedAdd(AccumBuffer[idx].r, contribU.r);
+                    InterlockedAdd(AccumBuffer[idx].g, contribU.g);
+                    InterlockedAdd(AccumBuffer[idx].b, contribU.b);
+                }
+            }
+        }
+    }
+
+        // ========================================================================
+    // SCATTER R3: 5×5×3 Kernel (75 writes per pixel)
+    // ========================================================================
+    
+    // Wide volumetric spread: 5×5 XY × 3 slices.
+    // Best for large tile sizes or very soft glow effects.
+    // Dispatch: (EmissiveWidth, EmissiveHeight, 1)
+    
+    void ScatterEmissiveToAccum_R3(
+        RWStructuredBuffer<int4> AccumBuffer,
+        Texture2D<float4>         EmissiveMap,
+        Texture2D<float>         DepthMap,
+        SamplerState              LinearClamp,
+        float4x4                  InvProj,
+        bool                      FlipY,
+        int                       SliceMode,
+        float                     SliceLambda,
+        int3                      Resolution,
+        int2                      EmissiveSize,
+        float                     Near,
+        float                     Far,
+        float                     EmissiveStrength,
+        float                     EmissiveThreshold,
+        uint3                     dispatchThreadID
+    )
+    {
+        if (dispatchThreadID.x >= (uint)EmissiveSize.x ||
+            dispatchThreadID.y >= (uint)EmissiveSize.y)
+            return;
+        
+        float2 uv = (float2(dispatchThreadID.xy) + 0.5) / float2(EmissiveSize);
+        float2 uvF = uv;
+        if (FlipY) uvF.y = 1.0 - uvF.y;
+        
+        float4 emissiveSample = EmissiveMap.SampleLevel(LinearClamp, uvF, 0);
+        float3 emissive = emissiveSample.rgb;
+        float  alpha    = emissiveSample.a;
+        
+        if (Luminance(emissive) * alpha < EmissiveThreshold)
+            return;
+        
+        
+        float depthHw = DepthMap.SampleLevel(LinearClamp, uvF, 0).x;
+        float viewZ = ViewZFromHardwareDepth_Row(uv, depthHw, InvProj);
+        viewZ = clamp(viewZ, Near, Far);
+        
+        float depth01 = Depth01FromViewZ(viewZ, Near, Far);
+        float sliceF; int sliceIdx; float sliceT;
+        DepthToSlice(SliceMode, SliceLambda, Resolution, Near, Far, depth01, sliceF, sliceIdx, sliceT);
+        sliceIdx = clamp(sliceIdx, 0, Resolution.z - 1);
+        
+        int fx = (int)(uv.x * Resolution.x);
+        int fy = (int)(uv.y * Resolution.y);
+        
+        float3 baseContrib = emissive * alpha * EmissiveStrength;
+        
+        // Splat to 5×5×3 neighborhood
+        [unroll]
+        for (int dz = -1; dz <= 1; dz++)
+        {
+            int nz = sliceIdx + dz;
+            if (nz < 0 || nz >= Resolution.z)
+                continue;
+            
+            [unroll]
+            for (int dy = -2; dy <= 2; dy++)
+            {
+                [unroll]
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    int nx = fx + dx;
+                    int ny = fy + dy;
+                    
+                    if (nx < 0 || nx >= Resolution.x || ny < 0 || ny >= Resolution.y)
+                        continue;
+                    
+                    float weight = KernelWeight5x5x3(dx, dy, dz);
+                    
+                    float3 contrib = baseContrib * weight;
+                    int4 contribU = FloatToInt4(contrib, EMISSIVE_SCALE);
+                    
+                    int idx = CellToLinearIndex(Resolution, int3(nx, ny, nz));
+                    
+                    InterlockedAdd(AccumBuffer[idx].r, contribU.r);
+                    InterlockedAdd(AccumBuffer[idx].g, contribU.g);
+                    InterlockedAdd(AccumBuffer[idx].b, contribU.b);
+                }
+            }
+        }
+    }
+
+    
+    
+    // ========================================================================
+    // CONVERT: Accumulation Buffer → FogLight Texture
+    // ========================================================================
+    
+    // Converts accumulated uint values to float and writes to FogLight.
+    // Optionally adds to existing FogLight content (for combining with other lights).
+    // Dispatch: (Resolution.x, Resolution.y, Resolution.z) or use (ceil(Res/8), ceil(Res/8), Res.z)
+    //
+    // Parameters:
+    //   AccumBuffer  - Input: accumulated uint3 values
+    //   FogLightOut  - Output: RWTexture3D<float4> (rgb = radiance, a = unused)
+    //   Resolution   - Froxel grid resolution
+    //   dispatchThreadID - SV_DispatchThreadID
+    
+    void ConvertAccumToFogLight(
+        RWStructuredBuffer<int4>   AccumBuffer,
+        RWTexture3D<float4>       FogLightOut,
+        int3                      Resolution,
+        uint3                     dispatchThreadID
+    )
+    {
+        // Bounds check
+        if (dispatchThreadID.x >= (uint)Resolution.x ||
+            dispatchThreadID.y >= (uint)Resolution.y ||
+            dispatchThreadID.z >= (uint)Resolution.z)
+            return;
+        
+        int3 cell = int3(dispatchThreadID);
+        int idx = CellToLinearIndex(Resolution, cell);
+        
+        // Read and convert
+        int4 accum = AccumBuffer[idx];
+        float3 emissiveLight = Int4ToFloat(accum, EMISSIVE_SCALE_INV);
+        
+        // Write to FogLight
+       
+        float4 existing = FogLightOut[cell];
+         FogLightOut[cell] = float4(existing.rgb + emissiveLight, existing.a);
+       
+    }
+    
+    // ========================================================================
+    // COMBINED CLEAR + CONVERT (optional convenience)
+    // ========================================================================
+    
+    // Converts accum to FogLight AND clears AccumBuffer in one pass.
+    // Saves a dispatch for the clear pass.
+    // Dispatch: (Resolution.x, Resolution.y, Resolution.z)
+    
+    void ConvertAccumToFogLightAndClear(
+        RWStructuredBuffer<int4> AccumBuffer,
+        RWTexture3D<float4>       FogLightOut,
+        int3                      Resolution,
+        bool                      AddToExisting,
+        uint3                     dispatchThreadID
+    )
+    {
+        // Bounds check
+        if (dispatchThreadID.x >= (uint)Resolution.x ||
+            dispatchThreadID.y >= (uint)Resolution.y ||
+            dispatchThreadID.z >= (uint)Resolution.z)
+            return;
+        
+        int3 cell = int3(dispatchThreadID);
+        int idx = CellToLinearIndex(Resolution, cell);
+        
+        // Read and convert
+        int4 accum = AccumBuffer[idx];
+        float3 emissiveLight = Int4ToFloat(accum, EMISSIVE_SCALE_INV);
+        
+        // Clear the accum buffer for next frame
+        AccumBuffer[idx] = uint3(0, 0, 0);
+        
+        // Write to FogLight
+        if (AddToExisting)
+        {
+            float4 existing = FogLightOut[cell];
+            FogLightOut[cell] = float4(existing.rgb + emissiveLight, existing.a);
+        }
+        else
+        {
+            FogLightOut[cell] = float4(emissiveLight, 1.0);
+        }
+    }
+    
+    // ========================================================================
+    // UTILITY: Downsample Emissive + Depth
+    // ========================================================================
+    
+    // Optional: Downsample full-res emissive and depth to quarter-res in one pass.
+    // Uses max luminance selection for emissive, min depth for conservative injection.
+    // Dispatch: (QuarterWidth, QuarterHeight, 1)
+    //
+    // Parameters:
+    //   EmissiveIn   - Full-res emissive (e.g., 1920×1080)
+    //   DepthIn      - Full-res depth (e.g., 1920×1080)
+    //   EmissiveOut  - Quarter-res emissive output
+    //   DepthOut     - Quarter-res depth output
+    //   FullSize     - Full resolution (e.g., 1920×1080)
+    //   QuarterSize  - Quarter resolution (e.g., 480×270)
+    //   DownscaleFactor - Typically 4 (must match FullSize/QuarterSize)
+    
+    void DownsampleEmissiveAndDepth(
+        Texture2D<float4>     EmissiveIn,
+        Texture2D<float4>      DepthIn,
+        RWTexture2D<float4>   EmissiveOut,
+        RWTexture2D<float>    DepthOut,
+        SamplerState          PointClamp,
+        int2                  FullSize,
+        int2                  QuarterSize,
+        int                   DownscaleFactor,
+        uint3                 dispatchThreadID
+    )
+    {
+        if (dispatchThreadID.x >= (uint)QuarterSize.x ||
+            dispatchThreadID.y >= (uint)QuarterSize.y)
+            return;
+        
+        int2 outPixel = int2(dispatchThreadID.xy);
+        int2 inBase = outPixel * DownscaleFactor;
+        
+        float3 bestEmissive = float3(0, 0, 0);
+        float bestLuma = 0.0;
+        float minDepth = 1.0;
+        
+        // Sample NxN block, keep brightest emissive and closest depth
+        [unroll]
+        for (int y = 0; y < DownscaleFactor; y++)
+        {
+            [unroll]
+            for (int x = 0; x < DownscaleFactor; x++)
+            {
+                int2 inPixel = inBase + int2(x, y);
+                
+                // Clamp to bounds
+                inPixel = clamp(inPixel, int2(0, 0), FullSize - 1);
+                
+                float2 uv = (float2(inPixel) + 0.5) / float2(FullSize);
+                
+                float3 em = EmissiveIn.SampleLevel(PointClamp, uv, 0).rgb;
+                float luma = Luminance(em);
+                
+                if (luma > bestLuma)
+                {
+                    bestLuma = luma;
+                    bestEmissive = em;
+                }
+                
+                float d = DepthIn.SampleLevel(PointClamp, uv, 0).x;
+                minDepth = min(minDepth, d);
+            }
+        }
+        
+        EmissiveOut[outPixel] = float4(bestEmissive, 1.0);
+        DepthOut[outPixel] = minDepth;
+    }
+    
+    // Alternative: Average downsampling (smoother, may lose peaks)
+    void DownsampleEmissiveAndDepth_Average(
+        Texture2D<float4>     EmissiveIn,
+        Texture2D<float>      DepthIn,
+        RWTexture2D<float4>   EmissiveOut,
+        RWTexture2D<float>    DepthOut,
+        SamplerState          LinearClamp,
+        int2                  QuarterSize,
+        uint3                 dispatchThreadID
+    )
+    {
+        if (dispatchThreadID.x >= (uint)QuarterSize.x ||
+            dispatchThreadID.y >= (uint)QuarterSize.y)
+            return;
+        
+        float2 uv = (float2(dispatchThreadID.xy) + 0.5) / float2(QuarterSize);
+        
+        // Bilinear filtering does the averaging automatically at mip 0
+        // For proper 4x4 box filter, use mip 2 or explicit gather
+        float3 em = EmissiveIn.SampleLevel(LinearClamp, uv, 0).rgb;
+        float d = DepthIn.SampleLevel(LinearClamp, uv, 0).x;
+        
+        EmissiveOut[int2(dispatchThreadID.xy)] = float4(em, 1.0);
+        DepthOut[int2(dispatchThreadID.xy)] = d;
+    }
+};
