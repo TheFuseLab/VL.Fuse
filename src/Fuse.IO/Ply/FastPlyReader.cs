@@ -277,6 +277,10 @@ public class FastPlyReader
 
     private class LoadContext
     {
+        // TODO: THREAD SAFETY - This field is accessed via Interlocked.Add but is not
+        // declared volatile. While Interlocked operations provide atomicity, the field
+        // should ideally be volatile to ensure proper visibility across threads.
+        // Also, verify that all reads of this field use Interlocked.Read or Volatile.Read.
         public int GlobalWriteIndex;
     }
 
