@@ -44,9 +44,10 @@ public class SwitchBoolean<T> : ResultNode<T>
         return ShaderNodesUtil.Evaluate("${check} ? ${inTrue} : ${inFalse}",
             new Dictionary<string, string>
             {
-                { "check", _inCheck.ID },
-                { "inFalse", _inFalse.ID },
-                { "inTrue", _inTrue.ID }
+                // Use GetReference() for inlining support
+                { "check", _inCheck.GetReference() },
+                { "inFalse", _inFalse.GetReference() },
+                { "inTrue", _inTrue.GetReference() }
             });
     }
 }

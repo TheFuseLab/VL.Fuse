@@ -26,7 +26,8 @@ public class GetMember<TIn, TOut> : ResultNode<TOut>
     {
         return ShaderNodesUtil.Evaluate("${input}.${member}", new Dictionary<string, string>
         {
-            { "input", _input == null ? "" : _input.ID },
+            // Use GetReference() for inlining support
+            { "input", _input == null ? "" : _input.GetReference() },
             { "member", _member }
         });
     }
@@ -52,8 +53,9 @@ public class GetItem<TIn, TOut> : ResultNode<TOut>
 
         return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
         {
-            { "inputName", _input.ID },
-            { "index", _index.ID }
+            // Use GetReference() for inlining support
+            { "inputName", _input.GetReference() },
+            { "index", _index.GetReference() }
         });
     }
 }
@@ -78,8 +80,9 @@ public class GetItemAbstract<TOut> : ResultNode<TOut>
 
         return ShaderNodesUtil.Evaluate(shaderCode, new Dictionary<string, string>
         {
-            { "inputName", _input.ID },
-            { "index", _index.ID }
+            // Use GetReference() for inlining support
+            { "inputName", _input.GetReference() },
+            { "index", _index.GetReference() }
         });
     }
 }

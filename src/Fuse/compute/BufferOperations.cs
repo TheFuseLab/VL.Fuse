@@ -25,6 +25,9 @@ public class BufferGet<T> : ShaderNode<T>
         _buffer = theBuffer;
         _index = theIndex;
 
+        // TODO: BUG - If theBuffer is null here, TypeOverride gets a default type.
+        // But later at line 41, _buffer.TypeName() is called without null check.
+        // Either theBuffer should never be null, or we need null handling in SourceTemplate().
         TypeOverride = theBuffer == null ? TypeHelpers.GetGpuType<T>() : theBuffer.TypeName();
 
         var myInputs = new List<AbstractShaderNode> { theBuffer as AbstractShaderNode, theIndex };
