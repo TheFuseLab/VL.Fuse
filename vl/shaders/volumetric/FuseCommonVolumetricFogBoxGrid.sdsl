@@ -71,7 +71,8 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
         // Box Grid parameters (for inverse projection if needed)
         float4              crossLayoutInfo,
         float4              zoomRegion,
-        StructuredBuffer<float4> faceLayoutInfo
+        StructuredBuffer<float4> faceLayoutInfo,            // extinction multiplier (>= SigmaS). start: 1.0
+        Texture2D<float4>           BlueNoise
     )
     {
         float4 scene = SceneColor.Sample(LinearClamp, screenUV);
@@ -88,9 +89,17 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
         // --- Step 2: Hardware Depth → Box Depth ---
         float hardwareDepth = SceneDepth.Sample(LinearClamp, screenUV).x;
         float boxDepthScene = BoxDepthFromOrthoHardwareDepth(hardwareDepth, OrthoNear, 30);
+
+        float z0a, z1a;
+        SliceZBounds(SliceMode, SliceLambda, res, FogNear, FogFar, 0, z0a, z1a);
+        float firstDs = max(z1a - z0a, 1e-4);
+
+        // Jitter the ray termination depth a tiny bit (clamped)
+         float jitter01 = GetBlueNoise(BlueNoise,screenPx);          // [0..1)
+            float jitter   = (jitter01 - 0.5);          // [-0.5..+0.5]
         
         // Clamp to fog volume bounds
-        boxDepthScene = clamp(boxDepthScene, FogNear, FogFar);
+        boxDepthScene = clamp(boxDepthScene + jitter * firstDs, FogNear, FogFar);
         
         // --- Step 3: Box Depth → Slice Index ---
         float depth01Scene = saturate((boxDepthScene - FogNear) / max(FogFar - FogNear, 1e-6));
@@ -119,7 +128,7 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
             if (ds <= 0.0) break;
 
             // --- Sample fog volume using Atlas UV ---
-            float j = (hash12(screenPx + (float)z * 17.0) - 0.5) * 0.0; // jitter (disabled)
+            float j = (hash12(screenPx + (float)z * 17.0) - 0.5) * 1.0; // jitter (disabled)
             float zTex = ((float)z + 0.5 + j) / (float)res.z;
             zTex = saturate(zTex);
 
