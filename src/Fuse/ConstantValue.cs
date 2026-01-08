@@ -56,6 +56,44 @@ public static class ConstantHelper
 
         return null;
     }
+
+    /// <summary>
+    /// Creates a ConstantValue from an object value. Falls back to zero if value is null.
+    /// </summary>
+    public static AbstractShaderNode AbstractFromObject(Type theType, object value)
+    {
+        // If no value provided, use zero default
+        if (value == null)
+            return AbstractFromFloat(theType, 0f);
+
+        // Try to use the value directly if it's the right type
+        if (theType == typeof(float) && value is float f) return new ConstantValue<float>(f);
+        if (theType == typeof(Vector2) && value is Vector2 v2) return new ConstantValue<Vector2>(v2);
+        if (theType == typeof(Vector3) && value is Vector3 v3) return new ConstantValue<Vector3>(v3);
+        if (theType == typeof(Vector4) && value is Vector4 v4) return new ConstantValue<Vector4>(v4);
+        if (theType == typeof(int) && value is int i) return new ConstantValue<int>(i);
+        if (theType == typeof(Int2) && value is Int2 i2) return new ConstantValue<Int2>(i2);
+        if (theType == typeof(Int3) && value is Int3 i3) return new ConstantValue<Int3>(i3);
+        if (theType == typeof(Int4) && value is Int4 i4) return new ConstantValue<Int4>(i4);
+        if (theType == typeof(bool) && value is bool b) return new ConstantValue<bool>(b);
+
+        // Try to convert numeric values
+        if (value is IConvertible convertible)
+        {
+            try
+            {
+                var floatVal = Convert.ToSingle(convertible);
+                return AbstractFromFloat(theType, floatVal);
+            }
+            catch
+            {
+                // Fall through to default
+            }
+        }
+
+        // Fallback to zero
+        return AbstractFromFloat(theType, 0f);
+    }
 }
 
 public interface IConstantValue

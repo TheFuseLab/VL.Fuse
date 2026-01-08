@@ -72,6 +72,11 @@
             padFloats = padBytes / 4   // 0..3
             </summary>
         </member>
+        <member name="M:Fuse.ConstantHelper.AbstractFromObject(System.Type,System.Object)">
+            <summary>
+            Creates a ConstantValue from an object value. Falls back to zero if value is null.
+            </summary>
+        </member>
         <member name="M:Fuse.ValueInput`1.#ctor(VL.Core.NodeContext)">
             <summary>
             Creates a value input with a default name.
@@ -200,6 +205,540 @@
         <member name="M:Fuse.Logging.FuseLogger.Error(System.String,System.Exception)">
             <summary>
             Logs an error message with optional exception.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinNodeFactoryLogger">
+            <summary>
+            Logging helper for MixinNodeFactory debugging.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.Initialization">
+            <summary>
+            Assembly initializer that registers the MixinShaderNodes factory with VL.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinCommentParser">
+            <summary>
+            Parses comment blocks to extract metadata directives.
+            Supports both single-line (//) and block (/* */) comments.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinCommentParser.ParseComments(System.String)">
+            <summary>
+            Parses a comment block and extracts metadata.
+            </summary>
+            <param name="commentBlock">The comment text (can include // or /* */ markers).</param>
+            <returns>The extracted metadata.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinCommentParser.CleanCommentMarkers(System.String)">
+            <summary>
+            Removes comment markers and normalizes the text.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinCommentParser.ExtractPrecedingComment(System.String,System.Int32)">
+            <summary>
+            Extracts the comment block immediately preceding a function declaration.
+            </summary>
+            <param name="shaderContent">The full shader content.</param>
+            <param name="functionStartIndex">The character index where the function declaration starts.</param>
+            <returns>The comment block text, or empty string if none found.</returns>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinFunctionInfo">
+            <summary>
+            Represents an exported function from a mixin shader.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.Name">
+            <summary>
+            The function name (e.g., "pows", "fSphere").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.ReturnType">
+            <summary>
+            The SDSL return type as written in the shader (e.g., "float", "float3").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.ClrReturnType">
+            <summary>
+            The mapped C# return type (e.g., typeof(float), typeof(Vector3)).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.MixinName">
+            <summary>
+            The name of the containing mixin shader (e.g., "FuseMathMixin").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.FilePath">
+            <summary>
+            The file path of the source .sdsl file.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.Parameters">
+            <summary>
+            The function parameters.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.Metadata">
+            <summary>
+            Metadata extracted from comments.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.InputParameters">
+            <summary>
+            Gets the input parameters (In modifier only).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.OutputParameters">
+            <summary>
+            Gets the output parameters (Out or InOut modifier).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinFunctionInfo.IsVoid">
+            <summary>
+            Whether the function has a void return type.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinFunctionParser">
+            <summary>
+            Parses SDSL shader files to extract mixin names and function signatures.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.ParseFile(System.String)">
+            <summary>
+            Parses an SDSL file and extracts all exported functions.
+            </summary>
+            <param name="filePath">Path to the .sdsl file.</param>
+            <returns>List of exported functions.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.ParseContent(System.String,System.String)">
+            <summary>
+            Parses SDSL content and extracts all exported functions.
+            </summary>
+            <param name="content">The SDSL shader content.</param>
+            <param name="filePath">The source file path (for metadata).</param>
+            <returns>List of exported functions.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.ParseParameters(System.String,Fuse.MixinNodeFactory.MixinMetadata)">
+            <summary>
+            Parses the parameter string into individual parameter info objects.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.SplitParameters(System.String)">
+            <summary>
+            Splits parameter string by comma, respecting angle brackets for generic types.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.IsBuiltInFunction(System.String)">
+            <summary>
+            Checks if a function name is a built-in shader function that shouldn't be exported.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.GetMixinName(System.String)">
+            <summary>
+            Gets the mixin name from an SDSL file.
+            </summary>
+            <param name="content">The SDSL content.</param>
+            <returns>The mixin name, or null if not found.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinFunctionParser.GetBaseShaders(System.String)">
+            <summary>
+            Gets the base shaders that this mixin inherits from.
+            </summary>
+            <param name="content">The SDSL content.</param>
+            <returns>List of base shader names.</returns>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinInputFactory">
+            <summary>
+            Helper for determining input types and default values for mixin function parameters.
+            This provides metadata that VL can use to create appropriate input nodes.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo">
+            <summary>
+            Information about how to create an input for a parameter.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.Name">
+            <summary>
+            The parameter name.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.ClrType">
+            <summary>
+            The C# type for the input.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.DefaultValue">
+            <summary>
+            The default value for the input.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.Description">
+            <summary>
+            Description from comments.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsOutput">
+            <summary>
+            Whether this is an output parameter (Out or InOut).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsInput">
+            <summary>
+            Whether this is also an input (In or InOut).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.Modifier">
+            <summary>
+            The input modifier.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsTexture">
+            <summary>
+            Whether this is a texture input.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsBuffer">
+            <summary>
+            Whether this is a buffer input.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsSampler">
+            <summary>
+            Whether this is a sampler input.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinInputFactory.InputInfo.IsValueInput">
+            <summary>
+            Whether this is a simple value input (not texture/buffer/sampler).
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinInputFactory.GetInputInfo(Fuse.MixinNodeFactory.MixinFunctionInfo)">
+            <summary>
+            Gets input information for all parameters of a function.
+            </summary>
+            <param name="functionInfo">The function information.</param>
+            <returns>List of input info for each parameter.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinInputFactory.GetInputOnlyInfo(Fuse.MixinNodeFactory.MixinFunctionInfo)">
+            <summary>
+            Gets only the input parameters (In and InOut modifiers).
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinInputFactory.GetOutputOnlyInfo(Fuse.MixinNodeFactory.MixinFunctionInfo)">
+            <summary>
+            Gets only the output parameters (Out and InOut modifiers).
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinInputFactory.GetAllOutputInfo(Fuse.MixinNodeFactory.MixinFunctionInfo)">
+            <summary>
+            Gets output info including the return type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinInputFactory.GetVLTypeName(System.Type)">
+            <summary>
+            Gets the VL-friendly type name for a parameter type.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinMetadata">
+            <summary>
+            Metadata extracted from comments preceding an exported function.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.IsExported">
+            <summary>
+            Whether the function is marked with @export.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.Namespace">
+            <summary>
+            The namespace/category path for node browser (e.g., "Fuse.Math").
+            From @namespace comment.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.Summary">
+            <summary>
+            Summary description for the node tooltip.
+            From @summary comment.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.ParamDescriptions">
+            <summary>
+            Per-parameter descriptions.
+            Key: parameter name, Value: description.
+            From @param comments.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.ParamDefaults">
+            <summary>
+            Per-parameter default values.
+            Key: parameter name, Value: default value string.
+            From @default comments.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.IsGroupable">
+            <summary>
+            Whether the function supports groupable mode.
+            From @groupable comment.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinMetadata.GroupOptions">
+            <summary>
+            Number of group options for groupable functions.
+            From @groupoptions comment.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinNodeFactory">
+            <summary>
+            Factory for creating VL nodes from SDSL mixin files with @export annotated functions.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.ScanDirectory(System.String,System.Boolean)">
+            <summary>
+            Scans a directory for SDSL files and returns all exported functions.
+            </summary>
+            <param name="directory">The directory to scan.</param>
+            <param name="recursive">Whether to scan recursively.</param>
+            <returns>List of exported functions from all SDSL files.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.ParseFile(System.String)">
+            <summary>
+            Parses a single SDSL file and returns exported functions.
+            </summary>
+            <param name="filePath">Path to the SDSL file.</param>
+            <returns>List of exported functions.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.CreateMixinFunction``1(VL.Core.NodeContext,Fuse.MixinNodeFactory.MixinFunctionInfo,System.Collections.Generic.IEnumerable{Fuse.AbstractShaderNode},Fuse.ShaderNode{``0})">
+            <summary>
+            Creates a MixinFunction node for a given function info.
+            </summary>
+            <typeparam name="T">The return type of the function.</typeparam>
+            <param name="nodeContext">The VL node context.</param>
+            <param name="functionInfo">The function information.</param>
+            <param name="arguments">The shader node arguments matching the function parameters.</param>
+            <param name="defaultValue">Optional default value.</param>
+            <returns>A MixinFunction node.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.CreateMixinFunctionDynamic(VL.Core.NodeContext,Fuse.MixinNodeFactory.MixinFunctionInfo,System.Collections.Generic.IEnumerable{Fuse.AbstractShaderNode})">
+            <summary>
+            Creates a MixinFunction node with the appropriate return type based on function info.
+            Returns the node as AbstractShaderNode since the type is determined at runtime.
+            </summary>
+            <param name="nodeContext">The VL node context.</param>
+            <param name="functionInfo">The function information.</param>
+            <param name="arguments">The shader node arguments matching the function parameters.</param>
+            <returns>A MixinFunction node as AbstractShaderNode.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.GetCategory(Fuse.MixinNodeFactory.MixinFunctionInfo)">
+            <summary>
+            Gets the category path for a function based on its metadata.
+            </summary>
+            <param name="functionInfo">The function info.</param>
+            <returns>The category path (e.g., "Fuse.Math").</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.GetCategories(System.Collections.Generic.IEnumerable{Fuse.MixinNodeFactory.MixinFunctionInfo})">
+            <summary>
+            Gets all unique categories from a list of functions.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.GroupByCategory(System.Collections.Generic.IEnumerable{Fuse.MixinNodeFactory.MixinFunctionInfo})">
+            <summary>
+            Groups functions by their category.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinNodeFactory.WatchDirectory(System.String)">
+            <summary>
+            Creates a file watcher for SDSL files that triggers when files change.
+            </summary>
+            <param name="directory">The directory to watch.</param>
+            <returns>An observable that emits file paths when they change.</returns>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinParameterInfo">
+            <summary>
+            Represents a parameter of an exported mixin function.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.Name">
+            <summary>
+            The parameter name (e.g., "r").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.SdslType">
+            <summary>
+            The SDSL type as written in the shader (e.g., "float", "float3").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.ClrType">
+            <summary>
+            The mapped C# type (e.g., typeof(float), typeof(Vector3)).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.Modifier">
+            <summary>
+            The parameter modifier (In, Out, InOut).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.Description">
+            <summary>
+            Description from @param comment.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.DefaultValue">
+            <summary>
+            Default value from @default comment or inline default.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.HasInlineDefault">
+            <summary>
+            Whether this parameter has an inline default value in the function signature.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.InlineDefaultString">
+            <summary>
+            The inline default value as written in the shader (e.g., "1.0", "float3(0,0,0)").
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.BufferElementType">
+            <summary>
+            For buffer types, the element type (e.g., float for StructuredBuffer&lt;float&gt;).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.IsReadWrite">
+            <summary>
+            Whether this is a read-write resource (RWBuffer, RWTexture, etc.).
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.IsArray">
+            <summary>
+            Whether this parameter is an array type.
+            </summary>
+        </member>
+        <member name="P:Fuse.MixinNodeFactory.MixinParameterInfo.ArraySize">
+            <summary>
+            For array types, the fixed array size (e.g., 4 for float4[4]).
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.MixinShaderNodes">
+            <summary>
+            VL Node Factory that generates nodes from SDSL mixin files with @export annotated functions.
+            Register this in VL using: &lt;NodeFactoryDependency Location="Fuse.MixinNodeFactory.MixinShaderNodes" /&gt;
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.Init(VL.Core.IVLNodeDescriptionFactory)">
+            <summary>
+            Initialize the node factory. Called by VL runtime.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.FindShaderDirectories(System.String)">
+            <summary>
+            Finds all directories named "shaders" within the given path AND sibling paths.
+            This ensures project-local shaders are found regardless of which forPath is called.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.FindProjectRoot(System.String)">
+            <summary>
+            Finds the project root by looking for VL files or .git folder.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.BuildPinSummary(Fuse.MixinNodeFactory.MixinParameterInfo,Fuse.MixinNodeFactory.MixinMetadata)">
+            <summary>
+            Builds the pin summary/description, including default value if present.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.FormatDefaultValue(System.Object)">
+            <summary>
+            Formats a default value for display.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.GetPinType(Fuse.MixinNodeFactory.MixinParameterInfo)">
+            <summary>
+            Gets the VL pin type for a parameter, handling special types like Buffer and arrays.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.CreateDefaultForParameter(VL.Core.NodeContext,Fuse.MixinNodeFactory.MixinParameterInfo)">
+            <summary>
+            Creates a default shader node for a parameter based on its type.
+            Handles special types like SamplerState and Buffer that need specific input nodes.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.MixinShaderNodes.CreateBufferInput(VL.Core.NodeContext,System.Type,System.Boolean)">
+            <summary>
+            Creates a BufferInput&lt;T&gt; for the given element type using reflection.
+            </summary>
+        </member>
+        <member name="T:Fuse.MixinNodeFactory.SdslTypeMapper">
+            <summary>
+            Maps SDSL type strings to C# types and provides default values.
+            Reverse mapping from TypeRegistry (which maps C# types to GPU types).
+            </summary>
+        </member>
+        <member name="F:Fuse.MixinNodeFactory.SdslTypeMapper.TypeMap">
+            <summary>
+            Maps SDSL type names to C# types.
+            </summary>
+        </member>
+        <member name="F:Fuse.MixinNodeFactory.SdslTypeMapper.DefaultValues">
+            <summary>
+            Default values for each type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.GetClrType(System.String)">
+            <summary>
+            Gets the C# type for an SDSL type string.
+            </summary>
+            <param name="sdslType">The SDSL type (e.g., "float3", "Texture2D").</param>
+            <returns>The corresponding C# type, or null if not found.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.GetBufferElementType(System.String)">
+            <summary>
+            Gets the element type of a buffer type (e.g., float from StructuredBuffer&lt;float&gt;).
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.GetDefaultValue(System.String)">
+            <summary>
+            Gets the default value for an SDSL type.
+            </summary>
+            <param name="sdslType">The SDSL type string.</param>
+            <returns>The default value, or null if not found.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.GetDefaultValue(System.Type)">
+            <summary>
+            Gets the default value for a C# type.
+            </summary>
+            <param name="clrType">The C# type.</param>
+            <returns>The default value, or null if not found.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.ParseValue(System.String,System.String)">
+            <summary>
+            Parses an SDSL default value string into a C# value.
+            </summary>
+            <param name="sdslType">The SDSL type.</param>
+            <param name="valueString">The value string (e.g., "1.0", "float3(1,0,0)").</param>
+            <returns>The parsed value, or null if parsing fails.</returns>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.IsKnownType(System.String)">
+            <summary>
+            Checks if the given SDSL type is a known type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.IsTextureType(System.String)">
+            <summary>
+            Checks if the given SDSL type is a texture type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.IsBufferType(System.String)">
+            <summary>
+            Checks if the given SDSL type is a buffer type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.IsSamplerType(System.String)">
+            <summary>
+            Checks if the given SDSL type is a sampler type.
+            </summary>
+        </member>
+        <member name="M:Fuse.MixinNodeFactory.SdslTypeMapper.IsReadWriteType(System.String)">
+            <summary>
+            Checks if the given SDSL type is a read-write type (RWBuffer, RWTexture, etc.).
             </summary>
         </member>
         <member name="M:Fuse.Rendering.HybridCylindricalCaptureV2.CreateCylindricalSliceMatrix2(System.Int32,System.Int32,System.Single,System.Single,System.Single,Stride.Core.Mathematics.Matrix@,Stride.Core.Mathematics.Matrix@)">

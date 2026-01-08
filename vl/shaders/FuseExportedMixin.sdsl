@@ -1,0 +1,164 @@
+// Example mixin shader with exported functions for the MixinNodeFactory
+// Functions marked with @export will be available as VL nodes
+
+shader FuseExportedMixin
+{
+    // @export
+    // @namespace Fuse.Math
+    // @summary Signed power function that preserves the sign of the base value
+    // @param a Base value
+    // @param b Exponent
+    float pows(float a, float b)
+    {
+        return pow(abs(a), b) * sign(a);
+    }
+
+    // @export
+    // @namespace Fuse.Math
+    // @summary Smooth minimum of two values with controllable smoothness
+    // @param a First value
+    // @param b Second value
+    // @param k Smoothness factor
+    // @default k 0.1
+    float smin(float a, float b, float k = 0.1)
+    {
+        float h = max(k - abs(a - b), 0.0) / k;
+        return min(a, b) - h * h * k * 0.25;
+    }
+
+    // @export
+    // @namespace Fuse.Math
+    // @summary Smooth maximum of two values with controllable smoothness
+    // @param a First value
+    // @param b Second value
+    // @param k Smoothness factor
+    // @default k 0.1
+    float smax(float a, float b, float k = 0.1)
+    {
+        float h = max(k - abs(a - b), 0.0) / k;
+        return max(a, b) + h * h * k * 0.25;
+    }
+
+    // @export
+    // @namespace Fuse.SDF.3D
+    // @summary Signed distance to a sphere
+    // @param p Sample position
+    // @param r Sphere radius
+    // @default r 1.0
+    float fSphere(float3 p, float r = 1.0)
+    {
+        return length(p) - r;
+    }
+
+    // @export
+    // @namespace Fuse.SDF.3D
+    // @summary Signed distance to a box
+    // @param p Sample position
+    // @param b Box half-extents
+    float fBox(float3 p, float3 b)
+    {
+        float3 d = abs(p) - b;
+        return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+    }
+
+    // @export
+    // @namespace Fuse.SDF.3D
+    // @summary Signed distance to a torus
+    // @param p Sample position
+    // @param t Torus dimensions (x = major radius, y = minor radius)
+    float fTorus(float3 p, float2 t)
+    {
+        float2 q = float2(length(p.xz) - t.x, p.y);
+        return length(q) - t.y;
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Combine
+    // @summary Union of two SDFs (minimum)
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @groupable
+    float fOpUnion(float d1, float d2)
+    {
+        return min(d1, d2);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Combine
+    // @summary Intersection of two SDFs (maximum)
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @groupable
+    float fOpIntersection(float d1, float d2)
+    {
+        return max(d1, d2);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Combine
+    // @summary Subtraction of second SDF from first
+    // @param d1 First distance (to subtract from)
+    // @param d2 Second distance (to subtract)
+    float fOpSubtraction(float d1, float d2)
+    {
+        return max(d1, -d2);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Combine
+    // @summary Smooth union with blend factor output
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @param k Smoothness factor
+    // @param blend Output blend factor (0 = d1, 1 = d2)
+    // @default k 0.1
+    float fOpUnionSmooth(float d1, float d2, float k, out float blend)
+    {
+        float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
+        blend = h;
+        return lerp(d2, d1, h) - k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Transform
+    // @summary Repeats space infinitely along all axes
+    // @param p Input position
+    // @param spacing Repetition spacing
+    float3 opRepeat(float3 p, float3 spacing)
+    {
+        return fmod(p + 0.5 * spacing, spacing) - 0.5 * spacing;
+    }
+
+    // @export
+    // @namespace Fuse.Transform
+    // @summary Repeats space with limited count along all axes
+    // @param p Input position
+    // @param spacing Repetition spacing
+    // @param count Number of repetitions (per axis, centered)
+    float3 opRepeatLimited(float3 p, float3 spacing, float3 count)
+    {
+        return p - spacing * clamp(round(p / spacing), -count, count);
+    }
+
+    // @export
+    // @namespace Fuse.Noise
+    // @summary Simple 2D hash function
+    // @param p Input position
+    float2 hash2(float2 p)
+    {
+        p = float2(dot(p, float2(127.1, 311.7)),
+                   dot(p, float2(269.5, 183.3)));
+        return frac(sin(p) * 43758.5453123);
+    }
+
+    // @export
+    // @namespace Fuse.Noise
+    // @summary Simple 3D hash function returning scalar
+    // @param p Input position
+    float hash3to1(float3 p)
+    {
+        p = frac(p * 0.3183099 + 0.1);
+        p *= 17.0;
+        return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
+    }
+};

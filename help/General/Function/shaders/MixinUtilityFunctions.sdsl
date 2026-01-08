@@ -1,0 +1,172 @@
+// Utility functions with various outputs for demonstration
+// Shows out parameters and multiple return values
+
+shader MixinUtilityFunctions
+{
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Decomposes a float2 into its components
+    // @param v Input vector
+    // @param x Output X component
+    // @param y Output Y component
+    void decompose2(float2 v, out float x, out float y)
+    {
+        x = v.x;
+        y = v.y;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Decomposes a float3 into its components
+    // @param v Input vector
+    // @param x Output X component
+    // @param y Output Y component
+    // @param z Output Z component
+    void decompose3(float3 v, out float x, out float y, out float z)
+    {
+        x = v.x;
+        y = v.y;
+        z = v.z;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Decomposes a float4 into its components
+    // @param v Input vector
+    // @param x Output X component
+    // @param y Output Y component
+    // @param z Output Z component
+    // @param w Output W component
+    void decompose4(float4 v, out float x, out float y, out float z, out float w)
+    {
+        x = v.x;
+        y = v.y;
+        z = v.z;
+        w = v.w;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Converts cartesian to polar coordinates
+    // @param cartesian Input XY position
+    // @param radius Output distance from origin
+    // @param angle Output angle in radians
+    void cartesianToPolar(float2 cartesian, out float radius, out float angle)
+    {
+        radius = length(cartesian);
+        angle = atan2(cartesian.y, cartesian.x);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Converts polar to cartesian coordinates
+    // @param radius Distance from origin
+    // @param angle Angle in radians
+    float2 polarToCartesian(float radius, float angle)
+    {
+        return float2(cos(angle), sin(angle)) * radius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Converts cartesian to spherical coordinates
+    // @param cartesian Input XYZ position
+    // @param radius Output distance from origin
+    // @param theta Output polar angle (from Y axis)
+    // @param phi Output azimuthal angle (around Y axis)
+    void cartesianToSpherical(float3 cartesian, out float radius, out float theta, out float phi)
+    {
+        radius = length(cartesian);
+        theta = acos(cartesian.y / (radius + 0.0001));
+        phi = atan2(cartesian.z, cartesian.x);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Converts spherical to cartesian coordinates
+    // @param radius Distance from origin
+    // @param theta Polar angle (from Y axis)
+    // @param phi Azimuthal angle (around Y axis)
+    float3 sphericalToCartesian(float radius, float theta, float phi)
+    {
+        float sinTheta = sin(theta);
+        return float3(
+            radius * sinTheta * cos(phi),
+            radius * cos(theta),
+            radius * sinTheta * sin(phi)
+        );
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Computes both min and max in one call
+    // @param a First value
+    // @param b Second value
+    // @param minVal Output minimum
+    // @param maxVal Output maximum
+    void minMax(float a, float b, out float minVal, out float maxVal)
+    {
+        minVal = min(a, b);
+        maxVal = max(a, b);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Divides and returns both quotient and remainder
+    // @param dividend Number to divide
+    // @param divisor Number to divide by
+    // @param remainder Output remainder
+    float divMod(float dividend, float divisor, out float remainder)
+    {
+        float quotient = floor(dividend / divisor);
+        remainder = dividend - quotient * divisor;
+        return quotient;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Normalizes a vector and returns its original length
+    // @param v Input vector
+    // @param originalLength Output original length before normalization
+    float3 normalizeWithLength(float3 v, out float originalLength)
+    {
+        originalLength = length(v);
+        return v / (originalLength + 0.0001);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Creates a rotation matrix around an axis
+    // @param axis Rotation axis (should be normalized)
+    // @param angle Rotation angle in radians
+    float4x4 rotationMatrix(float3 axis, float angle)
+    {
+        float c = cos(angle);
+        float s = sin(angle);
+        float t = 1.0 - c;
+        float x = axis.x;
+        float y = axis.y;
+        float z = axis.z;
+
+        return float4x4(
+            t*x*x + c,   t*x*y - s*z, t*x*z + s*y, 0,
+            t*x*y + s*z, t*y*y + c,   t*y*z - s*x, 0,
+            t*x*z - s*y, t*y*z + s*x, t*z*z + c,   0,
+            0,           0,           0,           1
+        );
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Utility
+    // @summary Projects point onto plane defined by normal
+    // @param point Point to project
+    // @param planeNormal Plane normal (should be normalized)
+    // @param planeOrigin Point on the plane
+    // @param distance Output signed distance to plane
+    float3 projectOnPlane(float3 point, float3 planeNormal, float3 planeOrigin, out float distance)
+    {
+        float3 v = point - planeOrigin;
+        distance = dot(v, planeNormal);
+        return point - distance * planeNormal;
+    }
+};

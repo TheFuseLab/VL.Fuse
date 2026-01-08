@@ -1,0 +1,477 @@
+// Test shader for MixinNodeFactory feature verification
+// Tests: basic types, out params, inout params, textures, samplers, defaults
+
+shader TestMixinFunctions
+{
+    // ============================================
+    // BASIC TYPES - verify all scalar/vector types work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two floats
+    // @param a First value
+    // @param b Second value
+    float addFloat(float a, float b)
+    {
+        return a + b;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two float2 vectors
+    // @param a First vector
+    // @param b Second vector
+    float2 addFloat2(float2 a, float2 b)
+    {
+        return a + b;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two float2 vectors
+    // @param a First vector
+    // @param b Second vector
+    float2 addFloat2(float2 a, float2 b, float2 c)
+    {
+        return a + b + c;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two float3 vectors
+    // @param a First vector
+    // @param b Second vector
+    float3 addFloat3(float3 a, float3 b)
+    {
+        return a + b;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two float4 vectors
+    // @param a First vector
+    // @param b Second vector
+    float4 addFloat4(float4 a, float4 b)
+    {
+        return a + b;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Adds two integers
+    // @param a First value
+    // @param b Second value
+    int addInt(int a, int b)
+    {
+        return a + b;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Basic
+    // @summary Returns a boolean AND
+    // @param a First condition
+    // @param b Second condition
+    bool andBool(bool a, bool b)
+    {
+        return a && b;
+    }
+
+    // ============================================
+    // DEFAULT VALUES - verify @default works
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Defaults
+    // @summary Scales a value with default multiplier
+    // @param value Input value
+    // @param scale Scale factor
+    // @default scale 1.0
+    float scaleWithDefault(float value, float scale = 1.0)
+    {
+        return value * scale;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Defaults
+    // @summary Offsets a position with default offset
+    // @param pos Input position
+    // @param offset Offset to add
+    // @default offset 0.0
+    float3 offsetWithDefault(float3 pos, float3 offset = float3(0, 0, 0))
+    {
+        return pos + offset;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Defaults
+    // @summary Lerps between two values
+    // @param a Start value
+    // @param b End value
+    // @param t Blend factor (0-1)
+    // @default t 0.5
+    float lerpWithDefault(float a, float b, float t = 0.5)
+    {
+        return lerp(a, b, t);
+    }
+
+    // ============================================
+    // OUT PARAMETERS - verify out creates output pins
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Out
+    // @summary Splits a float2 into components
+    // @param v Input vector
+    // @param x Output X component
+    // @param y Output Y component
+    void splitFloat2(float2 v, out float x, out float y)
+    {
+        x = v.x;
+        y = v.y;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Out
+    // @summary Computes sin and cos simultaneously
+    // @param angle Input angle in radians
+    // @param sinValue Output sine
+    // @param cosValue Output cosine
+    void sinCos(float angle, out float sinValue, out float cosValue)
+    {
+        sinValue = sin(angle);
+        cosValue = cos(angle);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Out
+    // @summary Computes length and returns normalized vector
+    // @param v Input vector
+    // @param len Output length
+    float3 normalizeWithLength(float3 v, out float len)
+    {
+        len = length(v);
+        return v / (len + 0.0001);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Out
+    // @summary Divides and returns quotient and remainder
+    // @param a Dividend
+    // @param b Divisor
+    // @param remainder Output remainder
+    float divWithRemainder(float a, float b, out float remainder)
+    {
+        float quotient = floor(a / b);
+        remainder = a - quotient * b;
+        return quotient;
+    }
+
+    // ============================================
+    // INOUT PARAMETERS - verify inout creates both input AND output
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.InOut
+    // @summary Doubles a value in place
+    // @param value Value to double (modified)
+    void doubleValue(inout float value)
+    {
+        value = value * 2.0;
+    }
+
+    // @export
+    // @namespace Fuse.Test.InOut
+    // @summary Negates a vector in place
+    // @param v Vector to negate (modified)
+    void negateVector(inout float3 v)
+    {
+        v = -v;
+    }
+
+    // @export
+    // @namespace Fuse.Test.InOut
+    // @summary Swaps two values
+    // @param a First value (will become b)
+    // @param b Second value (will become a)
+    void swapValues(inout float a, inout float b)
+    {
+        float temp = a;
+        a = b;
+        b = temp;
+    }
+
+    // @export
+    // @namespace Fuse.Test.InOut
+    // @summary Clamps value and reports if clamping occurred
+    // @param value Value to clamp (modified)
+    // @param minVal Minimum
+    // @param maxVal Maximum
+    // @param wasClamped Output: true if value was modified
+    void clampWithReport(inout float value, float minVal, float maxVal, out bool wasClamped)
+    {
+        float original = value;
+        value = clamp(value, minVal, maxVal);
+        wasClamped = (value != original);
+    }
+
+    // @export
+    // @namespace Fuse.Test.InOut
+    // @summary Accumulates and returns previous value
+    // @param total Running total (modified)
+    // @param add Value to add
+    // @param previous Output: previous total before adding
+    void accumulateWithHistory(inout float total, float add, out float previous)
+    {
+        previous = total;
+        total = total + add;
+    }
+
+    // ============================================
+    // TEXTURE SAMPLING - verify Texture2D and SamplerState work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Texture
+    // @summary Samples a texture at UV coordinates
+    // @param tex Input texture
+    // @param samp Sampler state
+    // @param uv Texture coordinates
+    float4 sampleTex(Texture2D tex, SamplerState samp, float2 uv)
+    {
+        return tex.Sample(samp, uv);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Texture
+    // @summary Samples texture with offset UV
+    // @param tex Input texture
+    // @param samp Sampler state
+    // @param uv Base texture coordinates
+    // @param offset UV offset to apply
+    // @default offset 0.0
+    float4 sampleTexOffset(Texture2D tex, SamplerState samp, float2 uv, float2 offset = float2(0, 0))
+    {
+        return tex.Sample(samp, uv + offset);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Texture
+    // @summary Gets luminance from texture sample
+    // @param tex Input texture
+    // @param samp Sampler state
+    // @param uv Texture coordinates
+    float textureLuminance(Texture2D tex, SamplerState samp, float2 uv)
+    {
+        float4 col = tex.Sample(samp, uv);
+        return dot(col.rgb, float3(0.299, 0.587, 0.114));
+    }
+
+    // @export
+    // @namespace Fuse.Test.Texture
+    // @summary Samples texture and outputs separate RGB and Alpha
+    // @param tex Input texture
+    // @param samp Sampler state
+    // @param uv Texture coordinates
+    // @param alpha Output alpha channel
+    float3 sampleTexWithAlpha(Texture2D tex, SamplerState samp, float2 uv, out float alpha)
+    {
+        float4 col = tex.Sample(samp, uv);
+        alpha = col.a;
+        return col.rgb;
+    }
+
+    // ============================================
+    // BUFFER - verify Buffer types work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Buffer
+    // @summary Reads a float from a structured buffer
+    // @param buffer Input buffer
+    // @param index Element index
+    float readBuffer(StructuredBuffer<float> buffer, int index)
+    {
+        return buffer[index];
+    }
+
+    // @export
+    // @namespace Fuse.Test.Buffer
+    // @summary Reads a float3 from a structured buffer
+    // @param buffer Input buffer
+    // @param index Element index
+    float3 readBufferFloat3(StructuredBuffer<float3> buffer, int index)
+    {
+        return buffer[index];
+    }
+
+    // @export
+    // @namespace Fuse.Test.Buffer
+    // @summary Reads from buffer and outputs length
+    // @param buffer Input buffer of float3
+    // @param index Element index
+    // @param len Output: length of the vector
+    float3 readBufferWithLength(StructuredBuffer<float3> buffer, int index, out float len)
+    {
+        float3 v = buffer[index];
+        len = length(v);
+        return v;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Buffer
+    // @summary Sums values from two buffer positions
+    // @param buffer Input buffer
+    // @param index1 First index
+    // @param index2 Second index
+    float sumBufferValues(StructuredBuffer<float> buffer, int index1, int index2)
+    {
+        return buffer[index1] + buffer[index2];
+    }
+
+    // ============================================
+    // RW BUFFER - verify RWStructuredBuffer types work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.RWBuffer
+    // @summary Writes a value to an RW buffer
+    // @param buffer RW buffer to write to
+    // @param index Element index
+    // @param value Value to write
+    void writeBuffer(RWStructuredBuffer<float> buffer, int index, float value)
+    {
+        buffer[index] = value;
+    }
+
+    // @export
+    // @namespace Fuse.Test.RWBuffer
+    // @summary Writes a float3 to an RW buffer
+    // @param buffer RW buffer to write to
+    // @param index Element index
+    // @param value Value to write
+    void writeBufferFloat3(RWStructuredBuffer<float3> buffer, int index, float3 value)
+    {
+        buffer[index] = value;
+    }
+
+    // @export
+    // @namespace Fuse.Test.RWBuffer
+    // @summary Reads from buffer, doubles, and writes back
+    // @param buffer RW buffer
+    // @param index Element index
+    void doubleBufferValue(RWStructuredBuffer<float> buffer, int index)
+    {
+        buffer[index] = buffer[index] * 2.0;
+    }
+
+    // @export
+    // @namespace Fuse.Test.RWBuffer
+    // @summary Atomically adds to buffer and returns previous value
+    // @param buffer RW buffer
+    // @param index Element index
+    // @param value Value to add
+    // @param previous Output: previous value before add
+    void atomicAddBuffer(RWStructuredBuffer<float> buffer, int index, float value, out float previous)
+    {
+        previous = buffer[index];
+        buffer[index] = previous + value;
+    }
+
+    // ============================================
+    // RW TEXTURE - verify RWTexture types work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.RWTexture
+    // @summary Writes a color to an RW texture
+    // @param tex RW texture to write to
+    // @param coord Pixel coordinates
+    // @param color Color to write
+    void writeTexture(RWTexture2D<float4> tex, int2 coord, float4 color)
+    {
+        tex[coord] = color;
+    }
+
+    // @export
+    // @namespace Fuse.Test.RWTexture
+    // @summary Reads from texture and writes inverted color
+    // @param tex RW texture
+    // @param coord Pixel coordinates
+    void invertTexturePixel(RWTexture2D<float4> tex, int2 coord)
+    {
+        float4 col = tex[coord];
+        tex[coord] = float4(1.0 - col.rgb, col.a);
+    }
+
+    // ============================================
+    // ARRAY PARAMETERS - verify fixed-size arrays work
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Array
+    // @summary Sums all elements in a float array
+    // @param values Array of float values
+    float sumArray4(float values[4])
+    {
+        return values[0] + values[1] + values[2] + values[3];
+    }
+
+    // @export
+    // @namespace Fuse.Test.Array
+    // @summary Gets average of float3 array
+    // @param positions Array of positions
+    float3 averagePositions(float3 positions[3])
+    {
+        return (positions[0] + positions[1] + positions[2]) / 3.0;
+    }
+
+    // @export
+    // @namespace Fuse.Test.Array
+    // @summary Blends colors with weights
+    // @param colors Array of colors to blend
+    // @param weights Array of blend weights
+    float4 blendColors(float4 colors[4], float weights[4])
+    {
+        return colors[0] * weights[0] + colors[1] * weights[1] +
+               colors[2] * weights[2] + colors[3] * weights[3];
+    }
+
+    // ============================================
+    // GROUPABLE - verify @groupable annotation works
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Test.Groupable
+    // @summary Minimum of two values (groupable)
+    // @param a First value
+    // @param b Second value
+    // @groupable
+    float minGroupable(float a, float b)
+    {
+        return min(a, b);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Groupable
+    // @summary Maximum of two values (groupable)
+    // @param a First value
+    // @param b Second value
+    // @groupable
+    float maxGroupable(float a, float b)
+    {
+        return max(a, b);
+    }
+
+    // @export
+    // @namespace Fuse.Test.Groupable
+    // @summary Adds values (groupable with 2 options)
+    // @param a First value
+    // @param b Second value
+    // @groupable
+    // @groupoptions 2
+    float addGroupable(float a, float b)
+    {
+        return a + b;
+    }
+};

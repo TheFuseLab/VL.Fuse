@@ -1,0 +1,90 @@
+// Math utility functions for demonstration
+// These functions will be exported as VL nodes via MixinNodeFactory
+
+shader MixinMathFunctions
+{
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Signed power - preserves sign while applying power
+    // @param x Input value
+    // @param p Power exponent
+    float signedPow(float x, float p)
+    {
+        return sign(x) * pow(abs(x), p);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Smooth minimum with polynomial blending
+    // @param a First value
+    // @param b Second value
+    // @param k Smoothness factor (0 = hard min)
+    // @default k 0.1
+    float smoothMin(float a, float b, float k = 0.1)
+    {
+        float h = saturate(0.5 + 0.5 * (b - a) / k);
+        return lerp(b, a, h) - k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Smooth maximum with polynomial blending
+    // @param a First value
+    // @param b Second value
+    // @param k Smoothness factor (0 = hard max)
+    // @default k 0.1
+    float smoothMax(float a, float b, float k = 0.1)
+    {
+        float h = saturate(0.5 + 0.5 * (a - b) / k);
+        return lerp(b, a, h) + k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Remap value from one range to another
+    // @param value Input value
+    // @param inMin Source range minimum
+    // @param inMax Source range maximum
+    // @param outMin Destination range minimum
+    // @param outMax Destination range maximum
+    float remap(float value, float inMin, float inMax, float outMin, float outMax)
+    {
+        return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Exponential impulse - fast rise, slow decay
+    // @param x Input (typically time)
+    // @param k Controls the rise/decay balance
+    float expImpulse(float x, float k)
+    {
+        float h = k * x;
+        return h * exp(1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Quadratic bezier interpolation
+    // @param a Start value
+    // @param b Control point
+    // @param c End value
+    // @param t Interpolation factor (0-1)
+    float bezier(float a, float b, float c, float t)
+    {
+        float s = 1.0 - t;
+        return s * s * a + 2.0 * s * t * b + t * t * c;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Math
+    // @summary Quintic smooth interpolation (smoother than smoothstep)
+    // @param edge0 Lower edge
+    // @param edge1 Upper edge
+    // @param x Input value
+    float smootherStep(float edge0, float edge1, float x)
+    {
+        x = saturate((x - edge0) / (edge1 - edge0));
+        return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
+    }
+};

@@ -1,0 +1,160 @@
+// Resource handling functions for testing Texture, Buffer, and Sampler support
+// Tests the MixinNodeFactory's ability to handle resource types
+
+shader MixinResourceFunctions
+{
+    // ============================================
+    // TEXTURE FUNCTIONS
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Samples a texture at the given UV coordinates
+    // @param tex Input texture
+    // @param samp Sampler state for filtering
+    // @param uv Texture coordinates (0-1 range)
+    float4 sampleTexture2D(Texture2D tex, SamplerState samp, float2 uv)
+    {
+        return tex.Sample(samp, uv);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Samples a texture with a LOD bias
+    // @param tex Input texture
+    // @param samp Sampler state for filtering
+    // @param uv Texture coordinates
+    // @param lodBias LOD bias value
+    // @default lodBias 0.0
+    float4 sampleTexture2DBias(Texture2D tex, SamplerState samp, float2 uv, float lodBias = 0.0)
+    {
+        return tex.SampleBias(samp, uv, lodBias);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Samples a texture at a specific mip level
+    // @param tex Input texture
+    // @param samp Sampler state for filtering
+    // @param uv Texture coordinates
+    // @param lod Mip level to sample
+    // @default lod 0.0
+    float4 sampleTexture2DLod(Texture2D tex, SamplerState samp, float2 uv, float lod = 0.0)
+    {
+        return tex.SampleLevel(samp, uv, lod);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Loads a texel directly without filtering
+    // @param tex Input texture
+    // @param coord Integer texel coordinates
+    float4 loadTexture2D(Texture2D tex, int2 coord)
+    {
+        return tex.Load(int3(coord, 0));
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Loads a texel at a specific mip level
+    // @param tex Input texture
+    // @param coord Integer texel coordinates
+    // @param mipLevel Mip level to load from
+    // @default mipLevel 0
+    float4 loadTexture2DMip(Texture2D tex, int2 coord, int mipLevel = 0)
+    {
+        return tex.Load(int3(coord, mipLevel));
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Texture
+    // @summary Samples a 3D texture
+    // @param tex Input 3D texture
+    // @param samp Sampler state
+    // @param uvw 3D texture coordinates
+    float4 sampleTexture3D(Texture3D tex, SamplerState samp, float3 uvw)
+    {
+        return tex.Sample(samp, uvw);
+    }
+
+    // ============================================
+    // INOUT PARAMETER TESTS
+    // ============================================
+
+    // @export
+    // @namespace Fuse.Demo.InOut
+    // @summary Doubles a value in place (inout test)
+    // @param value Value to double
+    void doubleInPlace(inout float value)
+    {
+        value = value * 2.0;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.InOut
+    // @summary Normalizes a vector in place and returns original length
+    // @param v Vector to normalize (modified in place)
+    // @param length Output original length
+    void normalizeInPlace(inout float3 v, out float length)
+    {
+        length = length(v);
+        v = v / (length + 0.0001);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.InOut
+    // @summary Swaps two float values
+    // @param a First value (will contain b after call)
+    // @param b Second value (will contain a after call)
+    void swapFloats(inout float a, inout float b)
+    {
+        float temp = a;
+        a = b;
+        b = temp;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.InOut
+    // @summary Clamps and returns whether clamping occurred
+    // @param value Value to clamp (modified in place)
+    // @param minVal Minimum value
+    // @param maxVal Maximum value
+    // @default minVal 0.0
+    // @default maxVal 1.0
+    bool clampWithFlag(inout float value, float minVal = 0.0, float maxVal = 1.0)
+    {
+        float original = value;
+        value = clamp(value, minVal, maxVal);
+        return value != original;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.InOut
+    // @summary Accumulates a value and returns the previous sum
+    // @param accumulator Running total (modified in place)
+    // @param addend Value to add
+    // @param previousSum Output previous accumulator value
+    void accumulate(inout float accumulator, float addend, out float previousSum)
+    {
+        previousSum = accumulator;
+        accumulator = accumulator + addend;
+    }
+
+    // ============================================
+    // BUFFER FUNCTIONS (Basic - element type assumed)
+    // ============================================
+
+    // Note: Buffer functions require knowing the element type at compile time.
+    // These examples show the pattern but may need adjustment based on actual buffer types.
+
+    // @export
+    // @namespace Fuse.Demo.Buffer
+    // @summary Gets the length of a structured buffer
+    // @param buffer Input buffer
+    // @param count Output element count
+    void getBufferLength(StructuredBuffer<float4> buffer, out uint count)
+    {
+        uint stride;
+        buffer.GetDimensions(count, stride);
+    }
+};
