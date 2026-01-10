@@ -1,0 +1,115 @@
+// SDF Primitive functions for demonstration
+// These create basic signed distance field shapes
+
+shader MixinSDFPrimitives
+{
+    // @export
+    // @namespace Fuse.Demo.SDF.2D
+    // @summary Signed distance to a circle
+    // @param p Sample position (2D)
+    // @param radius Circle radius
+    // @default radius 1.0
+    float sdCircle(float2 p, float radius = 1.0)
+    {
+        return length(p) - radius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.2D
+    // @summary Signed distance to a rectangle
+    // @param p Sample position (2D)
+    // @param size Rectangle half-size
+    float sdBox2D(float2 p, float2 size)
+    {
+        float2 d = abs(p) - size;
+        return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.2D
+    // @summary Signed distance to a rounded rectangle
+    // @param p Sample position (2D)
+    // @param size Rectangle half-size
+    // @param radius Corner radius
+    // @default radius 0.1
+    float sdRoundedBox2D(float2 p, float2 size, float radius = 0.1)
+    {
+        float2 q = abs(p) - size + radius;
+        return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
+    }
+
+    // @export
+    // @namespace Fuse.SDF.2D
+    // @summary Signed distance to a line segment
+    // @param p Sample position (2D)
+    // @param a Line start point
+    // @param b Line end point
+    float sdSegment(float2 p, float2 a, float2 b)
+    {
+        float2 pa = p - a;
+        float2 ba = b - a;
+        float h = saturate(dot(pa, ba) / dot(ba, ba));
+        return length(pa - ba * h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.3D
+    // @summary Signed distance to a sphere
+    // @param p Sample position (3D)
+    // @param radius Sphere radius
+    // @default radius 1.0
+    float sdSphere(float3 p, float radius = 1.0)
+    {
+        return length(p) - radius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.3D
+    // @summary Signed distance to a box
+    // @param p Sample position (3D)
+    // @param size Box half-size
+    float sdBox3D(float3 p, float3 size)
+    {
+        float3 q = abs(p) - size;
+        return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.3D
+    // @summary Signed distance to a torus
+    // @param p Sample position (3D)
+    // @param majorRadius Distance from center to tube center
+    // @param minorRadius Tube radius
+    // @default majorRadius 1.0
+    // @default minorRadius 0.25
+    float sdTorus(float3 p, float majorRadius = 1.0, float minorRadius = 0.25)
+    {
+        float2 q = float2(length(p.xz) - majorRadius, p.y);
+        return length(q) - minorRadius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.3D
+    // @summary Signed distance to an infinite cylinder
+    // @param p Sample position (3D)
+    // @param radius Cylinder radius
+    // @default radius 1.0
+    float sdCylinder(float3 p, float radius = 1.0)
+    {
+        return length(p.xz) - radius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.3D
+    // @summary Signed distance to a capped cylinder
+    // @param p Sample position (3D)
+    // @param radius Cylinder radius
+    // @param height Half-height of cylinder
+    // @default radius 0.5
+    // @default height 1.0
+    float sdCappedCylinder(float3 p, float radius = 0.5, float height = 1.0)
+    {
+        float2 d = abs(float2(length(p.xz), p.y)) - float2(radius, height);
+        return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+    }
+};

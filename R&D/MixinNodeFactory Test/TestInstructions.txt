@@ -1,0 +1,133 @@
+MixinNodeFactory Test Instructions
+==================================
+
+After rebuilding VL.Fuse (close vvvv first!), create a new VL patch in this folder
+and test the following features:
+
+1. VERIFY NODES APPEAR
+----------------------
+Open the node browser and search for "Fuse.Test"
+You should see these categories:
+- Fuse.Test.Basic
+- Fuse.Test.Defaults
+- Fuse.Test.Out
+- Fuse.Test.InOut
+- Fuse.Test.Texture
+- Fuse.Test.Groupable
+
+If nodes don't appear, check the MixinNodeFactory.log on your Desktop.
+
+
+2. TEST BASIC TYPES
+-------------------
+Create these nodes and verify they work:
+- addFloat: Connect two Float32 constants, verify output
+- addFloat3: Connect two Vector3 constants, verify output
+- addInt: Connect two Integer32 constants, verify output
+- andBool: Connect two Boolean toggles, verify AND logic
+
+
+3. TEST DEFAULT VALUES
+----------------------
+Create these nodes and check pin defaults:
+- scaleWithDefault: "scale" pin should default to 1.0
+- offsetWithDefault: "offset" pin should default to (0,0,0)
+- lerpWithDefault: "t" pin should default to 0.5
+
+Note: Default values may not be wired through yet -
+check if pins show default values in tooltip/inspector.
+
+
+4. TEST OUT PARAMETERS
+----------------------
+These nodes should have MULTIPLE output pins:
+
+- splitFloat2:
+  * Input: v (float2)
+  * Outputs: x (float), y (float)
+
+- sinCos:
+  * Input: angle (float)
+  * Outputs: sinValue (float), cosValue (float)
+
+- normalizeWithLength:
+  * Input: v (float3)
+  * Outputs: Output (float3), len (float)
+
+- divWithRemainder:
+  * Inputs: a, b (float)
+  * Outputs: Output (float), remainder (float)
+
+
+5. TEST INOUT PARAMETERS (NEW!)
+-------------------------------
+InOut params should appear as BOTH input AND output:
+
+- doubleValue:
+  * Input: value (float)
+  * Output: value (float)  <-- same name, modified value
+
+- swapValues:
+  * Inputs: a, b (float)
+  * Outputs: a, b (float)  <-- swapped values
+
+- clampWithReport:
+  * Inputs: value, minVal, maxVal (float)
+  * Outputs: value (float), wasClamped (bool)
+
+- accumulateWithHistory:
+  * Inputs: total, add (float)
+  * Outputs: total (float), previous (float)
+
+
+6. TEST TEXTURE SAMPLING (NEW!)
+-------------------------------
+These nodes need texture/sampler inputs:
+
+- sampleTex:
+  * Inputs: tex (Texture), samp (SamplerState), uv (float2)
+  * Output: float4
+
+- sampleTexWithAlpha:
+  * Inputs: tex, samp, uv
+  * Outputs: Output (float3), alpha (float)
+
+To test:
+1. Use FileTexture to load an image
+2. Create a SamplerState node (LinearClamp or similar)
+3. Use GetUV or manual float2 for coordinates
+4. Connect to the mixin node
+5. Render result to verify sampling works
+
+
+7. TEST GROUPABLE
+-----------------
+- minGroupable, maxGroupable, addGroupable should work normally
+- Groupable behavior may need testing in shader graph context
+
+
+8. INTEGRATION TEST
+-------------------
+Build a small shader graph using mixin nodes:
+1. Start with a position (GetPosition or similar)
+2. Use addFloat3 to offset it
+3. Use normalizeWithLength to get direction and length
+4. Use sinCos with length as angle
+5. Render the result
+
+This tests that mixin nodes integrate properly with the shader graph.
+
+
+KNOWN LIMITATIONS
+-----------------
+- Buffer parameters: Mapped but may not work without generic type info
+- SamplerState: Uses AbstractShaderNode base type (may need specific input)
+- Default values: Parsed but may not appear on VL pins yet
+
+
+REPORTING ISSUES
+----------------
+If something doesn't work:
+1. Check Desktop/MixinNodeFactory.log for errors
+2. Note which specific node/feature failed
+3. Include any error messages from VL

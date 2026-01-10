@@ -1,0 +1,134 @@
+// Color manipulation functions for demonstration
+// These provide various color space conversions and effects
+
+shader MixinColorFunctions
+{
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Converts RGB to HSV color space
+    // @param rgb Input RGB color
+    float3 rgbToHsv(float3 rgb)
+    {
+        float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+        float4 p = lerp(float4(rgb.bg, K.wz), float4(rgb.gb, K.xy), step(rgb.b, rgb.g));
+        float4 q = lerp(float4(p.xyw, rgb.r), float4(rgb.r, p.yzx), step(p.x, rgb.r));
+        float d = q.x - min(q.w, q.y);
+        float e = 1.0e-10;
+        return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Converts HSV to RGB color space
+    // @param hsv Input HSV color (h: 0-1, s: 0-1, v: 0-1)
+    float3 hsvToRgb(float3 hsv)
+    {
+        float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        float3 p = abs(frac(hsv.xxx + K.xyz) * 6.0 - K.www);
+        return hsv.z * lerp(K.xxx, saturate(p - K.xxx), hsv.y);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Adjusts hue, saturation, and value
+    // @param rgb Input RGB color
+    // @param hueShift Hue rotation (0-1 = full rotation)
+    // @param satMult Saturation multiplier
+    // @param valMult Value multiplier
+    // @default hueShift 0.0
+    // @default satMult 1.0
+    // @default valMult 1.0
+    float3 adjustHSV(float3 rgb, float hueShift, float satMult, float valMult)
+    {
+        float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+        float4 p = lerp(float4(rgb.bg, K.wz), float4(rgb.gb, K.xy), step(rgb.b, rgb.g));
+        float4 q = lerp(float4(p.xyw, rgb.r), float4(rgb.r, p.yzx), step(p.x, rgb.r));
+        float d = q.x - min(q.w, q.y);
+        float e = 1.0e-10;
+        float3 hsv = float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+
+        hsv.x = frac(hsv.x + hueShift);
+        hsv.y = saturate(hsv.y * satMult);
+        hsv.z = saturate(hsv.z * valMult);
+
+        float4 K2 = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        float3 p2 = abs(frac(hsv.xxx + K2.xyz) * 6.0 - K2.www);
+        return hsv.z * lerp(K2.xxx, saturate(p2 - K2.xxx), hsv.y);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Creates a gradient palette from 4 colors using cosines
+    // @param t Palette position (0-1)
+    // @param a Bias color
+    // @param b Amplitude color
+    // @param c Frequency color
+    // @param d Phase color
+    float3 cosinePalette(float t, float3 a, float3 b, float3 c, float3 d)
+    {
+        return a + b * cos(6.28318 * (c * t + d));
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Simple contrast adjustment
+    // @param color Input color
+    // @param contrast Contrast amount (1 = no change)
+    // @default contrast 1.0
+    float3 adjustContrast(float3 color, float contrast = 1.0)
+    {
+        return (color - 0.5) * contrast + 0.5;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Applies gamma correction
+    // @param color Input color
+    // @param gamma Gamma value (2.2 = sRGB to linear)
+    // @default gamma 2.2
+    float3 gammaCorrect(float3 color, float gamma = 2.2)
+    {
+        return pow(max(color, 0.0), 1.0 / gamma);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Linear to sRGB conversion
+    // @param linear Linear RGB color
+    float3 linearToSrgb(float3 linear)
+    {
+        return pow(max(linear, 0.0), 1.0 / 2.2);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary sRGB to linear conversion
+    // @param srgb sRGB color
+    float3 srgbToLinear(float3 srgb)
+    {
+        return pow(max(srgb, 0.0), 2.2);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Calculates luminance of RGB color
+    // @param rgb Input RGB color
+    float luminance(float3 rgb)
+    {
+        return dot(rgb, float3(0.2126, 0.7152, 0.0722));
+    }
+
+    // @export
+    // @namespace Fuse.Demo.Color
+    // @summary Film-like tone mapping (ACES approximation)
+    // @param color HDR input color
+    float3 toneMapACES(float3 color)
+    {
+        float a = 2.51;
+        float b = 0.03;
+        float c = 2.43;
+        float d = 0.59;
+        float e = 0.14;
+        return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
+    }
+};

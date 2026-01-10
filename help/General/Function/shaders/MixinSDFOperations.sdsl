@@ -1,0 +1,154 @@
+// SDF Operations for demonstration
+// These functions combine and manipulate distance fields
+
+shader MixinSDFOperations
+{
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Union of two distance fields
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @groupable
+    float opUnion(float d1, float d2)
+    {
+        return min(d1, d2);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Intersection of two distance fields
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @groupable
+    float opIntersect(float d1, float d2)
+    {
+        return max(d1, d2);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Subtract second field from first
+    // @param d1 First distance (shape to cut)
+    // @param d2 Second distance (cutter)
+    float opSubtract(float d1, float d2)
+    {
+        return max(d1, -d2);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Smooth union with blend output
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @param k Smoothness factor
+    // @param blend Output blend factor for material mixing
+    // @default k 0.2
+    // @groupable
+    float opSmoothUnion(float d1, float d2, float k, out float blend)
+    {
+        float h = saturate(0.5 + 0.5 * (d2 - d1) / k);
+        blend = h;
+        return lerp(d2, d1, h) - k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Smooth intersection with blend output
+    // @param d1 First distance
+    // @param d2 Second distance
+    // @param k Smoothness factor
+    // @param blend Output blend factor for material mixing
+    // @default k 0.2
+    float opSmoothIntersect(float d1, float d2, float k, out float blend)
+    {
+        float h = saturate(0.5 - 0.5 * (d2 - d1) / k);
+        blend = h;
+        return lerp(d2, d1, h) + k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Combine
+    // @summary Smooth subtraction with blend output
+    // @param d1 First distance (shape to cut)
+    // @param d2 Second distance (cutter)
+    // @param k Smoothness factor
+    // @param blend Output blend factor for material mixing
+    // @default k 0.2
+    float opSmoothSubtract(float d1, float d2, float k, out float blend)
+    {
+        float h = saturate(0.5 - 0.5 * (d2 + d1) / k);
+        blend = h;
+        return lerp(d1, -d2, h) + k * h * (1.0 - h);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Domain
+    // @summary Repeats space infinitely
+    // @param p Input position
+    // @param spacing Repeat spacing per axis
+    float3 opRepeat(float3 p, float3 spacing)
+    {
+        return fmod(abs(p) + 0.5 * spacing, spacing) - 0.5 * spacing;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Domain
+    // @summary Repeats space with limited count and returns cell index
+    // @param p Input position
+    // @param spacing Repeat spacing per axis
+    // @param count Max repetition count per axis
+    // @param cellIndex Output cell index for variation
+    float3 opRepeatLimited(float3 p, float3 spacing, float3 count, out float3 cellIndex)
+    {
+        cellIndex = clamp(round(p / spacing), -count, count);
+        return p - spacing * cellIndex;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Domain
+    // @summary Twists space around Y axis
+    // @param p Input position
+    // @param twist Twist amount (radians per unit)
+    float3 opTwist(float3 p, float twist)
+    {
+        float c = cos(twist * p.y);
+        float s = sin(twist * p.y);
+        float2 q = float2(c * p.x - s * p.z, s * p.x + c * p.z);
+        return float3(q.x, p.y, q.y);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Domain
+    // @summary Bends space around Y axis (cheap)
+    // @param p Input position
+    // @param bend Bend amount
+    float3 opCheapBend(float3 p, float bend)
+    {
+        float c = cos(bend * p.x);
+        float s = sin(bend * p.x);
+        float2 q = float2(c * p.x - s * p.y, s * p.x + c * p.y);
+        return float3(q.x, q.y, p.z);
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Modify
+    // @summary Rounds the edges of an SDF
+    // @param d Input distance
+    // @param radius Rounding radius
+    // @default radius 0.1
+    float opRound(float d, float radius = 0.1)
+    {
+        return d - radius;
+    }
+
+    // @export
+    // @namespace Fuse.Demo.SDF.Modify
+    // @summary Creates a shell/hollow version of an SDF
+    // @param d Input distance
+    // @param thickness Shell thickness
+    // @default thickness 0.1
+    float opOnion(float d, float thickness = 0.1)
+    {
+        return abs(d) - thickness;
+    }
+};
