@@ -127,6 +127,107 @@ shader  FuseComputeOpticalFlow
         outTex[pixel] = float4(L_processed, L_processed, L_processed, 1.0);
     }
 
+    float ExpDecay(float dt, float halfLife)
+    {
+        // halfLife in frames if dt=1, or seconds if dt=seconds
+        return exp2(-dt / max(halfLife, 1e-4));
+    }
+
+    float SoftThreshold(float x, float t, float k)
+    {
+        return saturate((x - t) / max(k, 1e-4));
+    }
+
+// Accumulation mode:
+// 0 = crisp (max) -> sharp, clean trails
+// 1 = inky  (add) -> smoother, more “smoke/ink” persistence
+#define HISTORY_INKY 0
+
+// Motion-history with FLOW ADVECTION + presence-diff injection
+void UpdateMotionHistory_FromPresence_WithFlow(
+    int2                 pixel,
+    int2                 size,
+    Texture2D<float4>    presenceCur,      // 0..1 in .r (or choose channel below)
+    Texture2D<float4>    presencePrev,     // 0..1 in .r
+    Texture2D<float4>    flowTex,          // flow in PIXELS per frame (or px/sec if dt matches)
+    Texture2D<float4>    prevHistory,      // history in .r
+    RWTexture2D<float4>  outHistory,
+    SamplerState         samp,
+    float                dt,               // 1.0 if per-frame, or seconds if flow is px/sec
+    float                halfLife,         // decay half-life (frames or seconds)
+    float                motionGain,       // scales injected motion energy
+    float                diffThresh,       // threshold for |presenceCur - presencePrev|
+    float                diffKnee,         // softness around threshold
+    float                presenceGate,     // minimum presence (union) to allow injection
+    float                flowScale,        // scale flow magnitude into ~0..1
+    float                flowGateThresh,   // threshold for flow magnitude (0..1 domain)
+    float                flowGateKnee      // softness for flow magnitude gate
+)
+{
+    if (pixel.x < 0 || pixel.x >= size.x || pixel.y < 0 || pixel.y >= size.y)
+        return;
+
+    float2 invSize = 1.0 / float2(size);
+    float2 uv      = (float2(pixel) + 0.5) * invSize;
+
+    // ------------------------------------------------------------
+    // 1) Read flow + backward-advect previous history
+    // ------------------------------------------------------------
+    float2 flowPx = flowTex.SampleLevel(samp, uv, 0).xy;
+
+    // Backward trace (semi-Lagrangian). Clamp to avoid sampling border/0.
+    float2 uvPrev = saturate(uv - (flowPx * dt) * invSize);
+
+    float histPrev = prevHistory.SampleLevel(samp, uvPrev, 0).r;
+
+    // ------------------------------------------------------------
+    // 2) Decay (half-life based)
+    // ------------------------------------------------------------
+    float hist = histPrev * ExpDecay(dt, halfLife);
+
+    // ------------------------------------------------------------
+    // 3) Motion injection from presence difference
+    // ------------------------------------------------------------
+    float pC = presenceCur.SampleLevel(samp, uv, 0).r;
+    float pP = presencePrev.SampleLevel(samp, uv, 0).r;
+
+    // Appearance change energy
+    float d = abs(pC - pP);
+
+    // Soft threshold diff -> motion energy 0..1
+    float m = SoftThreshold(d, diffThresh, diffKnee);
+
+    // Gate injection by union presence (prevents background shimmer)
+    float unionPresence = max(pC, pP);
+    float gatePresence  = SoftThreshold(unionPresence, presenceGate, 0.10);
+    m *= gatePresence;
+
+    // Optional: gate by flow magnitude (helps suppress false diffs)
+    // flowScale maps typical flow magnitudes to ~0..1 range.
+    float flowMag01 = saturate(length(flowPx) * flowScale);
+    float gateFlow  = SoftThreshold(flowMag01, flowGateThresh, flowGateKnee);
+
+    // Blend in the flow gate moderately (0.0 ignore, 1.0 fully)
+    m *= lerp(1.0, gateFlow, 0.5);
+
+    // Gain after gating/thresholding
+    m = saturate(m * motionGain);
+
+    // ------------------------------------------------------------
+    // 4) Accumulate into history
+    // ------------------------------------------------------------
+#if HISTORY_INKY
+    // Inky: integrates energy while leaving headroom -> smooth trails
+    hist = saturate(hist + m * (1.0 - hist));
+#else
+    // Crisp: “max” stamping -> sharp, stable trails
+    hist = saturate(max(hist, m));
+#endif
+
+    outHistory[pixel] = float4(hist, hist, hist, 1.0);
+}
+
+
     // ------------------------------------------------------------
     // Helper: per-pixel derivatives between two frames
     //
@@ -204,8 +305,8 @@ shader  FuseComputeOpticalFlow
         int2                    local,         // GroupThreadId.xy
         int2                    levelSize,     // (width, height)
         Texture2D<float4>       derivTex,      // (Ix, Iy, It, _)
-        Texture2D<float2>       flowIn,        // current flow (u,v)
-        RWTexture2D<float2>     flowOut,       // updated flow (u,v)
+        Texture2D<float4>       flowIn,        // current flow (u,v)
+        RWTexture2D<float4>     flowOut,       // updated flow (u,v)
         SamplerState            linearSampler,
         float                   lambda,
         float                   eps)
@@ -232,7 +333,7 @@ shader  FuseComputeOpticalFlow
         float4 d = derivTex.SampleLevel(linearSampler, uv, 0.0);
         shDeriv[local.y][local.x] = d.xyz; // Ix, Iy, It
 
-        float2 centerFlow = flowIn[pixelClamped];
+        float2 centerFlow = flowIn[pixelClamped].xy;
 
         // Initialize BOTH A and B with the same initial flow
         shFlowA[sCenter.y][sCenter.x] = centerFlow;
@@ -244,14 +345,14 @@ shader  FuseComputeOpticalFlow
         if (local.x == 0)
         {
             int2 pL = int2(max(pixelClamped.x - 1, 0), pixelClamped.y);
-            float2 val = flowIn[pL];
+            float2 val = flowIn[pL].xy;
             shFlowA[sCenter.y][sCenter.x - 1] = val;
             shFlowB[sCenter.y][sCenter.x - 1] = val;
         }
         if (local.x == BLOCK_SIZE - 1)
         {
             int2 pR = int2(min(pixelClamped.x + 1, levelSize.x - 1), pixelClamped.y);
-            float2 val = flowIn[pR];
+            float2 val = flowIn[pR].xy;
             shFlowA[sCenter.y][sCenter.x + 1] = val;
             shFlowB[sCenter.y][sCenter.x + 1] = val;
         }
@@ -259,14 +360,14 @@ shader  FuseComputeOpticalFlow
         if (local.y == 0)
         {
             int2 pT = int2(pixelClamped.x, max(pixelClamped.y - 1, 0));
-            float2 val = flowIn[pT];
+            float2 val = flowIn[pT].xy;
             shFlowA[sCenter.y - 1][sCenter.x] = val;
             shFlowB[sCenter.y - 1][sCenter.x] = val;
         }
         if (local.y == BLOCK_SIZE - 1)
         {
             int2 pB = int2(pixelClamped.x, min(pixelClamped.y + 1, levelSize.y - 1));
-            float2 val = flowIn[pB];
+            float2 val = flowIn[pB].xy;
             shFlowA[sCenter.y + 1][sCenter.x] = val;
             shFlowB[sCenter.y + 1][sCenter.x] = val;
         }
@@ -335,7 +436,7 @@ shader  FuseComputeOpticalFlow
             : shFlowB[sCenter.y][sCenter.x];
 
         if (active)
-            flowOut[pixel] = finalFlow;
+            flowOut[pixel] = float4(finalFlow,0.0,1.0);
     }
 
     // ------------------------------------------------------------
@@ -357,7 +458,7 @@ shader  FuseComputeOpticalFlow
         int2                    pixel,
         int2                    levelSize,
         Texture2D<float4>       src,
-        Texture2D<float2>       flowTex,
+        Texture2D<float4>       flowTex,
         RWTexture2D<float4>     warpedOut,
         SamplerState            samp,
         float2                  flowToUvScale)
@@ -366,7 +467,7 @@ shader  FuseComputeOpticalFlow
         float2 size = float2(levelSize);
         float2 uv   = (float2(pixel) + 0.5) / size;
 
-        float2 flow   = flowTex.SampleLevel(samp, uv, 0.0);   // in pixels
+        float2 flow   = flowTex.SampleLevel(samp, uv, 0.0).xy;   // in pixels
         float2 uvWarp = uv + flow * flowToUvScale;          // convert to UV offset
 
         warpedOut[pixel] = src.SampleLevel(samp, uvWarp, 0.0);
@@ -379,15 +480,15 @@ shader  FuseComputeOpticalFlow
     void UpscaleFlow(
         int2                    pixel,
         int2                    levelSize,     // Target High-Res Size
-        Texture2D<float2>       lowResFlow,    // Input Low-Res Flow
-        RWTexture2D<float2>     highResFlow,   // Output High-Res Flow
+        Texture2D<float4>       lowResFlow,    // Input Low-Res Flow
+        RWTexture2D<float4>     highResFlow,   // Output High-Res Flow
         SamplerState            linearSampler)
     {
         float2 size = float2(levelSize);
         float2 uv   = (float2(pixel) + 0.5) / size;
 
         // Hardware Bilinear Interpolation
-        float2 flow = lowResFlow.SampleLevel(linearSampler, uv, 0);
+        float4 flow = lowResFlow.SampleLevel(linearSampler, uv, 0);
 
         // OPTICAL FLOW SCALING:
         // When you double the image resolution, the flow vectors (in pixels)
@@ -451,10 +552,10 @@ shader  FuseComputeOpticalFlow
     void AdvectTexture(
         int2                    pixel,
         int2                    levelSize,
-        Texture2D<float2>       advectedPrev,
-        Texture2D<float2>       injectTex,
-        Texture2D<float2>       flowTex,
-        RWTexture2D<float2>     advectedOut,
+        Texture2D<float4>       advectedPrev,
+        Texture2D<float4>       injectTex,
+        Texture2D<float4>       flowTex,
+        RWTexture2D<float4>     advectedOut,
         SamplerState            samp,
         float                   advectStrength,
         float                   injectAmount)
@@ -465,20 +566,206 @@ shader  FuseComputeOpticalFlow
 
         // Flow is assumed to be in *pixels per frame* at this level.
         // Convert to UV offset: pixels -> [0..1] domain.
-        float2 flowPx = flowTex.SampleLevel(samp, uv, 0.0);   // (u,v) in pixels
+        float2 flowPx = flowTex.SampleLevel(samp, uv, 0.0).xy;   // (u,v) in pixels
         float2 uvOld  = uv - flowPx * advectStrength / size;
 
         // Sample previous advected texture at back-traced position.
         // Sampler should be CLAMP to keep inside domain.
-        float2 advectedColor = advectedPrev.SampleLevel(samp, uvOld, 0.0);
+        float4 advectedColor = advectedPrev.SampleLevel(samp, uvOld, 0.0);
 
         // Optional: inject fresh pattern/noise at current position
-        float2 injectColor   = injectTex.SampleLevel(samp, uv, 0.0);
+        float4 injectColor   = injectTex.SampleLevel(samp, uv, 0.0);
 
         // Blend: mostly old advected color, plus a bit of new injection
-        float2 outColor = lerp(advectedColor, injectColor, saturate(injectAmount));
+        float4 outColor = lerp(advectedColor, injectColor, saturate(injectAmount));
 
         advectedOut[pixel] = outColor;
     }
+
+    // ------------------------------------------------------------
+    // KERNEL: AdvectTexture_Trails
+    //
+    // Purpose
+    //   Advect a texture by flow and build persistent trails by applying
+    //   explicit decay and additive injection.
+    //
+    // Differences vs "AdvectTexture"
+    //   - Adds decay (old content fades over time)
+    //   - Uses additive injection (keeps transported structure visible)
+    //
+    // Parameters
+    //   decay           : 0..1 (typical 0.97..0.995 per frame)
+    //   injectAmount    : strength of injection (can be small like 0.01..0.2)
+    // ------------------------------------------------------------
+    void AdvectTexture_Additive(
+        int2                    pixel,
+        int2                    levelSize,
+        Texture2D<float4>       advectedPrev,
+        Texture2D<float4>       injectTex,
+        Texture2D<float4>       flowTex,
+        RWTexture2D<float4>     advectedOut,
+        SamplerState            samp,
+        float                   advectStrength,
+        float                   injectAmount,
+        float                   decay)
+    {
+        // ------------------------------------------------------------
+        // 0) Bounds Check
+        // ------------------------------------------------------------
+        if (pixel.x < 0 || pixel.x >= levelSize.x ||
+            pixel.y < 0 || pixel.y >= levelSize.y)
+            return;
+
+        // ------------------------------------------------------------
+        // 1) UV Coordinates
+        // ------------------------------------------------------------
+        float2 size = float2(levelSize);
+        float2 uv   = (float2(pixel) + 0.5) / size;
+
+        // ------------------------------------------------------------
+        // 2) Backward Trace using Flow (pixels/frame -> UV)
+        // ------------------------------------------------------------
+        float2 flowPx = flowTex.SampleLevel(samp, uv, 0.0).xy;
+        float2 uvOld  = uv - (flowPx * advectStrength) / size;
+        uvOld = saturate(uvOld);
+
+        // ------------------------------------------------------------
+        // 3) Sample Previous Field at Back-Traced Position (Advect)
+        // ------------------------------------------------------------
+        float4 advectedVal = advectedPrev.SampleLevel(samp, uvOld, 0.0);
+
+        // ------------------------------------------------------------
+        // 4) Apply Decay (fades trails)
+        // ------------------------------------------------------------
+        // decay close to 1.0 keeps trails longer
+        // decay smaller fades faster
+        float d = saturate(decay);
+        float4 baseVal = advectedVal * d;
+
+        // ------------------------------------------------------------
+        // 5) Inject Fresh Content (Additive)
+        // ------------------------------------------------------------
+        float4 injectVal = injectTex.SampleLevel(samp, uv, 0.0);
+
+        // Additive injection preserves advected structure rather than overwriting it.
+        float a = saturate(injectAmount);
+        float4 outVal = baseVal + injectVal * a;
+
+        // Optional clamp if you want to keep values in [0..1]
+        // outVal = saturate(outVal);
+
+        // ------------------------------------------------------------
+        // 6) Output
+        // ------------------------------------------------------------
+        advectedOut[pixel] = outVal;
+    }
+
+    // ------------------------------------------------------------
+    // KERNEL: DiffuseHistory3x3
+    //
+    // Purpose
+    //   Apply a small 3x3 Gaussian-ish diffusion to a scalar history field
+    //   stored in tex.r, and write the result to an RWTexture.
+    //
+    // Inputs
+    //   pixel     : DispatchThreadId.xy
+    //   levelSize : resolution of this level
+    //   srcTex    : history/source texture (expects scalar in .r)
+    //   samp      : linear + clamp sampler
+    //
+    // Output
+    //   outTex    : diffused history (written as float4)
+    //
+    // Params
+    //   strength  : 0..1  (0 = no blur, 1 = full 3x3 blur)
+    // ------------------------------------------------------------
+    void Diffuse3x3(
+        int2                pixel,
+        int2                levelSize,
+        Texture2D<float4>   srcTex,
+        RWTexture2D<float4> outTex,
+        SamplerState        samp,
+        float               strength)
+    {
+        // 0) Bounds Check
+        if (pixel.x < 0 || pixel.x >= levelSize.x ||
+            pixel.y < 0 || pixel.y >= levelSize.y)
+            return;
+
+        // 1) UV setup
+        float2 size    = float2(levelSize);
+        float2 invSize = 1.0 / size;
+        float2 uv      = (float2(pixel) + 0.5) * invSize;
+        float2 t       = invSize;
+
+        // 2) Center sample (scalar in .r)
+        float c = srcTex.SampleLevel(samp, uv, 0).r;
+
+        // 3) 3x3 Gaussian-ish kernel
+        float s = 0.0;
+
+        s += srcTex.SampleLevel(samp, uv + float2(-t.x, -t.y), 0).r * 1.0;
+        s += srcTex.SampleLevel(samp, uv + float2( 0.0, -t.y), 0).r * 2.0;
+        s += srcTex.SampleLevel(samp, uv + float2( t.x, -t.y), 0).r * 1.0;
+
+        s += srcTex.SampleLevel(samp, uv + float2(-t.x,  0.0), 0).r * 2.0;
+        s += c                                                   * 4.0;
+        s += srcTex.SampleLevel(samp, uv + float2( t.x,  0.0), 0).r * 2.0;
+
+        s += srcTex.SampleLevel(samp, uv + float2(-t.x,  t.y), 0).r * 1.0;
+        s += srcTex.SampleLevel(samp, uv + float2( 0.0,  t.y), 0).r * 2.0;
+        s += srcTex.SampleLevel(samp, uv + float2( t.x,  t.y), 0).r * 1.0;
+
+        float blur = s * (1.0 / 16.0);
+
+        // 4) Blend between original and blurred based on strength
+        float a = saturate(strength);
+        float outV = lerp(c, blur, a);
+
+        // 5) Output (store scalar in RGB, alpha = 1)
+        outTex[pixel] = float4(outV, outV, outV, 1.0);
+    }
+
+    // ------------------------------------------------------------
+    // KERNEL: DiffuseHistoryCross
+    //
+    // Purpose
+    //   Apply a 5-tap cross diffusion (cheaper than 3x3).
+    //
+    // Params
+    //   strength : 0..1  (0 = none, 1 = full cross blur)
+    // ------------------------------------------------------------
+    void DiffuseCross(
+        int2                pixel,
+        int2                levelSize,
+        Texture2D<float4>   srcTex,
+        RWTexture2D<float4> outTex,
+        SamplerState        samp,
+        float               strength)
+    {
+        if (pixel.x < 0 || pixel.x >= levelSize.x ||
+            pixel.y < 0 || pixel.y >= levelSize.y)
+            return;
+
+        float2 size    = float2(levelSize);
+        float2 invSize = 1.0 / size;
+        float2 uv      = (float2(pixel) + 0.5) * invSize;
+        float2 t       = invSize;
+
+        float c = srcTex.SampleLevel(samp, uv, 0).r;
+        float u = srcTex.SampleLevel(samp, uv + float2(0, -t.y), 0).r;
+        float d = srcTex.SampleLevel(samp, uv + float2(0,  t.y), 0).r;
+        float l = srcTex.SampleLevel(samp, uv + float2(-t.x, 0), 0).r;
+        float r = srcTex.SampleLevel(samp, uv + float2( t.x, 0), 0).r;
+
+        float blur = (c * 4.0 + u + d + l + r) * (1.0 / 8.0);
+
+        float a = saturate(strength);
+        float outV = lerp(c, blur, a);
+
+        outTex[pixel] = float4(outV, outV, outV, 1.0);
+    }
+
+
 
 };
