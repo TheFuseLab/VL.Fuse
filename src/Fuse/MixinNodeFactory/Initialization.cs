@@ -35,8 +35,20 @@ public static class MixinNodeFactoryLogger
 /// </summary>
 public sealed class Initialization : AssemblyInitializer<Initialization>
 {
+    private const string EnabledEnvVar = "FUSE_MIXIN_FACTORY_ENABLED";
+
     public override void Configure(AppHost appHost)
     {
+        var envValue = Environment.GetEnvironmentVariable(EnabledEnvVar);
+        var isEnabled = string.Equals(envValue, "1", StringComparison.Ordinal) ||
+                        string.Equals(envValue, "true", StringComparison.OrdinalIgnoreCase);
+
+        if (!isEnabled)
+        {
+            MixinNodeFactoryLogger.Log($"MixinNodeFactory disabled. Set {EnabledEnvVar}=1 to enable.");
+            return;
+        }
+
         MixinNodeFactoryLogger.Log("Configure called - registering factory");
 
         try
