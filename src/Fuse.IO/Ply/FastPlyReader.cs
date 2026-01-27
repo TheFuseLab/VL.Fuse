@@ -724,7 +724,7 @@ public class FastPlyReader
         int oy = props[1].Offset;
         int oz = props[2].Offset;
 
-        int strideBytes = vertexSize * factor;
+        long strideBytes = (long)vertexSize * factor;
         byte* src = srcBase + (startOffset * vertexSize);
 
         for (int i = 0; i < count; i++)
@@ -777,7 +777,7 @@ public class FastPlyReader
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static unsafe void CopyStrideGeneric(byte* srcBase, IntPtr[] dstPtrs, PropertyInfo[] props, PropertyReader[] readers, int startOffset, int count, int writeStart, int vertexSize, int factor)
     {
-        int strideBytes = vertexSize * factor;
+        long strideBytes = (long)vertexSize * factor;
         byte* src = srcBase + (startOffset * vertexSize);
         int propCount = props.Length;
 

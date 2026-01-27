@@ -37,6 +37,23 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
         return atlasUV;
     }
 
+    int FindFaceRect(
+        StructuredBuffer<float4> faceLayoutInfo,
+        float2 atlasUV)
+    {
+        [unroll]
+        for (int i = 0; i < 6; i++)
+        {
+            float4 r = faceLayoutInfo[i];
+            if (atlasUV.x >= r.x && atlasUV.x <= r.z &&
+                atlasUV.y >= r.y && atlasUV.y <= r.w)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     // =============================================================================
     // MAIN RESOLVE: Box Grid Ortho Version
     // =============================================================================
@@ -83,7 +100,7 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
         
         // Check bounds
         if (atlasUV.x < 0.0 || atlasUV.x > 1.0 || atlasUV.y < 0.0 || atlasUV.y > 1.0) {
-            return scene;
+            return float4(1.0,0.0,0.0,1.0);//scene;
         }
 
         // --- Step 2: Hardware Depth → Box Depth ---
@@ -152,12 +169,13 @@ shader FuseCommonVolumetricFogBoxGrid : FuseCommonVolumetricFog, FuseCoreMathHas
             if (T < 1e-3) { T = 0.0; break; }
         }
 
+        int faceid = FindFaceRect(faceLayoutInfo, atlasUV);
         // --- Final composite ---
         float3 haze = FogFallbackColor * (1.0 - T);
         float3 outRgb = scene.rgb * T + Lacc + haze;
         //outRgb = float3(boxDepthScene,boxDepthScene,boxDepthScene);
         //return float4(hardwareDepth, hardwareDepth, hardwareDepth, 1.0);
         //return float4(outRgb, scene.a);
-        return float4(Lacc + haze, 1.0 - T);
+        return float4(Lacc + haze, 1.0 - T);//float4(faceid*1.0,0.0,0.0,1.0);//
     }
 };

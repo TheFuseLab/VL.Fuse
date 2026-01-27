@@ -588,4 +588,186 @@ shader FuseRenderingBoxGridProject {
         
         return particlePos;
     }
+
+    // -----------------------------------------------------------------------------
+    // Fully analytic "snap" variant: Atlas UV -> closest face + closest face coords
+    // Keeps the original inverseProjectParticleAABB signature.
+    // -----------------------------------------------------------------------------
+
+
+    // Small helpers
+    float2 clamp2(float2 v, float2 mn, float2 mx) { return float2(clamp(v.x, mn.x, mx.x), clamp(v.y, mn.y, mx.y)); }
+
+    // Convert normalized atlasUV [0..1] into uvPack.xy domain used by faceLayoutInfo
+    // (Matches your getSurfaceIndexFromAtlasUV / atlasToSurfacePoint reverse logic)
+    float2 AtlasUV_To_UvPackXY(float2 atlasUV, float4 zoomRegion, float4 crossLayoutInfo)
+    {
+        float2 texCoord;
+        texCoord.x = atlasUV.x * crossLayoutInfo.x;
+        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+
+        texCoord = texCoord / float2(4.0, 3.0);
+        texCoord = inverseAtlasZoom(texCoord, zoomRegion);
+        texCoord = texCoord * float2(4.0, 3.0);
+
+        return texCoord; // == uvPack.xy domain
+    }
+
+    // Convert uvPack.xy domain back to normalized atlasUV [0..1]
+    float2 UvPackXY_To_AtlasUV(float2 uvPackXY, float4 zoomRegion, float4 crossLayoutInfo)
+    {
+        float2 tc = uvPackXY;
+
+        tc = tc / float2(4.0, 3.0);
+        tc = applyAtlasZoom(tc, zoomRegion); // forward zoom
+        tc = tc * float2(4.0, 3.0);
+
+        float2 atlasUV;
+        atlasUV.x = tc.x / crossLayoutInfo.x;
+        atlasUV.y = 1.0 - (tc.y / crossLayoutInfo.y);
+        return atlasUV;
+    }
+
+    void FaceRectMinMax_UvPack(int faceIndex, StructuredBuffer<float4> faceLayoutInfo, out float2 mn, out float2 mx)
+    {
+        float4 r = faceLayoutInfo[faceIndex]; // (x,y,w,h) in uvPack domain
+        mn = r.xy;
+        mx = r.xy + r.zw;
+    }
+
+    float2 UvPackXY_To_FaceUV01(int faceIndex, float2 uvPackXY, StructuredBuffer<float4> faceLayoutInfo)
+    {
+        float4 layout = faceLayoutInfo[faceIndex]; // (x,y,w,h)
+        float2 faceUV01;
+        faceUV01.x = (uvPackXY.x - layout.x) / max(layout.z, 1e-6);
+        faceUV01.y = (uvPackXY.y - layout.y) / max(layout.w, 1e-6);
+        return faceUV01;
+    }
+
+    // If uvPackXY is inside a face: returns that face and keeps uvPackXY.
+    // If in a gap: returns closest face and clamps uvPackXY to closest point on that face rect.
+    // This is the "analytic extension": undefined area behaves like a stretched border.
+    int FindOrSnapClosestFace_UvPack(
+        float2 uvPackXY,
+        StructuredBuffer<float4> faceLayoutInfo,
+        out float2 snappedUvPackXY,
+        out float2 snappedFaceUV01
+    ){
+        // 1) Check inside first (fast path)
+        [unroll]
+        for (int i = 0; i < 6; i++)
+        {
+            float2 mn, mx;
+            FaceRectMinMax_UvPack(i, faceLayoutInfo, mn, mx);
+
+            if (uvPackXY.x >= mn.x && uvPackXY.x <= mx.x &&
+                uvPackXY.y >= mn.y && uvPackXY.y <= mx.y)
+            {
+                // Keep as-is (optionally: tiny epsilon to avoid exact boundary)
+                // float2 eps = (mx - mn) * 1e-6;
+                // snappedUvPackXY = clamp2(uvPackXY, mn + eps, mx - eps);
+                snappedUvPackXY = uvPackXY;
+                snappedFaceUV01 = UvPackXY_To_FaceUV01(i, snappedUvPackXY, faceLayoutInfo);
+                return i;
+            }
+        }
+
+        // 2) Not inside: pick closest rect by distance to clamped point
+        int best = -1;
+        float bestD2 = 1e30;
+        float2 bestP = uvPackXY;
+
+        [unroll]
+        for (int i = 0; i < 6; i++)
+        {
+            float2 mn, mx;
+            FaceRectMinMax_UvPack(i, faceLayoutInfo, mn, mx);
+
+            float2 p = clamp2(uvPackXY, mn, mx); // closest point on rect
+            float2 d = uvPackXY - p;
+            float d2 = dot(d, d);
+
+            if (d2 < bestD2)
+            {
+                bestD2 = d2;
+                best = i;
+                bestP = p;
+            }
+        }
+
+        if (best < 0)
+        {
+            snappedUvPackXY = uvPackXY;
+            snappedFaceUV01 = float2(0,0);
+            return -1;
+        }
+
+        snappedUvPackXY = bestP;
+        snappedFaceUV01 = UvPackXY_To_FaceUV01(best, snappedUvPackXY, faceLayoutInfo);
+        return best;
+    }
+
+
+    // -----------------------------------------------------------------------------
+    // SECOND VERSION: Same signature, but extends faces analytically into gaps.
+    // -----------------------------------------------------------------------------
+    float3 inverseProjectParticleAABB_SnapAnalytic(
+        float3 atlasUVPlusDepth,          // .xy = UV (normalized), .z = depth
+        float4x4 roomTransformInverse,    // INVERSE of roomTransform
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo,
+        out int detectedSurfaceIndex,
+        out float2 out_faceUV01
+    ){
+        detectedSurfaceIndex = -1;
+        out_faceUV01 = float2(0, 0);
+
+        float2 atlasUV = atlasUVPlusDepth.xy;
+        float  depth  = atlasUVPlusDepth.z;
+
+        // Keep original bounds check
+        if (atlasUV.x < 0.0 || atlasUV.x > 1.0 || atlasUV.y < 0.0 || atlasUV.y > 1.0)
+            return float3(0,0,0);
+
+        // Convert to uvPack domain (rect space)
+        float2 uvPackXY = AtlasUV_To_UvPackXY(atlasUV, zoomRegion, crossLayoutInfo);
+
+        // Find containing face OR snap to closest face + closest point on rect
+        float2 snappedUvPackXY;
+        float2 snappedFaceUV01;
+        int faceIdx = FindOrSnapClosestFace_UvPack(uvPackXY, faceLayoutInfo, snappedUvPackXY, snappedFaceUV01);
+
+        if (faceIdx < 0)
+            return float3(0,0,0);
+
+        detectedSurfaceIndex = faceIdx;
+        out_faceUV01 = snappedFaceUV01;
+
+        // Convert snappedUvPack back to normalized atlasUV (so atlasToSurfacePoint stays consistent)
+        float2 snappedAtlasUV = UvPackXY_To_AtlasUV(snappedUvPackXY, zoomRegion, crossLayoutInfo);
+
+        // Reconstruct hit point on the surface (room space) using the snapped UV + chosen face
+        float3 hitPoint = atlasToSurfacePoint(
+            snappedAtlasUV,
+            detectedSurfaceIndex,
+            faceLayoutInfo,
+            roomCenter,
+            roomDimensions,
+            zoomRegion,
+            crossLayoutInfo
+        );
+
+        // Extend along the ray by "depth" (same semantics as your original)
+        float3 rayDir = normalize(hitPoint - viewerPosition);
+        float3 roomSpacePos = hitPoint + rayDir * depth;
+
+        // Back to world space
+        float3 particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz;
+        return particlePos;
+    }
+
 };
