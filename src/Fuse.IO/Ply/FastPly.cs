@@ -16,15 +16,15 @@ public class FastPly
     private FastPlyReader.ProgressInfo? _progressInfo;
 
     // Inputs
-    public string FilePath { get; set; } = string.Empty;
-    public bool Load { get; set; }
-    public PlyDecimationStrategy DecimationStrategy { get; set; } = PlyDecimationStrategy.None;
-    public int DecimationFactor { get; set; } = 1;
+    public string FilePath { private get; set; } = string.Empty;
+    public bool Load { private get; set; }
+    public PlyDecimationStrategy DecimationStrategy { private get; set; } = PlyDecimationStrategy.None;
+    public int DecimationFactor { private get; set; } = 1;
 
-    public bool UseDiskCache { get; set; }
-    public bool ForceReload { get; set; }
-    public string CacheBasePath { get; set; } = string.Empty;
-    public bool Debug { get; set; }
+    public bool UseDiskCache { private get; set; }
+    public bool ForceReload { private get; set; }
+    public string CacheBasePath { private get; set; } = string.Empty;
+    public bool Debug { private get; set; }
 
     // Outputs - SoA data
     /// <summary>

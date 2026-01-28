@@ -332,7 +332,7 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
 {
     private readonly ShaderNode<T> _type;
 
-    public BufferTypeTracker(ShaderNode<T> theType, BufferType theBufferType = BufferType.Normal)
+    public BufferTypeTracker(ShaderNode<T> theType, BufferType theBufferType = BufferType.Auto)
     {
         _type = theType;
         BufferType = theBufferType;
@@ -357,7 +357,8 @@ public enum BufferType
     Append,
     Consume,
     Normal,
-    RW
+    RW,
+    Auto
 }
 
 public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
