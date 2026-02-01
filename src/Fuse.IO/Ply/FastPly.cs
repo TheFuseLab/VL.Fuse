@@ -5,7 +5,7 @@ namespace Fuse.IO.Ply;
 /// <summary>
 /// Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
 /// Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
-/// 
+///
 /// This is the original FastPly loader with optimized parallel loading, decimation,
 /// and disk caching support.
 /// </summary>
@@ -32,12 +32,12 @@ public class FastPly
     /// For example: Result["x"] contains all X coordinates, Result["red"] contains all red values.
     /// </summary>
     public Dictionary<string, float[]> Result { get; private set; } = new(0);
-    
+
     /// <summary>
     /// Number of vertices in the loaded point cloud.
     /// </summary>
     public int VertexCount { get; private set; }
-    
+
     /// <summary>
     /// Names of fields in order as they appear in the PLY header.
     /// For example: ["x", "y", "z", "red", "green", "blue"]
@@ -105,10 +105,10 @@ public class FastPly
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
             _progressInfo.Result = loadResult.Arrays;
-            
+
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
-            
+
             Log($"[FastPly] Load complete. Arrays={loadResult.Arrays.Count}, Vertices={loadResult.VertexCount}, CacheHit={loadResult.WasCacheHit}");
         }
         catch (Exception ex)
@@ -118,7 +118,7 @@ public class FastPly
             IsCompleted = true; // Also set on error
         }
     }
-    
+
     /// <summary>
     /// Releases CPU data to free memory. Call after uploading to GPU.
     /// </summary>
@@ -137,6 +137,4 @@ public class FastPly
     {
         if (Debug) Console.WriteLine(message);
     }
-
-    // Output pins
 }

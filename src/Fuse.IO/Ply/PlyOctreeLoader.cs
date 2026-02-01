@@ -255,7 +255,86 @@ public class PlyOctreeLoader
                 MaxPointsPerLeaf = currentMaxPointsPerLeaf
             };
 
-            await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+            var octreeCacheHit = false;
+            if (UseDiskCache)
+            {
+                // Use file path as base for octree cache key (more stable than PLYData hash)
+                var plyKey = DiskCacheKey.ForPly(currentPath, currentStrategy, currentFactor);
+                var octreeKey = DiskCacheKey.ForOctree(plyKey, currentMaxDepth, currentMaxPointsPerLeaf, 0f, config.OptimizeForSpeed, config.EnableDetailedValidation);
+
+                if (ForceReload)
+                {
+                    Log("[PlyOctreeLoader] ForceReload=true, invalidating octree cache");
+                    DiskCache.Invalidate("octree", octreeKey);
+                }
+
+                if (DiskCache.TryGet("octree", octreeKey, new OctreeCacheSerializer(), default, out var payloadTask))
+                {
+                    var payload = await payloadTask;
+                    Log($"[PlyOctreeLoader] Octree cache hit. Nodes={payload.NodeCount} Indices={payload.IndexCount}");
+                    octreeCacheHit = true;
+                    _hasPrecomputedLODs = payload.HasPrecomputedLODs;
+
+                    _octreeProgressInfo.StageName = "Loaded from cache";
+                    _octreeProgressInfo.ProgressPercentage = 100;
+                    _octreeProgressInfo.NodeBufferData = payload.NodeBuffer;
+                    _octreeProgressInfo.IndexBufferData = payload.IndexBuffer;
+                    _octreeProgressInfo.NodeCount = payload.NodeCount;
+                    _octreeProgressInfo.IndexCount = payload.IndexCount;
+                    _octreeProgressInfo.TotalMemoryUsed = payload.TotalMemory;
+                    _octreeProgressInfo.IsCompleted = true;
+                }
+                else
+                {
+                    Log("[PlyOctreeLoader] Octree cache miss, building...");
+                    var payload = await DiskCache.GetOrCreateAsync(
+                        "octree",
+                        octreeKey,
+                        new OctreeCacheSerializer(),
+                        async ct =>
+                        {
+                            await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+                            Log($"[PlyOctreeLoader] Built octree: Nodes={_octreeProgressInfo.NodeCount} Indices={_octreeProgressInfo.IndexCount}");
+
+                            // Precompute LODs BEFORE writing to cache
+                            var precomputed = false;
+                            if (currentEnableLODs && _octreeProgressInfo.Error == null)
+                            {
+                                _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.GeneratingLODs, "Generating LODs (caching)");
+                                precomputed = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
+                                    _octreeProgressInfo.NodeBufferData ?? Array.Empty<byte>(),
+                                    _octreeProgressInfo.IndexBufferData ?? Array.Empty<byte>(),
+                                    _octreeProgressInfo.NodeCount,
+                                    _octreeProgressInfo.IndexCount,
+                                    PlyData,
+                                    currentLeafTargetCells,
+                                    Debug);
+                            }
+
+                            return new OctreeCacheSerializer.Payload(
+                                _octreeProgressInfo.NodeBufferData!,
+                                _octreeProgressInfo.IndexBufferData!,
+                                _octreeProgressInfo.NodeCount,
+                                _octreeProgressInfo.IndexCount,
+                                _octreeProgressInfo.TotalMemoryUsed,
+                                precomputed);
+                        },
+                        default);
+
+                    _octreeProgressInfo.NodeBufferData = payload.NodeBuffer;
+                    _octreeProgressInfo.IndexBufferData = payload.IndexBuffer;
+                    _octreeProgressInfo.NodeCount = payload.NodeCount;
+                    _octreeProgressInfo.IndexCount = payload.IndexCount;
+                    _octreeProgressInfo.TotalMemoryUsed = payload.TotalMemory;
+                    _octreeProgressInfo.IsCompleted = true;
+                    _hasPrecomputedLODs = payload.HasPrecomputedLODs;
+                }
+            }
+            else
+            {
+                // No disk cache: build directly
+                await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+            }
 
             if (_octreeProgressInfo.Error != null)
                 throw _octreeProgressInfo.Error;
@@ -266,10 +345,11 @@ public class PlyOctreeLoader
             IndexCount = _octreeProgressInfo.IndexCount;
             TotalMemoryUsed = _octreeProgressInfo.TotalMemoryUsed;
 
-            Log($"[PlyOctreeLoader] Octree build complete: {NodeCount:N0} nodes, {IndexCount:N0} indices");
+            Log($"[PlyOctreeLoader] Octree build complete: {NodeCount:N0} nodes, {IndexCount:N0} indices, CacheHit={octreeCacheHit}");
 
             // ===== STAGE 3: Generate LODs =====
-            if (currentEnableLODs && _octreeProgressInfo.Error == null)
+            // Skip if already done during cache creation or loaded from cache with LODs
+            if (currentEnableLODs && _octreeProgressInfo.Error == null && !_hasPrecomputedLODs)
             {
                 _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.GeneratingLODs, "Generating LODs");
                 Log("[PlyOctreeLoader] Generating precomputed leaf LODs");
