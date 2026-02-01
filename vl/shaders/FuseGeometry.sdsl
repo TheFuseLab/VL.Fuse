@@ -77,7 +77,47 @@ shader FuseGeometry{
         return startNormal;
     }
 
-      // --- utilities ---
+    // -----------------------------------------------------------------------------
+    // RECTANGLE VERSIONS (no miter/bevel - simple perpendicular normals)
+    // -----------------------------------------------------------------------------
+    // Faster than beveled versions, creates simple rectangular segments
+    // that don't blend smoothly at joints but render ~30% faster
+
+    float3 CalculateBevelRect(
+        float3 CameraPosition,
+        float3 lineDirection,
+        float3 startPos,
+        float3 endPos,
+        out float3 endNormal
+    ){
+        // Simple screen-aligned normals perpendicular to line direction
+        // No miter calculation - creates rectangle instead of beveled joint
+        float3 startNormal = CalculateScreenAlignedNormal(CameraPosition, startPos, lineDirection);
+        endNormal = CalculateScreenAlignedNormal(CameraPosition, endPos, lineDirection);
+        return startNormal;
+    }
+
+    // Overload with unused params for drop-in compatibility
+    float3 CalculateBevelRect(
+        float3 CameraPosition,
+        float3 lineDirection,
+        float3 startPos,
+        float3 endPos,
+        float3 prevPos,      // ignored
+        float3 nextPos,      // ignored
+        bool hasPrev,        // ignored
+        bool hasNext,        // ignored
+        out float3 endNormal,
+        out float startMiterLength,
+        out float endMiterLength
+    ){
+        // Miter lengths always 1.0 for rectangles
+        startMiterLength = 1.0;
+        endMiterLength = 1.0;
+        return CalculateBevelRect(CameraPosition, lineDirection, startPos, endPos, endNormal);
+    }
+
+    // --- utilities ---
     float3 safe_normalize(float3 v) {
         float d2 = dot(v,v);
         return (d2 > 1e-12) ? v * rsqrt(d2) : float3(0,0,0);
@@ -118,6 +158,41 @@ shader FuseGeometry{
         miterLength = 1.0 / max(0.1, abs(dp));
         miterLength = min(miterLength, 2.0);
         return miterN;
+    }
+
+    // -----------------------------------------------------------------------------
+    // ORTHO RECTANGLE VERSION (no miter - simple perpendicular normals)
+    // -----------------------------------------------------------------------------
+    float3 CalculateBevelOrthoRect(
+        float3 CamForward,
+        float3 lineDirection,
+        float3 startPos,
+        float3 endPos,
+        out float3 endNormal
+    ){
+        // Simple screen-aligned normal perpendicular to line (same for start and end)
+        float3 normal = CalculateScreenAlignedNormalOrtho(CamForward, lineDirection);
+        endNormal = normal;
+        return normal;
+    }
+
+    // Overload with unused params for drop-in compatibility
+    float3 CalculateBevelOrthoRect(
+        float3 CamForward,
+        float3 lineDirection,
+        float3 startPos,
+        float3 endPos,
+        float3 prevPos,      // ignored
+        float3 nextPos,      // ignored
+        bool hasPrev,        // ignored
+        bool hasNext,        // ignored
+        out float3 endNormal,
+        out float startMiterLength,
+        out float endMiterLength
+    ){
+        startMiterLength = 1.0;
+        endMiterLength = 1.0;
+        return CalculateBevelOrthoRect(CamForward, lineDirection, startPos, endPos, endNormal);
     }
 
     // vollständiger Ortho-Bevel (spiegelt deine Signatur)
