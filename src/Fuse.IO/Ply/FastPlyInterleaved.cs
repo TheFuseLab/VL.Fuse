@@ -18,6 +18,15 @@ public class FastPlyInterleaved
 {
     private bool _isLoading;
     private FastPlyReader.ProgressInfo? _progressInfo;
+    private readonly int _instanceId;
+    private int _updateCount;
+    private int _triggerCount;
+    private bool _lastLoad;
+
+    public FastPlyInterleaved()
+    {
+        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+    }
 
     // Inputs - mirror FastPly exactly
     public string FilePath { get; set; } = string.Empty;
@@ -68,8 +77,27 @@ public class FastPlyInterleaved
 
     public void Update()
     {
-        // Start loading when Load is triggered
-        if (Load && !_isLoading && !string.IsNullOrEmpty(FilePath)) StartLoading();
+        _updateCount++;
+
+        // Rising edge detection for Load trigger
+        var loadRisingEdge = Load && !_lastLoad;
+
+        if (Debug && Load != _lastLoad)
+        {
+            PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+                $"Load changed: {_lastLoad} -> {Load}, risingEdge={loadRisingEdge}, _isLoading={_isLoading}, IsCompleted={IsCompleted}, FilePath={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
+        }
+        _lastLoad = Load;
+
+        // Start loading on rising edge only
+        if (loadRisingEdge && !_isLoading && !string.IsNullOrEmpty(FilePath))
+        {
+            _triggerCount++;
+            if (Debug)
+                PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+                    $"TRIGGER #{_triggerCount} - risingEdge detected, file={Path.GetFileName(FilePath)}, frame={_updateCount}");
+            StartLoading();
+        }
 
         // Update outputs with current progress
         if (_progressInfo == null) return;
@@ -83,6 +111,9 @@ public class FastPlyInterleaved
         if (!IsCompleted) return;
 
         // Result is set in StartLoading after conversion
+        if (Debug)
+            PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+                $"Load complete, _isLoading reset. Load pin={Load}, frame={_updateCount}");
         _isLoading = false;
     }
 

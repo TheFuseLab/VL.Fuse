@@ -30,6 +30,16 @@ public class PlyOctreeLoader
     private GPUOctree.OctreeProgressInfo? _octreeProgressInfo;
     private bool _hasPrecomputedLODs;
 
+    // Diagnostic logging
+    private readonly int _instanceId;
+    private int _updateCount;
+    private int _triggerCount;
+
+    public PlyOctreeLoader()
+    {
+        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+    }
+
     #region Inputs
 
     // File input
@@ -170,12 +180,25 @@ public class PlyOctreeLoader
 
     public void Update()
     {
+        _updateCount++;
+
         // Rising edge detection for Load trigger
         var loadRisingEdge = Load && !_lastLoadTrigger;
+
+        if (Debug && Load != _lastLoadTrigger)
+        {
+            PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+                $"Load edge: _lastLoadTrigger={_lastLoadTrigger} -> Load={Load}, risingEdge={loadRisingEdge}, _isProcessing={_isProcessing}, IsCompleted={IsCompleted}, file={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
+        }
+
         _lastLoadTrigger = Load;
 
         if (loadRisingEdge && !_isProcessing && !string.IsNullOrEmpty(FilePath))
         {
+            _triggerCount++;
+            if (Debug)
+                PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+                    $"TRIGGER #{_triggerCount} - risingEdge detected, starting processing. file={Path.GetFileName(FilePath)}, frame={_updateCount}");
             StartProcessing();
         }
 
@@ -387,6 +410,9 @@ public class PlyOctreeLoader
         finally
         {
             _isProcessing = false;
+            if (Debug)
+                PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+                    $"Processing finished. _isProcessing=false, IsCompleted={IsCompleted}, HasError={HasError}, Load={Load}, _lastLoadTrigger={_lastLoadTrigger}");
         }
     }
 
