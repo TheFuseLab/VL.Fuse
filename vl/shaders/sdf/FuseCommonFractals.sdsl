@@ -1,0 +1,1049 @@
+// ============================================================================
+// FuseCommonFractals.sdsl
+// ============================================================================
+// Fractal signed distance field functions for raymarching and procedural geometry.
+//
+// This shader provides fractal SDF primitives that can be used for:
+// - Raymarching renderers
+// - Procedural geometry generation
+// - Visual effects and artistic explorations
+//
+// References:
+// - Inigo Quilez's fractal articles: https://iquilezles.org/articles/
+// - Fractal Forums: https://fractalforums.org/
+// ============================================================================
+
+shader FuseCommonFractals
+{
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Mixpinski 4D fractal SDF with orbit trap output for coloring
+    // @remarks The Mixpinski is a 4D fractal that creates intricate, self-similar structures through iterative folding and scaling. Returns float2: x=orbit trap (for coloring), y=signed distance. The orbit trap value represents how close the point came to the origin during iteration - useful for creating color gradients, material blending, or emission patterns on the fractal surface.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail, slower)
+    // @param scale Fractal scaling factor per iteration (typically 2.0-3.0)
+    // @param offset 4D offset vector controlling fractal shape (xyzw components)
+    // @param rotation 4D rotation angles in radians (xy=pre-fold rotations, zw=post-fold rotations)
+    // @default iterations 13
+    // @default scale 2.0
+    // @default offset float4(1.8, 1.04, 1.0, 1.0)
+    // @default rotation float4(0.0, 0.0, 0.02, 0.0)
+    float2 MixpinskiSDF(float3 position, int iterations = 13, float scale = 2.0, float4 offset = float4(1.8, 1.04, 1.0, 1.0), float4 rotation = float4(0.0, 0.0, 0.02, 0.0))
+    {
+        // Embed 3D point into 4D space (w=0)
+        float4 p = float4(position, 0.0);
+
+        // Track minimum distance to origin for orbit trap coloring
+        float orbitTrap = 1000000.0;
+
+        // Precompute rotation sin/cos values for efficiency
+        float cosRotX = cos(rotation.x);
+        float sinRotX = sin(rotation.x);
+        float cosRotY = cos(rotation.y);
+        float sinRotY = sin(rotation.y);
+        float cosRotZ = cos(rotation.z);
+        float sinRotZ = sin(rotation.z);
+        float cosRotW = cos(rotation.w);
+        float sinRotW = sin(rotation.w);
+
+        int i = 0;
+        for (; i < iterations; i++)
+        {
+            // Pre-fold rotations (XZ and YZ planes)
+            float2 rotXZ = float2(
+                cosRotX * p.x - sinRotX * p.z,
+                sinRotX * p.x + cosRotX * p.z
+            );
+            p.x = rotXZ.x;
+            p.z = rotXZ.y;
+
+            float2 rotYZ = float2(
+                cosRotY * p.y - sinRotY * p.z,
+                sinRotY * p.y + cosRotY * p.z
+            );
+            p.y = rotYZ.x;
+            p.z = rotYZ.y;
+
+            // Sierpinski-like folding operations
+            if (p.x + p.y < 0.0) p.xy = -p.yx;
+            if (p.x + p.z < 0.0) p.xz = -p.zx;
+            if (p.y + p.z < 0.0) p.yz = -p.zy;
+            if (p.x + p.w < 0.0) p.xw = -p.wx;
+            if (p.y + p.w < 0.0) p.yw = -p.wy;
+            if (p.z + p.w < 0.0) p.zw = -p.wz;
+
+            // Additional fold with soft threshold
+            p -= min(p, float4(-0.1, -0.1, -0.1, -0.1)) * 2.3;
+
+            // Scale and translate
+            p.x = scale * p.x - offset.x * (scale - 1.0);
+            p.y = scale * p.y - offset.y * (scale - 1.0);
+            p.w = scale * p.w - offset.w * (scale - 1.0);
+
+            // Z-axis special handling with absolute value fold
+            p.z -= 0.5 * offset.z * (scale - 1.0) / scale;
+            p.z = -abs(p.z);
+            p.z += 0.5 * offset.z * (scale - 1.0) / scale;
+
+            // Post-fold rotations
+            rotXZ = float2(
+                cosRotZ * p.x - sinRotZ * p.z,
+                sinRotZ * p.x + cosRotZ * p.z
+            );
+            p.x = rotXZ.x;
+            p.z = rotXZ.y;
+
+            rotYZ = float2(
+                cosRotW * p.y - sinRotW * p.z,
+                sinRotW * p.y + cosRotW * p.z
+            );
+            p.y = rotYZ.x;
+            p.z = rotYZ.y;
+
+            // Update orbit trap
+            orbitTrap = min(orbitTrap, dot(p, p));
+        }
+
+        // Calculate final distance with scale correction
+        float distance = length(p) * pow(scale, float(-i - 1));
+
+        return float2(orbitTrap / 2.3, 0.9 * distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Kaleidoscopic IFS fractal with folding and clamping operations
+    // @remarks A Kaleidoscopic Iterated Function System fractal that creates infinite architectural structures through iterative folding, clamping, and scaling. Returns float2: x=material ID (0-1 based on iteration depth, for coloring), y=signed distance. The material value indicates which iteration determined the final distance - useful for assigning different colors or materials to different depth levels of the fractal.
+    // @param position Sample position in 3D space
+    // @param iterations Maximum number of fold iterations (higher = more detail)
+    // @param initialScale Starting scale of the folding cells (controls overall size)
+    // @param scaleFactor Scale multiplier per iteration (0.5 = halve each step, controls density)
+    // @param cellScale Cell offset multiplier (affects gap size between structures)
+    // @param rotationAngle Rotation angle in radians applied during folding
+    // @param floorThreshold Minimum scale before stopping iterations (detail floor)
+    // @default iterations 12
+    // @default initialScale 500.0
+    // @default scaleFactor 0.5
+    // @default cellScale 0.75
+    // @default rotationAngle 0.7853981
+    // @default floorThreshold 0.001
+    float2 KaleidoscopicIFS(float3 position, int iterations = 12, float initialScale = 500.0, float scaleFactor = 0.5, float cellScale = 0.75, float rotationAngle = 0.7853981, float floorThreshold = 0.001)
+    {
+        float3 q = position;
+
+        // Start with ground plane at y=0
+        float d = q.y;
+        float mat = 0.0;
+
+        // Current scale value (shrinks each iteration)
+        float iVal = initialScale;
+
+        // Precompute rotation matrix around Y-axis (0,1,0)
+        float s = sin(rotationAngle);
+        float c = cos(rotationAngle);
+        float oc = 1.0 - c;
+        // rotate3D for axis (0,1,0):
+        // | c      0   s  |
+        // | 0      1   0  |
+        // | -s     0   c  |
+        float3x3 foldRot = float3x3(
+            c,   0.0,  s,
+            0.0, 1.0,  0.0,
+            -s,  0.0,  c
+        );
+
+        for (int k = 0; k < iterations; k++)
+        {
+            // Apply rotation and clamp to create folded cells
+            float3 rotated = mul(foldRot, q);
+            float3 clamped = clamp(rotated, float3(-iVal, -iVal, -iVal), float3(iVal, iVal, iVal));
+            float3 cell = clamped * 2.0 - rotated;
+
+            // Offset and absolute value fold
+            q = float3(iVal, iVal, iVal) * cellScale - abs(cell);
+
+            // Permute and flip based on iteration index
+            // This creates variation at different scales
+            if ((k & 1) != 0) q.xy = q.yx;   // swap x,y
+            if ((k & 2) != 0) q.xz = q.zx;   // swap x,z
+            if ((k & 4) != 0) q.x = -q.x;    // flip x
+            if ((k & 8) != 0) q.y = -q.y;    // flip y
+            if ((k & 16) != 0) q.z = -q.z;   // flip z
+
+            // Calculate minimum distance from folded coordinates
+            float dFoldX = min(q.x, q.y);
+            float dMin = min(dFoldX, q.z);
+
+            // Track which iteration determines the surface
+            float prevD = d;
+            d = max(d, dMin);
+
+            // Update material ID when distance changes
+            if (d != prevD)
+            {
+                mat = float(k) / float(iterations - 1);
+            }
+
+            // Shrink scale for next iteration
+            iVal *= scaleFactor;
+
+            // Early exit if below detail threshold
+            if (iVal < floorThreshold) break;
+        }
+
+        return float2(mat, d);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Jerusalem Cube fractal - cross-shaped recursive structure
+    // @remarks A variant of the Menger Sponge that creates cross-shaped patterns reminiscent of the Jerusalem Cross. Uses dual-scale iteration where each step chooses between a large or small scale based on proximity, creating intricate architectural structures. Returns float2: x=branch ratio (0-1, ratio of small-scale branches taken, for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scaleLarge Large scale factor for outer structure (typically 3.0-6.0)
+    // @param scaleSmall Small scale factor for inner detail (typically 2.0-3.0)
+    // @param offset 3D offset vector controlling fractal shape and cross pattern
+    // @default iterations 6
+    // @default scaleLarge 5.0
+    // @default scaleSmall 2.5
+    // @default offset float3(1.0, 1.0, 1.0)
+    float2 JerusalemCubeSDF(float3 position, int iterations = 6, float scaleLarge = 5.0, float scaleSmall = 2.5, float3 offset = float3(1.0, 1.0, 1.0))
+    {
+        float3 z = position;
+        float s = 1.0;
+
+        // Track branching for coloring (how often small scale was chosen)
+        float smallBranchCount = 0.0;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // Fold into positive octant and sort coordinates
+            z = abs(z);
+            if (z.x - z.y < 0.0) z.xy = z.yx;
+            if (z.z - z.y < 0.0) z.zy = z.yz;
+
+            // Calculate two candidate positions at different scales
+            float3 z1 = z * scaleSmall - offset * (scaleSmall - 1.0);
+            float3 z2 = z * scaleLarge - float3(offset.x, 0.0, offset.z) * (scaleLarge - 1.0);
+
+            // Box SDF for each candidate (inline for efficiency)
+            float3 q1 = abs(z1) - float3(1.0, 1.0, 1.0);
+            float d1 = length(max(q1, float3(0.0, 0.0, 0.0)));
+
+            float3 q2 = abs(z2) - float3(1.0, 1.0, 1.0);
+            float d2 = length(max(q2, float3(0.0, 0.0, 0.0)));
+
+            // Choose the closer candidate
+            if (d1 < d2)
+            {
+                z = z1;
+                s /= scaleSmall;
+                smallBranchCount += 1.0;
+            }
+            else
+            {
+                z = z2;
+                s /= scaleLarge;
+            }
+        }
+
+        // Final box SDF with accumulated scale
+        float3 q = abs(z) - float3(1.0, 1.0, 1.0);
+        float distance = length(max(q, float3(0.0, 0.0, 0.0))) * s;
+
+        // Material based on branch ratio (0 = all large, 1 = all small)
+        float mat = smallBranchCount / float(iterations);
+
+        return float2(mat, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Escher Kite fractal - tessellation-inspired recursive structure
+    // @remarks Creates Escher-like tessellation patterns through iterative clamping, folding, and scaling operations. Named after the kite shapes that emerge, similar to M.C. Escher's tessellation artwork. Returns float2: x=orbit trap (minimum squared distance to origin during iteration, for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (typically 2.0-4.0)
+    // @param offset 3D offset vector controlling fractal shape
+    // @param clampRange Clamping bounds for the folding operation (affects pattern density)
+    // @param zShift Z-axis shift per iteration (affects layering)
+    // @param cubeSize Size of the final bounding cube primitive
+    // @default iterations 3
+    // @default scale 3.0
+    // @default offset float3(0.7983, 0.626, 0.0)
+    // @default clampRange 0.1
+    // @default zShift 0.1
+    // @default cubeSize 0.5
+    float2 EscherKiteSDF(float3 position, int iterations = 3, float scale = 3.0, float3 offset = float3(0.7983, 0.626, 0.0), float clampRange = 0.1, float zShift = 0.1, float cubeSize = 0.5)
+    {
+        float3 z = position;
+        float orbitTrap = 100000.0;
+        float s = 1.0;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // Clamp and reflect - creates the tessellation pattern
+            z = 2.0 * clamp(z, float3(-clampRange, -clampRange, -clampRange), float3(clampRange, clampRange, clampRange)) - z;
+
+            // Fold into positive octant with coordinate sorting
+            z = abs(z);
+            if (z.y - z.z < 0.0) z.yz = z.zy;
+            if (z.y > z.x) z.yx = z.xy;
+
+            // Z-axis offset for layered structure
+            z.z -= zShift;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+            s /= scale;
+
+            // Track orbit trap for coloring
+            float r = dot(z, z);
+            orbitTrap = min(orbitTrap, r);
+        }
+
+        // Final box SDF with accumulated scale
+        float3 q = abs(z) - float3(cubeSize, cubeSize, cubeSize);
+        float distance = length(max(q, float3(0.0, 0.0, 0.0))) * s;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Twisted Escher Kite fractal - complex tessellation with rotational folding
+    // @remarks A more complex variant of the Escher Kite fractal featuring XZ rotation swaps, asymmetric clamping, centered folding, and Y-axis wrapping. Creates intricate twisted tessellation patterns with more organic flow than the standard Escher Kite. Returns float2: x=orbit trap (minimum squared distance to origin during iteration, for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (typically 2.0-4.0)
+    // @param offset 3D offset vector controlling fractal shape
+    // @param clampMin Minimum clamping bound (affects pattern density)
+    // @param clampMax Maximum clamping bound (affects pattern density)
+    // @param foldOffset Offset for centered absolute fold operation
+    // @param yWrapThreshold Y coordinate threshold for wrapping (creates layered structure)
+    // @param zShift Z-axis shift per iteration
+    // @param cubeSize Size of the final bounding cube primitive
+    // @default iterations 6
+    // @default scale 3.0
+    // @default offset float3(0.7983, 0.626, 0.0)
+    // @default clampMin 0.1
+    // @default clampMax 0.2
+    // @default foldOffset 0.2
+    // @default yWrapThreshold 0.5
+    // @default zShift 0.3
+    // @default cubeSize 0.5
+    float2 TwistedKiteSDF(float3 position, int iterations = 6, float scale = 3.0, float3 offset = float3(0.7983, 0.626, 0.0), float clampMin = 0.1, float clampMax = 0.2, float foldOffset = 0.2, float yWrapThreshold = 0.5, float zShift = 0.3, float cubeSize = 0.5)
+    {
+        float3 z = position;
+        float orbitTrap = 100000.0;
+        float s = 1.0;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // XZ rotation swap with negation - creates twisted structure
+            z.xz = -z.zx;
+
+            // Asymmetric clamp and reflect
+            z = 2.0 * clamp(z, float3(clampMin, clampMin, clampMin), float3(clampMax, clampMax, clampMax)) - z;
+
+            // Centered absolute fold - creates additional symmetry
+            z = abs(z - float3(foldOffset, foldOffset, foldOffset)) - float3(foldOffset, foldOffset, foldOffset);
+
+            // Fold into positive octant with coordinate sorting
+            z = abs(z);
+            if (z.y - z.z < 0.0) z.yz = z.zy;
+            if (z.y > z.x) z.yx = z.xy;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+            s /= scale;
+
+            // Y-axis wrapping - creates layered stacking
+            if (z.y > yWrapThreshold) z.y -= 1.0;
+
+            // Z-axis shift
+            z.z += zShift;
+
+            // Track orbit trap for coloring
+            float r = dot(z, z);
+            orbitTrap = min(orbitTrap, r);
+        }
+
+        // Final box SDF with accumulated scale
+        float3 q = abs(z) - float3(cubeSize, cubeSize, cubeSize);
+        float distance = length(max(q, float3(0.0, 0.0, 0.0))) * s;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary 4D Sierpinski fractal - pure tetrahedral folding without rotations
+    // @remarks A cleaner variant of the Mixpinski fractal that performs pure 4D Sierpinski-like folding without additional rotations. Creates crystalline tetrahedral structures through iterative coordinate folding in 4D space projected to 3D. Simpler and faster than the full Mixpinski while maintaining the characteristic Sierpinski geometry. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Fractal scaling factor per iteration (typically 2.0-3.0)
+    // @param offset 4D offset vector controlling fractal shape (xyzw components)
+    // @default iterations 13
+    // @default scale 2.0
+    // @default offset float4(1.8, 1.04, 1.0, 1.0)
+    float2 Sierpinski4DSDF(float3 position, int iterations = 13, float scale = 2.0, float4 offset = float4(1.8, 1.04, 1.0, 1.0))
+    {
+        // Embed 3D point into 4D space (w=0)
+        float4 p = float4(position, 0.0);
+
+        // Track minimum distance to origin for orbit trap coloring
+        float orbitTrap = 1000000.0;
+
+        int i = 0;
+        for (; i < iterations; i++)
+        {
+            // Pure Sierpinski-like folding in 4D
+            // Fold across planes defined by coordinate sum conditions
+            if (p.x + p.y < 0.0) p.xy = -p.yx;
+            if (p.x + p.z < 0.0) p.xz = -p.zx;
+            if (p.y + p.z < 0.0) p.yz = -p.zy;
+            if (p.x + p.w < 0.0) p.xw = -p.wx;
+            if (p.y + p.w < 0.0) p.yw = -p.wy;
+            if (p.z + p.w < 0.0) p.zw = -p.wz;
+
+            // Scale and translate X, Y, W
+            p.x = scale * p.x - offset.x * (scale - 1.0);
+            p.y = scale * p.y - offset.y * (scale - 1.0);
+            p.w = scale * p.w - offset.w * (scale - 1.0);
+
+            // Z-axis special handling with absolute fold and scaling
+            p.z -= 0.5 * offset.z * (scale - 1.0) / scale;
+            p.z = -abs(p.z);
+            p.z += 0.5 * offset.z * (scale - 1.0) / scale;
+            p.z = scale * p.z;
+
+            // Update orbit trap
+            orbitTrap = min(orbitTrap, dot(p, p));
+        }
+
+        // Calculate final distance with scale correction
+        float distance = length(p) * pow(scale, float(-i - 1));
+
+        return float2(orbitTrap / 2.3, 0.9 * distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Vicsek Box fractal - 3D cross-like recursive structure
+    // @remarks Creates 3D cross/plus-shaped recursive patterns based on the Vicsek fractal. Features multiple folding operations including symmetric folds, coordinate sorting, clamping with multiplier, and conditional swaps. Produces intricate lattice-like structures with cross motifs. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (typically 3.0)
+    // @param offset 3D offset vector controlling fractal shape
+    // @param initialScale Initial position multiplier (affects overall size)
+    // @param foldOffset Offset for symmetric fold operations
+    // @param clampMult Multiplier for clamp fold operation (affects density)
+    // @param yWrapThreshold Y coordinate threshold for wrapping
+    // @param xShift X-axis shift per iteration
+    // @param cubeSize Size of the final bounding cube primitive
+    // @default iterations 9
+    // @default scale 3.0
+    // @default offset float3(1.0, 0.0, -0.4)
+    // @default initialScale 2.0
+    // @default foldOffset 0.1
+    // @default clampMult 1.9
+    // @default yWrapThreshold 0.5
+    // @default xShift 1.0
+    // @default cubeSize 0.5
+    float2 VicsekBoxSDF(float3 position, int iterations = 9, float scale = 3.0, float3 offset = float3(1.0, 0.0, -0.4), float initialScale = 2.0, float foldOffset = 0.1, float clampMult = 1.9, float yWrapThreshold = 0.5, float xShift = 1.0, float cubeSize = 0.5)
+    {
+        float3 z = position * initialScale;
+        float orbitTrap = 100000.0;
+        float s = 1.0;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // Symmetric offset folds - creates the cross pattern
+            z = abs(z) - float3(foldOffset, foldOffset, foldOffset);
+            z = abs(z) + float3(foldOffset, foldOffset, foldOffset);
+
+            // Sort coordinates (bubble sort to get x >= y >= z)
+            if (z.x - z.y < 0.0) z.xy = z.yx;
+            if (z.x - z.z < 0.0) z.xz = z.zx;
+            if (z.y - z.z < 0.0) z.yz = z.zy;
+
+            // Clamp fold with multiplier
+            z = clamp(z, float3(0.0, 0.0, 0.0), float3(1.0, 1.0, 1.0)) * clampMult - z;
+
+            // Conditional coordinate swaps based on sums
+            float3 p = z;
+            if (p.x + p.y > 1.0) p.xy = p.yx;
+            if (p.x + p.z > 1.0) p.xz = p.zx;
+            if (p.y + p.z < 1.0) p.yz = p.zy;
+            z = p;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+            s /= scale;
+
+            // Y-axis wrapping
+            if (z.y > yWrapThreshold) z.y -= 1.0;
+
+            // X-axis shift
+            z.x += xShift;
+
+            // Track orbit trap for coloring
+            float r = dot(z, z);
+            orbitTrap = min(orbitTrap, r);
+        }
+
+        // Final box SDF with accumulated scale
+        float3 q = abs(z) - float3(cubeSize, cubeSize, cubeSize);
+        float distance = length(max(q, float3(0.0, 0.0, 0.0))) * s / 2.5;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Menger Fold fractal - sponge-like structure with mirror folds
+    // @remarks Creates Menger sponge-like structures through coordinate sorting, Y-axis mirror folding, and conditional swaps. Features a characteristic 1/3 subdivision pattern that produces the classic Menger sponge appearance with additional folding complexity. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (3.0 for classic Menger)
+    // @param offset 3D offset vector controlling fractal shape
+    // @param initialScale Initial position divisor (affects overall size)
+    // @param yFoldScale Y-axis fold position multiplier (1/3 for classic pattern)
+    // @param swapOffset Offset for conditional Z-X swap operations
+    // @param yWrapThreshold Y coordinate threshold for wrapping
+    // @param xShift X-axis shift per iteration
+    // @param cubeSize Size of the final bounding cube primitive
+    // @default iterations 6
+    // @default scale 3.0
+    // @default offset float3(1.0, 0.0, 0.0)
+    // @default initialScale 2.0
+    // @default yFoldScale 0.3333333
+    // @default swapOffset 0.3333333
+    // @default yWrapThreshold 0.5
+    // @default xShift 1.0
+    // @default cubeSize 0.5
+    float2 MengerFoldSDF(float3 position, int iterations = 6, float scale = 3.0, float3 offset = float3(1.0, 0.0, 0.0), float initialScale = 2.0, float yFoldScale = 0.3333333, float swapOffset = 0.3333333, float yWrapThreshold = 0.5, float xShift = 1.0, float cubeSize = 0.5)
+    {
+        float3 z = position / initialScale;
+        float orbitTrap = 100000.0;
+        float s = 1.0;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // Fold into positive octant
+            z = abs(z);
+
+            // Sort coordinates
+            if (z.x - z.z < 0.0) z.xz = z.zx;
+            if (z.y > z.x) z.yx = z.xy;
+
+            // Y-axis mirror fold around scaled offset
+            float yOff = yFoldScale * scale;
+            z.y = yOff - abs(z.y - yOff);
+
+            // Double conditional Z-X swap with offsets
+            // Creates the characteristic Menger subdivision
+            z.x += swapOffset;
+            if (z.z > z.x) z.zx = z.xz;
+            z.x -= swapOffset;
+
+            z.x -= swapOffset;
+            if (z.z > z.x) z.zx = z.xz;
+            z.x += swapOffset;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+            s /= scale;
+
+            // Y-axis wrapping
+            if (z.y > yWrapThreshold) z.y -= 1.0;
+
+            // X-axis shift
+            z.x += xShift;
+
+            // Track orbit trap for coloring
+            float r = dot(z, z);
+            orbitTrap = min(orbitTrap, r);
+        }
+
+        // Final box SDF with accumulated scale
+        float3 q = abs(z) - float3(cubeSize, cubeSize, cubeSize);
+        float distance = length(max(q, float3(0.0, 0.0, 0.0))) * s * 2.0;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Bilinski Kite fractal - rhombic dodecahedron-inspired structure
+    // @remarks Creates structures inspired by the Bilinski dodecahedron through angular folding (60-degree symmetry), multiple absolute value operations, and minimum selection between fold variants. Uses an octahedron as the final primitive, producing sharp crystalline forms with hexagonal symmetry. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (typically 3.0)
+    // @param offset 3D offset vector controlling fractal shape
+    // @param initialScale Initial position multiplier (affects overall size)
+    // @param foldAngle Angular fold angle in radians (PI/3 = 60 degrees for hexagonal symmetry)
+    // @param zOffset Z-axis offset after absolute fold
+    // @param foldOffset Offset for centered absolute fold
+    // @param xzSubOffset XZ subtraction offset for variant fold
+    // @param enableAngularFold Enable the angular (polar) fold operation
+    // @default iterations 7
+    // @default scale 3.0
+    // @default offset float3(1.0, 0.0, 0.0)
+    // @default initialScale 1.5
+    // @default foldAngle 1.0471976
+    // @default zOffset 0.1
+    // @default foldOffset 0.1
+    // @default xzSubOffset float2(1.0, 0.5)
+    // @default enableAngularFold true
+    float2 BilinskiKiteSDF(float3 position, int iterations = 7, float scale = 3.0, float3 offset = float3(1.0, 0.0, 0.0), float initialScale = 1.5, float foldAngle = 1.0471976, float zOffset = 0.1, float foldOffset = 0.1, float2 xzSubOffset = float2(1.0, 0.5), bool enableAngularFold = true)
+    {
+        float3 z = position * initialScale;
+        float orbitTrap = 10000.0;
+        float s = 1.0;
+
+        for (int n = 0; n < iterations; n++)
+        {
+            // Initial X-Z sort
+            if (z.x - z.z < 0.0) z.xz = z.zx;
+
+            // Angular fold in XZ plane (creates hexagonal symmetry)
+            if (enableAngularFold)
+            {
+                float theta = atan2(z.z, z.x);
+                float r = length(z.xz);
+                // Fold angle into [-foldAngle, foldAngle] range
+                theta = ((theta + foldAngle) % (2.0 * foldAngle)) - foldAngle;
+                z.x = cos(theta) * r;
+                z.z = sin(theta) * r;
+            }
+
+            // Z absolute with offset
+            z.z = abs(z.z) + zOffset;
+
+            // XY absolute fold
+            z.xy = abs(z.xy);
+
+            // Centered absolute fold
+            z = abs(z - float3(foldOffset, foldOffset, foldOffset));
+
+            // Variant fold - offset, abs, then take minimum
+            float3 absz = z;
+            absz.xz -= xzSubOffset;
+            absz = abs(absz);
+
+            z = abs(z);
+            z = min(absz, z);
+
+            // Sort coordinates
+            if (z.x - z.y < 0.0) z.xy = z.yx;
+            if (z.x - z.z < 0.0) z.xz = z.zx;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+            s /= scale;
+
+            // Track orbit trap for coloring
+            float r = dot(z, z);
+            orbitTrap = min(orbitTrap, abs(r));
+        }
+
+        // Octahedron SDF as final primitive (sharper than cube)
+        float3 k = abs(z);
+        float distance = (k.x + k.y + k.z - 1.0) * 0.57735027 * s / 1.5;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Tetrahedral Mandelbox fractal - tetrahedral symmetry with sphere folding
+    // @remarks A Mandelbox variant with tetrahedral symmetry, combining tetrahedral folds, sphere inversion (Mandelbox-style), and box folds. Creates complex organic structures with 4-fold tetrahedral symmetry. Based on nimitz's work. Returns float2: x=accumulated derivative (for coloring/AO), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations
+    // @param scale Scaling factor (negative values create inside-out structures)
+    // @param offset1 Primary offset applied after tetrahedral fold
+    // @param offset2 Secondary offset applied before iteration loop
+    // @param fixedRadius2 Squared radius for sphere fold outer bound
+    // @param minRadius2 Squared radius for sphere fold inner bound
+    // @param foldingLimit Box fold clamping limit
+    // @param threshold Bounding threshold for distance estimation
+    // @default iterations 10
+    // @default scale -2.8
+    // @default offset1 float3(2.5, -1.5, -0.5)
+    // @default offset2 float3(0.0, 1.0, 0.0)
+    // @default fixedRadius2 14.0
+    // @default minRadius2 8.0
+    // @default foldingLimit 3.7
+    // @default threshold 3.7
+    float2 TetrahedralMandelboxSDF(float3 position, int iterations = 10, float scale = -2.8, float3 offset1 = float3(2.5, -1.5, -0.5), float3 offset2 = float3(0.0, 1.0, 0.0), float fixedRadius2 = 14.0, float minRadius2 = 8.0, float foldingLimit = 3.7, float threshold = 3.7)
+    {
+        // Tetrahedral fold normal (pointing to tetrahedron face)
+        const float3 nc = float3(-0.5, -0.5, 0.7071);
+
+        float3 p = position;
+
+        // Tetrahedral fold
+        p.xy = abs(p.xy);
+        float t = 2.0 * dot(p, nc);
+        p -= t * nc;
+        p.xy = abs(p.xy);
+        t = 2.0 * min(0.0, dot(p, nc));
+        p -= t * nc;
+
+        // Apply primary offset
+        p += offset1;
+        float3 c = p;
+
+        // Apply secondary offset
+        p += offset2;
+
+        float dr = 1.0;
+
+        for (int n = 0; n < iterations; n++)
+        {
+            // Box fold: clamp and reflect
+            p = clamp(p, float3(-foldingLimit, -foldingLimit, -foldingLimit), float3(foldingLimit, foldingLimit, foldingLimit)) * 2.0 - p;
+
+            // Sphere fold (Mandelbox-style inversion)
+            float p2 = dot(p, p);
+            if (p2 < minRadius2)
+            {
+                float t2 = fixedRadius2 / minRadius2;
+                p *= t2;
+                dr *= t2;
+            }
+            else if (p2 < fixedRadius2)
+            {
+                float t2 = fixedRadius2 / p2;
+                p *= t2;
+                dr *= t2;
+            }
+
+            // Scale and translate back to orbit
+            p = scale * p + c;
+            dr = dr * abs(scale) + 1.0;
+        }
+
+        // Distance estimation
+        float distance = length(p) / abs(dr);
+
+        // Bounding box threshold
+        float bound = max(abs(c.x), max(abs(c.y), abs(c.z))) - threshold;
+        distance = max(distance, bound);
+
+        // Return derivative ratio as color value (useful for AO/coloring)
+        float colorValue = dr / 1000.0;
+
+        return float2(colorValue, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Sierpinski Tetrahedron with rotation - classic 3D Sierpinski with optional twist
+    // @remarks The classic Sierpinski tetrahedron fractal created through three conditional folds that reflect points across planes. Features optional per-iteration rotation around Y and X axes to create twisted variants. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (2.0 for classic Sierpinski)
+    // @param offset Offset value for scaling transform (1.0 for classic)
+    // @param rotationY Y-axis rotation angle in radians per iteration (0 = no twist)
+    // @param rotationX X-axis rotation angle in radians per iteration (0 = no twist)
+    // @default iterations 11
+    // @default scale 2.0
+    // @default offset 1.0
+    // @default rotationY 0.0
+    // @default rotationX 0.0
+    float2 SierpinskiTetrahedronSDF(float3 position, int iterations = 11, float scale = 2.0, float offset = 1.0, float rotationY = 0.0, float rotationX = 0.0)
+    {
+        float3 z = position;
+        float orbitTrap = 1000000.0;
+
+        // Precompute rotation values
+        float cosAlpha = cos(rotationY);
+        float sinAlpha = sin(rotationY);
+        float cosBeta = cos(rotationX);
+        float sinBeta = sin(rotationX);
+
+        int n = 0;
+        for (; n < iterations; n++)
+        {
+            // Three Sierpinski folds - reflect across planes where coordinate sums are negative
+            // These create the tetrahedral symmetry
+            if (z.x + z.y < 0.0) z.xy = -z.yx;
+            if (z.x + z.z < 0.0) z.xz = -z.zx;
+            if (z.y + z.z < 0.0) z.zy = -z.yz;
+
+            // Scale and translate
+            z = z * scale - offset * (scale - 1.0);
+
+            // Optional rotation around Y-axis (in XZ plane)
+            if (rotationY != 0.0)
+            {
+                float2 rotXZ = float2(
+                    cosAlpha * z.x - sinAlpha * z.z,
+                    sinAlpha * z.x + cosAlpha * z.z
+                );
+                z.x = rotXZ.x;
+                z.z = rotXZ.y;
+            }
+
+            // Optional rotation around X-axis (in YZ plane)
+            if (rotationX != 0.0)
+            {
+                float2 rotYZ = float2(
+                    cosBeta * z.y - sinBeta * z.z,
+                    sinBeta * z.y + cosBeta * z.z
+                );
+                z.y = rotYZ.x;
+                z.z = rotYZ.y;
+            }
+
+            // Track orbit trap for coloring
+            orbitTrap = min(orbitTrap, dot(z, z));
+        }
+
+        // Distance estimation with scale correction
+        float distance = length(z) * pow(scale, float(-n));
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Menger Sponge - classic cubic fractal with holes
+    // @remarks The classic Menger sponge fractal created by recursively removing cross-shaped sections from a cube. Uses coordinate sorting and conditional offsets to create the characteristic hole pattern. Features optional per-iteration rotation for twisted variants. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations (higher = more detail)
+    // @param scale Scaling factor per iteration (3.0 for classic Menger)
+    // @param rotationY Y-axis rotation angle in radians per iteration (0 = no twist)
+    // @param rotationX X-axis rotation angle in radians per iteration (0 = no twist)
+    // @default iterations 12
+    // @default scale 3.0
+    // @default rotationY 0.0
+    // @default rotationX 0.0
+    float2 MengerSpongeSDF(float3 position, int iterations = 12, float scale = 3.0, float rotationY = 0.0, float rotationX = 0.0)
+    {
+        float3 p = position;
+        float orbitTrap = 1000000.0;
+
+        // Precompute rotation values
+        float cosAlpha = cos(rotationY);
+        float sinAlpha = sin(rotationY);
+        float cosBeta = cos(rotationX);
+        float sinBeta = sin(rotationX);
+
+        int i = 0;
+        for (; i < iterations; i++)
+        {
+            // Optional rotation around Y-axis (in XZ plane)
+            if (rotationY != 0.0)
+            {
+                float2 rotXZ = float2(
+                    cosAlpha * p.x - sinAlpha * p.z,
+                    sinAlpha * p.x + cosAlpha * p.z
+                );
+                p.x = rotXZ.x;
+                p.z = rotXZ.y;
+            }
+
+            // Optional rotation around X-axis (in YZ plane)
+            if (rotationX != 0.0)
+            {
+                float2 rotYZ = float2(
+                    cosBeta * p.y - sinBeta * p.z,
+                    sinBeta * p.y + cosBeta * p.z
+                );
+                p.y = rotYZ.x;
+                p.z = rotYZ.y;
+            }
+
+            // Fold into positive octant
+            p = abs(p);
+
+            // Sort coordinates (bubble sort to get x >= y >= z)
+            if (p.y > p.x) p.yx = p.xy;
+            if (p.z > p.y) p.zy = p.yz;
+
+            // Track orbit trap for coloring
+            orbitTrap = min(orbitTrap, dot(p, p));
+
+            // Scale
+            p *= scale;
+
+            // Conditional offset - creates the characteristic Menger holes
+            // Different offset based on z position relative to scale
+            float threshold = 0.5 * (scale - 1.0);
+            if (p.z > threshold)
+            {
+                p -= float3(scale - 1.0, scale - 1.0, scale - 1.0);
+            }
+            else
+            {
+                p -= float3(scale - 1.0, scale - 1.0, 0.0);
+            }
+        }
+
+        // Distance estimation with scale correction
+        float distance = length(p) * pow(scale, float(-i));
+
+        return float2(orbitTrap / 2.3, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Lambda Bulb - triplex number fractal with organic bulbous forms
+    // @remarks A Mandelbulb variant using triplex number multiplication (3D analog of complex numbers). Combines coordinate folding, triplex power operations, and box folding to create organic, coral-like structures. Features a Julia-like constant parameter for shape control. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations
+    // @param power Power exponent for triplex operations (affects bulb shape)
+    // @param juliaC Julia-like constant controlling overall shape
+    // @param phase Phase offset for triplex power operation
+    // @param escapeRadius Bailout radius for iteration escape
+    // @default iterations 8
+    // @default power 4.0
+    // @default juliaC float3(1.035, -0.317, 0.013)
+    // @default phase 1.815142
+    // @default escapeRadius 2.0
+    float2 LambdaBulbSDF(float3 position, int iterations = 8, float power = 4.0, float3 juliaC = float3(1.035, -0.317, 0.013), float phase = 1.815142, float escapeRadius = 2.0)
+    {
+        float3 z = position;
+        float3 c = juliaC;
+
+        // Precompute Julia constant spherical coordinates
+        float r1 = length(c);
+        float theta1 = atan2(c.y, c.x);
+        float phi1 = asin(c.z / max(r1, 0.0001));
+
+        float orbitTrap = 10000000.0;
+        float r = length(z);
+        float dz = 1.0;
+        float powercache1 = (power - 1.0) * 0.5;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            // Update derivative for distance estimation
+            dz = power * pow(r, powercache1) * dz + 2.0;
+
+            // Coordinate sorting/folding - creates symmetry
+            if (z.z > z.x) z.zx = z.xz;
+            if (z.z > z.y) z.zy = z.yz;
+            if (z.x > z.y) z.xy = z.yx;
+            z.xy = z.yx;
+
+            // Triplex power: z^power with phase offset
+            float zr = length(z);
+            float ztheta = atan2(z.y, z.x);
+            float zphi = acos(z.z / max(zr, 0.0001));
+            float zrPow = pow(zr, power);
+            float newPhi = zphi * power + phase;
+            float newTheta = ztheta * power;
+            float3 zPow = float3(
+                zrPow * sin(newPhi) * cos(newTheta),
+                zrPow * sin(newPhi) * sin(newTheta),
+                zrPow * cos(newPhi)
+            );
+
+            // Triplex multiplication: c * (z - z^power)
+            float3 diff = z - zPow;
+            float r2 = length(diff);
+            float theta2 = atan2(diff.y, diff.x);
+            float phi2 = asin(diff.z / max(r2, 0.0001));
+            float rMul = r1 * r2;
+            float thetaMul = theta1 + theta2;
+            float phiMul = phi1 + phi2;
+            z = float3(
+                rMul * cos(thetaMul) * cos(phiMul),
+                rMul * sin(thetaMul) * cos(phiMul),
+                rMul * sin(phiMul)
+            );
+
+            // Box fold variant - clamp to [0, 0.5] range
+            z = 2.0 * clamp(z, float3(0.0, 0.0, 0.0), float3(0.5, 0.5, 0.5)) - z;
+
+            r = length(z);
+            orbitTrap = min(orbitTrap, r);
+
+            if (r > escapeRadius) break;
+        }
+
+        // Distance estimation using derivative
+        float distance = 0.5 * log(r) * sqrt(r) / dz;
+
+        return float2(orbitTrap, distance);
+    }
+
+    // @export
+    // @namespace Fuse.SDF.Fractal
+    // @summary Sierpinski Octahedron - alternating icosahedral and octahedral folds
+    // @remarks A hybrid fractal alternating between icosahedral folds (using golden ratio normals) on even iterations and octahedral/Sierpinski folds on odd iterations. Creates complex structures combining 5-fold and 8-fold symmetries. Returns float2: x=orbit trap (for coloring), y=signed distance.
+    // @param position Sample position in 3D space
+    // @param iterations Number of fractal iterations
+    // @param scale Scaling factor per iteration
+    // @param offsetIcosa Offset for icosahedral fold iterations (even)
+    // @param offsetOcta Offset for octahedral fold iterations (odd)
+    // @param escapeRadius Bailout radius squared for early termination
+    // @default iterations 3
+    // @default scale 2.0
+    // @default offsetIcosa float3(1.15065, 0.52573, 0.0)
+    // @default offsetOcta float3(1.0, 0.3, 0.0)
+    // @default escapeRadius 64.0
+    float2 SierpinskiOctahedronSDF(float3 position, int iterations = 3, float scale = 2.0, float3 offsetIcosa = float3(1.15065, 0.52573, 0.0), float3 offsetOcta = float3(1.0, 0.3, 0.0), float escapeRadius = 64.0)
+    {
+        // Golden ratio for icosahedral symmetry
+        const float PHI = 1.6180339887498948482;
+
+        // Icosahedral fold normals
+        float3 n1 = normalize(float3(-PHI, PHI - 1.0, 1.0));
+        float3 n2 = normalize(float3(1.0, -PHI, PHI + 1.0));
+        float3 n3 = normalize(float3(0.0, 0.0, -1.0));
+
+        float3 z = position;
+        float orbitTrap = 100000.0;
+        float r;
+
+        // Initial icosahedral folds to establish symmetry
+        z = abs(z);
+        float t = dot(z, n1);
+        if (t > 0.0) z -= 2.0 * t * n1;
+        t = dot(z, n2);
+        if (t > 0.0) z -= 2.0 * t * n2;
+        t = dot(z, n3);
+        if (t > 0.0) z -= 2.0 * t * n3;
+        t = dot(z, n2);
+        if (t > 0.0) z -= 2.0 * t * n2;
+
+        int n = 0;
+        for (; n < iterations; n++)
+        {
+            if ((n % 2) == 0)
+            {
+                // Icosahedral fold on even iterations
+                z = abs(z);
+                t = dot(z, n1);
+                if (t > 0.0) z -= 2.0 * t * n1;
+                z = scale * z - offsetIcosa * (scale - 1.0);
+            }
+            else
+            {
+                // Octahedral/Sierpinski fold on odd iterations
+                z = abs(z);
+                if (z.x + z.y < 0.0) z.xy = -z.yx;
+                if (z.x + z.z < 0.0) z.xz = -z.zx;
+                if (z.x - z.y < 0.0) z.xy = z.yx;
+                if (z.x - z.z < 0.0) z.xz = z.zx;
+                z = scale * z - offsetOcta * (scale - 1.0);
+            }
+
+            r = dot(z, z);
+            orbitTrap = min(orbitTrap, abs(r));
+
+            if (r > escapeRadius) break;
+        }
+
+        // Distance estimation with scale correction
+        float distance = length(z) * pow(scale, float(-(n + 1)));
+
+        return float2(orbitTrap, distance);
+    }
+};
