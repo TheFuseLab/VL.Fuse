@@ -209,15 +209,14 @@ public static class TypeHelpers
                 return "AppendStructuredBuffer<" + theType + ">";
             case BufferType.Consume:
                 return "ConsumeStructuredBuffer<" + theType + ">";
+            case BufferType.Normal:
+                return "StructuredBuffer<" + theType + ">";
+            case BufferType.RW:
+                return "RWStructuredBuffer<" + theType + ">";
         }
 
-        if (theBuffer == null)
-        {
-            if (theBufferType == BufferType.RW) return "RWStructuredBuffer<" + theType + ">";
-            return "StructuredBuffer<" + theType + ">";
-        }
-
-        if ((theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
+        // Auto: detect from buffer flags
+        if (theBuffer != null && (theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
             return "RWStructuredBuffer<" + theType + ">";
 
         return "StructuredBuffer<" + theType + ">";

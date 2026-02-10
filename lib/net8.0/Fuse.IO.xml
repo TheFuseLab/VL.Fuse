@@ -31,19 +31,82 @@
         <member name="M:Fuse.IO.Fbx.GpuPacking.DQIndex(System.Int32,System.Int32,System.Int32,System.Int32)">
             Convert a frame selection (frame, boneIndex) to the packed float4 index.
         </member>
+        <member name="T:Fuse.IO.Ply.CombinedProgressInfo">
+            <summary>
+            Unified progress tracking for combined PLY loading and Octree building operations.
+            Provides weighted progress across multiple stages for a smooth 0-100% experience.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.CombinedProgressInfo.ProcessStage">
+            <summary>
+            Processing stages with their progress weight ranges.
+            </summary>
+        </member>
+        <member name="F:Fuse.IO.Ply.CombinedProgressInfo.StageWeights">
+            <summary>
+            Stage weight configuration: (StartPercent, EndPercent)
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.CombinedProgressInfo.StageProgress">
+            <summary>
+            Progress within the current stage (0-100).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.CombinedProgressInfo.OverallProgress">
+            <summary>
+            Overall progress across all stages (0-100).
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.UpdateOverallProgress">
+            <summary>
+            Updates the overall progress based on current stage and stage progress.
+            Call this after modifying StageProgress.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.AdvanceStage(Fuse.IO.Ply.CombinedProgressInfo.ProcessStage,System.String)">
+            <summary>
+            Advances to the next stage, resetting stage progress.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.UpdateFromPlyProgress(Fuse.IO.Ply.FastPlyReader.ProgressInfo)">
+            <summary>
+            Updates from FastPlyReader.ProgressInfo, mapping its progress to the LoadingPly stage.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.UpdateFromOctreeProgress(Fuse.IO.Ply.GPUOctree.OctreeProgressInfo,System.Boolean)">
+            <summary>
+            Updates from GPUOctree.OctreeProgressInfo, mapping to BuildingOctree or GeneratingLODs stage.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.MarkComplete">
+            <summary>
+            Marks the operation as complete.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.CombinedProgressInfo.MarkError(System.Exception)">
+            <summary>
+            Marks the operation as failed with an error.
+            </summary>
+        </member>
         <member name="T:Fuse.IO.Ply.CacheLogger">
             <summary>
             Simple logger for disk cache operations to avoid silent failures.
             </summary>
         </member>
-        <member name="T:Fuse.IO.Ply.FastPly">
+        <member name="M:Fuse.IO.Ply.DiskCacheKey.ForPly(System.String,Fuse.IO.Ply.PlyDecimationStrategy,System.Int32)">
             <summary>
-            Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
-            Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
-            
-            This is the original FastPly loader with optimized parallel loading, decimation,
-            and disk caching support.
+            Creates a cache key for PLY files that includes decimation settings.
+            Different decimation strategies/factors will produce different cache entries.
             </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.FastPly">
+             <summary>
+             Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
+             Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
+            
+             This is the original FastPly loader with optimized parallel loading, decimation,
+             and disk caching support.
+             </summary>
         </member>
         <member name="P:Fuse.IO.Ply.FastPly.Result">
             <summary>
@@ -164,6 +227,50 @@
                 Größer = mehr Grobstruktur zuerst. 24–48 sind gute Startwerte.
             </summary>
         </member>
+        <member name="T:Fuse.IO.Ply.OctreeLodHelper">
+            <summary>
+            Helper class for computing precomputed LODs (Level of Detail) for octree leaf nodes.
+            This reorders point indices within each leaf to support progressive rendering.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.OctreeLodHelper.TryApplyPrecomputedLeafLODs(System.Byte[],System.Byte[],System.Int32,System.Int32,System.Collections.Generic.Dictionary{System.String,System.Single[]},System.Int32,System.Boolean)">
+            <summary>
+            Applies precomputed LOD ordering to all leaf nodes in the octree.
+            Points are reordered within each leaf for coarse-to-fine progressive access.
+            </summary>
+            <param name="nodeBufferData">The octree node buffer (GPUOctreeNode array as bytes)</param>
+            <param name="indexBufferData">The point index buffer (int array as bytes)</param>
+            <param name="nodeCount">Number of nodes in the buffer</param>
+            <param name="indexCount">Number of indices in the buffer</param>
+            <param name="plyData">Point cloud data with x, y, z position arrays</param>
+            <param name="leafTargetCellsOnLongestAxis">Target cell count for LOD grid (24-48 recommended)</param>
+            <param name="debug">Enable debug logging</param>
+            <returns>True if LODs were applied successfully</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.OctreeLodHelper.ProgressiveOrderLeaf(System.Span{System.Int32},System.ReadOnlySpan{Stride.Core.Mathematics.Vector3},Fuse.IO.Ply.OctreeLodHelper.Bounds@,System.Single)">
+            <summary>
+            Reorders indices within a single leaf node for progressive LOD rendering.
+            Uses multi-level grid cells to select coarse points first, then finer ones.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.PlyDiagnosticLog">
+            <summary>
+            Shared file-based diagnostic logger for PLY node trigger debugging.
+            Writes to Desktop\ply_diagnostic.log. Enable via Debug=true on any PLY node.
+            Thread-safe, auto-flushes, includes timestamps and instance IDs.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyDiagnosticLog.Write(System.String,System.Int32,System.String)">
+            <summary>
+            Write a diagnostic log line with timestamp and caller info.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyDiagnosticLog.GetInstanceId(System.Object)">
+            <summary>
+            Generates a short instance ID from the object's hash code, useful to
+            distinguish different node instances (e.g., after recompile).
+            </summary>
+        </member>
         <member name="T:Fuse.IO.Ply.PlyLayoutUtils">
             <summary>
             Utility methods for working with PLY data layouts (SoA and AoS).
@@ -237,6 +344,120 @@
             <summary>
             Loads PLY data using disk cache when enabled, returning decimated SoA arrays.
             This is the shared core used by both FastPly and FastPlyInterleaved nodes.
+            </summary>
+        </member>
+        <member name="T:Fuse.IO.Ply.PlyOctreeLoader">
+             <summary>
+             Combined ProcessNode that loads PLY files and builds GPU octrees in a single operation.
+             Provides unified progress reporting across both stages (0-100% overall).
+            
+             This node combines FastPly + OctreeBuilder for convenience when you need both
+             the point cloud data and the octree for GPU rendering. It offers:
+             - Single trigger to load and build
+             - Unified progress (0-100%) across all stages
+             - Shared disk caching for the combined result
+             - Better error handling across stages
+            
+             Use this instead of chaining FastPly + OctreeBuilder when you need both outputs.
+             </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.EnablePrecomputedLeafLODs">
+            <summary>
+            Enables CPU-side progressive LOD permutation for leaf nodes.
+            This reorders points within leaves for coarse-to-fine progressive rendering.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.LeafTargetCellsOnLongestAxis">
+            <summary>
+            Target cell count on longest axis per leaf (controls coarse→fine layers).
+            Larger = more coarse structure first. 24-48 are good starting values.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.PlyData">
+            <summary>
+            Dictionary of field name to float array. Each field is stored separately (SoA layout).
+            For example: PlyData["x"] contains all X coordinates, PlyData["red"] contains all red values.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.VertexCount">
+            <summary>
+            Number of vertices in the loaded point cloud.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.FieldOrder">
+            <summary>
+            Names of fields in order as they appear in the PLY header.
+            For example: ["x", "y", "z", "red", "green", "blue"]
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.NodeBufferData">
+            <summary>
+            GPU-ready octree node buffer (array of GPUOctreeNode structs as bytes).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.IndexBufferData">
+            <summary>
+            GPU-ready point index buffer (array of int indices as bytes).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.NodeCount">
+            <summary>
+            Number of octree nodes.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.IndexCount">
+            <summary>
+            Number of point indices.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.Progress">
+            <summary>
+            Overall progress from 0 to 1 (not 0-100).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.Status">
+            <summary>
+            Current processing status: "Ready", "Processing", "Complete", or "Error".
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.StageName">
+            <summary>
+            Current stage name: "Loading PLY", "Building Octree", "Generating LODs", etc.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.DetailedStatus">
+            <summary>
+            Detailed status within the current stage.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.IsProcessing">
+            <summary>
+            True while loading/building is in progress.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.IsCompleted">
+            <summary>
+            True when the entire operation has completed (success or error).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.HasError">
+            <summary>
+            True if an error occurred during processing.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.ErrorMessage">
+            <summary>
+            Error message if HasError is true.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.Output">
+            <summary>
+            Returns this instance for chaining or downstream reference.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyOctreeLoader.ReleaseCpuData">
+            <summary>
+            Releases CPU data to free memory. Call after uploading to GPU.
             </summary>
         </member>
     </members>

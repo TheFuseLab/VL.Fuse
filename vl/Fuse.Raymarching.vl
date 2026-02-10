@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="UpcO9LrNkCUP70s4izHsBD" LanguageVersion="2025.7.0" Version="0.128">
+<Document xmlns:p="property" xmlns:r="reflection" Id="UpcO9LrNkCUP70s4izHsBD" LanguageVersion="2025.7.1-0156-gdf75a792b5" Version="0.128">
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Raymarching" CanvasType="FullCategory">
       <!--
@@ -15,7 +15,7 @@
         <Patch Id="KHZrfKRFdtNOriZmdGYqTp" IsGeneric="true" ExplicitTypeParameters="T">
           <Canvas Id="DJBvO0DbEWONCcn59Ahszd" CanvasType="Group">
             <ControlPoint Id="LSZxGfVFwZwP74nXR8lFuP" Bounds="164,161" />
-            <Node Bounds="342,838,165,19" Id="HtzYi74l9YON4OvSuZ10tk">
+            <Node Bounds="350,890,165,19" Id="HtzYi74l9YON4OvSuZ10tk">
               <p:NodeReference LastCategoryFullName="Stride.Rendering" LastDependency="VL.Stride.Runtime.vl">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="RenderEntity" />
@@ -204,6 +204,19 @@
               <Pin Id="LG1T5vhaofGOepOTqUbEA4" Name="ShaderNode" Kind="OutputPin" />
               <Pin Id="V79I2KOt5wJPOyxpHKOpa6" Name="Distance" Kind="OutputPin" />
             </Node>
+            <Pad Id="Hb1hJMPhKIMMsNMZHE2jpY" Comment="Render Stage" Bounds="384,810,142,15" ShowValueBox="true" isIOBox="true" Value="Transparent">
+              <p:TypeAnnotation LastCategoryFullName="VL.Stride.Rendering" LastDependency="Fuse.Core.vl">
+                <Choice Kind="TypeFlag" Name="DrawerRenderStage" />
+              </p:TypeAnnotation>
+            </Pad>
+            <Node Bounds="519,631,67,19" Id="Ks1ipMVycWGPvIRs2oUD6P">
+              <p:NodeReference LastCategoryFullName="Stride.API.Graphics.BlendStateDescription" LastDependency="VL.Stride.Runtime.vl">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <CategoryReference Kind="ClassType" Name="BlendStateDescription" />
+                <Choice Kind="OperationCallFlag" Name="AlphaBlend" />
+              </p:NodeReference>
+              <Pin Id="B0uQqHav7fTLAw7agnSf0B" Name="Alpha Blend" Kind="OutputPin" />
+            </Node>
           </Canvas>
           <ProcessDefinition Id="Py6Uv1As9S4M0FG3utAaiD">
             <Fragment Id="Jn0zST0NiypNeVRk5V0r71" Patch="LrAMu3fjIXbOneTFlLL3SK" Enabled="true" />
@@ -350,6 +363,8 @@
           <Link Id="DUR8Dp1HahxNRaBHWqQ7HA" Ids="V79I2KOt5wJPOyxpHKOpa6,BEEqKacYuJgMvk8II57LBC" />
           <Link Id="IuAIVGikg67MGzHeOSENDw" Ids="LG1T5vhaofGOepOTqUbEA4,UpWbsTP0fqpL6De6fVZpNE" />
           <Link Id="KLOH3nHnaqZNaMVmCV0JkQ" Ids="LG1T5vhaofGOepOTqUbEA4,IxrsW4bRrYkQGTMKrau6RA" />
+          <Link Id="TeD8gli4pxJQGjD5nAQQIM" Ids="Hb1hJMPhKIMMsNMZHE2jpY,RxAQwygqXKXPP7kJgK13co" />
+          <Link Id="R6hz6op2BeeMsOpEpJiFpx" Ids="B0uQqHav7fTLAw7agnSf0B,LpnW9bPp6LqP2mhlFLiqLU" />
         </Patch>
       </Node>
       <!--
@@ -5686,7 +5701,7 @@
                 </Node>
               </Patch>
             </Node>
-            <ControlPoint Id="IGJq202C2yGMF4XlFyobf9" Bounds="661,207" />
+            <ControlPoint Id="IGJq202C2yGMF4XlFyobf9" Bounds="669,210" />
             <ControlPoint Id="Ka6ccFPr0fCLytvQ3UETkZ" Bounds="845,443" />
           </Canvas>
           <ProcessDefinition Id="PWDcpHclXg3OmaGxTjlpOr">
@@ -6849,7 +6864,7 @@
         </p:NodeReference>
         <Patch Id="EEfdTwrzrZ3Nj4T57frT17" IsGeneric="true">
           <Canvas Id="Qc2urkQZ75ZN6UVBf014Ov" CanvasType="Group">
-            <Pad Id="LGrhqaFRkJAMvMBG8KXyzW" Bounds="1646,654,543,499" ShowValueBox="true" isIOBox="true" Value="vec3 randomSphereDir(vec2 rnd)&#xD;&#xA;{&#xD;&#xA;&#x9;float s = rnd.x*PI*2.;&#xD;&#xA;&#x9;float t = rnd.y*2.-1.;&#xD;&#xA;&#x9;return vec3(sin(s), cos(s), t) / sqrt(1.0 + t * t);&#xD;&#xA;}&#xD;&#xA;vec3 randomHemisphereDir(vec3 dir, float i)&#xD;&#xA;{&#xD;&#xA;&#x9;vec3 v = randomSphereDir( vec2(hash(i+1.), hash(i+2.)) );&#xD;&#xA;&#x9;return v * sign(dot(v, dir));&#xD;&#xA;}&#xD;&#xA;&#xD;&#xA;float ambientOcclusion( in vec3 p, in vec3 n, in float maxDist, in float falloff )&#xD;&#xA;{&#xD;&#xA;&#x9;const int nbIte = 32&#xD;&#xA;    ;&#xD;&#xA;    const float nbIteInv = 1./float(nbIte);&#xD;&#xA;    const float rad = 1.-1.*nbIteInv; //Hemispherical factor (self occlusion correction)&#xD;&#xA;    &#xD;&#xA;&#x9;float ao = 0.0;&#xD;&#xA;    &#xD;&#xA;    for( int i=0; i&lt;nbIte; i++ )&#xD;&#xA;    {&#xD;&#xA;        float l = hash(float(i))*maxDist;&#xD;&#xA;        vec3 rd = normalize(n+randomHemisphereDir(n, l )*rad)*l; // mix direction with the normal&#xD;&#xA;        &#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;    // for self occlusion problems!&#xD;&#xA;        &#xD;&#xA;        ao += (l - max(map( p + rd ),0.)) / maxDist * falloff;&#xD;&#xA;    }&#xD;&#xA;&#x9;&#xD;&#xA;    return clamp( 1.-ao*nbIteInv, 0., 1.);&#xD;&#xA;}">
+            <Pad Id="LGrhqaFRkJAMvMBG8KXyzW" Bounds="896,668,543,499" ShowValueBox="true" isIOBox="true" Value="vec3 randomSphereDir(vec2 rnd)&#xD;&#xA;{&#xD;&#xA;&#x9;float s = rnd.x*PI*2.;&#xD;&#xA;&#x9;float t = rnd.y*2.-1.;&#xD;&#xA;&#x9;return vec3(sin(s), cos(s), t) / sqrt(1.0 + t * t);&#xD;&#xA;}&#xD;&#xA;vec3 randomHemisphereDir(vec3 dir, float i)&#xD;&#xA;{&#xD;&#xA;&#x9;vec3 v = randomSphereDir( vec2(hash(i+1.), hash(i+2.)) );&#xD;&#xA;&#x9;return v * sign(dot(v, dir));&#xD;&#xA;}&#xD;&#xA;&#xD;&#xA;float ambientOcclusion( in vec3 p, in vec3 n, in float maxDist, in float falloff )&#xD;&#xA;{&#xD;&#xA;&#x9;const int nbIte = 32&#xD;&#xA;    ;&#xD;&#xA;    const float nbIteInv = 1./float(nbIte);&#xD;&#xA;    const float rad = 1.-1.*nbIteInv; //Hemispherical factor (self occlusion correction)&#xD;&#xA;    &#xD;&#xA;&#x9;float ao = 0.0;&#xD;&#xA;    &#xD;&#xA;    for( int i=0; i&lt;nbIte; i++ )&#xD;&#xA;    {&#xD;&#xA;        float l = hash(float(i))*maxDist;&#xD;&#xA;        vec3 rd = normalize(n+randomHemisphereDir(n, l )*rad)*l; // mix direction with the normal&#xD;&#xA;        &#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;    // for self occlusion problems!&#xD;&#xA;        &#xD;&#xA;        ao += (l - max(map( p + rd ),0.)) / maxDist * falloff;&#xD;&#xA;    }&#xD;&#xA;&#x9;&#xD;&#xA;    return clamp( 1.-ao*nbIteInv, 0., 1.);&#xD;&#xA;}">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="ImmutableTypeFlag" Name="String" />
                 <CategoryReference Kind="Category" Name="Primitive" />
@@ -13550,8 +13565,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="G6Db96TymfLMy5IFR12Wro" Location="VL.CoreLib" Version="2025.7.0" />
-  <NugetDependency Id="BfwvD1QmK4bQWsFBNVL3LA" Location="VL.Stride" Version="2025.7.0" />
+  <NugetDependency Id="G6Db96TymfLMy5IFR12Wro" Location="VL.CoreLib" Version="2025.7.1-0156-gdf75a792b5" />
+  <NugetDependency Id="BfwvD1QmK4bQWsFBNVL3LA" Location="VL.Stride" Version="2025.7.1-0156-gdf75a792b5" />
   <DocumentDependency Id="QY2YiRzHQG7M0Jd246eD3x" Location="./Fuse.Core.vl" IsFriend="true" />
   <PlatformDependency Id="B8AAqMMJg7MMXnpOXxs6u7" Location="../lib/net6.0/Fuse.dll" />
   <DocumentDependency Id="GvB2WkQif9ROZRCDwHJymH" Location="./Fuse.Material.vl" />
@@ -13559,6 +13574,6 @@
   <DocumentDependency Id="VInZRuc2WUONJwPv7Z4D3w" Location="./Fuse.Transform.vl" />
   <DocumentDependency Id="CsODVdSNQRVMRZVZ7C9YtC" Location="./Fuse.Draw.vl" />
   <NugetDependency Id="H2RV3BJcX6LLRNNkJDFfEw" Location="VL.Fuse" Version="0.0.0.0" />
-  <NugetDependency Id="LnWcIdd30EBOhrdFmtUGiQ" Location="VL.Stride.Runtime" Version="2025.7.0" />
-  <NugetDependency Id="KnUgzNJ5DmZNKhijgMY3k0" Location="VL.Stride.TextureFX" Version="2025.7.0" />
+  <NugetDependency Id="LnWcIdd30EBOhrdFmtUGiQ" Location="VL.Stride.Runtime" Version="2025.7.1-0156-gdf75a792b5" />
+  <NugetDependency Id="KnUgzNJ5DmZNKhijgMY3k0" Location="VL.Stride.TextureFX" Version="2025.7.1-0156-gdf75a792b5" />
 </Document>

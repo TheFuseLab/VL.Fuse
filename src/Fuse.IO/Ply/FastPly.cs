@@ -5,7 +5,7 @@ namespace Fuse.IO.Ply;
 /// <summary>
 /// Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
 /// Each field is stored in its own float[] array: x[], y[], z[], r[], g[], b[], etc.
-/// 
+///
 /// This is the original FastPly loader with optimized parallel loading, decimation,
 /// and disk caching support.
 /// </summary>
@@ -14,17 +14,26 @@ public class FastPly
 {
     private bool _isLoading;
     private FastPlyReader.ProgressInfo? _progressInfo;
+    private readonly int _instanceId;
+    private int _updateCount;
+    private int _triggerCount;
+    private bool _lastLoad;
+
+    public FastPly()
+    {
+        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+    }
 
     // Inputs
-    public string FilePath { get; set; } = string.Empty;
-    public bool Load { get; set; }
-    public PlyDecimationStrategy DecimationStrategy { get; set; } = PlyDecimationStrategy.None;
-    public int DecimationFactor { get; set; } = 1;
+    public string FilePath { private get; set; } = string.Empty;
+    public bool Load { private get; set; }
+    public PlyDecimationStrategy DecimationStrategy { private get; set; } = PlyDecimationStrategy.None;
+    public int DecimationFactor { private get; set; } = 1;
 
-    public bool UseDiskCache { get; set; }
-    public bool ForceReload { get; set; }
-    public string CacheBasePath { get; set; } = string.Empty;
-    public bool Debug { get; set; }
+    public bool UseDiskCache { private get; set; }
+    public bool ForceReload { private get; set; }
+    public string CacheBasePath { private get; set; } = string.Empty;
+    public bool Debug { private get; set; }
 
     // Outputs - SoA data
     /// <summary>
@@ -32,12 +41,12 @@ public class FastPly
     /// For example: Result["x"] contains all X coordinates, Result["red"] contains all red values.
     /// </summary>
     public Dictionary<string, float[]> Result { get; private set; } = new(0);
-    
+
     /// <summary>
     /// Number of vertices in the loaded point cloud.
     /// </summary>
     public int VertexCount { get; private set; }
-    
+
     /// <summary>
     /// Names of fields in order as they appear in the PLY header.
     /// For example: ["x", "y", "z", "red", "green", "blue"]
@@ -58,8 +67,27 @@ public class FastPly
 
     public void Update()
     {
-        // Start loading when Load is triggered
-        if (Load && !_isLoading && !string.IsNullOrEmpty(FilePath)) StartLoading();
+        _updateCount++;
+
+        // Rising edge detection for Load trigger
+        var loadRisingEdge = Load && !_lastLoad;
+
+        if (Debug && Load != _lastLoad)
+        {
+            PlyDiagnosticLog.Write("FastPly", _instanceId,
+                $"Load changed: {_lastLoad} -> {Load}, risingEdge={loadRisingEdge}, _isLoading={_isLoading}, IsCompleted={IsCompleted}, FilePath={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
+        }
+        _lastLoad = Load;
+
+        // Start loading on rising edge only
+        if (loadRisingEdge && !_isLoading && !string.IsNullOrEmpty(FilePath))
+        {
+            _triggerCount++;
+            if (Debug)
+                PlyDiagnosticLog.Write("FastPly", _instanceId,
+                    $"TRIGGER #{_triggerCount} - risingEdge detected, file={Path.GetFileName(FilePath)}, frame={_updateCount}");
+            StartLoading();
+        }
 
         // Update outputs with current progress
         if (_progressInfo == null) return;
@@ -73,6 +101,9 @@ public class FastPly
         if (!IsCompleted) return;
 
         // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
+        if (Debug)
+            PlyDiagnosticLog.Write("FastPly", _instanceId,
+                $"Load complete, _isLoading reset. Load pin={Load}, frame={_updateCount}");
         _isLoading = false;
     }
 
@@ -105,10 +136,10 @@ public class FastPly
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
             _progressInfo.Result = loadResult.Arrays;
-            
+
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
-            
+
             Log($"[FastPly] Load complete. Arrays={loadResult.Arrays.Count}, Vertices={loadResult.VertexCount}, CacheHit={loadResult.WasCacheHit}");
         }
         catch (Exception ex)
@@ -118,7 +149,7 @@ public class FastPly
             IsCompleted = true; // Also set on error
         }
     }
-    
+
     /// <summary>
     /// Releases CPU data to free memory. Call after uploading to GPU.
     /// </summary>
@@ -137,6 +168,4 @@ public class FastPly
     {
         if (Debug) Console.WriteLine(message);
     }
-
-    // Output pins
 }
