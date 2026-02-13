@@ -50,6 +50,33 @@ internal static class PlyLoadCore
                 var key = DiskCacheKey.ForPly(filePath, decimationStrategy, decimationFactor);
                 Log(debug, $"[PlyLoadCore] Cache key: {key}");
 
+                async Task<Dictionary<string, float[]>> BuildFromSourceAsync(CancellationToken ct)
+                {
+                    var swBuild = Stopwatch.StartNew();
+                    await FastPlyReader.LoadInBackgroundAsync(
+                        filePath,
+                        progressInfo,
+                        decimationStrategy,
+                        decimationFactor);
+                    swBuild.Stop();
+
+                    if (progressInfo.Error != null)
+                        throw progressInfo.Error;
+
+                    var builtArrays = progressInfo.Result ?? new Dictionary<string, float[]>(0);
+                    var builtVertexCount = builtArrays.Count > 0 ? builtArrays.Values.First().Length : 0;
+                    Log(debug,
+                        $"[PlyLoadCore] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={builtArrays.Count}, Vertices={builtVertexCount}. Strategy={decimationStrategy}");
+
+                    if (progressInfo.TotalVertices > 0 && (builtArrays.Count == 0 || builtVertexCount == 0))
+                    {
+                        throw new InvalidOperationException(
+                            $"PLY load produced empty output for non-empty source (SourceVertices={progressInfo.TotalVertices}).");
+                    }
+
+                    return builtArrays;
+                }
+
                 if (forceReload)
                 {
                     Log(debug, "[PlyLoadCore] ForceReload=true, invalidating cache");
@@ -71,12 +98,21 @@ internal static class PlyLoadCore
                     // Validate cache integrity - if cache has 0 arrays/vertices but file exists, it's corrupted
                     if (arrayCount == 0 || vertexCount == 0)
                     {
-                        Console.WriteLine($"[PlyLoadCore] WARNING: Cache returned empty data (Arrays={arrayCount}, Vertices={vertexCount}). Cache may be corrupted from a previous buggy run. Use ForceReload=true to rebuild.");
+                        Console.WriteLine(
+                            $"[PlyLoadCore] WARNING: Cache returned empty data (Arrays={arrayCount}, Vertices={vertexCount}). Invalidating and rebuilding from source.");
+                        DiskCache.Invalidate("ply", key);
+                        arrays = await DiskCache.GetOrCreateAsync(
+                            "ply",
+                            key,
+                            new PlyArraysCacheSerializer(),
+                            BuildFromSourceAsync,
+                            CancellationToken.None);
+                        arrayCount = arrays?.Count ?? 0;
+                        vertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
+                        Log(debug,
+                            $"[PlyLoadCore] Cache recovered. Arrays={arrayCount}, Vertices={vertexCount}");
                     }
-                    
-                    progressInfo.Stage = 1;
-                    progressInfo.StageName = "Loaded from cache";
-                    progressInfo.ProgressPercentage = 100;
+
                     if (arrays != null)
                     {
                         progressInfo.Result = arrays;
@@ -87,8 +123,12 @@ internal static class PlyLoadCore
                         progressInfo.FieldOrder = result.FieldOrder;
                         result.VertexCount = arrays.Count > 0 ? arrays.Values.First().Length : 0;
                     }
+
+                    progressInfo.Stage = 1;
+                    progressInfo.StageName = "Loaded from cache";
+                    progressInfo.ProgressPercentage = 100;
                     progressInfo.IsCompleted = true;
-                    result.WasCacheHit = true;
+                    result.WasCacheHit = arrayCount > 0 && vertexCount > 0;
                 }
                 else
                 {
@@ -97,30 +137,7 @@ internal static class PlyLoadCore
                         "ply",
                         key,
                         new PlyArraysCacheSerializer(),
-                        async ct =>
-                        {
-                            var swBuild = Stopwatch.StartNew();
-                            // Pass the decimation parameters to the reader
-                            await FastPlyReader.LoadInBackgroundAsync(
-                                filePath,
-                                progressInfo,
-                                decimationStrategy,
-                                decimationFactor);
-
-                            swBuild.Stop();
-                            var builtArrays = progressInfo.Result ?? new Dictionary<string, float[]>(0);
-                            var builtVertexCount = builtArrays.Count > 0 ? builtArrays.Values.First().Length : 0;
-                            Log(debug,
-                                $"[PlyLoadCore] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={builtArrays.Count}, Vertices={builtVertexCount}. Strategy={decimationStrategy}");
-                            
-                            // Warn if we're about to cache empty data
-                            if (builtArrays.Count == 0 || builtVertexCount == 0)
-                            {
-                                Console.WriteLine($"[PlyLoadCore] WARNING: About to cache empty data! Arrays={builtArrays.Count}, Vertices={builtVertexCount}. This may indicate a loading bug.");
-                            }
-                            
-                            return builtArrays;
-                        },
+                        BuildFromSourceAsync,
                         CancellationToken.None);
                     swMiss.Stop();
                     
@@ -146,6 +163,9 @@ internal static class PlyLoadCore
                     progressInfo,
                     decimationStrategy,
                     decimationFactor);
+
+                if (progressInfo.Error != null)
+                    throw progressInfo.Error;
 
                 swNoCache.Stop();
                 Log(debug,
