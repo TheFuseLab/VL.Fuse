@@ -288,6 +288,7 @@ public class FastPlyReader
             progressInfo.Error = ex;
             progressInfo.StageName = "Error";
             progressInfo.IsCompleted = true;
+            throw;
         }
     }
 

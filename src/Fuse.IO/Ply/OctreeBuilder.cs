@@ -146,6 +146,44 @@ public class OctreeBuilder
                     DiskCache.Invalidate("octree", octreeKey);
                 }
 
+                async Task<OctreeCacheSerializer.Payload> BuildOctreePayloadAsync(CancellationToken ct)
+                {
+                    var swBuild = Stopwatch.StartNew();
+                    await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
+                    swBuild.Stop();
+                    Log(
+                        $"[OctreeBuilder] Built from source in {swBuild.ElapsedMilliseconds} ms. Nodes={_progressInfo.NodeCount} Indices={_progressInfo.IndexCount}");
+
+                    if (_progressInfo.Error != null)
+                        throw _progressInfo.Error;
+                    if (_progressInfo.NodeBufferData == null || _progressInfo.IndexBufferData == null)
+                        throw new InvalidOperationException("Octree build completed without output buffers.");
+
+                    // Precompute LODs BEFORE writing to cache (only once per dataset)
+                    var precomputed = false;
+                    if (EnablePrecomputedLeafLODs)
+                    {
+                        StageSafe("Precompute LODs (Leaves, caching)", 0.0);
+                        precomputed = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
+                            _progressInfo.NodeBufferData,
+                            _progressInfo.IndexBufferData,
+                            _progressInfo.NodeCount,
+                            _progressInfo.IndexCount,
+                            PLYData,
+                            LeafTargetCellsOnLongestAxis,
+                            Debug);
+                        StageSafe("Precompute LODs (Leaves, caching) - done", 1.0);
+                    }
+
+                    return new OctreeCacheSerializer.Payload(
+                        _progressInfo.NodeBufferData,
+                        _progressInfo.IndexBufferData,
+                        _progressInfo.NodeCount,
+                        _progressInfo.IndexCount,
+                        _progressInfo.TotalMemoryUsed,
+                        precomputed);
+                }
+
                 if (DiskCache.TryGet("octree", octreeKey, new OctreeCacheSerializer(), default, out var payloadTask))
                 {
                     var swHit = Stopwatch.StartNew();
@@ -153,7 +191,23 @@ public class OctreeBuilder
                     swHit.Stop();
                     Log(
                         $"[OctreeBuilder] Cache hit. Read in {swHit.ElapsedMilliseconds} ms. Nodes={payload.NodeCount} Indices={payload.IndexCount}");
-                    _wasCacheHit = true; // NEW
+                    if (!IsValidOctreePayload(payload))
+                    {
+                        Console.WriteLine(
+                            "[OctreeBuilder] WARNING: Octree cache payload invalid. Invalidating and rebuilding.");
+                        DiskCache.Invalidate("octree", octreeKey);
+                        payload = await DiskCache.GetOrCreateAsync(
+                            "octree",
+                            octreeKey,
+                            new OctreeCacheSerializer(),
+                            BuildOctreePayloadAsync,
+                            default);
+                        _wasCacheHit = false;
+                    }
+                    else
+                    {
+                        _wasCacheHit = true; // NEW
+                    }
                     _hasPrecomputedLODs = payload.HasPrecomputedLODs; // NEW: remember flag from cache
 
                     _progressInfo.StageName = "Loaded from cache";
@@ -172,38 +226,7 @@ public class OctreeBuilder
                         "octree",
                         octreeKey,
                         new OctreeCacheSerializer(),
-                        async ct =>
-                        {
-                            var swBuild = Stopwatch.StartNew();
-                            await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
-                            swBuild.Stop();
-                            Log(
-                                $"[OctreeBuilder] Built from source in {swBuild.ElapsedMilliseconds} ms. Nodes={_progressInfo.NodeCount} Indices={_progressInfo.IndexCount}");
-
-                            // Precompute LODs BEFORE writing to cache (only once per dataset)
-                            var precomputed = false;
-                            if (EnablePrecomputedLeafLODs && _progressInfo.Error == null)
-                            {
-                                StageSafe("Precompute LODs (Leaves, caching)", 0.0);
-                                TryApplyPrecomputedLeafLODs(
-                                    _progressInfo.NodeBufferData ?? Array.Empty<byte>(),
-                                    _progressInfo.IndexBufferData ?? Array.Empty<byte>(),
-                                    _progressInfo.NodeCount,
-                                    _progressInfo.IndexCount,
-                                    PLYData,
-                                    LeafTargetCellsOnLongestAxis);
-                                StageSafe("Precompute LODs (Leaves, caching) – done", 1.0);
-                                precomputed = true;
-                            }
-
-                            return new OctreeCacheSerializer.Payload(
-                                _progressInfo.NodeBufferData!,
-                                _progressInfo.IndexBufferData!,
-                                _progressInfo.NodeCount,
-                                _progressInfo.IndexCount,
-                                _progressInfo.TotalMemoryUsed,
-                                precomputed);
-                        },
+                        BuildOctreePayloadAsync,
                         default);
                     swMiss.Stop();
                     Log($"[OctreeBuilder] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms.");
@@ -244,15 +267,16 @@ public class OctreeBuilder
                 !UseDiskCache) // NEW: skip on cache hits/misses (cache path handled above)
             {
                 StageSafe("Precompute LODs (Leaves)", 0.0);
-                TryApplyPrecomputedLeafLODs(
+                var lodSuccess = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
                     _progressInfo.NodeBufferData ?? Array.Empty<byte>(),
                     _progressInfo.IndexBufferData ?? Array.Empty<byte>(),
                     _progressInfo.NodeCount,
                     _progressInfo.IndexCount,
                     PLYData,
-                    LeafTargetCellsOnLongestAxis);
-                StageSafe("Precompute LODs (Leaves) – done", 1.0);
-                _hasPrecomputedLODs = true;
+                    LeafTargetCellsOnLongestAxis,
+                    Debug);
+                StageSafe("Precompute LODs (Leaves) - done", 1.0);
+                _hasPrecomputedLODs = lodSuccess;
             }
         }
         catch (Exception ex)
@@ -287,6 +311,17 @@ public class OctreeBuilder
 
         sb.Append("sum:").Append(total);
         return sb.ToString();
+    }
+
+    private static bool IsValidOctreePayload(OctreeCacheSerializer.Payload payload)
+    {
+        if (payload.NodeCount < 0 || payload.IndexCount < 0)
+            return false;
+        if (payload.NodeCount > 0 && (payload.NodeBuffer == null || payload.NodeBuffer.Length == 0))
+            return false;
+        if (payload.IndexCount > 0 && (payload.IndexBuffer == null || payload.IndexBuffer.Length == 0))
+            return false;
+        return true;
     }
 
     private void UpdateOutputs()
@@ -352,3 +387,4 @@ public class OctreeBuilder
     }
 
 }
+

@@ -291,11 +291,61 @@ public class PlyOctreeLoader
                     DiskCache.Invalidate("octree", octreeKey);
                 }
 
+                async Task<OctreeCacheSerializer.Payload> BuildOctreePayloadAsync(CancellationToken ct)
+                {
+                    await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+                    if (_octreeProgressInfo.Error != null)
+                        throw _octreeProgressInfo.Error;
+                    if (_octreeProgressInfo.NodeBufferData == null || _octreeProgressInfo.IndexBufferData == null)
+                        throw new InvalidOperationException("Octree build completed without output buffers.");
+
+                    // Precompute LODs BEFORE writing to cache
+                    var precomputed = false;
+                    if (currentEnableLODs)
+                    {
+                        _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.GeneratingLODs, "Generating LODs (caching)");
+                        precomputed = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
+                            _octreeProgressInfo.NodeBufferData,
+                            _octreeProgressInfo.IndexBufferData,
+                            _octreeProgressInfo.NodeCount,
+                            _octreeProgressInfo.IndexCount,
+                            PlyData,
+                            currentLeafTargetCells,
+                            Debug);
+                    }
+
+                    return new OctreeCacheSerializer.Payload(
+                        _octreeProgressInfo.NodeBufferData,
+                        _octreeProgressInfo.IndexBufferData,
+                        _octreeProgressInfo.NodeCount,
+                        _octreeProgressInfo.IndexCount,
+                        _octreeProgressInfo.TotalMemoryUsed,
+                        precomputed);
+                }
+
                 if (DiskCache.TryGet("octree", octreeKey, new OctreeCacheSerializer(), default, out var payloadTask))
                 {
                     var payload = await payloadTask;
                     Log($"[PlyOctreeLoader] Octree cache hit. Nodes={payload.NodeCount} Indices={payload.IndexCount}");
-                    octreeCacheHit = true;
+
+                    if (!IsValidOctreePayload(payload))
+                    {
+                        Console.WriteLine(
+                            "[PlyOctreeLoader] WARNING: Octree cache payload invalid. Invalidating and rebuilding.");
+                        DiskCache.Invalidate("octree", octreeKey);
+                        payload = await DiskCache.GetOrCreateAsync(
+                            "octree",
+                            octreeKey,
+                            new OctreeCacheSerializer(),
+                            BuildOctreePayloadAsync,
+                            default);
+                        octreeCacheHit = false;
+                    }
+                    else
+                    {
+                        octreeCacheHit = true;
+                    }
+
                     _hasPrecomputedLODs = payload.HasPrecomputedLODs;
 
                     _octreeProgressInfo.StageName = "Loaded from cache";
@@ -314,34 +364,7 @@ public class PlyOctreeLoader
                         "octree",
                         octreeKey,
                         new OctreeCacheSerializer(),
-                        async ct =>
-                        {
-                            await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
-                            Log($"[PlyOctreeLoader] Built octree: Nodes={_octreeProgressInfo.NodeCount} Indices={_octreeProgressInfo.IndexCount}");
-
-                            // Precompute LODs BEFORE writing to cache
-                            var precomputed = false;
-                            if (currentEnableLODs && _octreeProgressInfo.Error == null)
-                            {
-                                _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.GeneratingLODs, "Generating LODs (caching)");
-                                precomputed = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
-                                    _octreeProgressInfo.NodeBufferData ?? Array.Empty<byte>(),
-                                    _octreeProgressInfo.IndexBufferData ?? Array.Empty<byte>(),
-                                    _octreeProgressInfo.NodeCount,
-                                    _octreeProgressInfo.IndexCount,
-                                    PlyData,
-                                    currentLeafTargetCells,
-                                    Debug);
-                            }
-
-                            return new OctreeCacheSerializer.Payload(
-                                _octreeProgressInfo.NodeBufferData!,
-                                _octreeProgressInfo.IndexBufferData!,
-                                _octreeProgressInfo.NodeCount,
-                                _octreeProgressInfo.IndexCount,
-                                _octreeProgressInfo.TotalMemoryUsed,
-                                precomputed);
-                        },
+                        BuildOctreePayloadAsync,
                         default);
 
                     _octreeProgressInfo.NodeBufferData = payload.NodeBuffer;
@@ -453,6 +476,17 @@ public class PlyOctreeLoader
         NodeBufferSizeMB = (NodeBufferData?.Length ?? 0) / (1024f * 1024f);
         IndexBufferSizeMB = (IndexBufferData?.Length ?? 0) / (1024f * 1024f);
         TotalSizeMB = NodeBufferSizeMB + IndexBufferSizeMB;
+    }
+
+    private static bool IsValidOctreePayload(OctreeCacheSerializer.Payload payload)
+    {
+        if (payload.NodeCount < 0 || payload.IndexCount < 0)
+            return false;
+        if (payload.NodeCount > 0 && (payload.NodeBuffer == null || payload.NodeBuffer.Length == 0))
+            return false;
+        if (payload.IndexCount > 0 && (payload.IndexBuffer == null || payload.IndexBuffer.Length == 0))
+            return false;
+        return true;
     }
 
     /// <summary>
