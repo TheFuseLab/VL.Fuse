@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="UPgW3XLsuJsOj3StsM4whT" LanguageVersion="2025.7.1-0156-gdf75a792b5" Version="0.128">
+<Document xmlns:p="property" xmlns:r="reflection" Id="UPgW3XLsuJsOj3StsM4whT" LanguageVersion="2025.7.1-0165-g9b36b4670f" Version="0.128">
   <Patch Id="ALpqjXEf369Pnuk64gmWrV">
     <Canvas Id="V8HBoVZNCZmPvIQ0NbkFQ5" DefaultCategory="Fuse.Particles" CanvasType="FullCategory">
       <Canvas Id="Ua19oNBz2ZKQFpVq54UmSF" Name="Attribute" Position="176,163">
@@ -27234,8 +27234,14 @@
 -->
       <Node Name="OneLoopEmissionIntegration" Bounds="178,600" Id="G6S2KjtbjwCPZZrZfA2Occ">
         <p:NodeReference>
-          <Choice Kind="ContainerDefinition" />
+          <Choice Kind="ClassDefinition" Name="Class" />
+          <CategoryReference Kind="Category" Name="Primitive" />
         </p:NodeReference>
+        <p:Interfaces>
+          <TypeReference LastCategoryFullName="Fuse.Compute" LastDependency="Fuse.Compute.vl">
+            <Choice Kind="InterfaceTypeFlag" Name="IComputeStageProvider" />
+          </TypeReference>
+        </p:Interfaces>
         <Patch Id="RkGxB4kppo2OSoEE6kydhw">
           <Canvas Id="Q1QzGlK1tuVNnuC8V236z5" CanvasType="Group">
             <Node Bounds="550,658,65,19" Id="MhDHRFKRdrzM6dyxpFaDXm">
@@ -27696,6 +27702,7 @@
               <Pin Id="I3HzOVaEId9Pnff7eCwIYz" Name="Enabled" Kind="InputPin" />
               <Pin Id="QRnqbBFl4r4Oawqqnj4J3v" Name="Output" Kind="OutputPin" />
             </Node>
+            <Pad Id="MBJyMlvafRsPRIHBDTwM7H" Bounds="486,880" />
           </Canvas>
           <Patch Id="OpB8U0Tu4uFNpW0UWeE9Zx" Name="Create">
             <Pin Id="GbrnpfIcD0iMQWIfJCMEQ9" Name="Resource" Kind="InputPin" Visibility="Optional" />
@@ -27713,7 +27720,7 @@
                 </p:TypeArguments>
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="LDGaKA6SVzCOgtkpsf0IBn" Name="Constant" Kind="InputPin" />
+            <Pin Id="LDGaKA6SVzCOgtkpsf0IBn" Name="Constant" Kind="InputPin" Visibility="Optional" />
             <Pin Id="D90opeui8McQLRNvvYHctV" Name="ID" Kind="InputPin" Bounds="540,433" Visibility="Optional" />
             <Pin Id="NDouIg1rEJSQVSzftXvCax" Name="Seed" Kind="InputPin" Bounds="557,452" Visibility="Optional" />
             <Pin Id="VkJSZAP8U8eNLZ7U7Msumy" Name="Lifetime" Kind="InputPin" />
@@ -27721,7 +27728,6 @@
             <Pin Id="G1lXjuhVmPmMizg7JmR9vY" Name="Iteration Count" Kind="InputPin" />
             <Pin Id="EWlUt2K0xISLa6O2Fr0dBp" Name="Force" Kind="InputPin" />
             <Pin Id="Oinu7lflSdZLi0pLOlseER" Name="Enabled" Kind="InputPin" />
-            <Pin Id="B8Dq2fg2cYbO5bX7WCIrfl" Name="Output" Kind="OutputPin" />
             <Pin Id="BuUJ4wuHJEJPlMkLd4LPLg" Name="Last Error" Kind="OutputPin" />
             <Pin Id="R3OjONRQosTLf45TgMh7Mq" Name="Shader Code" Kind="OutputPin" />
             <Pin Id="Ojg9Vt945A1P8XSWWCqMrt" Name="Step Size" Kind="InputPin" />
@@ -27730,9 +27736,10 @@
             <Pin Id="Lp7vlY3eRLdQbMrVqCmXYV" Name="Integration Mode" Kind="InputPin" DefaultValue="EulerAccel" />
             <Pin Id="EbLPoV9XBVyMcSDPzpz42L" Name="void" Kind="OutputPin" />
           </Patch>
-          <ProcessDefinition Id="Kuaff45ntMYPfgBdymwz0m">
+          <ProcessDefinition Id="Kuaff45ntMYPfgBdymwz0m" HasStateOut="true">
             <Fragment Id="S6dIrJAGlVqMhkZa65PPku" Patch="OpB8U0Tu4uFNpW0UWeE9Zx" Enabled="true" />
             <Fragment Id="JAHTZWtCEWrPXOfqp3dSqy" Patch="TntbXOCHup5MBV6rbVQGL1" Enabled="true" />
+            <Fragment Id="KHaQNUrZ7C1N2aWm8GDXF5" Patch="BobADOEubMkOAYGq6Nl9X8" />
           </ProcessDefinition>
           <Link Id="UPLiOG6GVDOMt0AyVIS6GC" Ids="PoMIhGYX7ZKLdCDU1yOHPY,EzMekvYQYsiODc2FVA0zmd" />
           <Link Id="AHiP5P4tAWAOTO3taFadsw" Ids="Oinu7lflSdZLi0pLOlseER,PoMIhGYX7ZKLdCDU1yOHPY" IsHidden="true" />
@@ -27744,8 +27751,7 @@
           <Link Id="UkrTXgfgzeCPRUqfPbIBkg" Ids="TpiGZzenFLDMN7EDnulwzv,Dxb3OVOVtMVMXJTGRP8BAd" IsHidden="true" />
           <Link Id="G0EKH1xKooSL2IxapmySvB" Ids="PeXjBkog2TcO8w2KdsIQ9w,LgIjKL4aqWAL7ERMp9uGFE" />
           <Link Id="Vzw6qDi0qQkNdh1e2jKEhL" Ids="Lp7vlY3eRLdQbMrVqCmXYV,PeXjBkog2TcO8w2KdsIQ9w" IsHidden="true" />
-          <Link Id="LU9ubEXU1vENdwumYQjLQC" Ids="Lqh9JjB5487LqD5tBE6S5T,QLr4VU44kuRPTWxBUI7xnu" />
-          <Link Id="Qshn6idqaruLDoEsIFODxD" Ids="QLr4VU44kuRPTWxBUI7xnu,B8Dq2fg2cYbO5bX7WCIrfl" IsHidden="true" />
+          <Link Id="LU9ubEXU1vENdwumYQjLQC" Ids="Lqh9JjB5487LqD5tBE6S5T,MBJyMlvafRsPRIHBDTwM7H" />
           <Link Id="FeGl5PCfPteP43XumyIqJf" Ids="A5bKdb5sSo6NqtsE7X9BrQ,KQIKUvZfGOUNAmrfk8GBjL" IsHidden="true" />
           <Link Id="OS47F8LfxreNO1OY2WTJTb" Ids="ENErQjseGuYQGP8yzM7cH2,IU02GAZJr5BN3IYidNKRwO" IsHidden="true" />
           <Link Id="H1mAsNUJMTsQW02pD9UxuN" Ids="OWbH5iODgasLN4zVkYlrnE,E5WUSA2lCrjPgurNhONu6m" />
@@ -27817,6 +27823,11 @@
           <Link Id="FrOMBDqzubWOPsw5N2mGUe" Ids="FdvGeh1kWJ1LIxmavQPjYn,ENoslne2NjMPE4JtsJvDUt" />
           <Link Id="NCz4hHL94ubNQD5tyqinWn" Ids="KtSrs8ivnQrNOPcVHDh01I,MQ2a4y5qQdILKQPkB7W2BA" />
           <Link Id="AgqlRqGMYzIQUuP1qIU3a3" Ids="NLP2w4hdX0rPrryhnFm3G7,RdWztkMrghcLUHPvKw4EZx" />
+          <Link Id="BaI77AnoVKVMsSSM0CzRSb" Ids="MBJyMlvafRsPRIHBDTwM7H,QLr4VU44kuRPTWxBUI7xnu" />
+          <Patch Id="BobADOEubMkOAYGq6Nl9X8" Name="GetComputeStage">
+            <Pin Id="HAurQPHbxiIL4tcafaaPIF" Name="Output" Kind="OutputPin" />
+          </Patch>
+          <Link Id="UgIfJlh8jOIMLQSdPdarkU" Ids="QLr4VU44kuRPTWxBUI7xnu,HAurQPHbxiIL4tcafaaPIF" IsHidden="true" />
         </Patch>
       </Node>
     </Canvas>
@@ -27841,8 +27852,8 @@
       </Patch>
     </Node>
   </Patch>
-  <NugetDependency Id="LAF2upUNoJ6Oxqj1JCXWIA" Location="VL.CoreLib" Version="2025.7.1-0156-gdf75a792b5" />
-  <NugetDependency Id="EEmzqGeylVGMkeMtbikvtp" Location="VL.Stride" Version="2025.7.1-0156-gdf75a792b5" />
+  <NugetDependency Id="LAF2upUNoJ6Oxqj1JCXWIA" Location="VL.CoreLib" Version="2025.7.1-0165-g9b36b4670f" />
+  <NugetDependency Id="EEmzqGeylVGMkeMtbikvtp" Location="VL.Stride" Version="2025.7.1-0165-g9b36b4670f" />
   <PlatformDependency Id="UQQb7nxljnAMfDQh6nPuUA" Location="../../../../../../../Program Files/vvvv/vvvv_gamma_2021.4.0-0222-gc154a95170/lib/VL.Stride.Runtime.dll" />
   <DocumentDependency Id="KcOFRwKYFbNOXPj6lE8zXM" Location="./Fuse.Raymarching.vl" IsFriend="true" />
   <DocumentDependency Id="B3wdbcAk2gSNpMixq8VPny" Location="./Fuse.Core.vl" IsFriend="true" />
@@ -27856,7 +27867,7 @@
   <DocumentDependency Id="SlmJBTcxmQ8LiY1eyKmOs6" Location="./Fuse.Draw.vl" />
   <DocumentDependency Id="C9yiJUIstC1PVaGi0m87oN" Location="./Fuse.Compute.vl" />
   <NugetDependency Id="VOlQTMjgyEQLKV5DOOn4Dz" Location="VL.Fuse" Version="0.0.0.0" />
-  <NugetDependency Id="B1nAFw0bzPyMACmVAMABM9" Location="VL.Stride.Runtime" Version="2025.7.1-0156-gdf75a792b5" />
-  <NugetDependency Id="AHzvDzpxynnLzpQrzFHXnj" Location="VL.Stride.TextureFX" Version="2025.7.1-0156-gdf75a792b5" />
+  <NugetDependency Id="B1nAFw0bzPyMACmVAMABM9" Location="VL.Stride.Runtime" Version="2025.7.1-0165-g9b36b4670f" />
+  <NugetDependency Id="AHzvDzpxynnLzpQrzFHXnj" Location="VL.Stride.TextureFX" Version="2025.7.1-0165-g9b36b4670f" />
   <PlatformDependency Id="NJfuUtiLkneNgvYEnxKnnA" Location="../lib/net8.0/Fuse.dll" />
 </Document>

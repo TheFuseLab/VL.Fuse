@@ -41,6 +41,29 @@ public static class EnumerableExtensionForEach
     }
 }
 
+public static class ProfilePathShort
+{
+    public static string Short(string path)
+    {
+        var lead = path.StartsWith("/");
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        string Seg(string s)
+        {
+            var words = Regex.Split(s, @"(?<!^)(?=[A-Z])");
+            if (words.Length == 0) return s;
+            var sb = new StringBuilder();
+            sb.Append(words[0].Substring(0, System.Math.Min(3, words[0].Length)));
+            for (int i = 1; i < words.Length; i++)
+                sb.Append(words[i].Substring(0, System.Math.Min(2, words[i].Length)));
+            return sb.ToString().Substring(0, System.Math.Min(10, sb.Length));
+        }
+
+        var result = string.Join("/", parts.Select(Seg));
+        return lead ? "/" + result : result;
+    }
+}
+
 public static class ShaderNodesUtil
 {
     public static bool DebugShaderGeneration = false;
