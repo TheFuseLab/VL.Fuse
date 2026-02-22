@@ -81,6 +81,11 @@ public class MSDFFontAtlas
         public GridInfo grid { get; set; }
     }
 
+    public AtlasInfo GetAtlasInfo()
+    {
+        return fontData.atlas;
+    }
+
     public class GridInfo
     {
         public float cellWidth { get; set; }
