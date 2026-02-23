@@ -18,10 +18,11 @@ namespace Fuse.IO.Ply;
 /// Use this instead of chaining FastPly + OctreeBuilder when you need both outputs.
 /// </summary>
 [ProcessNode]
-public class PlyOctreeLoader
+public class PlyOctreeLoader : ProcessNodeBase
 {
     // State tracking
     private bool _isProcessing;
+    private CancellationTokenSource? _processCts;
     private bool _lastLoadTrigger;
     private CombinedProgressInfo? _progressInfo;
 
@@ -31,13 +32,12 @@ public class PlyOctreeLoader
     private bool _hasPrecomputedLODs;
 
     // Diagnostic logging
-    private readonly int _instanceId;
     private int _updateCount;
     private int _triggerCount;
 
-    public PlyOctreeLoader()
+    public PlyOctreeLoader() : base("PlyOctreeLoader")
     {
-        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+        _processCts = new CancellationTokenSource();
     }
 
     #region Inputs
@@ -65,6 +65,12 @@ public class PlyOctreeLoader
     /// Larger = more coarse structure first. 24-48 are good starting values.
     /// </summary>
     public int LeafTargetCellsOnLongestAxis { private get; set; } = 32;
+
+    /// <summary>
+    /// Keeps the raw CPU-side PlyData output after octree build.
+    /// Set to false to reduce memory if only octree buffers are needed downstream.
+    /// </summary>
+    public bool KeepPlyData { private get; set; } = true;
 
     // Cache options
     public bool UseDiskCache { private get; set; }
@@ -180,24 +186,24 @@ public class PlyOctreeLoader
 
     public void Update()
     {
+        UpdateDiagnostics(Debug);
+        if (IsDisposed) return;
         _updateCount++;
 
         // Rising edge detection for Load trigger
-        var loadRisingEdge = Load && !_lastLoadTrigger;
+        var loadRisingEdge = IsRisingEdge(ref _lastLoadTrigger, Load);
 
         if (Debug && Load != _lastLoadTrigger)
         {
-            PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+            WriteDiagnostic(
                 $"Load edge: _lastLoadTrigger={_lastLoadTrigger} -> Load={Load}, risingEdge={loadRisingEdge}, _isProcessing={_isProcessing}, IsCompleted={IsCompleted}, file={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
         }
-
-        _lastLoadTrigger = Load;
 
         if (loadRisingEdge && !_isProcessing && !string.IsNullOrEmpty(FilePath))
         {
             _triggerCount++;
             if (Debug)
-                PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+                WriteDiagnostic(
                     $"TRIGGER #{_triggerCount} - risingEdge detected, starting processing. file={Path.GetFileName(FilePath)}, frame={_updateCount}");
             StartProcessing();
         }
@@ -207,7 +213,12 @@ public class PlyOctreeLoader
 
     private async void StartProcessing()
     {
+        var run = BeginRun(ref _processCts);
+        var generation = run.generation;
+        var ct = run.token;
         _isProcessing = true;
+        if (Debug)
+            WriteDiagnostic($"StartProcessing generation={generation} {PlyDiagnosticLog.GetMemorySnapshot()}");
         IsCompleted = false;
         HasError = false;
         ErrorMessage = string.Empty;
@@ -256,7 +267,10 @@ public class PlyOctreeLoader
                 UseDiskCache,
                 ForceReload,
                 CacheBasePath,
-                Debug);
+                Debug,
+                ct);
+
+            if (!IsCurrentGeneration(generation)) return;
 
             if (_plyProgressInfo.Error != null)
                 throw _plyProgressInfo.Error;
@@ -265,6 +279,11 @@ public class PlyOctreeLoader
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
             TotalPoints = loadResult.VertexCount;
+            if (_plyProgressInfo != null)
+            {
+                // Avoid duplicate strong references to the same arrays.
+                _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
+            }
 
             Log($"[PlyOctreeLoader] PLY load complete: {VertexCount:N0} vertices, {FieldOrder.Length} fields, CacheHit={loadResult.WasCacheHit}");
 
@@ -293,7 +312,10 @@ public class PlyOctreeLoader
 
                 async Task<OctreeCacheSerializer.Payload> BuildOctreePayloadAsync(CancellationToken ct)
                 {
-                    await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+                    if (!IsCurrentGeneration(generation))
+                        throw new ObjectDisposedException(nameof(PlyOctreeLoader));
+
+                    await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config, ct);
                     if (_octreeProgressInfo.Error != null)
                         throw _octreeProgressInfo.Error;
                     if (_octreeProgressInfo.NodeBufferData == null || _octreeProgressInfo.IndexBufferData == null)
@@ -379,17 +401,20 @@ public class PlyOctreeLoader
             else
             {
                 // No disk cache: build directly
-                await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config);
+                await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config, ct);
             }
 
             if (_octreeProgressInfo.Error != null)
                 throw _octreeProgressInfo.Error;
+
+            if (!IsCurrentGeneration(generation)) return;
 
             NodeBufferData = _octreeProgressInfo.NodeBufferData ?? Array.Empty<byte>();
             IndexBufferData = _octreeProgressInfo.IndexBufferData ?? Array.Empty<byte>();
             NodeCount = _octreeProgressInfo.NodeCount;
             IndexCount = _octreeProgressInfo.IndexCount;
             TotalMemoryUsed = _octreeProgressInfo.TotalMemoryUsed;
+            TrackAllocationEstimate("processing-complete", EstimateRetainedBytes());
 
             Log($"[PlyOctreeLoader] Octree build complete: {NodeCount:N0} nodes, {IndexCount:N0} indices, CacheHit={octreeCacheHit}");
 
@@ -397,6 +422,7 @@ public class PlyOctreeLoader
             // Skip if already done during cache creation or loaded from cache with LODs
             if (currentEnableLODs && _octreeProgressInfo.Error == null && !_hasPrecomputedLODs)
             {
+                if (!IsCurrentGeneration(generation)) return;
                 _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.GeneratingLODs, "Generating LODs");
                 Log("[PlyOctreeLoader] Generating precomputed leaf LODs");
 
@@ -413,6 +439,11 @@ public class PlyOctreeLoader
                 Log($"[PlyOctreeLoader] LOD generation {(lodSuccess ? "complete" : "skipped")}");
             }
 
+            if (!KeepPlyData)
+            {
+                ReleasePlyDataOnly("post-build KeepPlyData=false");
+            }
+
             // ===== COMPLETE =====
             CalculateStatistics();
             _progressInfo.MarkComplete();
@@ -423,6 +454,12 @@ public class PlyOctreeLoader
         }
         catch (Exception ex)
         {
+            if (!IsCurrentGeneration(generation)) return;
+            if (ex is OperationCanceledException)
+            {
+                _isProcessing = false;
+                return;
+            }
             swTotal.Stop();
             Log($"[PlyOctreeLoader] Error after {swTotal.ElapsedMilliseconds} ms: {ex.Message}");
             _progressInfo!.MarkError(ex);
@@ -432,9 +469,10 @@ public class PlyOctreeLoader
         }
         finally
         {
-            _isProcessing = false;
+            if (IsCurrentGeneration(generation))
+                _isProcessing = false;
             if (Debug)
-                PlyDiagnosticLog.Write("PlyOctreeLoader", _instanceId,
+                WriteDiagnostic(
                     $"Processing finished. _isProcessing=false, IsCompleted={IsCompleted}, HasError={HasError}, Load={Load}, _lastLoadTrigger={_lastLoadTrigger}");
         }
     }
@@ -494,15 +532,93 @@ public class PlyOctreeLoader
     /// </summary>
     public void ReleaseCpuData()
     {
+        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        {
+            PlyData = new Dictionary<string, float[]>(0);
+            if (_plyProgressInfo != null)
+                _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
+            VertexCount = 0;
+            FieldOrder = Array.Empty<string>();
+            NodeBufferData = Array.Empty<byte>();
+            IndexBufferData = Array.Empty<byte>();
+            if (_octreeProgressInfo != null)
+            {
+                _octreeProgressInfo.NodeBufferData = Array.Empty<byte>();
+                _octreeProgressInfo.IndexBufferData = Array.Empty<byte>();
+            }
+
+            NodeCount = 0;
+            IndexCount = 0;
+            TotalPoints = 0;
+            TotalMemoryUsed = 0;
+            NodeBufferSizeMB = 0;
+            IndexBufferSizeMB = 0;
+            TotalSizeMB = 0;
+        });
+    }
+
+    private void ReleasePlyDataOnly(string reason)
+    {
+        long plyBytes = 0;
+        if (PlyData != null)
+        {
+            foreach (var arr in PlyData.Values)
+            {
+                if (arr != null)
+                    plyBytes += (long)arr.Length * sizeof(float);
+            }
+        }
+
         PlyData = new Dictionary<string, float[]>(0);
+        if (_plyProgressInfo != null)
+            _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
         VertexCount = 0;
         FieldOrder = Array.Empty<string>();
-        NodeBufferData = Array.Empty<byte>();
-        IndexBufferData = Array.Empty<byte>();
+        TrackExplicitRelease(reason, plyBytes);
+    }
+
+    protected override void OnDisposeManaged()
+    {
+        _isProcessing = false;
+        IsProcessing = false;
+        PlyDiagnosticLog.TryForceFullGc($"PlyOctreeLoader#{InstanceId:X4} dispose");
+        _processCts?.Cancel();
+        _processCts?.Dispose();
+        _processCts = null;
+        ReleaseCpuData();
+        _progressInfo = null;
+        _plyProgressInfo = null;
+        _octreeProgressInfo = null;
+        Progress = 0;
+        Status = "Disposed";
+        StageName = string.Empty;
+        DetailedStatus = string.Empty;
+        IsCompleted = false;
+        HasError = false;
+        ErrorMessage = string.Empty;
     }
 
     private void Log(string message)
     {
         if (Debug) Console.WriteLine(message);
     }
+
+    private long EstimateRetainedBytes()
+    {
+        long bytes = 0;
+        if (PlyData != null)
+        {
+            foreach (var arr in PlyData.Values)
+            {
+                if (arr != null)
+                    bytes += (long)arr.Length * sizeof(float);
+            }
+        }
+        if (NodeBufferData != null)
+            bytes += NodeBufferData.LongLength;
+        if (IndexBufferData != null)
+            bytes += IndexBufferData.LongLength;
+        return bytes;
+    }
 }
+

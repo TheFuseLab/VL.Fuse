@@ -114,7 +114,8 @@ public class FastPlyReader
     {
         var progressInfo = new ProgressInfo();
         // Blocking wait that avoids AggregateException wrapper
-        LoadInBackgroundAsync(filePath, progressInfo, decimationStrategy, decimationFactor).GetAwaiter().GetResult();
+        LoadInBackgroundAsync(filePath, progressInfo, decimationStrategy, decimationFactor, CancellationToken.None)
+            .GetAwaiter().GetResult();
 
         if (progressInfo.Error != null)
             throw progressInfo.Error;
@@ -127,11 +128,13 @@ public class FastPlyReader
         string filePath,
         ProgressInfo progressInfo,
         PlyDecimationStrategy decimationStrategy,
-        int decimationFactor)
+        int decimationFactor,
+        CancellationToken cancellationToken = default)
     {
         var startTime = DateTime.UtcNow;
         var fileInfo = new FileInfo(filePath);
         var totalFileSize = fileInfo.Length;
+        var pinHandles = Array.Empty<GCHandle>();
 
         // Validation
         var originalFactor = decimationFactor;
@@ -142,6 +145,8 @@ public class FastPlyReader
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Use larger buffer for massive files
             var bufferSize = totalFileSize > 1_000_000_000 ? 16 * 1024 * 1024 : 4 * 1024 * 1024; // 16MB for >1GB files
 
@@ -155,7 +160,7 @@ public class FastPlyReader
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
 
             var (properties, vertexCount, headerSize) =
-                await ParseHeaderOptimizedAsync(fileStream, progressInfo, startTime);
+                await ParseHeaderOptimizedAsync(fileStream, progressInfo, startTime, cancellationToken);
 
             // Calculate vertex size and optimize property layout
             var vertexSize = 0;
@@ -192,8 +197,8 @@ public class FastPlyReader
             progressInfo.TotalVertices = vertexCount;
             progressInfo.Elapsed = DateTime.UtcNow - startTime;
 
-            // PERFORMANCE: Use Pinned Object Heap (POH)
-            // This allows us to get a stable pointer once and use it everywhere without pinning/unpinning overhead.
+            // Use regular managed arrays and pin them only for the active read.
+            // Long-lived POH allocations can keep process memory high across reload cycles.
             var tempArrays = new float[properties.Count][];
             var rawPropertyPointers = new IntPtr[properties.Count]; // Cache pointers for workers
 
@@ -203,22 +208,19 @@ public class FastPlyReader
                 var index = i;
                 allocationTasks[i] = Task.Run(() =>
                 {
-                    // Allocate on POH (Pinned Object Heap) - radical optimization for access speed
-                    var pinnedArray = GC.AllocateArray<float>(estimatedTargetCount, pinned: true);
-                    tempArrays[index] = pinnedArray;
-
-                    unsafe
-                    {
-                        // Get the pointer once. Since it's POH, it never moves.
-                        fixed (float* ptr = pinnedArray)
-                        {
-                            rawPropertyPointers[index] = (IntPtr)ptr;
-                        }
-                    }
+                    tempArrays[index] = new float[estimatedTargetCount];
                 });
             }
 
             await Task.WhenAll(allocationTasks);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            pinHandles = new GCHandle[properties.Count];
+            for (var i = 0; i < properties.Count; i++)
+            {
+                pinHandles[i] = GCHandle.Alloc(tempArrays[i], GCHandleType.Pinned);
+                rawPropertyPointers[i] = pinHandles[i].AddrOfPinnedObject();
+            }
 
             var scalarFields = new Dictionary<string, float[]>(properties.Count);
             var fieldOrder = new string[properties.Count];
@@ -243,7 +245,7 @@ public class FastPlyReader
 
             await ReadBinaryDataParallelAsync(fileStream, headerSize, optimizedProperties, rawPropertyPointers,
                 vertexCount, vertexSize, progressInfo, startTime, totalFileSize, bufferSize,
-                decimationStrategy, decimationFactor, context);
+                decimationStrategy, decimationFactor, context, cancellationToken);
 
             // Finalize Memory: Resize arrays if we over-allocated during estimation
             int finalVertexCount = context.GlobalWriteIndex;
@@ -263,8 +265,6 @@ public class FastPlyReader
                     var originalArray = scalarFields[key];
                     if (originalArray.Length != finalVertexCount)
                     {
-                        // Note: Resizing a POH array creates a regular heap array copy.
-                        // This is fine as we are done with the raw pointers now.
                         Array.Resize(ref originalArray, finalVertexCount);
                         scalarFields[key] = originalArray;
                     }
@@ -285,10 +285,24 @@ public class FastPlyReader
         }
         catch (Exception ex)
         {
+            if (ex is OperationCanceledException)
+            {
+                progressInfo.StageName = "Cancelled";
+                progressInfo.IsCompleted = true;
+                throw;
+            }
             progressInfo.Error = ex;
             progressInfo.StageName = "Error";
             progressInfo.IsCompleted = true;
             throw;
+        }
+        finally
+        {
+            for (var i = 0; i < pinHandles.Length; i++)
+            {
+                if (pinHandles[i].IsAllocated)
+                    pinHandles[i].Free();
+            }
         }
     }
 
@@ -304,7 +318,7 @@ public class FastPlyReader
     // Optimized header parsing - read in chunks instead of byte-by-byte
     private static async Task<(List<PropertyInfo> properties, int vertexCount, long headerSize)>
         ParseHeaderOptimizedAsync(
-            FileStream stream, ProgressInfo progressInfo, DateTime startTime)
+            FileStream stream, ProgressInfo progressInfo, DateTime startTime, CancellationToken cancellationToken)
     {
         var properties = new List<PropertyInfo>();
         var vertexCount = 0;
@@ -318,7 +332,8 @@ public class FastPlyReader
 
         while (!foundEndHeader)
         {
-            var bytesRead = await stream.ReadAsync(buffer, 0, chunkSize);
+            cancellationToken.ThrowIfCancellationRequested();
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, chunkSize), cancellationToken);
             if (bytesRead == 0) break;
 
             for (var i = 0; i < bytesRead; i++)
@@ -416,6 +431,15 @@ public class FastPlyReader
         IntPtr[] rawPropertyPointers, int vertexCount, int vertexSize,
         ProgressInfo progressInfo, DateTime startTime, long totalFileSize, int bufferSize,
         PlyDecimationStrategy strategy, int factor, LoadContext context)
+        => await ReadBinaryDataParallelAsync(stream, headerSize, properties, rawPropertyPointers, vertexCount,
+            vertexSize, progressInfo, startTime, totalFileSize, bufferSize, strategy, factor, context,
+            CancellationToken.None);
+
+    private static async Task ReadBinaryDataParallelAsync(
+        FileStream stream, long headerSize, PropertyInfo[] properties,
+        IntPtr[] rawPropertyPointers, int vertexCount, int vertexSize,
+        ProgressInfo progressInfo, DateTime startTime, long totalFileSize, int bufferSize,
+        PlyDecimationStrategy strategy, int factor, LoadContext context, CancellationToken cancellationToken)
     {
         stream.Position = headerSize;
 
@@ -457,6 +481,7 @@ public class FastPlyReader
 
         while (processedSourceVertices < vertexCount)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var chunkVertices = Math.Min(verticesPerChunk, vertexCount - processedSourceVertices);
             // Use long to prevent overflow, then safely cast
             var chunkBytesLong = (long)chunkVertices * vertexSize;
@@ -474,7 +499,7 @@ public class FastPlyReader
 
             // Read chunk data
             var chunkBuffer = new byte[chunkBytes];
-            var bytesRead = await stream.ReadAsync(chunkBuffer, 0, chunkBytes);
+            var bytesRead = await stream.ReadAsync(chunkBuffer.AsMemory(0, chunkBytes), cancellationToken);
             
             if (chunkCount == 0)
             {
@@ -491,12 +516,13 @@ public class FastPlyReader
             var chunkStartVertex = processedSourceVertices;
 
             // Process chunk in parallel
-            await semaphore.WaitAsync();
+            await semaphore.WaitAsync(cancellationToken);
             var currentChunk = chunkCount;
             var task = Task.Run(() =>
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     unsafe
                     {
                         ProcessChunkUnsafe(chunkBuffer, properties, rawPropertyPointers, readers,
@@ -512,7 +538,7 @@ public class FastPlyReader
                 {
                     semaphore.Release();
                 }
-            });
+            }, cancellationToken);
 
             tasks.Add(task);
             processedSourceVertices += actualVertices;

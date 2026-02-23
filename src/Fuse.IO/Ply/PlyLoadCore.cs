@@ -34,7 +34,8 @@ internal static class PlyLoadCore
         bool useDiskCache,
         bool forceReload,
         string cacheBasePath,
-        bool debug)
+        bool debug,
+        CancellationToken cancellationToken = default)
     {
         var result = new LoadResult();
         var swTotal = Stopwatch.StartNew();
@@ -57,7 +58,8 @@ internal static class PlyLoadCore
                         filePath,
                         progressInfo,
                         decimationStrategy,
-                        decimationFactor);
+                        decimationFactor,
+                        ct);
                     swBuild.Stop();
 
                     if (progressInfo.Error != null)
@@ -83,7 +85,7 @@ internal static class PlyLoadCore
                     DiskCache.Invalidate("ply", key);
                 }
 
-                if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), CancellationToken.None,
+                if (DiskCache.TryGet("ply", key, new PlyArraysCacheSerializer(), cancellationToken,
                         out var payloadTask))
                 {
                     var swHit = Stopwatch.StartNew();
@@ -106,7 +108,7 @@ internal static class PlyLoadCore
                             key,
                             new PlyArraysCacheSerializer(),
                             BuildFromSourceAsync,
-                            CancellationToken.None);
+                            cancellationToken);
                         arrayCount = arrays?.Count ?? 0;
                         vertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
                         Log(debug,
@@ -138,7 +140,7 @@ internal static class PlyLoadCore
                         key,
                         new PlyArraysCacheSerializer(),
                         BuildFromSourceAsync,
-                        CancellationToken.None);
+                        cancellationToken);
                     swMiss.Stop();
                     
                     var cachedVertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
@@ -162,7 +164,8 @@ internal static class PlyLoadCore
                     filePath,
                     progressInfo,
                     decimationStrategy,
-                    decimationFactor);
+                    decimationFactor,
+                    cancellationToken);
 
                 if (progressInfo.Error != null)
                     throw progressInfo.Error;

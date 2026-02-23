@@ -10,18 +10,18 @@ namespace Fuse.IO.Ply;
 /// and disk caching support.
 /// </summary>
 [ProcessNode]
-public class FastPly
+public class FastPly : ProcessNodeBase
 {
     private bool _isLoading;
     private FastPlyReader.ProgressInfo? _progressInfo;
-    private readonly int _instanceId;
+    private CancellationTokenSource? _loadCts;
     private int _updateCount;
     private int _triggerCount;
     private bool _lastLoad;
 
-    public FastPly()
+    public FastPly() : base("FastPly")
     {
-        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+        _loadCts = new CancellationTokenSource();
     }
 
     // Inputs
@@ -67,24 +67,24 @@ public class FastPly
 
     public void Update()
     {
+        UpdateDiagnostics(Debug);
+        if (IsDisposed) return;
         _updateCount++;
 
         // Rising edge detection for Load trigger
-        var loadRisingEdge = Load && !_lastLoad;
+        var loadRisingEdge = IsRisingEdge(ref _lastLoad, Load);
 
         if (Debug && Load != _lastLoad)
         {
-            PlyDiagnosticLog.Write("FastPly", _instanceId,
+            WriteDiagnostic(
                 $"Load changed: {_lastLoad} -> {Load}, risingEdge={loadRisingEdge}, _isLoading={_isLoading}, IsCompleted={IsCompleted}, FilePath={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
         }
-        _lastLoad = Load;
-
         // Start loading on rising edge only
         if (loadRisingEdge && !_isLoading && !string.IsNullOrEmpty(FilePath))
         {
             _triggerCount++;
             if (Debug)
-                PlyDiagnosticLog.Write("FastPly", _instanceId,
+                WriteDiagnostic(
                     $"TRIGGER #{_triggerCount} - risingEdge detected, file={Path.GetFileName(FilePath)}, frame={_updateCount}");
             StartLoading();
         }
@@ -102,15 +102,20 @@ public class FastPly
 
         // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
         if (Debug)
-            PlyDiagnosticLog.Write("FastPly", _instanceId,
+            WriteDiagnostic(
                 $"Load complete, _isLoading reset. Load pin={Load}, frame={_updateCount}");
         _isLoading = false;
     }
 
     private async void StartLoading()
     {
+        var run = BeginRun(ref _loadCts);
+        var generation = run.generation;
+        var ct = run.token;
         _isLoading = true;
         IsCompleted = false; // Reset completion flag at start
+        HasError = false;
+        ErrorMessage = string.Empty;
         _progressInfo = new FastPlyReader.ProgressInfo();
 
         // Capture parameters locally to avoid threading issues if inputs change during load
@@ -129,7 +134,10 @@ public class FastPly
                 UseDiskCache,
                 ForceReload,
                 CacheBasePath,
-                Debug);
+                Debug,
+                ct);
+
+            if (!IsCurrentGeneration(generation)) return;
 
             // Update outputs from load result - set Result BEFORE IsCompleted!
             Result = loadResult.Arrays;
@@ -139,14 +147,23 @@ public class FastPly
 
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
+            TrackAllocationEstimate("load-complete", EstimateRetainedBytes());
 
             Log($"[FastPly] Load complete. Arrays={loadResult.Arrays.Count}, Vertices={loadResult.VertexCount}, CacheHit={loadResult.WasCacheHit}");
         }
         catch (Exception ex)
         {
+            if (!IsCurrentGeneration(generation)) return;
+            if (ex is OperationCanceledException)
+            {
+                _isLoading = false;
+                return;
+            }
             _progressInfo.Error = ex;
             _progressInfo.IsCompleted = true;
             IsCompleted = true; // Also set on error
+            HasError = true;
+            ErrorMessage = ex.Message;
         }
     }
 
@@ -155,17 +172,56 @@ public class FastPly
     /// </summary>
     public void ReleaseCpuData()
     {
-        Result = new Dictionary<string, float[]>(0);
-        VertexCount = 0;
-        FieldOrder = Array.Empty<string>();
-        if (_progressInfo != null)
+        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
         {
-            _progressInfo.Result = new Dictionary<string, float[]>(0);
-        }
+            Result = new Dictionary<string, float[]>(0);
+            VertexCount = 0;
+            FieldOrder = Array.Empty<string>();
+            if (_progressInfo != null)
+                _progressInfo.Result = new Dictionary<string, float[]>(0);
+        });
+    }
+
+    protected override void OnDisposeManaged()
+    {
+        _isLoading = false;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        ReleaseCpuData();
+        _progressInfo = null;
+        Progress = 0;
+        Status = "Disposed";
+        IsCompleted = false;
+        HasError = false;
+        ErrorMessage = string.Empty;
     }
 
     private void Log(string message)
     {
         if (Debug) Console.WriteLine(message);
     }
+
+    private long EstimateRetainedBytes()
+    {
+        long bytes = 0;
+        if (Result != null)
+        {
+            foreach (var arr in Result.Values)
+            {
+                if (arr != null)
+                    bytes += (long)arr.Length * sizeof(float);
+            }
+        }
+        if (_progressInfo?.Result != null)
+        {
+            foreach (var arr in _progressInfo.Result.Values)
+            {
+                if (arr != null)
+                    bytes += (long)arr.Length * sizeof(float);
+            }
+        }
+        return bytes;
+    }
 }
+

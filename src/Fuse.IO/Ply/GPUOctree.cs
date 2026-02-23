@@ -81,21 +81,24 @@ public class GPUOctree
     public static async Task BuildInBackgroundAsync(
         Dictionary<string, float[]> plyData,
         OctreeProgressInfo octreeProgressInfo,
-        BuildConfig? config = null)
+        BuildConfig? config = null,
+        CancellationToken cancellationToken = default)
     {
         var octree = new GPUOctree();
-        await Task.Run(() => octree.BuildInternal(plyData, octreeProgressInfo, config ?? new BuildConfig()));
+        await Task.Run(() => octree.BuildInternal(plyData, octreeProgressInfo, config ?? new BuildConfig(), cancellationToken), cancellationToken);
     }
 
     private void BuildInternal(
         Dictionary<string, float[]> plyData,
         OctreeProgressInfo octreeProgressInfo,
-        BuildConfig config)
+        BuildConfig config,
+        CancellationToken cancellationToken)
     {
         var startTime = DateTime.Now;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _config = config;
 
             _xCoords = plyData["x"];
@@ -144,6 +147,7 @@ public class GPUOctree
 
             while (currentLevel.Count > 0 || nextLevel.Count > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (currentLevel.Count == 0)
                 {
                     // Move to next level
@@ -191,6 +195,12 @@ public class GPUOctree
         }
         catch (Exception ex)
         {
+            if (ex is OperationCanceledException)
+            {
+                octreeProgressInfo.StageName = "Cancelled";
+                octreeProgressInfo.IsCompleted = true;
+                return;
+            }
             octreeProgressInfo.Error = ex;
             octreeProgressInfo.IsCompleted = true;
             Console.WriteLine($"ERROR: {ex.Message}");

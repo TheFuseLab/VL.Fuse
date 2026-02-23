@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Fuse.IO.Ply;
 
@@ -14,18 +15,18 @@ namespace Fuse.IO.Ply;
 /// It reuses the same caching, decimation, and performance optimizations as FastPly.
 /// </summary>
 [ProcessNode]
-public class FastPlyInterleaved
+public class FastPlyInterleaved : ProcessNodeBase
 {
     private bool _isLoading;
     private FastPlyReader.ProgressInfo? _progressInfo;
-    private readonly int _instanceId;
+    private CancellationTokenSource? _loadCts;
     private int _updateCount;
     private int _triggerCount;
     private bool _lastLoad;
 
-    public FastPlyInterleaved()
+    public FastPlyInterleaved() : base("FastPlyInterleaved")
     {
-        _instanceId = PlyDiagnosticLog.GetInstanceId(this);
+        _loadCts = new CancellationTokenSource();
     }
 
     // Inputs - mirror FastPly exactly
@@ -77,24 +78,24 @@ public class FastPlyInterleaved
 
     public void Update()
     {
+        UpdateDiagnostics(Debug, GetCreationCallsite);
+        if (IsDisposed) return;
         _updateCount++;
 
         // Rising edge detection for Load trigger
-        var loadRisingEdge = Load && !_lastLoad;
+        var loadRisingEdge = IsRisingEdge(ref _lastLoad, Load);
 
         if (Debug && Load != _lastLoad)
         {
-            PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+            WriteDiagnostic(
                 $"Load changed: {_lastLoad} -> {Load}, risingEdge={loadRisingEdge}, _isLoading={_isLoading}, IsCompleted={IsCompleted}, FilePath={(string.IsNullOrEmpty(FilePath) ? "<empty>" : Path.GetFileName(FilePath))}, frame={_updateCount}");
         }
-        _lastLoad = Load;
-
         // Start loading on rising edge only
         if (loadRisingEdge && !_isLoading && !string.IsNullOrEmpty(FilePath))
         {
             _triggerCount++;
             if (Debug)
-                PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+                WriteDiagnostic(
                     $"TRIGGER #{_triggerCount} - risingEdge detected, file={Path.GetFileName(FilePath)}, frame={_updateCount}");
             StartLoading();
         }
@@ -112,15 +113,20 @@ public class FastPlyInterleaved
 
         // Result is set in StartLoading after conversion
         if (Debug)
-            PlyDiagnosticLog.Write("FastPlyInterleaved", _instanceId,
+            WriteDiagnostic(
                 $"Load complete, _isLoading reset. Load pin={Load}, frame={_updateCount}");
         _isLoading = false;
     }
 
     private async void StartLoading()
     {
+        var run = BeginRun(ref _loadCts);
+        var generation = run.generation;
+        var ct = run.token;
         _isLoading = true;
         IsCompleted = false; // Reset completion flag at start
+        HasError = false;
+        ErrorMessage = string.Empty;
         _progressInfo = new FastPlyReader.ProgressInfo();
 
         // Capture parameters locally to avoid threading issues if inputs change during load
@@ -139,7 +145,10 @@ public class FastPlyInterleaved
                 UseDiskCache,
                 ForceReload,
                 CacheBasePath,
-                Debug);
+                Debug,
+                ct);
+
+            if (!IsCurrentGeneration(generation)) return;
 
             // Convert SoA to AoS (interleaved)
             _progressInfo.StageName = "Packing interleaved buffer";
@@ -155,12 +164,18 @@ public class FastPlyInterleaved
             FieldsPerVertex = fieldsPerVertex;
             FieldOrder = fieldOrder;
 
+            // Interleaved output no longer needs the temporary SoA arrays.
+            // Keeping them doubles peak retained memory for this node.
+            _progressInfo.Result = new Dictionary<string, float[]>(0);
+
             _progressInfo.StageName = "Complete";
             _progressInfo.ProgressPercentage = 100;
             _progressInfo.IsCompleted = true;
             
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
+            var retainedBytes = EstimateRetainedBytes();
+            TrackAllocationEstimate("load-complete", retainedBytes);
 
             Log($"[FastPlyInterleaved] Load complete. Vertices={vertexCount}, Fields={fieldsPerVertex}, " +
                 $"InterleavedSize={interleaved.Length}, ConvertTime={swConvert.ElapsedMilliseconds}ms, " +
@@ -168,9 +183,17 @@ public class FastPlyInterleaved
         }
         catch (Exception ex)
         {
+            if (!IsCurrentGeneration(generation)) return;
+            if (ex is OperationCanceledException)
+            {
+                _isLoading = false;
+                return;
+            }
             _progressInfo.Error = ex;
             _progressInfo.IsCompleted = true;
             IsCompleted = true; // Also set on error
+            HasError = true;
+            ErrorMessage = ex.Message;
         }
     }
 
@@ -274,20 +297,88 @@ public class FastPlyInterleaved
     /// </summary>
     public void ReleaseCpuData()
     {
-        Result = Array.Empty<float>();
-        VertexCount = 0;
-        FieldsPerVertex = 0;
-        FieldOrder = Array.Empty<string>();
-        if (_progressInfo != null)
+        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
         {
-            _progressInfo.Result = new Dictionary<string, float[]>(0);
-        }
+            Result = Array.Empty<float>();
+            VertexCount = 0;
+            FieldsPerVertex = 0;
+            FieldOrder = Array.Empty<string>();
+            if (_progressInfo != null)
+                _progressInfo.Result = new Dictionary<string, float[]>(0);
+        });
+    }
+
+    protected override void OnDisposeManaged()
+    {
+        _isLoading = false;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        ReleaseCpuData();
+        _progressInfo = null;
+        Progress = 0;
+        Status = "Disposed";
+        IsCompleted = false;
+        HasError = false;
+        ErrorMessage = string.Empty;
     }
 
     private void Log(string message)
     {
         if (Debug) Console.WriteLine(message);
     }
+
+    private long EstimateRetainedBytes()
+    {
+        long bytes = 0;
+        if (Result != null)
+            bytes += (long)Result.Length * sizeof(float);
+        if (_progressInfo?.Result != null)
+        {
+            foreach (var arr in _progressInfo.Result.Values)
+            {
+                if (arr != null)
+                    bytes += (long)arr.Length * sizeof(float);
+            }
+        }
+        return bytes;
+    }
+
+    private static string GetCreationCallsite()
+    {
+        try
+        {
+            var st = new StackTrace(skipFrames: 2, fNeedFileInfo: true);
+            var sb = new StringBuilder();
+            var appended = 0;
+            for (var i = 0; i < st.FrameCount && appended < 5; i++)
+            {
+                var frame = st.GetFrame(i);
+                var method = frame?.GetMethod();
+                var typeName = method?.DeclaringType?.FullName ?? "<unknown>";
+                if (typeName.StartsWith("System.", StringComparison.Ordinal) ||
+                    typeName.StartsWith("Microsoft.", StringComparison.Ordinal))
+                    continue;
+
+                if (appended > 0) sb.Append(" <= ");
+                var methodName = method?.Name ?? "<unknown>";
+                var file = frame?.GetFileName();
+                var line = frame?.GetFileLineNumber() ?? 0;
+                if (!string.IsNullOrWhiteSpace(file) && line > 0)
+                    sb.Append($"{typeName}.{methodName}({Path.GetFileName(file)}:{line})");
+                else
+                    sb.Append($"{typeName}.{methodName}");
+                appended++;
+            }
+
+            return appended > 0 ? sb.ToString() : "callsite-unavailable";
+        }
+        catch
+        {
+            return "callsite-error";
+        }
+    }
 }
+
 
 

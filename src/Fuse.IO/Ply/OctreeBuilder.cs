@@ -5,14 +5,20 @@ namespace Fuse.IO.Ply;
 #pragma warning disable CS1591
 // VVVV Process Node für GPU-Octree-Build + CPU-seitiges Precompute-LOD (Leaves)
 [ProcessNode]
-public class OctreeBuilder
+public class OctreeBuilder : ProcessNodeBase
 {
     private Task? _buildTask;
     private bool _hasPrecomputedLODs;
     private bool _isBuilding;
     private bool _lastBuildTrigger;
     private GPUOctree.OctreeProgressInfo? _progressInfo;
-    private bool _wasCacheHit; // NEW: track whether this run used a cache hit
+    private CancellationTokenSource? _buildCts;
+    private bool _allocationLoggedForRun;
+
+    public OctreeBuilder() : base("OctreeBuilder")
+    {
+        _buildCts = new CancellationTokenSource();
+    }
     public Dictionary<string, float[]> PLYData { private get; set; } = new(0);
     public bool Build { private get; set; }
     public int MaxDepth { private get; set; } = 8;
@@ -55,9 +61,11 @@ public class OctreeBuilder
 
     public void Update()
     {
+        UpdateDiagnostics(Debug);
+        if (IsDisposed) return;
+
         // Rising edge
-        var buildRisingEdge = Build && !_lastBuildTrigger;
-        _lastBuildTrigger = Build;
+        var buildRisingEdge = IsRisingEdge(ref _lastBuildTrigger, Build);
 
         if (buildRisingEdge && !_isBuilding)
         {
@@ -89,6 +97,11 @@ public class OctreeBuilder
                 NodesProcessed = _progressInfo.NodesProcessed;
 
                 CalculateStatistics();
+                if (!_allocationLoggedForRun)
+                {
+                    _allocationLoggedForRun = true;
+                    TrackAllocationEstimate("build-complete", EstimateRetainedBytes());
+                }
             }
         }
 
@@ -102,9 +115,12 @@ public class OctreeBuilder
 
     private async void StartBuilding()
     {
+        var run = BeginRun(ref _buildCts);
+        var generation = run.generation;
+        var ct = run.token;
         _isBuilding = true;
-        _wasCacheHit = false; // NEW: reset per build
         _hasPrecomputedLODs = false; // reset (will be filled from cache/build)
+        _allocationLoggedForRun = false;
         _progressInfo = new GPUOctree.OctreeProgressInfo();
         var swTotal = Stopwatch.StartNew();
 
@@ -148,8 +164,11 @@ public class OctreeBuilder
 
                 async Task<OctreeCacheSerializer.Payload> BuildOctreePayloadAsync(CancellationToken ct)
                 {
+                    if (!IsCurrentGeneration(generation))
+                        throw new ObjectDisposedException(nameof(OctreeBuilder));
+
                     var swBuild = Stopwatch.StartNew();
-                    await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
+                    await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config, ct);
                     swBuild.Stop();
                     Log(
                         $"[OctreeBuilder] Built from source in {swBuild.ElapsedMilliseconds} ms. Nodes={_progressInfo.NodeCount} Indices={_progressInfo.IndexCount}");
@@ -202,11 +221,6 @@ public class OctreeBuilder
                             new OctreeCacheSerializer(),
                             BuildOctreePayloadAsync,
                             default);
-                        _wasCacheHit = false;
-                    }
-                    else
-                    {
-                        _wasCacheHit = true; // NEW
                     }
                     _hasPrecomputedLODs = payload.HasPrecomputedLODs; // NEW: remember flag from cache
 
@@ -247,7 +261,7 @@ public class OctreeBuilder
             {
                 // No disk cache: build + optional LODs in this run
                 var swNoCache = Stopwatch.StartNew();
-                _buildTask = GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config);
+                _buildTask = GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config, ct);
                 await _buildTask;
                 swNoCache.Stop();
                 Log(
@@ -266,6 +280,7 @@ public class OctreeBuilder
                 !_hasPrecomputedLODs &&
                 !UseDiskCache) // NEW: skip on cache hits/misses (cache path handled above)
             {
+                if (!IsCurrentGeneration(generation)) return;
                 StageSafe("Precompute LODs (Leaves)", 0.0);
                 var lodSuccess = OctreeLodHelper.TryApplyPrecomputedLeafLODs(
                     _progressInfo.NodeBufferData ?? Array.Empty<byte>(),
@@ -281,6 +296,12 @@ public class OctreeBuilder
         }
         catch (Exception ex)
         {
+            if (!IsCurrentGeneration(generation)) return;
+            if (ex is OperationCanceledException)
+            {
+                _isBuilding = false;
+                return;
+            }
             if (_progressInfo != null)
             {
                 _progressInfo.Error = ex;
@@ -386,5 +407,61 @@ public class OctreeBuilder
             Debug);
     }
 
+    /// <summary>
+    /// Releases CPU-side octree buffers and resets state.
+    /// </summary>
+    public void ReleaseCpuData()
+    {
+        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        {
+            NodeBufferData = Array.Empty<byte>();
+            IndexBufferData = Array.Empty<byte>();
+            if (_progressInfo != null)
+            {
+                _progressInfo.NodeBufferData = Array.Empty<byte>();
+                _progressInfo.IndexBufferData = Array.Empty<byte>();
+            }
+
+            NodeCount = 0;
+            IndexCount = 0;
+            NodesProcessed = 0;
+            TotalMemoryUsed = 0;
+            CompressionRatio = 0;
+            NodeBufferSizeMB = 0;
+            IndexBufferSizeMB = 0;
+            TotalSizeMB = 0;
+        });
+    }
+
+    protected override void OnDisposeManaged()
+    {
+        _isBuilding = false;
+        IsBuilding = false;
+        _buildCts?.Cancel();
+        _buildCts?.Dispose();
+        _buildCts = null;
+        _buildTask = null;
+        _progressInfo = null;
+        ReleaseCpuData();
+        Status = "Disposed";
+        StageName = string.Empty;
+        IsCompleted = false;
+        HasError = false;
+        ErrorMessage = string.Empty;
+        Progress = 0;
+        TotalPoints = 0;
+    }
+
+    private long EstimateRetainedBytes()
+    {
+        long bytes = 0;
+        if (NodeBufferData != null)
+            bytes += NodeBufferData.LongLength;
+        if (IndexBufferData != null)
+            bytes += IndexBufferData.LongLength;
+        return bytes;
+    }
+
 }
+
 
