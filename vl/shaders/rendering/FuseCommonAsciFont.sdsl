@@ -1,0 +1,188 @@
+shader FuseCommonAsciFont{
+
+    void EmitGlyph(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        int glyphId,
+        float2 center
+    )
+    {
+        int gi;
+        InterlockedAdd(Counters[0], 1, gi);
+        if (gi < 0 || gi >= maxGlyphs) return;
+
+        BaseIDs[gi] = baseID;
+        OutCenters[gi]  = center;
+        OutGlyphIds[gi] = glyphId; // ASCII code
+    }
+
+    int CountDigits10(int n)
+    {
+        if (n >= 1000000000) return 10;
+        if (n >= 100000000)  return 9;
+        if (n >= 10000000)   return 8;
+        if (n >= 1000000)    return 7;
+        if (n >= 100000)     return 6;
+        if (n >= 10000)      return 5;
+        if (n >= 1000)       return 4;
+        if (n >= 100)        return 3;
+        if (n >= 10)         return 2;
+        return 1;
+    }
+
+    int Pow10(int p)
+    {
+        int r = 1;
+        for (int i = 0; i < 10; i++)
+        {
+            if (i == p) break;
+            r *= 10;
+        }
+        return r;
+    }
+
+    int DigitAt(int n, int place) // place: 0=ones,1=tens,...
+    {
+        int div = Pow10(place);
+        return (n / div) % 10;
+    }
+
+    void EmitInt_VarDigits(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<float2> OutCenters,   // baseline pen positions
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+
+        StructuredBuffer<float> Advance,
+        float fontScale,
+
+        int value,
+        float2 origin,
+        int minWidth,
+        bool leadingZeros
+    )
+    {
+        bool neg = value < 0;
+        int n = neg ? -value : value;
+
+        int digits = CountDigits10(n);
+        int width  = (digits > minWidth) ? digits : minWidth;
+
+        float2 pen = origin;
+
+        // '-'
+        if (neg)
+        {
+            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                    baseID, maxGlyphs, 45, pen);
+
+            pen.x += Advance[45] * fontScale;
+        }
+
+        // Most significant → least significant
+        for (int p = width - 1; p >= 0; p--)
+        {
+            int d;
+
+            if (p >= digits)
+            {
+                if (!leadingZeros)
+                    continue;
+
+                d = 0;
+            }
+            else
+            {
+                d = DigitAt(n, p);
+            }
+
+            int ascii = 48 + d;
+
+            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                    baseID, maxGlyphs, ascii, pen);
+
+            pen.x += Advance[ascii] * fontScale;
+        }
+    }
+
+    void EmitFloat_VarInt_FixedFrac(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+
+        StructuredBuffer<float> Advance,
+        float fontScale,
+
+        float value,
+        int fracDigits,
+        float2 origin
+    )
+    {
+        bool neg = value < 0.0;
+        float v = abs(value);
+
+        int ip = (int)floor(v);
+
+        float scaleF = 1.0;
+        for (int i = 0; i < fracDigits; i++)
+            scaleF *= 10.0;
+
+        int fp = (int)floor(frac(v) * scaleF + 0.5);
+
+        if (fp >= (int)scaleF)
+        {
+            fp -= (int)scaleF;
+            ip += 1;
+        }
+
+        float2 pen = origin;
+
+        // '-'
+        if (neg)
+        {
+            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                    baseID, maxGlyphs, 45, pen);
+
+            pen.x += Advance[45] * fontScale;
+        }
+
+        // Integer digits
+        int ipDigits = CountDigits10(ip);
+
+        for (int p = ipDigits - 1; p >= 0; p--)
+        {
+            int ascii = 48 + DigitAt(ip, p);
+
+            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                    baseID, maxGlyphs, ascii, pen);
+
+            pen.x += Advance[ascii] * fontScale;
+        }
+
+        // Dot
+        EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                baseID, maxGlyphs, 46, pen);
+
+        pen.x += Advance[46] * fontScale;
+
+        // Fraction digits (always fixed count)
+        for (int p = fracDigits - 1; p >= 0; p--)
+        {
+            int ascii = 48 + DigitAt(fp, p);
+
+            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
+                    baseID, maxGlyphs, ascii, pen);
+
+            pen.x += Advance[ascii] * fontScale;
+        }
+    }
+};

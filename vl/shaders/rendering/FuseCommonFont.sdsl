@@ -1,0 +1,328 @@
+shader FuseCommonFont{
+
+    // Returns the 3 “core” values you typically want:
+    //  - distPx: signed distance in *screen pixels* (0 at edge, <0 inside)
+    //  - mask  : smooth inside coverage 0..1
+    //  - gradN : normalized gradient direction (outward)
+    //
+    // Assumes MSDF/MTSDF atlas sampled LINEAR (NOT sRGB).
+    // For MTSDF (your case), set useAlphaTrueSdf = true and distanceRangePx = 4.
+    //
+    // atlasSizePx: e.g. float2(512,512)
+    // distanceRangePx: from atlas json "distanceRange" (e.g. 4.0)
+    float median3(float a, float b, float c)
+    {
+        return max(min(a,b), min(max(a,b), c));
+    }
+
+    float FontAtlas_CoreField(
+        Texture2D tex,
+        SamplerState samp,
+        float2 uv,
+        float2 atlasSizePx,
+        float distanceRangePx,
+        bool useAlphaTrueSdf,
+        out float distPx,
+        out float2 gradN
+    )
+    {
+        // 1) sample atlas
+        float4 t = tex.Sample(samp, uv);
+
+        // 2) decode normalized signed distance around 0
+        float sdNorm = useAlphaTrueSdf ? (t.a - 0.5) : (median3(t.r, t.g, t.b) - 0.5);
+
+        // 3) scale into screen-pixel distance (stable across size)
+        float2 duv_dx = ddx(uv) * atlasSizePx;
+        float2 duv_dy = ddy(uv) * atlasSizePx;
+        float texelsPerScreenPx = rsqrt(max(dot(duv_dx,duv_dx), dot(duv_dy,duv_dy)) + 1e-12);
+        float screenPxRange = max(1e-6, distanceRangePx * texelsPerScreenPx);
+
+        distPx = sdNorm * screenPxRange; // 0 at edge, <0 inside
+
+        // 4) smooth inside mask
+        float w = fwidth(distPx);
+        float mask = smoothstep(-w, +w, -distPx);
+
+        // 5) normalized gradient (outward)
+        float2 g = float2(ddx(distPx), ddy(distPx));
+        float gl = length(g);
+        gradN = (gl > 1e-6) ? (g / gl) : float2(0,0);
+
+        return mask;
+    }
+
+    // ------------------------------------------------------------
+    // 1) Buffer readout: instanceId -> (startIdx, glyphCount)
+    // ranges[instanceId] = int2(startIdx, endIdx)
+    // ------------------------------------------------------------
+    void TextRun_ReadRange(
+        StructuredBuffer<int2> ranges,
+        int instanceId,
+        out int startIdx,
+        out int glyphCount
+    )
+    {
+        int2 r = ranges[instanceId];
+        startIdx = r.x;
+        glyphCount = (r.y - r.x);
+    }
+
+    // ------------------------------------------------------------
+    // 2) Exact mapping: TextQuadUV01 -> glyphI + local UV + outside
+    // Matches your shader logic.
+    // lineCountClamp corresponds to input_2346780770 in your shader.
+    // ------------------------------------------------------------
+    void TextRun_TextUV_ToGlyphAndLocal(
+        float2 textUV01,          // streams.TexCoord
+        int glyphCount,
+        float lineCountClamp,
+        out int glyphI,
+        out float2 local01,
+        out bool outside
+    )
+    {
+        float xGlyph = (float)glyphCount * textUV01.x;
+        glyphI = (int)floor(xGlyph);
+
+        bool outX = (glyphI >= glyphCount) || (glyphI < 0);
+        bool outY = (floor(textUV01.y) >= lineCountClamp) || (textUV01.y < 0.0);
+        outside = outX || outY;
+
+        // local coordinates inside the glyph cell
+        local01 = frac(float2(xGlyph, textUV01.y)); // (fracX, fracY)
+    }
+
+    // ------------------------------------------------------------
+    // 3) Glyph rect -> atlas UV (includes your Y flip: 1 - fracY)
+    // rect.xy = uvMin, rect.zw = uvMax
+    // ------------------------------------------------------------
+    float2 TextRun_GlyphRect_ToAtlasUV(
+        float4 rectUvMinMax,
+        float2 local01
+    )
+    {
+        float2 uvMin = rectUvMinMax.xy;
+        float2 uvMax = rectUvMinMax.zw;
+
+        // your shader does (1 - fracY)
+        float2 t = float2(local01.x, 1.0 - local01.y);
+        return lerp(uvMin, uvMax, t);
+    }
+
+    // ------------------------------------------------------------
+    // 4) Convenience: instanceId + textUV01 -> atlasUV
+    // rects buffer is the per-glyph uv rect list.
+    // ------------------------------------------------------------
+    float2 TextRun_TextUV_ToAtlasUV(
+        StructuredBuffer<int2> ranges,
+        StructuredBuffer<float4> rects,
+        int instanceId,
+        float2 textUV01,
+        float lineCountClamp,
+        out int outGlyphCount
+    )
+    {
+        int startIdx, glyphCount;
+        TextRun_ReadRange(ranges, instanceId, startIdx, glyphCount);
+        outGlyphCount = glyphCount;
+
+        int glyphI;
+        float2 local01;
+        bool outside;
+        TextRun_TextUV_ToGlyphAndLocal(textUV01, glyphCount, lineCountClamp, glyphI, local01, outside);
+        if (outside) return float2(0,0);
+
+        float4 rect = rects[startIdx + glyphI];
+        return TextRun_GlyphRect_ToAtlasUV(rect, local01);
+    }
+
+    // rect.xy=uvMin rect.zw=uvMax, includes your Y flip: 1 - localY
+    float2 GlyphRect_ToAtlasUV(float4 rectUvMinMax, float2 local01)
+    {
+        float2 uvMin = rectUvMinMax.xy;
+        float2 uvMax = rectUvMinMax.zw;
+        return lerp(uvMin, uvMax, float2(local01.x, 1.0 - local01.y));
+    }
+
+    // Equivalent to Shadertoy char(p,c) but:
+    //   c = glyph index inside the run (0..glyphCount-1), NOT ASCII.
+    //
+    // Returns atlasUV for that glyph at local coord p01.
+    // outside=true if p01 is out of bounds or glyphI is out of range.
+    float2 TextRun_CharUV(
+        StructuredBuffer<int2> ranges,
+        StructuredBuffer<float4> rects,
+        int instanceId,
+        int glyphIInRun,
+        float2 p01,               // glyph-local 0..1
+        out bool outside
+    )
+    {
+        // local bounds like shadertoy char()
+        bool outP = (p01.x < 0 || p01.x > 1 || p01.y < 0 || p01.y > 1);
+
+        int startIdx, glyphCount;
+        TextRun_ReadRange(ranges, instanceId, startIdx, glyphCount);
+
+        bool outG = (glyphIInRun < 0) || (glyphIInRun >= glyphCount);
+        outside = outP || outG;
+        if (outside) return float2(0,0);
+
+        float4 rect = rects[startIdx + glyphIInRun];
+        return GlyphRect_ToAtlasUV(rect, p01);
+    }
+
+    // rect.xy = uvMin, rect.zw = uvMax
+    float2 TextUV_GlyphRect_ToAtlasUV(float4 rectUvMinMax, float2 p01)
+    {
+        // Shadertoy convention is p in [0..1], and they effectively flip Y depending on atlas.
+    // If your atlas rects are stored with same orientation as your earlier mapping,
+    // keep the 1 - y flip:
+        float2 t = float2(p01.x, 1.0 - p01.y);
+        return lerp(rectUvMinMax.xy, rectUvMinMax.zw, t);
+    }
+
+    // Shadertoy-like: char(U, ascii) BUT UV-only.
+    // U is in "glyph units". This function returns atlasUV for the current pixel,
+    // OR sets outside=true if pixel is outside glyph box.
+    float2 AsciiChar_AtlasUV(
+        StructuredBuffer<float4> asciiRects256,
+        float2 U,                 // glyph-local coords (0..1 box expected)
+        int ascii,
+        out bool outside
+    )
+    {
+        outside = (U.x < 0.0) || (U.x > 1.0) || (U.y < 0.0) || (U.y > 1.0);
+        if (outside) return float2(0,0);
+
+        float4 rect = asciiRects256[ascii & 255];
+        return TextUV_GlyphRect_ToAtlasUV(rect, U);
+    }
+
+    // Returns atlasUV for a character placed at integer cell position `cell`
+    // in a text grid. `U` is in glyph units.
+    // If this pixel is not inside that cell, outside=true.
+    float2 AsciiChar_AtlasUV_AtCell(
+        StructuredBuffer<float4> asciiRects256,
+        float2 U,          // text space in glyph units
+        int2 cell,         // integer glyph cell location
+        int ascii,
+        out bool outside
+    )
+    {
+        float2 p = U - (float2)cell; // local within that glyph cell
+        return AsciiChar_AtlasUV(asciiRects256, p, ascii, outside);
+    }
+
+    // UV-only pInt: fixed 4 digits, right-aligned like Shadertoy.
+    // Inputs:
+    //   U: text-space in glyph units (your "cursor")
+    //   n: value
+    // Outputs:
+    //   atlasUV: where to sample in the atlas for THIS pixel
+    //   hit:     whether THIS pixel belongs to any digit glyph
+    //   asciiOut: the ascii code for debug/optional usage
+    void Ascii_pInt4_AtlasUV(
+        StructuredBuffer<float4> asciiRects256,
+        float2 U,
+        float n,
+        out float2 atlasUV,
+        out bool hit,
+        out int asciiOut
+    )
+    {
+        atlasUV = float2(0,0);
+        hit = false;
+        asciiOut = 0;
+
+        // Handle sign as a separate cell at x = +1 (same as your shadertoy: p - vec2(-.5,0))
+        if (n < 0.0)
+        {
+            bool o;
+            float2 uvMinus = AsciiChar_AtlasUV(asciiRects256, U - float2(-0.5, 0.0), 45, o); // '-'
+            if (!o) { atlasUV = uvMinus; hit = true; asciiOut = 45; return; }
+            n = -n;
+        }
+
+        // Check digits cells (i=3..0). We will test if the pixel lies in that cell,
+        // and if yes compute that digit and return its atlasUV.
+        // Cell positions follow Shadertoy: char(U - .5*vec2(i,0), ...)
+        // That means digits are spaced by 0.5 in X. Keep as-is for the shadertoy look.
+        [unroll]
+        for (int i = 3; i >= 0; i--)
+        {
+            float2 p = U - 0.5 * float2((float)i, 0.0); // local p into glyph box for this digit cell
+
+            // is this pixel inside that digit cell?
+            if (p.x >= 0.0 && p.x <= 1.0 && p.y >= 0.0 && p.y <= 1.0)
+            {
+                // compute digit same as shadertoy
+                float nn = n;
+                // apply the n/=9.999999 i+1 times from left to right (matches the shadertoy scheme)
+                // since i runs 3..0, we want 4 steps total, but shifted.
+                [unroll]
+                for (int k = 3; k >= i; k--) nn /= 9.999999;
+
+                int d = (int)(frac(nn) * 10.0);
+                int ascii = 48 + d;
+
+                atlasUV = TextUV_GlyphRect_ToAtlasUV(asciiRects256[ascii & 255], p);
+                hit = true;
+                asciiOut = ascii;
+                return;
+            }
+        }
+    }
+
+    // UV-only pFloat: ####.####
+    // Same spacing model as your shadertoy (pInt4 + '.' + pInt4).
+    float2 Ascii_pFloat4_4_AtlasUV(
+        StructuredBuffer<float4> asciiRects256,
+        float2 U,
+        float n
+    )
+    {
+        atlasUV = float2(0,0);
+        hit = false;
+        asciiOut = 0;
+
+        // sign
+        if (n < 0.0)
+        {
+            bool o;
+            float2 uvMinus = AsciiChar_AtlasUV(asciiRects256, U - float2(-0.5, 0.0), 45, o);
+            if (!o) { atlasUV = uvMinus; hit = true; asciiOut = 45; return; }
+            n = -n;
+        }
+
+        float upper = floor(n);
+        float lower = frac(n) * 1e4 + 0.5;
+        if (lower >= 1e4) { lower -= 1e4; upper += 1.0; }
+
+        // Upper #### at U
+        {
+            float2 uv; bool h; int a;
+            Ascii_pInt4_AtlasUV(asciiRects256, U, upper, uv, h, a);
+            if (h) { atlasUV = uv; hit = true; asciiOut = a; return; }
+        }
+
+        // '.' at U.x -= 2.0 then U.x -= 0.5 in the original
+        // We'll test the '.' cell directly:
+        {
+            float2 pDot = (U - float2(2.0, 0.0)); // matches p.x -= 2 in your snippet
+            bool o;
+            float2 uvDot = AsciiChar_AtlasUV(asciiRects256, pDot, 46, o); // '.'
+            if (!o) { atlasUV = uvDot; hit = true; asciiOut = 46; return; }
+        }
+
+        // Lower #### at U.x -= 2.5
+        {
+            float2 U2 = U - float2(2.5, 0.0); // 2.0 + 0.5
+            float2 uv; bool h; int a;
+            Ascii_pInt4_AtlasUV(asciiRects256, U2, lower, uv, h, a);
+            if (h) { atlasUV = uv; hit = true; asciiOut = a; return; }
+        }
+        return atlasUV;
+    }
+};
