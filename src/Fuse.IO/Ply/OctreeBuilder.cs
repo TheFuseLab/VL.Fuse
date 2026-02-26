@@ -118,6 +118,7 @@ public class OctreeBuilder : ProcessNodeBase
         var run = BeginRun(ref _buildCts);
         var generation = run.generation;
         var ct = run.token;
+        var octreeInputData = BuildPositionOnlyView(PLYData);
         _isBuilding = true;
         _hasPrecomputedLODs = false; // reset (will be filled from cache/build)
         _allocationLoggedForRun = false;
@@ -168,7 +169,7 @@ public class OctreeBuilder : ProcessNodeBase
                         throw new ObjectDisposedException(nameof(OctreeBuilder));
 
                     var swBuild = Stopwatch.StartNew();
-                    await GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config, ct);
+                    await GPUOctree.BuildInBackgroundAsync(octreeInputData, _progressInfo, config, ct);
                     swBuild.Stop();
                     Log(
                         $"[OctreeBuilder] Built from source in {swBuild.ElapsedMilliseconds} ms. Nodes={_progressInfo.NodeCount} Indices={_progressInfo.IndexCount}");
@@ -188,7 +189,7 @@ public class OctreeBuilder : ProcessNodeBase
                             _progressInfo.IndexBufferData,
                             _progressInfo.NodeCount,
                             _progressInfo.IndexCount,
-                            PLYData,
+                            octreeInputData,
                             LeafTargetCellsOnLongestAxis,
                             Debug);
                         StageSafe("Precompute LODs (Leaves, caching) - done", 1.0);
@@ -261,7 +262,7 @@ public class OctreeBuilder : ProcessNodeBase
             {
                 // No disk cache: build + optional LODs in this run
                 var swNoCache = Stopwatch.StartNew();
-                _buildTask = GPUOctree.BuildInBackgroundAsync(PLYData, _progressInfo, config, ct);
+                _buildTask = GPUOctree.BuildInBackgroundAsync(octreeInputData, _progressInfo, config, ct);
                 await _buildTask;
                 swNoCache.Stop();
                 Log(
@@ -287,7 +288,7 @@ public class OctreeBuilder : ProcessNodeBase
                     _progressInfo.IndexBufferData ?? Array.Empty<byte>(),
                     _progressInfo.NodeCount,
                     _progressInfo.IndexCount,
-                    PLYData,
+                    octreeInputData,
                     LeafTargetCellsOnLongestAxis,
                     Debug);
                 StageSafe("Precompute LODs (Leaves) - done", 1.0);
@@ -332,6 +333,25 @@ public class OctreeBuilder : ProcessNodeBase
 
         sb.Append("sum:").Append(total);
         return sb.ToString();
+    }
+
+    private static Dictionary<string, float[]> BuildPositionOnlyView(Dictionary<string, float[]> source)
+    {
+        var result = new Dictionary<string, float[]>(3, StringComparer.OrdinalIgnoreCase);
+        if (source == null || source.Count == 0)
+            return result;
+
+        foreach (var kv in source)
+        {
+            if (string.Equals(kv.Key, "x", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(kv.Key, "y", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(kv.Key, "z", StringComparison.OrdinalIgnoreCase))
+            {
+                result[kv.Key] = kv.Value;
+            }
+        }
+
+        return result;
     }
 
     private static bool IsValidOctreePayload(OctreeCacheSerializer.Payload payload)
@@ -407,12 +427,9 @@ public class OctreeBuilder : ProcessNodeBase
             Debug);
     }
 
-    /// <summary>
-    /// Releases CPU-side octree buffers and resets state.
-    /// </summary>
-    public void ReleaseCpuData()
+    private void ClearAllRetainedData(string reason)
     {
-        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        TrackReleaseEstimate(reason, EstimateRetainedBytes, () =>
         {
             NodeBufferData = Array.Empty<byte>();
             IndexBufferData = Array.Empty<byte>();
@@ -437,12 +454,10 @@ public class OctreeBuilder : ProcessNodeBase
     {
         _isBuilding = false;
         IsBuilding = false;
-        _buildCts?.Cancel();
-        _buildCts?.Dispose();
-        _buildCts = null;
+        CancelAndDisposeCts(ref _buildCts);
         _buildTask = null;
         _progressInfo = null;
-        ReleaseCpuData();
+        ClearAllRetainedData("Dispose");
         Status = "Disposed";
         StageName = string.Empty;
         IsCompleted = false;

@@ -1,4 +1,5 @@
 namespace Fuse.IO.Ply;
+using Stride.Graphics;
 
 #pragma warning disable CS1591
 
@@ -33,6 +34,8 @@ public class FastPly : ProcessNodeBase
     public bool UseDiskCache { private get; set; }
     public bool ForceReload { private get; set; }
     public string CacheBasePath { private get; set; } = string.Empty;
+    public PlyDataMode DataMode { private get; set; } = PlyDataMode.CpuOnly;
+    public GraphicsDevice? GraphicsDevice { private get; set; }
     public bool Debug { private get; set; }
 
     // Outputs - SoA data
@@ -52,6 +55,7 @@ public class FastPly : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
 
     // Outputs - progress/status
     public float Progress { get; private set; }
@@ -99,6 +103,10 @@ public class FastPly : ProcessNodeBase
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
         if (!IsCompleted) return;
+        if (DataMode != PlyDataMode.CpuOnly)
+        {
+            PlyGpuData.EnsureBuffers(GraphicsDevice);
+        }
 
         // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
         if (Debug)
@@ -122,6 +130,7 @@ public class FastPly : ProcessNodeBase
         var currentStrategy = DecimationStrategy;
         var currentFactor = DecimationFactor;
         var currentPath = FilePath;
+        var currentDataMode = DataMode;
 
         try
         {
@@ -143,7 +152,27 @@ public class FastPly : ProcessNodeBase
             Result = loadResult.Arrays;
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
+            PlyGpuData.DisposeBuffers();
+            PlyGpuData = (currentDataMode == PlyDataMode.GpuOnly || currentDataMode == PlyDataMode.CpuAndGpu)
+                ? new PlyGpuData(
+                    PlyGpuDataFactory.CreatePlyFieldBuffers(Result, FieldOrder),
+                    new Dictionary<string, GpuBufferInfo>(0),
+                    VertexCount,
+                    FieldOrder)
+                : PlyGpuData.Empty;
             _progressInfo.Result = loadResult.Arrays;
+
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                // Try to materialize buffers immediately so upload providers can release CPU references.
+                PlyGpuData.EnsureBuffers(GraphicsDevice);
+            }
+
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                Result = new Dictionary<string, float[]>(0);
+                _progressInfo.Result = new Dictionary<string, float[]>(0);
+            }
 
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
@@ -167,16 +196,15 @@ public class FastPly : ProcessNodeBase
         }
     }
 
-    /// <summary>
-    /// Releases CPU data to free memory. Call after uploading to GPU.
-    /// </summary>
-    public void ReleaseCpuData()
+    private void ClearAllRetainedData(string reason)
     {
-        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        TrackReleaseEstimate(reason, EstimateRetainedBytes, () =>
         {
+            PlyGpuData.DisposeBuffers();
             Result = new Dictionary<string, float[]>(0);
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            PlyGpuData = PlyGpuData.Empty;
             if (_progressInfo != null)
                 _progressInfo.Result = new Dictionary<string, float[]>(0);
         });
@@ -185,10 +213,8 @@ public class FastPly : ProcessNodeBase
     protected override void OnDisposeManaged()
     {
         _isLoading = false;
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
-        _loadCts = null;
-        ReleaseCpuData();
+        CancelAndDisposeCts(ref _loadCts);
+        ClearAllRetainedData("Dispose");
         _progressInfo = null;
         Progress = 0;
         Status = "Disposed";
@@ -220,6 +246,10 @@ public class FastPly : ProcessNodeBase
                 if (arr != null)
                     bytes += (long)arr.Length * sizeof(float);
             }
+        }
+        if (PlyGpuData != null)
+        {
+            bytes += PlyGpuData.GetEstimatedRetainedBytes();
         }
         return bytes;
     }
