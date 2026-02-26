@@ -1,0 +1,71 @@
+You are an expert C# + vvvv gamma (VL) developer. Create a complete, practical implementation plan (with code scaffolding) for a C# project that provides VL process nodes to generate MSDF/MTSDF font atlases by calling an external CLI tool (msdf-atlas-gen).
+
+GOALS
+1) Build a C# solution that can be referenced from vvvv gamma / VL as a package of nodes.
+2) Provide one main node: “GenerateFontAtlas (msdf-atlas-gen)”.
+3) Node must call msdf-atlas-gen as an external process and generate:
+   - atlas PNG
+   - atlas JSON metadata
+4) Caching: The node must NOT run the tool if the output files already exist for the current settings.
+   - Output filenames must encode ALL relevant settings (so different settings produce different cached files).
+   - Also include font file identity (hash or timestamp+size+name) so changing the font regenerates.
+5) Add a “ForceRebuild” input that bypasses cache.
+6) Provide good logs: stdout/stderr, exit code, status flags (IsBusy, Succeeded, ErrorMessage).
+7) Make it robust in an interactive patch: non-blocking (async), safe for repeated calls, atomic file writes (temp then rename).
+8) Cross-machine friendly: msdf-atlas-gen path configurable, default lookup in a “Tools/msdf-atlas-gen/” folder next to the patch or assembly.
+
+DELIVERABLES
+A) A step-by-step plan with milestones.
+B) The recommended project structure (folders, classes, node files).
+C) A minimal but solid C# implementation:
+   - Settings record/class
+   - Cache key builder (stable string + SHA256)
+   - Output path builder (human readable + hashed suffix)
+   - Process runner (async, cancellation-ready)
+   - Atomic write strategy (generate to temp paths; if success move/replace)
+   - Existence check logic (what files count as valid cache hit)
+   - JSON parser helper (System.Text.Json) that loads glyphs into a dictionary keyed by Unicode
+D) A VL node API design:
+   Inputs:
+     FontFilePath (string)
+     Charset (string OR optional charset file path)
+     AtlasWidth, AtlasHeight (int)
+     PxRange (int)
+     Type (enum: sdf/msdf/mtsdf)
+     Padding (int, optional)
+     YOrigin (enum, optional if tool supports)
+     OutputDirectory (string)
+     MsdfAtlasGenExePath (string)
+     ForceRebuild (bool)
+     Enabled (bool)
+   Outputs:
+     AtlasPngPath (string)
+     AtlasJsonPath (string)
+     CacheKey (string)
+     IsBusy (bool)
+     Succeeded (bool)
+     ExitCode (int)
+     StdOut (string)
+     StdErr (string)
+     ErrorMessage (string)
+E) Add a second optional node “ReadFontAtlasJson” that parses the JSON and outputs metrics and glyph table data that I can feed to my GPU glyph emitter.
+
+CONSTRAINTS / IMPORTANT DETAILS
+- Do NOT assume internet access.
+- Assume .NET 8 (or .NET 6 if you think that’s safer for vvvv gamma) — justify choice.
+- Avoid blocking UI thread: use Task.Run + process async reading; prevent concurrent runs for same cache key (dedupe).
+- Use deterministic naming:
+  Example base name: "{FontName}_{type}_w{W}_h{H}_px{PxRange}_pad{Pad}_cs{CharsetTag}_{fontHash8}_{settingsHash8}"
+  Keep filenames safe (sanitize charset string; if too long use hash tag).
+- Cache hit is valid only if BOTH png and json exist and are non-empty.
+- Explain how to package/deploy: where to put the exe + DLLs, and how to detect missing exe with clear error messages.
+- Provide CLI argument building in one place and include comment placeholders for differences between msdf-atlas-gen builds (flags may vary).
+- Include a test strategy: small console test + how to validate outputs from vvvv.
+
+OUTPUT FORMAT
+1) “Plan” section (bulleted milestones)
+2) “Project Structure” tree
+3) “Key Design Decisions” short rationale
+4) “Code” section with files and contents (multiple code blocks, one per file)
+5) “VL Node Mapping” section describing how to expose the main function as a node in vvvv gamma / VL (no hand-wavy; be specific about what to mark public, what types, and how stateful async is handled)
+6) “Validation Checklist” section

@@ -1,0 +1,284 @@
+shader FuseCommonAsciFontPolar{
+
+    void EmitGlyph(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<float> OutRotations,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        int glyphId,
+        float2 center,
+        float rotation
+    )
+    {
+        int gi;
+        InterlockedAdd(Counters[0], 1, gi);
+        if (gi < 0 || gi >= maxGlyphs) return;
+
+        OutIndices[gi]   = gi;
+        BaseIDs[gi]      = baseID;
+        OutCenters[gi]   = center;
+        OutRotations[gi] = rotation;
+        OutGlyphIds[gi]  = glyphId;
+    }
+
+    // ── helpers (unchanged) ──
+
+    int CountDigits10(int n)
+    {
+        if (n >= 1000000000) return 10;
+        if (n >= 100000000)  return 9;
+        if (n >= 10000000)   return 8;
+        if (n >= 1000000)    return 7;
+        if (n >= 100000)     return 6;
+        if (n >= 10000)      return 5;
+        if (n >= 1000)       return 4;
+        if (n >= 100)        return 3;
+        if (n >= 10)         return 2;
+        return 1;
+    }
+
+    int Pow10(int p)
+    {
+        int r = 1;
+        for (int i = 0; i < 10; i++)
+        {
+            if (i == p) break;
+            r *= 10;
+        }
+        return r;
+    }
+
+    int DigitAt(int n, int place)
+    {
+        int div = Pow10(place);
+        return (n / div) % 10;
+    }
+
+    // ── helper: polar pen → world position ──
+
+    float2 PolarToWorld(float radius, float angle, float2 circleCenter)
+    {
+        return circleCenter + float2(radius * cos(angle), radius * sin(angle));
+    }
+
+    float PolarAdvance(float charWidth, float radius)
+    {
+        return -charWidth / max(radius, 0.0001);  // arc length → angle delta
+    }
+
+    // ════════════════════════════════════════════
+    //  CIRCULAR EMITTERS
+    //  origin.x = radius, origin.y = start angle (radians)
+    //  circleCenter = world-space center of circle
+    //  penOut.x = radius, penOut.y = current angle
+    // ════════════════════════════════════════════
+
+    void EmitChar(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<float> OutRotations,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        int charIndex,
+        float2 circleCenter,
+        float radius,
+        float angle,
+        out float angleOut
+    )
+    {
+        float halfAdv = Advance[charIndex] * fontScale * 0.5;
+        float halfAngle = PolarAdvance(halfAdv, radius);
+
+        // place glyph at center of its arc span
+        float mid = angle + halfAngle;
+        float2 pos = PolarToWorld(radius, mid, circleCenter);
+        float rot = 3.1415927 - mid;  // tangent = angle - PI/2
+
+        EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                  baseID, maxGlyphs, charIndex, pos, rot);
+
+        angleOut = angle + halfAngle * 2.0;
+    }
+
+    void EmitString(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<float> OutRotations,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        StructuredBuffer<int> GlyphIndices,
+        StructuredBuffer<int2> WordRanges,
+        int wordIndex,
+        float2 circleCenter,
+        float radius,
+        float angle,
+        out float angleOut
+    )
+    {
+        int2 range = WordRanges[wordIndex];
+        for (int i = range.x; i < range.y; i++)
+        {
+            int ascii = GlyphIndices[i];
+            float adv = Advance[ascii] * fontScale;
+            float halfAngle = PolarAdvance(adv * 0.5, radius);
+
+            float mid = angle + halfAngle;
+            float2 pos = PolarToWorld(radius, mid, circleCenter);
+            float rot = 3.1415927 - mid;
+
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, ascii, pos, rot);
+
+            angle += halfAngle * 2.0;
+        }
+        angleOut = angle;
+    }
+
+    void EmitInt_VarDigits(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<float> OutRotations,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        int value,
+        float2 circleCenter,
+        float radius,
+        float startAngle,
+        int minWidth,
+        bool leadingZeros,
+        out float angleOut
+    )
+    {
+        bool neg = value < 0;
+        int n = neg ? -value : value;
+        int digits = CountDigits10(n);
+        int width  = (digits > minWidth) ? digits : minWidth;
+        float angle = startAngle;
+
+        if (neg)
+        {
+            float adv = Advance[45] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, 45, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+
+        for (int p = width - 1; p >= 0; p--)
+        {
+            int d;
+            if (p >= digits)
+            {
+                if (!leadingZeros) continue;
+                d = 0;
+            }
+            else
+            {
+                d = DigitAt(n, p);
+            }
+            int ascii = 48 + d;
+
+            float adv = Advance[ascii] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+        angleOut = angle;
+    }
+
+    void EmitFloat_VarInt_FixedFrac(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<float> OutRotations,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        float value,
+        int fracDigits,
+        float2 circleCenter,
+        float radius,
+        float startAngle,
+        out float angleOut
+    )
+    {
+        bool neg = value < 0.0;
+        float v = abs(value);
+        int ip = (int)floor(v);
+        float scaleF = 1.0;
+        for (int i = 0; i < fracDigits; i++) scaleF *= 10.0;
+        int fp = (int)floor(frac(v) * scaleF + 0.5);
+        if (fp >= (int)scaleF) { fp -= (int)scaleF; ip += 1; }
+
+        float angle = startAngle;
+
+        if (neg)
+        {
+            float adv = Advance[45] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, 45, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+
+        int ipDigits = CountDigits10(ip);
+        for (int p = ipDigits - 1; p >= 0; p--)
+        {
+            int ascii = 48 + DigitAt(ip, p);
+            float adv = Advance[ascii] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+
+        // dot
+        {
+            float adv = Advance[46] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, 46, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+
+        for (int p2 = fracDigits - 1; p2 >= 0; p2--)
+        {
+            int ascii = 48 + DigitAt(fp, p2);
+            float adv = Advance[ascii] * fontScale;
+            float ha = PolarAdvance(adv * 0.5, radius);
+            float mid = angle + ha;
+            EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
+                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+            angle += ha * 2.0;
+        }
+        angleOut = angle;
+    }
+};

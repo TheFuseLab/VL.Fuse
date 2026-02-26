@@ -1,0 +1,119 @@
+shader FuseCommonParticlesSpringIntegration{
+    
+    // RANK 3: Critically Damped Spring
+    // Exact closed-form solution for: x'' + 2ω·x' + ω²·x = 0
+    //
+    // omega controls EVERYTHING:
+    //   omega = 2 / smoothTime
+    //   smoothTime = 0.05s → omega = 40  → very snappy (UI button)
+    //   smoothTime = 0.10s → omega = 20  → snappy (typography formation)
+    //   smoothTime = 0.25s → omega =  8  → smooth (gentle convergence)
+    //   smoothTime = 0.50s → omega =  4  → slow, graceful
+    //
+    // Half-life (time to cover 50% of remaining distance) ≈ 0.69 / omega
+    //
+    // UNCONDITIONALLY STABLE. Works with any dt, any omega. Closed-form = no explosion.
+
+    void IntegrateCriticalSpring(
+        inout float3 pos,
+        inout float3 vel,
+        float3 target,   // where the particle wants to be
+        float omega,     // spring frequency (higher = faster convergence)
+        float dt
+    )
+    {
+        // Displacement from target
+        float3 x = pos - target;
+
+        // Exponential decay factor
+        float e = exp(-omega * dt);
+
+        // Exact solution for critically damped spring
+        // These formulas come from solving the ODE analytically
+        float3 newPos = (x + (vel + omega * x) * dt) * e;
+        float3 newVel = (vel - (vel + omega * x) * omega * dt) * e;
+
+        // newPos is relative to target, so add it back
+        pos = target + newPos;
+        vel = newVel;
+    }
+
+    // Usage example (near zone):
+    // float convergence = saturate(globalConvergence * 2.0 - waveOffset);
+    // float omega = lerp(5.0, 25.0, convergence);  // ramp up as animation progresses
+    // IntegrateCriticalSpring(p.pos, p.vel, p.targetPos, omega, dt);
+
+    // Underdamped spring: overshoots slightly, then settles. Feels "bouncy-alive".
+    // dampingRatio: 1.0 = critical (no overshoot), 0.7 = slight bounce, 0.3 = very springy
+    void IntegrateDampedSpring(
+        inout float3 pos,
+        inout float3 vel,
+        float3 target,
+        float omega,         // natural frequency
+        float dampingRatio,  // 1.0 = critical, <1.0 = underdamped (bouncy)
+        float dt
+    )
+    {
+        float3 x = pos - target;
+
+        if (dampingRatio >= 1.0)
+        {
+            // Critically damped (same as above)
+            float e = exp(-omega * dt);
+            pos = target + (x + (vel + omega * x) * dt) * e;
+            vel = (vel - (vel + omega * x) * omega * dt) * e;
+        }
+        else
+        {
+            // Underdamped: oscillates while converging
+            float wd = omega * sqrt(1.0 - dampingRatio * dampingRatio); // damped frequency
+            float e = exp(-dampingRatio * omega * dt);
+            float cosW = cos(wd * dt);
+            float sinW = sin(wd * dt);
+
+            // Exact underdamped solution
+            float3 newPos = e * (x * cosW + ((vel + dampingRatio * omega * x) / wd) * sinW);
+            float3 newVel = e * (
+                (vel * cosW) 
+                - ((vel * dampingRatio * omega + omega * omega * x) / wd) * sinW
+            );
+
+            pos = target + newPos;
+            vel = newVel;
+        }
+    }
+
+    // RANK 4: Exponential Decay (Snap Zone)
+    // Exact solution for: dx/dt = -speed * (x - target)
+    //
+    // speed = how fast it snaps:
+    //   5.0  → gentle drift to target
+    //   15.0 → quick snap (good default for typography)
+    //   30.0 → near-instant
+    //
+    // NO VELOCITY STATE. Particle has no momentum. If target moves, particle 
+    // instantly redirects. Use only for final placement.
+
+    void IntegrateExpDecay(
+        inout float3 pos,
+        inout float3 vel,   // we also kill velocity here
+        float3 target,
+        float speed,        // convergence speed (15.0 = good default)
+        float dt
+    )
+    {
+        // Blend factor: frame-rate independent
+        // At speed=15 and dt=0.016 (60fps): blend ≈ 0.21 per frame
+        // Same visual result at any framerate
+        float blend = 1.0 - exp(-speed * dt);
+
+        pos = lerp(pos, target, blend);
+
+        // Kill velocity so if we switch back to another integrator, we don't launch
+        vel *= (1.0 - blend) * 0.3;
+    }
+
+    // Usage example (snap zone):
+    // if (dist < SNAP_DIST)
+    //     IntegrateExpDecay(p.pos, p.vel, p.targetPos, 15.0, dt);
+};

@@ -2,6 +2,7 @@ shader FuseCommonAsciFont{
 
     void EmitGlyph(
         RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
         RWStructuredBuffer<float2> OutCenters,
         RWStructuredBuffer<int> OutGlyphIds,
         RWStructuredBuffer<int> BaseIDs,
@@ -15,6 +16,7 @@ shader FuseCommonAsciFont{
         InterlockedAdd(Counters[0], 1, gi);
         if (gi < 0 || gi >= maxGlyphs) return;
 
+        OutIndices[gi]  = gi; 
         BaseIDs[gi] = baseID;
         OutCenters[gi]  = center;
         OutGlyphIds[gi] = glyphId; // ASCII code
@@ -51,8 +53,59 @@ shader FuseCommonAsciFont{
         return (n / div) % 10;
     }
 
+    void EmitChar(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        int charIndex,
+        float2 pen,
+        out float2 penOut
+    )
+    {    
+        EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, charIndex, pen);    
+        pen.x += Advance[charIndex] * fontScale;
+        penOut = pen;
+    }
+
+    void EmitString(
+        RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
+        RWStructuredBuffer<float2> OutCenters,
+        RWStructuredBuffer<int> OutGlyphIds,
+        RWStructuredBuffer<int> BaseIDs,
+        int baseID,
+        int maxGlyphs,
+        StructuredBuffer<float> Advance,
+        float fontScale,
+        StructuredBuffer<int> GlyphIndices,    // all strings concatenated
+        StructuredBuffer<int2> WordRanges,     // x = start, y = end (exclusive)
+        int wordIndex,
+        float2 pen,
+        out float2 penOut
+    )
+    {
+        int2 range = WordRanges[wordIndex];
+        
+        for (int i = range.x; i < range.y; i++)
+        {
+            int ascii = GlyphIndices[i];
+            
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, ascii, pen);
+            
+            pen.x += Advance[ascii] * fontScale;
+        }
+        penOut = pen;
+    }
+
     void EmitInt_VarDigits(
         RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
         RWStructuredBuffer<float2> OutCenters,   // baseline pen positions
         RWStructuredBuffer<int> OutGlyphIds,
         RWStructuredBuffer<int> BaseIDs,
@@ -65,7 +118,9 @@ shader FuseCommonAsciFont{
         int value,
         float2 origin,
         int minWidth,
-        bool leadingZeros
+        bool leadingZeros,
+
+        out float2 penOut
     )
     {
         bool neg = value < 0;
@@ -79,8 +134,7 @@ shader FuseCommonAsciFont{
         // '-'
         if (neg)
         {
-            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                    baseID, maxGlyphs, 45, pen);
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, 45, pen);
 
             pen.x += Advance[45] * fontScale;
         }
@@ -104,15 +158,17 @@ shader FuseCommonAsciFont{
 
             int ascii = 48 + d;
 
-            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                    baseID, maxGlyphs, ascii, pen);
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, ascii, pen);
 
             pen.x += Advance[ascii] * fontScale;
         }
+
+        penOut = pen;
     }
 
     void EmitFloat_VarInt_FixedFrac(
         RWStructuredBuffer<int> Counters,
+        RWStructuredBuffer<int> OutIndices,
         RWStructuredBuffer<float2> OutCenters,
         RWStructuredBuffer<int> OutGlyphIds,
         RWStructuredBuffer<int> BaseIDs,
@@ -124,7 +180,8 @@ shader FuseCommonAsciFont{
 
         float value,
         int fracDigits,
-        float2 origin
+        float2 origin,
+        out float2 penOut
     )
     {
         bool neg = value < 0.0;
@@ -149,8 +206,7 @@ shader FuseCommonAsciFont{
         // '-'
         if (neg)
         {
-            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                    baseID, maxGlyphs, 45, pen);
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, 45, pen);
 
             pen.x += Advance[45] * fontScale;
         }
@@ -162,15 +218,13 @@ shader FuseCommonAsciFont{
         {
             int ascii = 48 + DigitAt(ip, p);
 
-            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                    baseID, maxGlyphs, ascii, pen);
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, ascii, pen);
 
             pen.x += Advance[ascii] * fontScale;
         }
 
         // Dot
-        EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                baseID, maxGlyphs, 46, pen);
+        EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, 46, pen);
 
         pen.x += Advance[46] * fontScale;
 
@@ -179,10 +233,11 @@ shader FuseCommonAsciFont{
         {
             int ascii = 48 + DigitAt(fp, p);
 
-            EmitGlyph(Counters, OutCenters, OutGlyphIds, BaseIDs,
-                    baseID, maxGlyphs, ascii, pen);
+            EmitGlyph(Counters, OutIndices, OutCenters, OutGlyphIds, BaseIDs, baseID, maxGlyphs, ascii, pen);
 
             pen.x += Advance[ascii] * fontScale;
         }
+
+        penOut = pen;
     }
 };
