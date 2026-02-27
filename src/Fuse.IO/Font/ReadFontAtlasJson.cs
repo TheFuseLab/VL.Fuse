@@ -8,10 +8,10 @@ public sealed class ReadFontAtlasJson
     public string AtlasJsonPath { private get; set; } = string.Empty;
     public bool Read { private get; set; }
 
-    public MsdfFontAtlasData? Atlas { get; private set; }
-    public Dictionary<int, MsdfGlyph> GlyphByUnicode { get; private set; } = new();
-    public MsdfAtlasInfo? AtlasInfo { get; private set; }
-    public MsdfMetricsInfo? Metrics { get; private set; }
+    public MSDFFontAtlas? Atlas { get; private set; }
+    public Dictionary<int, MSDFFontAtlas.Glyph> GlyphByUnicode { get; private set; } = new();
+    public MSDFFontAtlas.AtlasInfo? AtlasInfo { get; private set; }
+    public MSDFFontAtlas.MetricsInfo? Metrics { get; private set; }
     public bool Succeeded { get; private set; }
     public string ErrorMessage { get; private set; } = string.Empty;
 

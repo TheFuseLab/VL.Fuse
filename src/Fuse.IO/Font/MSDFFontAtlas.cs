@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using Stride.Core.Mathematics;
 
-namespace Fuse.Rendering;
+namespace Fuse.IO.Font;
+
+#pragma warning disable CS1591
 
 public sealed class MSDFFontAtlas
 {
@@ -12,10 +12,14 @@ public sealed class MSDFFontAtlas
     private readonly float _invW, _invH;
     private readonly bool _yOriginBottom;
 
-    public MSDFFontAtlas(string jsonData)
+    // 1:1 with rendering version + path support:
+    // If input points to an existing file, load JSON from file. Otherwise treat input as JSON content.
+    public MSDFFontAtlas(string jsonDataOrPath)
     {
+        var jsonData = File.Exists(jsonDataOrPath) ? File.ReadAllText(jsonDataOrPath) : jsonDataOrPath;
+
         _font = JsonSerializer.Deserialize<FontData>(jsonData)
-                ?? throw new ArgumentException("Invalid MSDF atlas JSON.", nameof(jsonData));
+                ?? throw new ArgumentException("Invalid MSDF atlas JSON.", nameof(jsonDataOrPath));
 
         _invW = 1f / _font.atlas.width;
         _invH = 1f / _font.atlas.height;
@@ -27,24 +31,24 @@ public sealed class MSDFFontAtlas
                 _glyphs[g.unicode] = g;
     }
 
-    // Same intent as your original return tuple, but explicit + includes advance.
+    public static MSDFFontAtlas LoadFromFile(string jsonPath)
+    {
+        if (string.IsNullOrWhiteSpace(jsonPath))
+            throw new ArgumentException("JSON path is empty.", nameof(jsonPath));
+        if (!File.Exists(jsonPath))
+            throw new FileNotFoundException("JSON file not found.", jsonPath);
+
+        return new MSDFFontAtlas(jsonPath);
+    }
+
     public readonly struct GlyphQuad
     {
-        // Next pen position (baseline). This is the only thing you should use to step the cursor.
         public readonly Vector2 NextPen;
-
-        // UV rect for sampling (0..1). Zero when not drawable (space etc).
         public readonly Vector2 UvMin;
         public readonly Vector2 UvMax;
-
-        // The actual quad bounds in target space (baseline anchored), useful if you want it.
         public readonly Vector2 QuadMin;
         public readonly Vector2 QuadMax;
-
-        // Advance in target units (scaled).
         public readonly float Advance;
-
-        // Whether this glyph has atlas+plane bounds and can be drawn.
         public readonly bool Drawable;
 
         public GlyphQuad(Vector2 nextPen, Vector2 uvMin, Vector2 uvMax, Vector2 quadMin, Vector2 quadMax, float advance, bool drawable)
@@ -59,14 +63,6 @@ public sealed class MSDFFontAtlas
         }
     }
 
-    /// <summary>
-    /// Keeps your original signature: (character, position, scale) -> glyph quad.
-    /// position is the current pen/baseline position.
-    /// Returns:
-    ///  - NextPen = (position.X + advance*scale, position.Y)
-    ///  - UvMin/UvMax for sampling (if drawable)
-    ///  - QuadMin/QuadMax bounds (if drawable)
-    /// </summary>
     public GlyphQuad GetGlyphQuad(char character, Vector2 position, float scale, bool insetHalfTexel = true)
     {
         if (!_glyphs.TryGetValue(character, out var g))
@@ -75,11 +71,9 @@ public sealed class MSDFFontAtlas
         float advance = g.advance * scale;
         Vector2 nextPen = new(position.X + advance, position.Y);
 
-        // Spaces / non-renderable glyphs: advance only
         if (g.planeBounds == null || g.atlasBounds == null)
             return new GlyphQuad(nextPen, Vector2.Zero, Vector2.Zero, Vector2.Zero, Vector2.Zero, advance, drawable: false);
 
-        // --- UV rect from atlasBounds (pixel coords) -> normalized UV
         float insetU = insetHalfTexel ? 0.5f : 0f;
         float insetV = insetHalfTexel ? 0.5f : 0f;
 
@@ -94,9 +88,8 @@ public sealed class MSDFFontAtlas
         float v0, v1;
         if (_yOriginBottom)
         {
-            // bottom-origin pixels -> top-origin UV (D3D)
-            v0 = 1f - (T - insetV) * _invH; // top
-            v1 = 1f - (B + insetV) * _invH; // bottom
+            v0 = 1f - (T - insetV) * _invH;
+            v1 = 1f - (B + insetV) * _invH;
         }
         else
         {
@@ -107,7 +100,6 @@ public sealed class MSDFFontAtlas
         var uvMin = new Vector2(u0, v0);
         var uvMax = new Vector2(u1, v1);
 
-        // --- Quad bounds from planeBounds (baseline anchored)
         float ql = position.X + g.planeBounds.left * scale;
         float qb = position.Y + g.planeBounds.bottom * scale;
         float qr = position.X + g.planeBounds.right * scale;
@@ -125,8 +117,6 @@ public sealed class MSDFFontAtlas
     public float GetLineHeight(float scale) => _font.metrics.lineHeight * scale;
 
     public AtlasInfo Atlas => _font.atlas;
-
-    // ---------------- JSON types ----------------
 
     public sealed class AtlasInfo
     {
