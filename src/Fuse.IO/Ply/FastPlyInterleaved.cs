@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Stride.Core.Mathematics;
+using Stride.Graphics;
 
 namespace Fuse.IO.Ply;
 
@@ -38,6 +40,9 @@ public class FastPlyInterleaved : ProcessNodeBase
     public bool UseDiskCache { get; set; }
     public bool ForceReload { get; set; }
     public string CacheBasePath { get; set; } = string.Empty;
+    public PlyDataMode DataMode { get; set; } = PlyDataMode.CpuOnly;
+    public PlyBoundingBoxMode BoundingBoxMode { get; set; } = PlyBoundingBoxMode.Auto;
+    public GraphicsDevice? GraphicsDevice { get; set; }
     public bool Debug { get; set; }
 
     // Outputs - AoS specific
@@ -63,6 +68,9 @@ public class FastPlyInterleaved : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
+    public BoundingBox BoundingBox { get; private set; }
+    public bool HasBoundingBox { get; private set; }
 
     // Outputs - progress/status (same as FastPly)
     public float Progress { get; private set; }
@@ -110,6 +118,10 @@ public class FastPlyInterleaved : ProcessNodeBase
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
         if (!IsCompleted) return;
+        if (DataMode != PlyDataMode.CpuOnly)
+        {
+            PlyGpuData.EnsureBuffers(GraphicsDevice);
+        }
 
         // Result is set in StartLoading after conversion
         if (Debug)
@@ -126,6 +138,8 @@ public class FastPlyInterleaved : ProcessNodeBase
         _isLoading = true;
         IsCompleted = false; // Reset completion flag at start
         HasError = false;
+        HasBoundingBox = false;
+        BoundingBox = default;
         ErrorMessage = string.Empty;
         _progressInfo = new FastPlyReader.ProgressInfo();
 
@@ -133,6 +147,8 @@ public class FastPlyInterleaved : ProcessNodeBase
         var currentStrategy = DecimationStrategy;
         var currentFactor = DecimationFactor;
         var currentPath = FilePath;
+        var currentDataMode = DataMode;
+        var currentBoundingBoxMode = BoundingBoxMode;
 
         try
         {
@@ -150,19 +166,34 @@ public class FastPlyInterleaved : ProcessNodeBase
 
             if (!IsCurrentGeneration(generation)) return;
 
-            // Convert SoA to AoS (interleaved)
+            // Convert SoA to AoS (interleaved) once. GPU mode uses one interleaved float buffer.
             _progressInfo.StageName = "Packing interleaved buffer";
-            
             var swConvert = Stopwatch.StartNew();
-            var (interleaved, vertexCount, fieldsPerVertex, fieldOrder) = 
+            var (interleaved, vertexCount, fieldsPerVertex, fieldOrder) =
                 ConvertSoAToInterleaved(loadResult.Arrays, loadResult.FieldOrder);
             swConvert.Stop();
+            var convertMs = swConvert.ElapsedMilliseconds;
 
-            // Set Result BEFORE IsCompleted!
             Result = interleaved;
             VertexCount = vertexCount;
             FieldsPerVertex = fieldsPerVertex;
             FieldOrder = fieldOrder;
+            TryUpdateBoundingBoxFromSoA(currentBoundingBoxMode, currentDataMode, loadResult.Arrays);
+
+            PlyGpuData.DisposeBuffers();
+            PlyGpuData = (currentDataMode == PlyDataMode.GpuOnly || currentDataMode == PlyDataMode.CpuAndGpu)
+                ? new PlyGpuData(
+                    PlyGpuDataFactory.CreateInterleavedFloatBuffer(interleaved),
+                    new Dictionary<string, GpuBufferInfo>(0),
+                    VertexCount,
+                    FieldOrder)
+                : PlyGpuData.Empty;
+
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                PlyGpuData.EnsureBuffers(GraphicsDevice);
+                Result = Array.Empty<float>();
+            }
 
             // Interleaved output no longer needs the temporary SoA arrays.
             // Keeping them doubles peak retained memory for this node.
@@ -177,8 +208,8 @@ public class FastPlyInterleaved : ProcessNodeBase
             var retainedBytes = EstimateRetainedBytes();
             TrackAllocationEstimate("load-complete", retainedBytes);
 
-            Log($"[FastPlyInterleaved] Load complete. Vertices={vertexCount}, Fields={fieldsPerVertex}, " +
-                $"InterleavedSize={interleaved.Length}, ConvertTime={swConvert.ElapsedMilliseconds}ms, " +
+            Log($"[FastPlyInterleaved] Load complete. Vertices={VertexCount}, Fields={FieldsPerVertex}, " +
+                $"InterleavedSize={Result.Length}, ConvertTime={convertMs}ms, " +
                 $"CacheHit={loadResult.WasCacheHit}");
         }
         catch (Exception ex)
@@ -292,17 +323,18 @@ public class FastPlyInterleaved : ProcessNodeBase
         });
     }
 
-    /// <summary>
-    /// Releases CPU data to free memory. Call after uploading to GPU.
-    /// </summary>
-    public void ReleaseCpuData()
+    private void ClearAllRetainedData(string reason)
     {
-        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        TrackReleaseEstimate(reason, EstimateRetainedBytes, () =>
         {
+            PlyGpuData.DisposeBuffers();
             Result = Array.Empty<float>();
             VertexCount = 0;
             FieldsPerVertex = 0;
             FieldOrder = Array.Empty<string>();
+            PlyGpuData = PlyGpuData.Empty;
+            BoundingBox = default;
+            HasBoundingBox = false;
             if (_progressInfo != null)
                 _progressInfo.Result = new Dictionary<string, float[]>(0);
         });
@@ -311,10 +343,8 @@ public class FastPlyInterleaved : ProcessNodeBase
     protected override void OnDisposeManaged()
     {
         _isLoading = false;
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
-        _loadCts = null;
-        ReleaseCpuData();
+        CancelAndDisposeCts(ref _loadCts);
+        ClearAllRetainedData("Dispose");
         _progressInfo = null;
         Progress = 0;
         Status = "Disposed";
@@ -341,7 +371,29 @@ public class FastPlyInterleaved : ProcessNodeBase
                     bytes += (long)arr.Length * sizeof(float);
             }
         }
+        if (PlyGpuData != null)
+            bytes += PlyGpuData.GetEstimatedRetainedBytes();
         return bytes;
+    }
+
+    private void TryUpdateBoundingBoxFromSoA(PlyBoundingBoxMode mode, PlyDataMode dataMode, Dictionary<string, float[]> arrays)
+    {
+        if (mode == PlyBoundingBoxMode.CpuVariantsOnly && dataMode == PlyDataMode.GpuOnly)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        if (mode == PlyBoundingBoxMode.Off || mode == PlyBoundingBoxMode.OctreeRoot)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        HasBoundingBox = PlyBoundingBoxUtils.TryComputeFromSoA(arrays, out var bbox);
+        BoundingBox = bbox;
     }
 
     private static string GetCreationCallsite()

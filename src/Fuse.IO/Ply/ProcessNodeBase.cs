@@ -40,6 +40,13 @@ public abstract class ProcessNodeBase : IDisposable
         return rising;
     }
 
+    protected void CancelAndDisposeCts(ref CancellationTokenSource? cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
+    }
+
     protected void UpdateDiagnostics(bool debug, Func<string?>? callsiteFactory = null)
     {
         PlyDiagnosticLog.SetDebugEnabled(_nodeName, _instanceId, debug);

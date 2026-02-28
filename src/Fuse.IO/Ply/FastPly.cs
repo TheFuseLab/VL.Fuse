@@ -1,4 +1,6 @@
 namespace Fuse.IO.Ply;
+using Stride.Graphics;
+using Stride.Core.Mathematics;
 
 #pragma warning disable CS1591
 
@@ -33,6 +35,9 @@ public class FastPly : ProcessNodeBase
     public bool UseDiskCache { private get; set; }
     public bool ForceReload { private get; set; }
     public string CacheBasePath { private get; set; } = string.Empty;
+    public PlyDataMode DataMode { private get; set; } = PlyDataMode.CpuOnly;
+    public PlyBoundingBoxMode BoundingBoxMode { private get; set; } = PlyBoundingBoxMode.Auto;
+    public GraphicsDevice? GraphicsDevice { private get; set; }
     public bool Debug { private get; set; }
 
     // Outputs - SoA data
@@ -52,6 +57,9 @@ public class FastPly : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
+    public BoundingBox BoundingBox { get; private set; }
+    public bool HasBoundingBox { get; private set; }
 
     // Outputs - progress/status
     public float Progress { get; private set; }
@@ -99,6 +107,10 @@ public class FastPly : ProcessNodeBase
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
 
         if (!IsCompleted) return;
+        if (DataMode != PlyDataMode.CpuOnly)
+        {
+            PlyGpuData.EnsureBuffers(GraphicsDevice);
+        }
 
         // Result, VertexCount, and FieldOrder are set in StartLoading after load completes
         if (Debug)
@@ -115,6 +127,8 @@ public class FastPly : ProcessNodeBase
         _isLoading = true;
         IsCompleted = false; // Reset completion flag at start
         HasError = false;
+        HasBoundingBox = false;
+        BoundingBox = default;
         ErrorMessage = string.Empty;
         _progressInfo = new FastPlyReader.ProgressInfo();
 
@@ -122,6 +136,8 @@ public class FastPly : ProcessNodeBase
         var currentStrategy = DecimationStrategy;
         var currentFactor = DecimationFactor;
         var currentPath = FilePath;
+        var currentDataMode = DataMode;
+        var currentBoundingBoxMode = BoundingBoxMode;
 
         try
         {
@@ -143,7 +159,28 @@ public class FastPly : ProcessNodeBase
             Result = loadResult.Arrays;
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
+            TryUpdateBoundingBoxFromSoA(currentBoundingBoxMode, currentDataMode, loadResult.Arrays);
+            PlyGpuData.DisposeBuffers();
+            PlyGpuData = (currentDataMode == PlyDataMode.GpuOnly || currentDataMode == PlyDataMode.CpuAndGpu)
+                ? new PlyGpuData(
+                    PlyGpuDataFactory.CreatePlyFieldBuffers(Result, FieldOrder),
+                    new Dictionary<string, GpuBufferInfo>(0),
+                    VertexCount,
+                    FieldOrder)
+                : PlyGpuData.Empty;
             _progressInfo.Result = loadResult.Arrays;
+
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                // Try to materialize buffers immediately so upload providers can release CPU references.
+                PlyGpuData.EnsureBuffers(GraphicsDevice);
+            }
+
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                Result = new Dictionary<string, float[]>(0);
+                _progressInfo.Result = new Dictionary<string, float[]>(0);
+            }
 
             // NOW set IsCompleted - after Result is populated
             IsCompleted = true;
@@ -167,16 +204,17 @@ public class FastPly : ProcessNodeBase
         }
     }
 
-    /// <summary>
-    /// Releases CPU data to free memory. Call after uploading to GPU.
-    /// </summary>
-    public void ReleaseCpuData()
+    private void ClearAllRetainedData(string reason)
     {
-        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        TrackReleaseEstimate(reason, EstimateRetainedBytes, () =>
         {
+            PlyGpuData.DisposeBuffers();
             Result = new Dictionary<string, float[]>(0);
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            PlyGpuData = PlyGpuData.Empty;
+            BoundingBox = default;
+            HasBoundingBox = false;
             if (_progressInfo != null)
                 _progressInfo.Result = new Dictionary<string, float[]>(0);
         });
@@ -185,10 +223,8 @@ public class FastPly : ProcessNodeBase
     protected override void OnDisposeManaged()
     {
         _isLoading = false;
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
-        _loadCts = null;
-        ReleaseCpuData();
+        CancelAndDisposeCts(ref _loadCts);
+        ClearAllRetainedData("Dispose");
         _progressInfo = null;
         Progress = 0;
         Status = "Disposed";
@@ -221,7 +257,31 @@ public class FastPly : ProcessNodeBase
                     bytes += (long)arr.Length * sizeof(float);
             }
         }
+        if (PlyGpuData != null)
+        {
+            bytes += PlyGpuData.GetEstimatedRetainedBytes();
+        }
         return bytes;
+    }
+
+    private void TryUpdateBoundingBoxFromSoA(PlyBoundingBoxMode mode, PlyDataMode dataMode, Dictionary<string, float[]> arrays)
+    {
+        if (mode == PlyBoundingBoxMode.CpuVariantsOnly && dataMode == PlyDataMode.GpuOnly)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        if (mode == PlyBoundingBoxMode.Off || mode == PlyBoundingBoxMode.OctreeRoot)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        HasBoundingBox = PlyBoundingBoxUtils.TryComputeFromSoA(arrays, out var bbox);
+        BoundingBox = bbox;
     }
 }
 

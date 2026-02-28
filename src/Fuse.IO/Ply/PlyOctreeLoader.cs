@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Stride.Core.Mathematics;
+using Stride.Graphics;
 
 namespace Fuse.IO.Ply;
 
@@ -30,6 +32,7 @@ public class PlyOctreeLoader : ProcessNodeBase
     private FastPlyReader.ProgressInfo? _plyProgressInfo;
     private GPUOctree.OctreeProgressInfo? _octreeProgressInfo;
     private bool _hasPrecomputedLODs;
+    private bool _octreeCpuReleasedForRun;
 
     // Diagnostic logging
     private int _updateCount;
@@ -66,16 +69,13 @@ public class PlyOctreeLoader : ProcessNodeBase
     /// </summary>
     public int LeafTargetCellsOnLongestAxis { private get; set; } = 32;
 
-    /// <summary>
-    /// Keeps the raw CPU-side PlyData output after octree build.
-    /// Set to false to reduce memory if only octree buffers are needed downstream.
-    /// </summary>
-    public bool KeepPlyData { private get; set; } = true;
-
     // Cache options
     public bool UseDiskCache { private get; set; }
     public bool ForceReload { private get; set; }
     public string CacheBasePath { private get; set; } = string.Empty;
+    public PlyDataMode DataMode { private get; set; } = PlyDataMode.CpuOnly;
+    public PlyBoundingBoxMode BoundingBoxMode { private get; set; } = PlyBoundingBoxMode.Auto;
+    public GraphicsDevice? GraphicsDevice { private get; set; }
     public bool Debug { private get; set; }
 
     #endregion
@@ -98,6 +98,7 @@ public class PlyOctreeLoader : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
 
     #endregion
 
@@ -176,6 +177,8 @@ public class PlyOctreeLoader : ProcessNodeBase
     public float IndexBufferSizeMB { get; private set; }
     public float TotalSizeMB { get; private set; }
     public long TotalMemoryUsed { get; private set; }
+    public BoundingBox BoundingBox { get; private set; }
+    public bool HasBoundingBox { get; private set; }
 
     #endregion
 
@@ -223,10 +226,13 @@ public class PlyOctreeLoader : ProcessNodeBase
         HasError = false;
         ErrorMessage = string.Empty;
         _hasPrecomputedLODs = false;
+        HasBoundingBox = false;
+        BoundingBox = default;
 
         _progressInfo = new CombinedProgressInfo { StartTime = DateTime.UtcNow };
         _plyProgressInfo = new FastPlyReader.ProgressInfo();
         _octreeProgressInfo = new GPUOctree.OctreeProgressInfo();
+        _octreeCpuReleasedForRun = false;
 
         // Clear outputs
         PlyData = new Dictionary<string, float[]>(0);
@@ -237,6 +243,7 @@ public class PlyOctreeLoader : ProcessNodeBase
         NodeCount = 0;
         IndexCount = 0;
         TotalMemoryUsed = 0;
+        PlyGpuData = PlyGpuData.Empty;
 
         // Capture inputs to avoid threading issues
         var currentPath = FilePath;
@@ -246,6 +253,8 @@ public class PlyOctreeLoader : ProcessNodeBase
         var currentMaxPointsPerLeaf = MaxPointsPerLeaf;
         var currentEnableLODs = EnablePrecomputedLeafLODs;
         var currentLeafTargetCells = LeafTargetCellsOnLongestAxis;
+        var currentDataMode = DataMode;
+        var currentBoundingBoxMode = BoundingBoxMode;
 
         var swTotal = Stopwatch.StartNew();
 
@@ -287,6 +296,25 @@ public class PlyOctreeLoader : ProcessNodeBase
 
             Log($"[PlyOctreeLoader] PLY load complete: {VertexCount:N0} vertices, {FieldOrder.Length} fields, CacheHit={loadResult.WasCacheHit}");
 
+            var octreeInputData = BuildPositionOnlyView(PlyData);
+            if (currentDataMode == PlyDataMode.GpuOnly)
+            {
+                // Upload full PLY fields first so non-position CPU arrays can be dropped before octree build.
+                PlyGpuData.DisposeBuffers();
+                PlyGpuData = new PlyGpuData(
+                    PlyGpuDataFactory.CreatePlyFieldBuffers(PlyData, FieldOrder),
+                    new Dictionary<string, GpuBufferInfo>(0),
+                    VertexCount,
+                    FieldOrder);
+                PlyGpuData.EnsureBuffers(GraphicsDevice);
+
+                if (PlyGpuData.AreAllPlyBuffersCreated)
+                {
+                    ReleaseNonPositionPlyArraysForGpuOnly("pre-octree GpuOnly");
+                    octreeInputData = BuildPositionOnlyView(PlyData);
+                }
+            }
+
             // ===== STAGE 2: Build Octree =====
             _progressInfo.AdvanceStage(CombinedProgressInfo.ProcessStage.BuildingOctree, "Building Octree");
             Log($"[PlyOctreeLoader] Starting octree build: MaxDepth={currentMaxDepth}, MaxPointsPerLeaf={currentMaxPointsPerLeaf}");
@@ -315,7 +343,7 @@ public class PlyOctreeLoader : ProcessNodeBase
                     if (!IsCurrentGeneration(generation))
                         throw new ObjectDisposedException(nameof(PlyOctreeLoader));
 
-                    await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config, ct);
+                    await GPUOctree.BuildInBackgroundAsync(octreeInputData, _octreeProgressInfo, config, ct);
                     if (_octreeProgressInfo.Error != null)
                         throw _octreeProgressInfo.Error;
                     if (_octreeProgressInfo.NodeBufferData == null || _octreeProgressInfo.IndexBufferData == null)
@@ -331,7 +359,7 @@ public class PlyOctreeLoader : ProcessNodeBase
                             _octreeProgressInfo.IndexBufferData,
                             _octreeProgressInfo.NodeCount,
                             _octreeProgressInfo.IndexCount,
-                            PlyData,
+                            octreeInputData,
                             currentLeafTargetCells,
                             Debug);
                     }
@@ -401,7 +429,7 @@ public class PlyOctreeLoader : ProcessNodeBase
             else
             {
                 // No disk cache: build directly
-                await GPUOctree.BuildInBackgroundAsync(PlyData, _octreeProgressInfo, config, ct);
+                await GPUOctree.BuildInBackgroundAsync(octreeInputData, _octreeProgressInfo, config, ct);
             }
 
             if (_octreeProgressInfo.Error != null)
@@ -414,6 +442,29 @@ public class PlyOctreeLoader : ProcessNodeBase
             NodeCount = _octreeProgressInfo.NodeCount;
             IndexCount = _octreeProgressInfo.IndexCount;
             TotalMemoryUsed = _octreeProgressInfo.TotalMemoryUsed;
+            TryUpdateBoundingBox(currentBoundingBoxMode, currentDataMode, octreeInputData, NodeBufferData);
+
+            if (currentDataMode == PlyDataMode.GpuOnly || currentDataMode == PlyDataMode.CpuAndGpu)
+            {
+                var octreeInfos = PlyGpuDataFactory.CreateOctreeBuffers(NodeBufferData, NodeCount, IndexBufferData, IndexCount);
+                if (currentDataMode == PlyDataMode.GpuOnly && PlyGpuData.PlyBufferDefinitionCount > 0)
+                {
+                    PlyGpuData.ReplaceOctreeBufferInfos(octreeInfos, GraphicsDevice);
+                }
+                else
+                {
+                    PlyGpuData.DisposeBuffers();
+                    PlyGpuData = new PlyGpuData(
+                        PlyGpuDataFactory.CreatePlyFieldBuffers(PlyData, FieldOrder),
+                        octreeInfos,
+                        VertexCount,
+                        FieldOrder);
+                }
+            }
+            else
+            {
+                PlyGpuData = PlyGpuData.Empty;
+            }
             TrackAllocationEstimate("processing-complete", EstimateRetainedBytes());
 
             Log($"[PlyOctreeLoader] Octree build complete: {NodeCount:N0} nodes, {IndexCount:N0} indices, CacheHit={octreeCacheHit}");
@@ -431,7 +482,7 @@ public class PlyOctreeLoader : ProcessNodeBase
                     IndexBufferData,
                     NodeCount,
                     IndexCount,
-                    PlyData,
+                    octreeInputData,
                     currentLeafTargetCells,
                     Debug);
 
@@ -439,9 +490,10 @@ public class PlyOctreeLoader : ProcessNodeBase
                 Log($"[PlyOctreeLoader] LOD generation {(lodSuccess ? "complete" : "skipped")}");
             }
 
-            if (!KeepPlyData)
+            if (currentDataMode == PlyDataMode.GpuOnly)
             {
-                ReleasePlyDataOnly("post-build KeepPlyData=false");
+                ReleasePlyDataOnly("post-build DataMode=GpuOnly", currentDataMode);
+                TryReleaseOctreeCpuDataForGpuOnly("post-build DataMode=GpuOnly");
             }
 
             // ===== COMPLETE =====
@@ -507,6 +559,12 @@ public class PlyOctreeLoader : ProcessNodeBase
         IsProcessing = _isProcessing;
         HasError = _progressInfo.Error != null;
         ErrorMessage = _progressInfo.Error?.Message ?? string.Empty;
+
+        if (IsCompleted && DataMode != PlyDataMode.CpuOnly)
+        {
+            PlyGpuData.EnsureBuffers(GraphicsDevice);
+            TryReleaseOctreeCpuDataForGpuOnly("update GpuOnly buffers-ready");
+        }
     }
 
     private void CalculateStatistics()
@@ -527,18 +585,60 @@ public class PlyOctreeLoader : ProcessNodeBase
         return true;
     }
 
-    /// <summary>
-    /// Releases CPU data to free memory. Call after uploading to GPU.
-    /// </summary>
-    public void ReleaseCpuData()
+    private static Dictionary<string, float[]> BuildPositionOnlyView(Dictionary<string, float[]> source)
     {
-        TrackReleaseEstimate("ReleaseCpuData", EstimateRetainedBytes, () =>
+        var result = new Dictionary<string, float[]>(3, StringComparer.OrdinalIgnoreCase);
+        if (source == null || source.Count == 0)
+            return result;
+
+        foreach (var kv in source)
         {
+            if (string.Equals(kv.Key, "x", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(kv.Key, "y", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(kv.Key, "z", StringComparison.OrdinalIgnoreCase))
+            {
+                result[kv.Key] = kv.Value;
+            }
+        }
+
+        return result;
+    }
+
+    private void ReleaseNonPositionPlyArraysForGpuOnly(string reason)
+    {
+        if (PlyData == null || PlyData.Count == 0)
+            return;
+
+        long released = 0;
+        var positionsOnly = BuildPositionOnlyView(PlyData);
+        foreach (var kv in PlyData)
+        {
+            var isPosition = string.Equals(kv.Key, "x", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(kv.Key, "y", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(kv.Key, "z", StringComparison.OrdinalIgnoreCase);
+            if (!isPosition && kv.Value != null)
+                released += (long)kv.Value.Length * sizeof(float);
+        }
+
+        PlyData = positionsOnly;
+        if (_plyProgressInfo != null)
+            _plyProgressInfo.Result = positionsOnly;
+        TrackExplicitRelease(reason, released);
+    }
+
+    private void ClearAllRetainedData(string reason)
+    {
+        TrackReleaseEstimate(reason, EstimateRetainedBytes, () =>
+        {
+            PlyGpuData.DisposeBuffers();
             PlyData = new Dictionary<string, float[]>(0);
             if (_plyProgressInfo != null)
                 _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            PlyGpuData = PlyGpuData.Empty;
+            BoundingBox = default;
+            HasBoundingBox = false;
             NodeBufferData = Array.Empty<byte>();
             IndexBufferData = Array.Empty<byte>();
             if (_octreeProgressInfo != null)
@@ -557,7 +657,7 @@ public class PlyOctreeLoader : ProcessNodeBase
         });
     }
 
-    private void ReleasePlyDataOnly(string reason)
+    private void ReleasePlyDataOnly(string reason, PlyDataMode mode)
     {
         long plyBytes = 0;
         if (PlyData != null)
@@ -572,9 +672,39 @@ public class PlyOctreeLoader : ProcessNodeBase
         PlyData = new Dictionary<string, float[]>(0);
         if (_plyProgressInfo != null)
             _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
-        VertexCount = 0;
-        FieldOrder = Array.Empty<string>();
+        if (!(mode != PlyDataMode.CpuOnly && PlyGpuData.PlyBufferDefinitionCount > 0))
+        {
+            VertexCount = 0;
+            FieldOrder = Array.Empty<string>();
+        }
         TrackExplicitRelease(reason, plyBytes);
+    }
+
+    private void TryReleaseOctreeCpuDataForGpuOnly(string reason)
+    {
+        if (_octreeCpuReleasedForRun)
+            return;
+        if (DataMode != PlyDataMode.GpuOnly)
+            return;
+        if (PlyGpuData.OctreeBuffers.Nodes == null || PlyGpuData.OctreeBuffers.Indices == null)
+            return;
+
+        long bytes = 0;
+        if (NodeBufferData != null)
+            bytes += NodeBufferData.LongLength;
+        if (IndexBufferData != null)
+            bytes += IndexBufferData.LongLength;
+
+        NodeBufferData = Array.Empty<byte>();
+        IndexBufferData = Array.Empty<byte>();
+        if (_octreeProgressInfo != null)
+        {
+            _octreeProgressInfo.NodeBufferData = Array.Empty<byte>();
+            _octreeProgressInfo.IndexBufferData = Array.Empty<byte>();
+        }
+
+        _octreeCpuReleasedForRun = true;
+        TrackExplicitRelease(reason, bytes);
     }
 
     protected override void OnDisposeManaged()
@@ -582,10 +712,8 @@ public class PlyOctreeLoader : ProcessNodeBase
         _isProcessing = false;
         IsProcessing = false;
         PlyDiagnosticLog.TryForceFullGc($"PlyOctreeLoader#{InstanceId:X4} dispose");
-        _processCts?.Cancel();
-        _processCts?.Dispose();
-        _processCts = null;
-        ReleaseCpuData();
+        CancelAndDisposeCts(ref _processCts);
+        ClearAllRetainedData("Dispose");
         _progressInfo = null;
         _plyProgressInfo = null;
         _octreeProgressInfo = null;
@@ -618,7 +746,46 @@ public class PlyOctreeLoader : ProcessNodeBase
             bytes += NodeBufferData.LongLength;
         if (IndexBufferData != null)
             bytes += IndexBufferData.LongLength;
+        if (PlyGpuData != null)
+        {
+            bytes += PlyGpuData.GetEstimatedRetainedBytes();
+        }
         return bytes;
+    }
+
+    private void TryUpdateBoundingBox(PlyBoundingBoxMode mode, PlyDataMode dataMode, Dictionary<string, float[]> positionsOnlyData, byte[] nodeBufferData)
+    {
+        if (mode == PlyBoundingBoxMode.CpuVariantsOnly && dataMode == PlyDataMode.GpuOnly)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        if (mode == PlyBoundingBoxMode.Off)
+        {
+            HasBoundingBox = false;
+            BoundingBox = default;
+            return;
+        }
+
+        if (mode == PlyBoundingBoxMode.OctreeRoot)
+        {
+            HasBoundingBox = PlyBoundingBoxUtils.TryComputeFromOctreeRoot(nodeBufferData, out var octreeBBox);
+            BoundingBox = octreeBBox;
+            return;
+        }
+
+        if (mode == PlyBoundingBoxMode.Auto &&
+            PlyBoundingBoxUtils.TryComputeFromOctreeRoot(nodeBufferData, out var autoOctreeBBox))
+        {
+            HasBoundingBox = true;
+            BoundingBox = autoOctreeBBox;
+            return;
+        }
+
+        HasBoundingBox = PlyBoundingBoxUtils.TryComputeFromSoA(positionsOnlyData, out var cpuBBox);
+        BoundingBox = cpuBBox;
     }
 }
 
