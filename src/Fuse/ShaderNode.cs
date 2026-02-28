@@ -680,10 +680,14 @@ public abstract class AbstractShaderNode : IComputeNode
 
     protected virtual string GenerateDefaultSource()
     {
+        var resultType = TypeName();
+        if (resultType == "struct")
+            return "";
+
         return ShaderNodesUtil.Evaluate(DefaultShaderCode, new Dictionary<string, string>
         {
             { "resultName", ID },
-            { "resultType", TypeName() },
+            { "resultType", resultType },
             { "default", "" }
         });
     }

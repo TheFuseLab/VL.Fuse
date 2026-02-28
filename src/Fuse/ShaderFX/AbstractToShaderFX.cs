@@ -149,12 +149,31 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         ShaderCode =
             ShaderNodesUtil.Evaluate(ShaderCode, m => m.Groups["key"].Value.StartsWith("stage") ? "" : m.Value);
 
+        if (ShaderNodesUtil.ValidateGeneratedShaderSource &&
+            !ShaderNodesUtil.ValidateGeneratedShaderCode(ShaderCode, out var validationReason))
+        {
+            Logging.FuseLogger.Warning($"Generated shader {ShaderName} failed validation: {validationReason}");
+            ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, "invalid");
+            if (ShaderNodesUtil.ThrowOnInvalidGeneratedShader)
+            {
+                var validationException =
+                    new InvalidOperationException($"Generated shader {ShaderName} failed validation: {validationReason}");
+                ShaderNodesUtil.DumpShaderException(ShaderName, "validation", validationException);
+                throw validationException;
+            }
+        }
+
+        var shaderPhase = _isCompute ? "compute" : "draw";
+        var sourcePath = "shaders\\" + ShaderName + ".sdsl";
+        ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, shaderPhase);
+        ShaderNodesUtil.DumpShaderCompileAttempt(ShaderName, ShaderCode, shaderPhase, sourcePath);
+
         foreach (var kv in Inputs) kv.Value.ShaderCode = ShaderCode;
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
 
         _stopwatch.Restart();
-        ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, "shaders\\" + ShaderName + ".sdsl");
+        ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, sourcePath);
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
         // _parameters = theContext.Parameters;

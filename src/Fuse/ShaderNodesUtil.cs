@@ -69,6 +69,12 @@ public static class ShaderNodesUtil
     public static bool DebugShaderGeneration = false;
     public static bool DebugVisit = false;
     public static bool TimeShaderGeneration = false;
+    public static bool TraceShaderSource { get; set; } =
+        string.Equals(Environment.GetEnvironmentVariable("FUSE_TRACE_SHADER_SOURCE"), "1", StringComparison.Ordinal);
+    public static string ShaderDumpDirectory { get; set; } =
+        Environment.GetEnvironmentVariable("FUSE_SHADER_DUMP_DIR");
+    public static bool ValidateGeneratedShaderSource { get; set; } = false;
+    public static bool ThrowOnInvalidGeneratedShader { get; set; } = false;
 
     public static string DebugIdent = ". ";
 
@@ -251,6 +257,186 @@ public static class ShaderNodesUtil
         return formattedCode.ToString();
     }
 
+    public static void DumpShaderSource(string shaderName, string shaderCode, string phase = "generated")
+    {
+        if (!TraceShaderSource)
+            return;
+
+        try
+        {
+            var baseDirectory = ResolveShaderDumpDirectory();
+
+            var safeShaderName = string.Concat(shaderName.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var filePath = Path.Combine(baseDirectory, $"{timestamp}_{safeShaderName}_{phase}.sdsl");
+            File.WriteAllText(filePath, shaderCode ?? string.Empty);
+            Console.WriteLine($"[FUSE:SHADERTRACE] {shaderName} ({phase}) -> {filePath}");
+        }
+        catch (Exception ex)
+        {
+            Logging.FuseLogger.Warning($"Failed to dump shader source for {shaderName}: {ex.Message}");
+        }
+    }
+
+    public static void DumpShaderException(string shaderName, string phase, Exception ex, string sourcePath = null)
+    {
+        try
+        {
+            var baseDirectory = ResolveShaderDumpDirectory();
+            var safeShaderName = string.Concat((shaderName ?? "UnknownShader")
+                .Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var filePath = Path.Combine(baseDirectory, $"{timestamp}_{safeShaderName}_{phase}_exception.log");
+
+            var message = new StringBuilder();
+            message.AppendLine($"Timestamp: {DateTime.Now:O}");
+            message.AppendLine($"Shader: {shaderName}");
+            message.AppendLine($"Phase: {phase}");
+            if (!string.IsNullOrWhiteSpace(sourcePath))
+                message.AppendLine($"SourcePath: {sourcePath}");
+            message.AppendLine($"Exception: {ex.GetType().FullName}");
+            message.AppendLine($"Message: {ex.Message}");
+            message.AppendLine("StackTrace:");
+            message.AppendLine(ex.StackTrace ?? "<none>");
+
+            File.WriteAllText(filePath, message.ToString());
+            Console.WriteLine($"[FUSE:SHADERTRACE] exception log -> {filePath}");
+        }
+        catch (Exception logException)
+        {
+            Logging.FuseLogger.Warning(
+                $"Failed to write shader exception log for {shaderName} ({phase}): {logException.Message}");
+        }
+    }
+
+    public static void DumpShaderCompileAttempt(string shaderName, string shaderCode, string phase, string sourcePath = null)
+    {
+        if (!TraceShaderSource)
+            return;
+
+        try
+        {
+            var baseDirectory = ResolveShaderDumpDirectory();
+            var safeShaderName = string.Concat((shaderName ?? "UnknownShader")
+                .Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var filePath = Path.Combine(baseDirectory, $"{timestamp}_{safeShaderName}_{phase}_compile-attempt.log");
+
+            var lines = (shaderCode ?? string.Empty).Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var firstNonEmpty = lines.FirstOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim() ?? "<none>";
+            var openBraces = (shaderCode ?? string.Empty).Count(c => c == '{');
+            var closeBraces = (shaderCode ?? string.Empty).Count(c => c == '}');
+            var unresolvedPlaceholders = PlaceholderRegex.Matches(shaderCode ?? string.Empty).Count;
+
+            var mixins = new List<string>();
+            var headerMatch = Regex.Match(firstNonEmpty, @"^shader\s+\w+\s*:\s*(?<mixins>.+?)(\s*\{)?$");
+            if (headerMatch.Success)
+            {
+                mixins.AddRange(headerMatch.Groups["mixins"].Value
+                    .Split(',')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+            }
+
+            var message = new StringBuilder();
+            message.AppendLine($"Timestamp: {DateTime.Now:O}");
+            message.AppendLine($"Shader: {shaderName}");
+            message.AppendLine($"Phase: {phase}");
+            if (!string.IsNullOrWhiteSpace(sourcePath))
+                message.AppendLine($"SourcePath: {sourcePath}");
+            message.AppendLine($"Header: {firstNonEmpty}");
+            message.AppendLine($"CodeLength: {(shaderCode ?? string.Empty).Length}");
+            message.AppendLine($"OpenBraces: {openBraces}");
+            message.AppendLine($"CloseBraces: {closeBraces}");
+            message.AppendLine($"UnresolvedPlaceholders: {unresolvedPlaceholders}");
+            message.AppendLine("Mixins:");
+            if (mixins.Count == 0)
+                message.AppendLine("  <none>");
+            else
+                mixins.ForEach(m => message.AppendLine($"  - {m}"));
+
+            File.WriteAllText(filePath, message.ToString());
+            Console.WriteLine($"[FUSE:SHADERTRACE] compile attempt -> {filePath}");
+        }
+        catch (Exception ex)
+        {
+            Logging.FuseLogger.Warning($"Failed to write compile attempt log for {shaderName}: {ex.Message}");
+        }
+    }
+
+    private static string ResolveShaderDumpDirectory()
+    {
+        var baseDirectory = ShaderDumpDirectory;
+        if (string.IsNullOrWhiteSpace(baseDirectory))
+            baseDirectory = Path.Combine(Path.GetTempPath(), "FuseShaderDump");
+        Directory.CreateDirectory(baseDirectory);
+        return baseDirectory;
+    }
+
+    public static bool ValidateGeneratedShaderCode(string shaderCode, out string reason)
+    {
+        reason = "";
+        if (string.IsNullOrWhiteSpace(shaderCode))
+        {
+            reason = "Shader code is empty.";
+            return false;
+        }
+
+        if (PlaceholderRegex.IsMatch(shaderCode))
+        {
+            reason = "Shader code still contains unresolved ${...} placeholders.";
+            return false;
+        }
+
+        var lines = shaderCode.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        var firstNonEmptyIndex = Array.FindIndex(lines, l => !string.IsNullOrWhiteSpace(l));
+        if (firstNonEmptyIndex < 0)
+        {
+            reason = "Shader code has no non-empty lines.";
+            return false;
+        }
+
+        var header = lines[firstNonEmptyIndex].Trim();
+        if (!Regex.IsMatch(header, @"^shader\s+\w+\s*:\s*.+"))
+        {
+            reason = $"Invalid shader header: '{header}'.";
+            return false;
+        }
+
+        if (header.Contains(",,", StringComparison.Ordinal) || header.Contains(": ,", StringComparison.Ordinal))
+        {
+            reason = $"Suspicious shader header (empty mixin entry): '{header}'.";
+            return false;
+        }
+
+        if (!header.TrimEnd().EndsWith("{", StringComparison.Ordinal))
+        {
+            var secondNonEmptyIndex = -1;
+            for (var i = firstNonEmptyIndex + 1; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i])) continue;
+                secondNonEmptyIndex = i;
+                break;
+            }
+
+            if (secondNonEmptyIndex < 0 || lines[secondNonEmptyIndex].Trim() != "{")
+            {
+                reason = "Missing opening '{' after shader header.";
+                return false;
+            }
+        }
+
+        var openBraces = shaderCode.Count(c => c == '{');
+        var closeBraces = shaderCode.Count(c => c == '}');
+        if (openBraces != closeBraces)
+        {
+            reason = $"Unbalanced braces: open={openBraces}, close={closeBraces}.";
+            return false;
+        }
+
+        return true;
+    }
+
 
     public static void AddShaderSource(string type, string sourceCode, string sourcePath)
     {
@@ -276,9 +462,10 @@ public static class ShaderNodesUtil
             var sourceManager = parser.SourceManager;
             sourceManager.AddShaderSource(type, sourceCode, sourcePath);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ignored
+            DumpShaderException(type, "addshadersource", ex, sourcePath);
+            Logging.FuseLogger.Warning($"AddShaderSource failed for {type} ({sourcePath}): {ex.Message}");
         }
     }
 
