@@ -626,7 +626,7 @@ shader FuseRenderingBoxGridProject {
     // -----------------------------------------------------------------------------
     // MAIN INVERSE: Matches projectParticleByViewPositionAABB
     // -----------------------------------------------------------------------------
-    float3 inverseProjectParticleAABB(
+    float3 inverseProjectParticleAABBWithUvPack(
         float3 atlasUVPlusDepth,          // .xy = UV (normalized), .z = depth
         float4x4 roomTransformInverse,     // INVERSE of roomTransform
         float3 roomCenter,
@@ -636,11 +636,13 @@ shader FuseRenderingBoxGridProject {
         StructuredBuffer<float4> faceLayoutInfo,
         float4 crossLayoutInfo,
         out int detectedSurfaceIndex,
-        out float2 out_faceUV01
+        out float2 out_faceUV01,
+        out float2 out_uvPackXY
     ) {
         // Initialize outputs
         detectedSurfaceIndex = -1;
         out_faceUV01 = float2(0, 0);
+        out_uvPackXY = float2(0, 0);
         
         float2 atlasUV = atlasUVPlusDepth.xy;
         float depth = atlasUVPlusDepth.z;
@@ -649,6 +651,10 @@ shader FuseRenderingBoxGridProject {
         if (atlasUV.x < 0.0 || atlasUV.x > 1.0 || atlasUV.y < 0.0 || atlasUV.y > 1.0) {
             return float3(0, 0, 0);
         }
+
+        // Keep uvPackXY in post-zoom uvPack domain (same as project return.xy).
+        out_uvPackXY.x = atlasUV.x * crossLayoutInfo.x;
+        out_uvPackXY.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
         
         // Step 1: Find which face this UV belongs to
         detectedSurfaceIndex = getSurfaceIndexFromAtlasUV(
@@ -683,10 +689,8 @@ shader FuseRenderingBoxGridProject {
         // Inverse:  particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz
         float3 particlePos = mul(float4(roomSpacePos, 1.0), roomTransformInverse).xyz;
         
-        // Calculate faceUV01 for output
-        float2 texCoord;
-        texCoord.x = atlasUV.x * crossLayoutInfo.x;
-        texCoord.y = (1.0 - atlasUV.y) * crossLayoutInfo.y;
+        // Calculate faceUV01 for output from pre-zoom uvPack domain.
+        float2 texCoord = out_uvPackXY;
         texCoord = texCoord / float2(4.0, 3.0);
         texCoord = inverseAtlasZoom(texCoord, zoomRegion);
         texCoord = texCoord * float2(4.0, 3.0);
@@ -695,6 +699,34 @@ shader FuseRenderingBoxGridProject {
         out_faceUV01.y = (texCoord.y - layout.y) / layout.w;
         
         return particlePos;
+    }
+
+    float3 inverseProjectParticleAABB(
+        float3 atlasUVPlusDepth,          // .xy = UV (normalized), .z = depth
+        float4x4 roomTransformInverse,     // INVERSE of roomTransform
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        float3 viewerPosition,
+        StructuredBuffer<float4> faceLayoutInfo,
+        float4 crossLayoutInfo,
+        out int detectedSurfaceIndex,
+        out float2 out_faceUV01
+    ) {
+        float2 unusedUvPackXY;
+        return inverseProjectParticleAABBWithUvPack(
+            atlasUVPlusDepth,
+            roomTransformInverse,
+            roomCenter,
+            roomDimensions,
+            zoomRegion,
+            viewerPosition,
+            faceLayoutInfo,
+            crossLayoutInfo,
+            detectedSurfaceIndex,
+            out_faceUV01,
+            unusedUvPackXY
+        );
     }
 
     // -----------------------------------------------------------------------------
