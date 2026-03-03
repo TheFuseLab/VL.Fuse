@@ -434,6 +434,26 @@ public static class ShaderNodesUtil
             return false;
         }
 
+        // Detect unresolved placeholder struct usage such as:
+        // struct GpuStruct{}; GpuStruct x; x.SomeMember
+        var placeholderStructDecl = Regex.IsMatch(shaderCode, @"\bstruct\s+GpuStruct\s*\{\s*\}\s*;");
+        if (placeholderStructDecl)
+        {
+            var varMatches = Regex.Matches(shaderCode, @"\bGpuStruct\s+(?<var>\w+)\s*;");
+            foreach (Match varMatch in varMatches)
+            {
+                var varName = varMatch.Groups["var"].Value;
+                if (string.IsNullOrWhiteSpace(varName))
+                    continue;
+
+                if (Regex.IsMatch(shaderCode, $@"\b{Regex.Escape(varName)}\s*\.\s*\w+"))
+                {
+                    reason = $"Member access on unresolved placeholder struct 'GpuStruct' via variable '{varName}'.";
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 

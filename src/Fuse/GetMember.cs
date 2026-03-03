@@ -24,6 +24,34 @@ public class GetMember<TIn, TOut> : ResultNode<TOut>
 
     protected override string ImplementationTemplate()
     {
+        if (_input != null)
+        {
+            var inputType = _input.TypeName();
+            var unresolvedStruct = inputType == "struct";
+            var unresolvedGpuStruct = false;
+
+            if (inputType == "GpuStruct" && _input.Property.TryGetValue("Structs", out var structs))
+            {
+                foreach (var item in structs)
+                {
+                    if (item is not string structCode) continue;
+                    if (System.Text.RegularExpressions.Regex.IsMatch(structCode,
+                            @"\bstruct\s+GpuStruct\s*\{\s*\}\s*;"))
+                    {
+                        unresolvedGpuStruct = true;
+                        break;
+                    }
+                }
+            }
+
+            if (unresolvedStruct || unresolvedGpuStruct)
+            {
+                Logging.FuseLogger.Warning(
+                    $"GetMember fallback for unresolved struct: input={_input.ID}, member={_member}, type={inputType}");
+                return TypeHelpers.GetDefaultForType<TOut>();
+            }
+        }
+
         return ShaderNodesUtil.Evaluate("${input}.${member}", new Dictionary<string, string>
         {
             // Use GetReference() for inlining support

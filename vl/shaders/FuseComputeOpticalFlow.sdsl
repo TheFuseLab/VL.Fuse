@@ -333,7 +333,7 @@ void UpdateMotionHistory_FromPresence_WithFlow(
         float4 d = derivTex.SampleLevel(linearSampler, uv, 0.0);
         shDeriv[local.y][local.x] = d.xyz; // Ix, Iy, It
 
-        float2 centerFlow = flowIn[pixelClamped].xy;
+        float2 centerFlow = flowIn.Load(int3(pixelClamped, 0)).xy;
 
         // Initialize BOTH A and B with the same initial flow
         shFlowA[sCenter.y][sCenter.x] = centerFlow;
@@ -345,14 +345,14 @@ void UpdateMotionHistory_FromPresence_WithFlow(
         if (local.x == 0)
         {
             int2 pL = int2(max(pixelClamped.x - 1, 0), pixelClamped.y);
-            float2 val = flowIn[pL].xy;
+            float2 val = flowIn.Load(int3(pL, 0)).xy;
             shFlowA[sCenter.y][sCenter.x - 1] = val;
             shFlowB[sCenter.y][sCenter.x - 1] = val;
         }
         if (local.x == BLOCK_SIZE - 1)
         {
             int2 pR = int2(min(pixelClamped.x + 1, levelSize.x - 1), pixelClamped.y);
-            float2 val = flowIn[pR].xy;
+            float2 val = flowIn.Load(int3(pR, 0)).xy;
             shFlowA[sCenter.y][sCenter.x + 1] = val;
             shFlowB[sCenter.y][sCenter.x + 1] = val;
         }
@@ -360,14 +360,14 @@ void UpdateMotionHistory_FromPresence_WithFlow(
         if (local.y == 0)
         {
             int2 pT = int2(pixelClamped.x, max(pixelClamped.y - 1, 0));
-            float2 val = flowIn[pT].xy;
+            float2 val = flowIn.Load(int3(pT, 0)).xy;
             shFlowA[sCenter.y - 1][sCenter.x] = val;
             shFlowB[sCenter.y - 1][sCenter.x] = val;
         }
         if (local.y == BLOCK_SIZE - 1)
         {
             int2 pB = int2(pixelClamped.x, min(pixelClamped.y + 1, levelSize.y - 1));
-            float2 val = flowIn[pB].xy;
+            float2 val = flowIn.Load(int3(pB, 0)).xy;
             shFlowA[sCenter.y + 1][sCenter.x] = val;
             shFlowB[sCenter.y + 1][sCenter.x] = val;
         }

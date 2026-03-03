@@ -261,7 +261,7 @@ public class TextureTypeTracker : GpuTypeTracker<Texture>
 
     protected override string DefineGpuType(Texture value)
     {
-        if (value == null) return "Texture1D";
+        if (value == null) return "Texture2D";
 
         return
             value.Dimension switch
@@ -276,7 +276,7 @@ public class TextureTypeTracker : GpuTypeTracker<Texture>
 
     protected override string DefineComputeGpuType(Texture value)
     {
-        return value == null ? "Texture1D" : TypeHelpers.TextureTypeName(value, _useRw);
+        return value == null ? "Texture2D<float4>" : TypeHelpers.TextureTypeName(value, _useRw);
     }
 }
 
