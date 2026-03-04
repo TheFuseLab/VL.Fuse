@@ -98,6 +98,14 @@ public class PlyOctreeLoader : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    /// <summary>
+    /// Number of float values per vertex in the logical point layout.
+    /// </summary>
+    public int VertexStrideFloats { get; private set; }
+    /// <summary>
+    /// Total number of usable scalar float values (VertexCount * VertexStrideFloats).
+    /// </summary>
+    public int ScalarValueCount { get; private set; }
     public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
 
     #endregion
@@ -236,9 +244,11 @@ public class PlyOctreeLoader : ProcessNodeBase
 
         // Clear outputs
         PlyData = new Dictionary<string, float[]>(0);
-        VertexCount = 0;
-        FieldOrder = Array.Empty<string>();
-        NodeBufferData = Array.Empty<byte>();
+            VertexCount = 0;
+            FieldOrder = Array.Empty<string>();
+            VertexStrideFloats = 0;
+            ScalarValueCount = 0;
+            NodeBufferData = Array.Empty<byte>();
         IndexBufferData = Array.Empty<byte>();
         NodeCount = 0;
         IndexCount = 0;
@@ -287,6 +297,8 @@ public class PlyOctreeLoader : ProcessNodeBase
             PlyData = loadResult.Arrays;
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
+            VertexStrideFloats = FieldOrder.Length;
+            ScalarValueCount = VertexCount * VertexStrideFloats;
             TotalPoints = loadResult.VertexCount;
             if (_plyProgressInfo != null)
             {
@@ -636,6 +648,8 @@ public class PlyOctreeLoader : ProcessNodeBase
                 _plyProgressInfo.Result = new Dictionary<string, float[]>(0);
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            VertexStrideFloats = 0;
+            ScalarValueCount = 0;
             PlyGpuData = PlyGpuData.Empty;
             BoundingBox = default;
             HasBoundingBox = false;
@@ -676,6 +690,8 @@ public class PlyOctreeLoader : ProcessNodeBase
         {
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            VertexStrideFloats = 0;
+            ScalarValueCount = 0;
         }
         TrackExplicitRelease(reason, plyBytes);
     }

@@ -57,6 +57,14 @@ public class FastPly : ProcessNodeBase
     /// For example: ["x", "y", "z", "red", "green", "blue"]
     /// </summary>
     public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    /// <summary>
+    /// Number of float values per vertex (SoA logical stride), equals FieldOrder.Length.
+    /// </summary>
+    public int VertexStrideFloats { get; private set; }
+    /// <summary>
+    /// Total number of usable scalar float values (VertexCount * VertexStrideFloats).
+    /// </summary>
+    public int ScalarValueCount { get; private set; }
     public PlyGpuData PlyGpuData { get; private set; } = PlyGpuData.Empty;
     public BoundingBox BoundingBox { get; private set; }
     public bool HasBoundingBox { get; private set; }
@@ -157,8 +165,10 @@ public class FastPly : ProcessNodeBase
 
             // Update outputs from load result - set Result BEFORE IsCompleted!
             Result = loadResult.Arrays;
-            VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
+            VertexCount = PlyLoadCore.ComputeVertexCount(Result, FieldOrder);
+            VertexStrideFloats = FieldOrder.Length;
+            ScalarValueCount = VertexCount * VertexStrideFloats;
             TryUpdateBoundingBoxFromSoA(currentBoundingBoxMode, currentDataMode, loadResult.Arrays);
             PlyGpuData.DisposeBuffers();
             PlyGpuData = (currentDataMode == PlyDataMode.GpuOnly || currentDataMode == PlyDataMode.CpuAndGpu)
@@ -212,6 +222,8 @@ public class FastPly : ProcessNodeBase
             Result = new Dictionary<string, float[]>(0);
             VertexCount = 0;
             FieldOrder = Array.Empty<string>();
+            VertexStrideFloats = 0;
+            ScalarValueCount = 0;
             PlyGpuData = PlyGpuData.Empty;
             BoundingBox = default;
             HasBoundingBox = false;

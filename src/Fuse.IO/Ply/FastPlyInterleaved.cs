@@ -62,6 +62,17 @@ public class FastPlyInterleaved : ProcessNodeBase
     /// Result.Length == VertexCount * FieldsPerVertex
     /// </summary>
     public int FieldsPerVertex { get; private set; }
+    /// <summary>
+    /// Number of float values per vertex in the interleaved buffer.
+    /// Alias for FieldsPerVertex with a clearer stride-oriented name.
+    /// </summary>
+    public int VertexStrideFloats { get; private set; }
+    /// <summary>
+    /// Total number of float values in the logical dataset.
+    /// In CpuOnly/CpuAndGpu this equals Result.Length.
+    /// In GpuOnly this remains populated even after Result is released.
+    /// </summary>
+    public int ScalarValueCount { get; private set; }
     
     /// <summary>
     /// Names of fields in order as they appear in each vertex struct.
@@ -173,10 +184,16 @@ public class FastPlyInterleaved : ProcessNodeBase
                 ConvertSoAToInterleaved(loadResult.Arrays, loadResult.FieldOrder);
             swConvert.Stop();
             var convertMs = swConvert.ElapsedMilliseconds;
+            if (fieldsPerVertex > 0 && (interleaved.Length % fieldsPerVertex) != 0)
+                throw new InvalidOperationException(
+                    $"Interleaved value count {interleaved.Length} is not divisible by stride {fieldsPerVertex}.");
+            var computedVertexCount = fieldsPerVertex > 0 ? interleaved.Length / fieldsPerVertex : 0;
 
             Result = interleaved;
-            VertexCount = vertexCount;
+            VertexCount = computedVertexCount;
             FieldsPerVertex = fieldsPerVertex;
+            VertexStrideFloats = fieldsPerVertex;
+            ScalarValueCount = interleaved.Length;
             FieldOrder = fieldOrder;
             TryUpdateBoundingBoxFromSoA(currentBoundingBoxMode, currentDataMode, loadResult.Arrays);
 
@@ -331,6 +348,8 @@ public class FastPlyInterleaved : ProcessNodeBase
             Result = Array.Empty<float>();
             VertexCount = 0;
             FieldsPerVertex = 0;
+            VertexStrideFloats = 0;
+            ScalarValueCount = 0;
             FieldOrder = Array.Empty<string>();
             PlyGpuData = PlyGpuData.Empty;
             BoundingBox = default;

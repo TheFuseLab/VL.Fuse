@@ -10,6 +10,34 @@ namespace Fuse.IO.Ply;
 /// </summary>
 internal static class PlyLoadCore
 {
+    public static int ComputeVertexCount(Dictionary<string, float[]> arrays, string[]? fieldOrder = null)
+    {
+        if (arrays == null || arrays.Count == 0)
+            return 0;
+
+        int? minCount = null;
+        if (fieldOrder != null && fieldOrder.Length > 0)
+        {
+            foreach (var key in fieldOrder)
+            {
+                if (!arrays.TryGetValue(key, out var arr) || arr == null)
+                    continue;
+                minCount = minCount.HasValue ? Math.Min(minCount.Value, arr.Length) : arr.Length;
+            }
+        }
+        else
+        {
+            foreach (var arr in arrays.Values)
+            {
+                if (arr == null)
+                    continue;
+                minCount = minCount.HasValue ? Math.Min(minCount.Value, arr.Length) : arr.Length;
+            }
+        }
+
+        return minCount ?? 0;
+    }
+
     /// <summary>
     /// Result of loading PLY data, including the SoA dictionary, field order from header,
     /// and metadata about the load operation.
@@ -66,7 +94,7 @@ internal static class PlyLoadCore
                         throw progressInfo.Error;
 
                     var builtArrays = progressInfo.Result ?? new Dictionary<string, float[]>(0);
-                    var builtVertexCount = builtArrays.Count > 0 ? builtArrays.Values.First().Length : 0;
+                    var builtVertexCount = ComputeVertexCount(builtArrays);
                     Log(debug,
                         $"[PlyLoadCore] Built from source in {swBuild.ElapsedMilliseconds} ms. Arrays={builtArrays.Count}, Vertices={builtVertexCount}. Strategy={decimationStrategy}");
 
@@ -93,7 +121,7 @@ internal static class PlyLoadCore
                     swHit.Stop();
                     
                     var arrayCount = arrays?.Count ?? 0;
-                    var vertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
+                    var vertexCount = (arrays != null) ? ComputeVertexCount(arrays) : 0;
                     Log(debug,
                         $"[PlyLoadCore] Cache hit. Read payload in {swHit.ElapsedMilliseconds} ms. Arrays={arrayCount}, Vertices={vertexCount}");
                     
@@ -110,7 +138,7 @@ internal static class PlyLoadCore
                             BuildFromSourceAsync,
                             cancellationToken);
                         arrayCount = arrays?.Count ?? 0;
-                        vertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
+                        vertexCount = (arrays != null) ? ComputeVertexCount(arrays) : 0;
                         Log(debug,
                             $"[PlyLoadCore] Cache recovered. Arrays={arrayCount}, Vertices={vertexCount}");
                     }
@@ -123,7 +151,7 @@ internal static class PlyLoadCore
                         // (preserved by .NET 8 Dictionary and our cache serializer)
                         result.FieldOrder = arrays.Keys.ToArray();
                         progressInfo.FieldOrder = result.FieldOrder;
-                        result.VertexCount = arrays.Count > 0 ? arrays.Values.First().Length : 0;
+                        result.VertexCount = ComputeVertexCount(result.Arrays, result.FieldOrder);
                     }
 
                     progressInfo.Stage = 1;
@@ -143,7 +171,7 @@ internal static class PlyLoadCore
                         cancellationToken);
                     swMiss.Stop();
                     
-                    var cachedVertexCount = (arrays != null && arrays.Count > 0) ? arrays.Values.First().Length : 0;
+                    var cachedVertexCount = (arrays != null) ? ComputeVertexCount(arrays) : 0;
                     Log(debug, $"[PlyLoadCore] Cache miss. Build+write in {swMiss.ElapsedMilliseconds} ms. Cached Arrays={arrays?.Count ?? 0}, Vertices={cachedVertexCount}");
                     
                     result.Arrays = arrays ?? new Dictionary<string, float[]>(0);
@@ -151,7 +179,7 @@ internal static class PlyLoadCore
                     result.FieldOrder = progressInfo.FieldOrder.Length > 0 
                         ? progressInfo.FieldOrder 
                         : result.Arrays.Keys.ToArray();
-                    result.VertexCount = result.Arrays.Count > 0 ? result.Arrays.Values.First().Length : 0;
+                    result.VertexCount = ComputeVertexCount(result.Arrays, result.FieldOrder);
                     result.WasCacheHit = false;
                     // progress info already filled by FastPlyReader
                 }
@@ -180,7 +208,7 @@ internal static class PlyLoadCore
                 result.FieldOrder = progressInfo.FieldOrder.Length > 0 
                     ? progressInfo.FieldOrder 
                     : loadedArrays.Keys.ToArray();
-                result.VertexCount = loadedArrays.Count > 0 ? loadedArrays.Values.First().Length : 0;
+                result.VertexCount = ComputeVertexCount(result.Arrays, result.FieldOrder);
                 result.WasCacheHit = false;
             }
         }
