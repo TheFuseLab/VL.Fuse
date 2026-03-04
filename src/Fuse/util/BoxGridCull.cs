@@ -7,6 +7,12 @@ namespace Fuse.util;
 
 public static class BoxGridCull
 {
+    private static bool RectsOverlap(in Vector2 aMin, in Vector2 aMax, in Vector2 bMin, in Vector2 bMax)
+    {
+        return aMin.X <= bMax.X && aMax.X >= bMin.X &&
+               aMin.Y <= bMax.Y && aMax.Y >= bMin.Y;
+    }
+
     // Function to map a point on a room surface to texture coordinates
     private static Vector4 mapToTexture(
         Vector3 pointOnSurface,
@@ -93,7 +99,7 @@ public static class BoxGridCull
     ///     CPU equivalent of projectParticleByViewPositionAABB + mapToTexture.
     ///     Returns false if ray from ViewerPosition through particlePos does not hit the room or visible atlas region.
     /// </summary>
-    public static bool projectParticleByViewPositionAABB(
+    private static bool projectParticleByViewPositionAABBRaw(
         Vector3 particlePos,
         Matrix transform,
         Vector3 roomCenter,
@@ -194,8 +200,46 @@ public static class BoxGridCull
         // uvPack.xy is in 4x3 layout space, like before
         ProjectedPosition = new Vector3(uvPack.X, uvPack.Y, offsetDist);
 
-        if (UV.X >= 0.0 && UV.X <= 1.0 && UV.Y >= 0.0 && UV.Y <= 1.0) return true;
-        
+        return true;
+    }
+
+    public static bool projectParticleByViewPositionAABB(
+        Vector3 particlePos,
+        Matrix transform,
+        Vector3 roomCenter,
+        Vector3 roomDimensions,
+        Vector4 zoomRegion, // same semantics as before
+        Vector3 viewerPosition,
+        out Vector3 ProjectedPosition,
+        out int FaceIndex,
+        out Vector2 FaceUV,
+        out float Depth,
+        out Vector2 UV,
+        Vector4[] faceLayoutInfo,
+        Vector4 crossLayoutInfo,
+        ComputeViewPosition? computeViewPosition = null
+    )
+    {
+        if (!projectParticleByViewPositionAABBRaw(
+                particlePos,
+                transform,
+                roomCenter,
+                roomDimensions,
+                zoomRegion,
+                viewerPosition,
+                out ProjectedPosition,
+                out FaceIndex,
+                out FaceUV,
+                out Depth,
+                out UV,
+                faceLayoutInfo,
+                crossLayoutInfo,
+                computeViewPosition))
+            return false;
+
+        if (UV.X >= 0.0f && UV.X <= 1.0f && UV.Y >= 0.0f && UV.Y <= 1.0f)
+            return true;
+
         FaceIndex = -1;
         return false;
     }
@@ -228,10 +272,12 @@ public static class BoxGridCull
         if (!roomBounds.Intersects(in box))
             return true;
 
-        // 2) test all 8 corners against projector
-        //    if any corner projects into visible region, keep the box
+        // Project all corners and keep if projected UV rectangle overlaps [0,1]^2.
         var min = box.Minimum;
         var max = box.Maximum;
+        var minUV = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+        var maxUV = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+        var anyHit = false;
 
         for (int i = 0; i < 8; i++)
         {
@@ -241,7 +287,7 @@ public static class BoxGridCull
                 (i & 4) != 0 ? max.Z : min.Z
             );
 
-            if (projectParticleByViewPositionAABB(
+            if (projectParticleByViewPositionAABBRaw(
                     p,
                     transform,
                     roomCenter,
@@ -252,14 +298,23 @@ public static class BoxGridCull
                     out _,
                     out _,
                     out _,
-                    out _,
+                    out var uv,
                     faceLayoutInfo,
                     crossLayoutInfo,
                     computeViewPosition))
-                return false; // visible
+            {
+                anyHit = true;
+                minUV = Vector2.Min(minUV, uv);
+                maxUV = Vector2.Max(maxUV, uv);
+            }
         }
 
-        return true; // culled
+        if (!anyHit)
+            return true;
+
+        var gridMin = new Vector2(0.0f, 0.0f);
+        var gridMax = new Vector2(1.0f, 1.0f);
+        return !RectsOverlap(minUV, maxUV, gridMin, gridMax);
     }
 
     public static bool CullBoundingSphere(
@@ -278,8 +333,11 @@ public static class BoxGridCull
         if (!SphereIntersectsAabb(sphere, roomBounds))
             return true;
 
-        // Test center first
-        if (projectParticleByViewPositionAABB(
+        static bool IsUvVisible(in Vector2 uv)
+            => uv.X >= 0.0f && uv.X <= 1.0f && uv.Y >= 0.0f && uv.Y <= 1.0f;
+
+        // Center sample
+        if (projectParticleByViewPositionAABBRaw(
                 sphere.Center,
                 transform,
                 roomCenter,
@@ -290,13 +348,12 @@ public static class BoxGridCull
                 out _,
                 out _,
                 out _,
-                out _,
+                out var centerUv,
                 faceLayoutInfo,
                 crossLayoutInfo,
-                computeViewPosition))
+                computeViewPosition) && IsUvVisible(centerUv))
             return false; // visible
 
-        // Sample 6 axial directions on the sphere surface
         var r = sphere.Radius;
         var c = sphere.Center;
         var samples = new Vector3[]
@@ -311,7 +368,7 @@ public static class BoxGridCull
 
         foreach (var p in samples)
         {
-            if (projectParticleByViewPositionAABB(
+            if (projectParticleByViewPositionAABBRaw(
                     p,
                     transform,
                     roomCenter,
@@ -322,10 +379,10 @@ public static class BoxGridCull
                     out _,
                     out _,
                     out _,
-                    out _,
+                    out var uv,
                     faceLayoutInfo,
                     crossLayoutInfo,
-                    computeViewPosition))
+                    computeViewPosition) && IsUvVisible(uv))
                 return false; // visible
         }
 
