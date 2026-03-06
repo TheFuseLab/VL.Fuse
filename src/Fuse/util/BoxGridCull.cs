@@ -310,11 +310,172 @@ public static class BoxGridCull
         }
 
         if (!anyHit)
+        {
+            // Corner-only tests can miss valid projections for larger/intersecting boxes.
+            // Probe center + face-centers before deciding to cull.
+            var c = (min + max) * 0.5f;
+            var probes = new Vector3[]
+            {
+                c,
+                new(c.X, c.Y, min.Z),
+                new(c.X, c.Y, max.Z),
+                new(min.X, c.Y, c.Z),
+                new(max.X, c.Y, c.Z),
+                new(c.X, min.Y, c.Z),
+                new(c.X, max.Y, c.Z),
+                // 12 edge midpoints
+                new(c.X, min.Y, min.Z),
+                new(c.X, min.Y, max.Z),
+                new(c.X, max.Y, min.Z),
+                new(c.X, max.Y, max.Z),
+                new(min.X, c.Y, min.Z),
+                new(min.X, c.Y, max.Z),
+                new(max.X, c.Y, min.Z),
+                new(max.X, c.Y, max.Z),
+                new(min.X, min.Y, c.Z),
+                new(min.X, max.Y, c.Z),
+                new(max.X, min.Y, c.Z),
+                new(max.X, max.Y, c.Z),
+            };
+
+            foreach (var probe in probes)
+            {
+                if (projectParticleByViewPositionAABB(
+                        probe,
+                        transform,
+                        roomCenter,
+                        roomDimensions,
+                        zoomRegion,
+                        viewerPosition,
+                        out _,
+                        out _,
+                        out _,
+                        out _,
+                        out _,
+                        faceLayoutInfo,
+                        crossLayoutInfo,
+                        computeViewPosition))
+                    return false;
+            }
+
             return true;
+        }
 
         var gridMin = new Vector2(0.0f, 0.0f);
         var gridMax = new Vector2(1.0f, 1.0f);
-        return !RectsOverlap(minUV, maxUV, gridMin, gridMax);
+        if (RectsOverlap(minUV, maxUV, gridMin, gridMax))
+            return false;
+
+        // Fallback probes for cases where projected overlap is not represented by corner UV AABB.
+        {
+            var c = (min + max) * 0.5f;
+            var probes = new Vector3[]
+            {
+                c,
+                new(c.X, c.Y, min.Z),
+                new(c.X, c.Y, max.Z),
+                new(min.X, c.Y, c.Z),
+                new(max.X, c.Y, c.Z),
+                new(c.X, min.Y, c.Z),
+                new(c.X, max.Y, c.Z),
+                // 12 edge midpoints
+                new(c.X, min.Y, min.Z),
+                new(c.X, min.Y, max.Z),
+                new(c.X, max.Y, min.Z),
+                new(c.X, max.Y, max.Z),
+                new(min.X, c.Y, min.Z),
+                new(min.X, c.Y, max.Z),
+                new(max.X, c.Y, min.Z),
+                new(max.X, c.Y, max.Z),
+                new(min.X, min.Y, c.Z),
+                new(min.X, max.Y, c.Z),
+                new(max.X, min.Y, c.Z),
+                new(max.X, max.Y, c.Z),
+            };
+
+            foreach (var probe in probes)
+            {
+                if (projectParticleByViewPositionAABB(
+                        probe,
+                        transform,
+                        roomCenter,
+                        roomDimensions,
+                        zoomRegion,
+                        viewerPosition,
+                        out _,
+                        out _,
+                        out _,
+                        out _,
+                        out _,
+                        faceLayoutInfo,
+                        crossLayoutInfo,
+                        computeViewPosition))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Shader-parity variant of octree box culling (matches FuseCommonOctreeCullingBoxGrid.BoxGridNodeIsVisible).
+    ///     Semantics: returns true when culled, false when visible.
+    ///     Notes:
+    ///     - Uses only the 8 box corners.
+    ///     - Uses raw projection UVs and treats misses like shader path (default UV = 0,0).
+    ///     - Uses projected UV AABB overlap against [0,1]^2.
+    /// </summary>
+    public static bool CullBoundingBoxShaderParity(
+        in Vector3 roomCenter,
+        in Vector3 roomDimensions,
+        in Vector3 viewerPosition,
+        in Vector4 zoomRegion,
+        in Matrix transform,
+        in Vector4[] faceLayoutInfo,
+        in Vector4 crossLayoutInfo,
+        in BoundingBox box,
+        ComputeViewPosition? computeViewPosition = null)
+    {
+        var min = box.Minimum;
+        var max = box.Maximum;
+        var minUV = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+        var maxUV = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+
+        for (int i = 0; i < 8; i++)
+        {
+            var p = new Vector3(
+                (i & 1) != 0 ? max.X : min.X,
+                (i & 2) != 0 ? max.Y : min.Y,
+                (i & 4) != 0 ? max.Z : min.Z
+            );
+
+            // Shader parity: UV defaults to (0,0) and is still folded into min/max on misses.
+            var uv = Vector2.Zero;
+            if (projectParticleByViewPositionAABBRaw(
+                    p,
+                    transform,
+                    roomCenter,
+                    roomDimensions,
+                    zoomRegion,
+                    viewerPosition,
+                    out _,
+                    out _,
+                    out _,
+                    out _,
+                    out var projectedUv,
+                    faceLayoutInfo,
+                    crossLayoutInfo,
+                    computeViewPosition))
+                uv = projectedUv;
+
+            minUV = Vector2.Min(minUV, uv);
+            maxUV = Vector2.Max(maxUV, uv);
+        }
+
+        var gridMin = new Vector2(0.0f, 0.0f);
+        var gridMax = new Vector2(1.0f, 1.0f);
+        var visible = RectsOverlap(minUV, maxUV, gridMin, gridMax);
+        return !visible;
     }
 
     public static bool CullBoundingSphere(

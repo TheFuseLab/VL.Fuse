@@ -1504,6 +1504,16 @@
                 Returns false if ray from ViewerPosition through particlePos does not hit the room or visible atlas region.
             </summary>
         </member>
+        <member name="M:Fuse.util.BoxGridCull.CullBoundingBoxShaderParity(Stride.Core.Mathematics.Vector3@,Stride.Core.Mathematics.Vector3@,Stride.Core.Mathematics.Vector3@,Stride.Core.Mathematics.Vector4@,Stride.Core.Mathematics.Matrix@,Stride.Core.Mathematics.Vector4[]@,Stride.Core.Mathematics.Vector4@,Stride.Core.Mathematics.BoundingBox@,System.Func{Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Matrix,Stride.Core.Mathematics.Vector3})">
+            <summary>
+                Shader-parity variant of octree box culling (matches FuseCommonOctreeCullingBoxGrid.BoxGridNodeIsVisible).
+                Semantics: returns true when culled, false when visible.
+                Notes:
+                - Uses only the 8 box corners.
+                - Uses raw projection UVs and treats misses like shader path (default UV = 0,0).
+                - Uses projected UV AABB overlap against [0,1]^2.
+            </summary>
+        </member>
         <member name="M:Fuse.util.BoxGridProjection.GetClippedBoxFacePolygonsFromMatrix(Stride.Core.Mathematics.Matrix,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Vector3,Stride.Core.Mathematics.Matrix)">
             Calculates the polygons representing the visible portions of a transformed box's faces within a frustum defined by
             a View-Projection matrix.
