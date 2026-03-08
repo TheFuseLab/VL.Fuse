@@ -528,6 +528,15 @@ shader FuseRenderingBoxGridProject {
         return zoomedUV * (zoomRegion.zw - zoomRegion.xy) + zoomRegion.xy;
     }
 
+    // Convert zoomed atlas coordinates in full-atlas units (0..4, 0..3)
+    // back to full atlas coordinates before zoom (same 0..4, 0..3 domain).
+    float2 ZoomedAtlasXYToFullAtlasXY(float2 zoomedAtlasXY, float4 zoomRegion)
+    {
+        float2 uv01 = zoomedAtlasXY / float2(4.0, 3.0);
+        uv01 = inverseAtlasZoom(uv01, zoomRegion);
+        return uv01 * float2(4.0, 3.0);
+    }
+
     // -----------------------------------------------------------------------------
     // Detect which face an atlas UV belongs to
     // -----------------------------------------------------------------------------
