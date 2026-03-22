@@ -412,6 +412,49 @@ shader FuseRenderingBoxGridProject {
         return float3(0.0f, 0.0f, -1.0f);
     }
 
+    // Same as projectToSingleFace, but rejects projections outside the zoomed visible atlas area.
+    float3 projectToSingleFaceVisible(
+        int faceIndex,
+        float3 particlePos,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        StructuredBuffer<float4> surfacePositionsAndType,
+        StructuredBuffer<float4> surfaceNormalsAndSize,
+        StructuredBuffer<float4> surfaceDimensions,
+        StructuredBuffer<float4> faceLayoutInfo
+    ) {
+        float3 faceCenter = surfacePositionsAndType[faceIndex].xyz;
+        float3 faceNormal = normalize(surfaceNormalsAndSize[faceIndex].xyz);
+        float3 faceDims = surfaceDimensions[faceIndex].xyz;
+
+        float signedDist = dot(particlePos - faceCenter, faceNormal);
+        float3 projPoint = particlePos - faceNormal * signedDist;
+        float3 localPos = projPoint - faceCenter;
+
+        float3 t = FaceTangents[faceIndex];
+        float3 b = FaceBitangents[faceIndex];
+
+        float limitU = dot(faceDims, abs(t)) * 0.5f;
+        float limitV = dot(faceDims, abs(b)) * 0.5f;
+        float distU = abs(dot(localPos, t));
+        float distV = abs(dot(localPos, b));
+
+        float inFaceBounds = step(distU, limitU) * step(distV, limitV);
+
+        if (inFaceBounds > 0.5f) {
+            float4 uvPack = mapSurfaceToAtlas(projPoint, faceIndex, faceLayoutInfo, roomCenter, roomDimensions, zoomRegion);
+            float inVisibleAtlas = step(0.0f, uvPack.x) * step(uvPack.x, 4.0f) *
+                                   step(0.0f, uvPack.y) * step(uvPack.y, 3.0f);
+
+            if (inVisibleAtlas > 0.5f) {
+                return float3(uvPack.x, uvPack.y, abs(signedDist));
+            }
+        }
+
+        return float3(0.0f, 0.0f, -1.0f);
+    }
+
     float3 projectParticleOrthogonallyToAllFaces(
         float3 particlePos,
         float3 roomCenter,
@@ -434,6 +477,31 @@ shader FuseRenderingBoxGridProject {
         out_projectionFace3 = projectToSingleFace(3, particlePos, roomCenter, roomDimensions, zoomRegion,surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
         out_projectionFace4 = projectToSingleFace(4, particlePos, roomCenter, roomDimensions, zoomRegion,surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
         out_projectionFace5 = projectToSingleFace(5, particlePos, roomCenter, roomDimensions, zoomRegion,surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+
+        return proj0;
+    }
+
+    float3 projectParticleOrthogonallyToAllFacesVisible(
+        float3 particlePos,
+        float3 roomCenter,
+        float3 roomDimensions,
+        float4 zoomRegion,
+        StructuredBuffer<float4> surfacePositionsAndType,
+        StructuredBuffer<float4> surfaceNormalsAndSize,
+        StructuredBuffer<float4> surfaceDimensions,
+        StructuredBuffer<float4> surfaceColorsAndScale,
+        StructuredBuffer<float4> faceLayoutInfo,
+        out float3 out_projectionFace1,
+        out float3 out_projectionFace2, out float3 out_projectionFace3,
+        out float3 out_projectionFace4, out float3 out_projectionFace5
+    ) {
+        float3 proj0 = projectToSingleFaceVisible(0, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+
+        out_projectionFace1 = projectToSingleFaceVisible(1, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        out_projectionFace2 = projectToSingleFaceVisible(2, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        out_projectionFace3 = projectToSingleFaceVisible(3, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        out_projectionFace4 = projectToSingleFaceVisible(4, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        out_projectionFace5 = projectToSingleFaceVisible(5, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
 
         return proj0;
     }
