@@ -422,8 +422,11 @@ shader FuseRenderingBoxGridProject {
         StructuredBuffer<float4> surfacePositionsAndType,
         StructuredBuffer<float4> surfaceNormalsAndSize,
         StructuredBuffer<float4> surfaceDimensions,
-        StructuredBuffer<float4> faceLayoutInfo
+        StructuredBuffer<float4> faceLayoutInfo,
+        out float3 out_surfacePoint
     ) {
+        out_surfacePoint = float3(0.0f, 0.0f, 0.0f);
+
         float3 faceCenter = surfacePositionsAndType[faceIndex].xyz;
         float3 faceNormal = normalize(surfaceNormalsAndSize[faceIndex].xyz);
         float3 faceDims = surfaceDimensions[faceIndex].xyz;
@@ -448,6 +451,7 @@ shader FuseRenderingBoxGridProject {
                                    step(0.0f, uvPack.y) * step(uvPack.y, 3.0f);
 
             if (inVisibleAtlas > 0.5f) {
+                out_surfacePoint = projPoint;
                 return float3(uvPack.x, uvPack.y, abs(signedDist));
             }
         }
@@ -493,15 +497,18 @@ shader FuseRenderingBoxGridProject {
         StructuredBuffer<float4> faceLayoutInfo,
         out float3 out_projectionFace1,
         out float3 out_projectionFace2, out float3 out_projectionFace3,
-        out float3 out_projectionFace4, out float3 out_projectionFace5
+        out float3 out_projectionFace4, out float3 out_projectionFace5,
+        out float3 out_surfaceFace0, out float3 out_surfaceFace1,
+        out float3 out_surfaceFace2, out float3 out_surfaceFace3,
+        out float3 out_surfaceFace4, out float3 out_surfaceFace5
     ) {
-        float3 proj0 = projectToSingleFaceVisible(0, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        float3 proj0 = projectToSingleFaceVisible(0, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace0);
 
-        out_projectionFace1 = projectToSingleFaceVisible(1, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
-        out_projectionFace2 = projectToSingleFaceVisible(2, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
-        out_projectionFace3 = projectToSingleFaceVisible(3, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
-        out_projectionFace4 = projectToSingleFaceVisible(4, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
-        out_projectionFace5 = projectToSingleFaceVisible(5, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo);
+        out_projectionFace1 = projectToSingleFaceVisible(1, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace1);
+        out_projectionFace2 = projectToSingleFaceVisible(2, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace2);
+        out_projectionFace3 = projectToSingleFaceVisible(3, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace3);
+        out_projectionFace4 = projectToSingleFaceVisible(4, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace4);
+        out_projectionFace5 = projectToSingleFaceVisible(5, particlePos, roomCenter, roomDimensions, zoomRegion, surfacePositionsAndType, surfaceNormalsAndSize, surfaceDimensions, faceLayoutInfo, out_surfaceFace5);
 
         return proj0;
     }
