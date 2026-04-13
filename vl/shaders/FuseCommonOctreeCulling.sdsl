@@ -500,21 +500,21 @@ shader FuseCommonOctreeCulling{
         if (writable <= 0) return;
 
         int nodeCount = (int)node.IndexCount;
-        int stride    = max(1, (nodeCount + writable - 1) / writable); // ceil-div
+        int start     = (int)node.IndexStartIndex;
+        int maxSrc    = min(start + nodeCount, allLodIndicesLength);
 
-        int start  = (int)node.IndexStartIndex;
-        int maxSrc = min(start + nodeCount, allLodIndicesLength);
-
-        int rndBase = Hash32i(nodeID); // deterministic per node
+        // Golden-ratio quasi-random sampling for temporal stability.
+        // Unlike stride+hash, changing writable by ±N only adds/removes
+        // the last N points in the sequence — earlier selections don't shift.
+        float invPhi    = 0.6180339887; // 1 / golden ratio
+        float nodePhase = frac((float)Hash32i(nodeID) * 0.0000076534);
 
         [loop]
         for (int k = 0; k < writable; ++k)
         {
-            int rndk = Hash32i(rndBase + k + 1);
-            int off  = (stride > 1) ? (rndk % stride) : 0;
-
-            int i = k * stride + off;
-            if (i >= nodeCount) i = nodeCount - 1;
+            float t = frac(nodePhase + (float)(k + 1) * invPhi);
+            int   i = (int)(t * (float)nodeCount);
+            i = clamp(i, 0, nodeCount - 1);
 
             int addr = start + i;
             if (addr >= 0 && addr < maxSrc)
