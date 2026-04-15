@@ -484,19 +484,15 @@ shader FuseCommonOctreeCulling{
 
         int capacity = (MaxPointBudget > 0) ? MaxPointBudget : finalIndicesLength;
 
-        int cur = finalCounter[0];
-        if (cur >= capacity) return;
-
-        int remaining       = capacity - cur;
-        int writableRequest = min(targetPointsForThisNode, remaining);
-        if (writableRequest <= 0) return;
-
+        // Reserve slots atomically. targetPointsForThisNode is deterministic
+        // per node (derived from the fixed ratio), so every node always
+        // requests the same count regardless of thread scheduling.
         uint baseIndex;
-        InterlockedAdd(finalCounter[0], writableRequest, baseIndex);
+        InterlockedAdd(finalCounter[0], targetPointsForThisNode, baseIndex);
 
         if ((int)baseIndex >= capacity) return;
 
-        int writable = min(writableRequest, capacity - (int)baseIndex);
+        int writable = min(targetPointsForThisNode, capacity - (int)baseIndex);
         if (writable <= 0) return;
 
         int nodeCount = (int)node.IndexCount;
