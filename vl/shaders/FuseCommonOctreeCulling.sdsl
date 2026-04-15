@@ -226,41 +226,61 @@ shader FuseCommonOctreeCulling{
     )
     {
         int nodeStack[1024];
+        int insideStack[1024];
         int stackTop = 0;
-        
+
         if (startID >= 0)
         {
-            nodeStack[stackTop++] = startID;
+            nodeStack[stackTop] = startID;
+            insideStack[stackTop] = 0;
+            stackTop++;
         }
         
         while (stackTop > 0 && stackTop < 1024)
         {
-            int nodeID = nodeStack[--stackTop];
+            --stackTop;
+            int nodeID = nodeStack[stackTop];
+            int parentFullyInside = insideStack[stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
-            
+
             if (!IsValidNode(node))
                 continue;
 
             uint  frustumTest;
             float screenSize;
 
-            EvaluateNodeMultiFrustumLOD(
-                node.BoundsMin,
-                node.BoundsMax,
-                node.BoundsSize,
-                frustumPlanes,
-                FrustumProjParams,
-                FrustumCount,
-                PlanesPerFrustum,
-                Margin,
-                CameraPositionWS,
-                frustumTest,
-                screenSize);
-
-            if (frustumTest == 0)
+            if (parentFullyInside != 0)
             {
-                // outside all frustums
-                continue;
+                // Parent was fully inside — skip frustum test, only compute LOD
+                frustumTest = 2;
+                screenSize = 0.0f;
+                float3 center = (node.BoundsMax + node.BoundsMin) * 0.5f;
+                [loop]
+                for (int f = 0; f < FrustumCount; ++f)
+                {
+                    float2 projParams = FrustumProjParams[f];
+                    screenSize = max(screenSize, ApproxScreenSpaceSize(
+                        center, node.BoundsSize, CameraPositionWS,
+                        projParams.x, projParams.y));
+                }
+            }
+            else
+            {
+                EvaluateNodeMultiFrustumLOD(
+                    node.BoundsMin,
+                    node.BoundsMax,
+                    node.BoundsSize,
+                    frustumPlanes,
+                    FrustumProjParams,
+                    FrustumCount,
+                    PlanesPerFrustum,
+                    Margin,
+                    CameraPositionWS,
+                    frustumTest,
+                    screenSize);
+
+                if (frustumTest == 0)
+                    continue;
             }
 
             // Leaf node → direct work item
@@ -284,7 +304,9 @@ shader FuseCommonOctreeCulling{
             bool canCreateWorkItem =
                 (node.LODLevel >= MinWorkItemDepth) &&
                 (frustumTest == 2 || screenSize <= LODScreenSpaceThreshold * 4.0f);
-            
+
+            int childInside = (frustumTest == 2) ? 1 : 0;
+
             if (shouldTraverseDeeper)
             {
                 // Add children to stack for deeper traversal
@@ -292,7 +314,9 @@ shader FuseCommonOctreeCulling{
                 {
                     if (stackTop < 1023)
                     {
-                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                        nodeStack[stackTop] = node.ChildStartIndex + i;
+                        insideStack[stackTop] = childInside;
+                        stackTop++;
                     }
                 }
             }
@@ -310,7 +334,9 @@ shader FuseCommonOctreeCulling{
                 {
                     if (stackTop < 1023)
                     {
-                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                        nodeStack[stackTop] = node.ChildStartIndex + i;
+                        insideStack[stackTop] = childInside;
+                        stackTop++;
                     }
                 }
             }
@@ -343,12 +369,17 @@ shader FuseCommonOctreeCulling{
         int workNodeID = WorkItems[globalThreadID];
 
         int nodeStack[512];
+        int insideStack[512];
         int stackTop = 0;
-        nodeStack[stackTop++] = workNodeID;
+        nodeStack[stackTop] = workNodeID;
+        insideStack[stackTop] = 0;
+        stackTop++;
 
         while (stackTop > 0 && stackTop < 512)
         {
-            int nodeID = nodeStack[--stackTop];
+            --stackTop;
+            int nodeID = nodeStack[stackTop];
+            int parentFullyInside = insideStack[stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
 
             if (!IsValidNode(node))
@@ -357,21 +388,39 @@ shader FuseCommonOctreeCulling{
             uint  frustumTest;
             float screenSize;
 
-            EvaluateNodeMultiFrustumLOD(
-                node.BoundsMin,
-                node.BoundsMax,
-                node.BoundsSize,
-                frustumPlanes,
-                FrustumProjParams,
-                FrustumCount,
-                PlanesPerFrustum,
-                Margin,
-                CameraPositionWS,
-                frustumTest,
-                screenSize);
+            if (parentFullyInside != 0)
+            {
+                // Parent was fully inside — skip frustum test, only compute LOD
+                frustumTest = 2;
+                screenSize = 0.0f;
+                float3 center = (node.BoundsMax + node.BoundsMin) * 0.5f;
+                [loop]
+                for (int f = 0; f < FrustumCount; ++f)
+                {
+                    float2 projParams = FrustumProjParams[f];
+                    screenSize = max(screenSize, ApproxScreenSpaceSize(
+                        center, node.BoundsSize, CameraPositionWS,
+                        projParams.x, projParams.y));
+                }
+            }
+            else
+            {
+                EvaluateNodeMultiFrustumLOD(
+                    node.BoundsMin,
+                    node.BoundsMax,
+                    node.BoundsSize,
+                    frustumPlanes,
+                    FrustumProjParams,
+                    FrustumCount,
+                    PlanesPerFrustum,
+                    Margin,
+                    CameraPositionWS,
+                    frustumTest,
+                    screenSize);
 
-            if (frustumTest == 0)
-                continue; // outside all frustums
+                if (frustumTest == 0)
+                    continue;
+            }
 
             // Too small for this LOD
             if (screenSize < LODScreenSpaceThreshold * 0.5f)
@@ -395,11 +444,14 @@ shader FuseCommonOctreeCulling{
                 // Internal node: decide whether to traverse deeper or render this LOD level
                 if (screenSize > LODScreenSpaceThreshold * 2.0f)
                 {
+                    int childInside = (frustumTest == 2) ? 1 : 0;
                     for (int i = 0; i < 8; ++i)
                     {
                         if (stackTop < 511)
                         {
-                            nodeStack[stackTop++] = node.ChildStartIndex + i;
+                            nodeStack[stackTop] = node.ChildStartIndex + i;
+                            insideStack[stackTop] = childInside;
+                            stackTop++;
                         }
                     }
                 }

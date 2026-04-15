@@ -17,7 +17,8 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
     
     // Returns true if ANY corner of the node's AABB projects onto the boxgrid
     // (i.e. ray from viewer → corner hits one of the 6 faces AND inside zoomRegion / faceLayout).
-    bool BoxGridNodeIsVisible(
+    // Returns: 0 = outside, 1 = intersecting, 2 = fully inside
+    uint BoxGridNodeIsVisible(
         float3 boundsMin,
         float3 boundsMax,
         float4x4 ParticleToBoxGrid,
@@ -65,7 +66,14 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
             maxUV = max(maxUV, normalizedUV);            
         }
 
-        return RectsOverlap(minUV,maxUV,float2(0.0,0.0),float2(1.0,1.0));
+        if (!RectsOverlap(minUV,maxUV,float2(0.0,0.0),float2(1.0,1.0)))
+            return 0; // outside
+
+        // Fully inside if all corners project within [0,1]
+        if (minUV.x >= 0.0 && minUV.y >= 0.0 && maxUV.x <= 1.0 && maxUV.y <= 1.0)
+            return 2; // fully inside
+
+        return 1; // intersecting
     }
 
     void projectNode(
@@ -171,43 +179,49 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         RWStructuredBuffer<int> NodeDebugFlags
     ){
         int nodeStack[1024];
+        int insideStack[1024];
         int stackTop = 0;
 
         if (startID >= 0)
-            nodeStack[stackTop++] = startID;
+        {
+            nodeStack[stackTop] = startID;
+            insideStack[stackTop] = 0;
+            stackTop++;
+        }
 
         while (stackTop > 0 && stackTop < 1024)
         {
-            int nodeID = nodeStack[--stackTop];
+            --stackTop;
+            int nodeID = nodeStack[stackTop];
+            int parentFullyInside = insideStack[stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
 
-            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS1);
-            
             // FIXED: Validate node first
             if (!IsValidNode(node))
-            {
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
-            }
-            InterlockedOr(NodeDebugFlags[nodeID], DBG_BG_USED_IN_PASS1);
 
-            // --- NEW: BoxGrid visibility test
-            if (!BoxGridNodeIsVisible(
-                    node.BoundsMin,
-                    node.BoundsMax,
-                    ParticleToBoxGrid,
-                    roomCenter,
-                    roomDimensions,
-                    zoomRegion,
-                    viewerPosition,
-                    FaceLayoutInfo,
-                    crossLayoutInfo))
+            uint bgVisibility;
+            if (parentFullyInside != 0)
             {
-                // node is completely invisible in the boxgrid
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
-                continue;
+                // Parent was fully inside — skip visibility test
+                bgVisibility = 2;
             }
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
+            else
+            {
+                // BoxGrid visibility test
+                bgVisibility = BoxGridNodeIsVisible(
+                        node.BoundsMin,
+                        node.BoundsMax,
+                        ParticleToBoxGrid,
+                        roomCenter,
+                        roomDimensions,
+                        zoomRegion,
+                        viewerPosition,
+                        FaceLayoutInfo,
+                        crossLayoutInfo);
+                if (bgVisibility == 0)
+                    continue;
+            }
 
             // Leaf node => always create work item if it has points
             if (node.ChildStartIndex == 0xFFFFFFFF || node.ChildStartIndex == -1)
@@ -237,13 +251,19 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                 (node.LODLevel >= MinWorkItemDepth) &&
                 (screenSize <= LODScreenSpaceThreshold * 4.0f);
 
+            int childInside = (bgVisibility == 2) ? 1 : 0;
+
             if (shouldTraverseDeeper)
             {
                 // traverse children
                 for (uint i = 0; i < 8; ++i)
                 {
                     if (stackTop < 1023)
-                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    {
+                        nodeStack[stackTop] = node.ChildStartIndex + i;
+                        insideStack[stackTop] = childInside;
+                        stackTop++;
+                    }
                 }
             }
             else if (canCreateWorkItem)
@@ -258,7 +278,11 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                 for (uint i = 0; i < 8; ++i)
                 {
                     if (stackTop < 1023)
-                        nodeStack[stackTop++] = node.ChildStartIndex + i;
+                    {
+                        nodeStack[stackTop] = node.ChildStartIndex + i;
+                        insideStack[stackTop] = childInside;
+                        stackTop++;
+                    }
                 }
             }
         }
@@ -290,42 +314,45 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         int workNodeID = WorkItems[globalThreadID];
 
         int nodeStack[512];
+        int insideStack[512];
         int stackTop = 0;
-        nodeStack[stackTop++] = workNodeID;
+        nodeStack[stackTop] = workNodeID;
+        insideStack[stackTop] = 0;
+        stackTop++;
 
         while (stackTop > 0 && stackTop < 512)
         {
-            int nodeID = nodeStack[--stackTop];
+            --stackTop;
+            int nodeID = nodeStack[stackTop];
+            int parentFullyInside = insideStack[stackTop];
             GPUOctreeNode node = GpuOctreeNodes[nodeID];
-
-            // Mark that this node was processed in Pass 2
-            InterlockedOr(NodeDebugFlags[nodeID], DBG_TOUCHED_PASS2);
 
             // Validate node
             if (!IsValidNode(node))
-            {
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_INVALID_NODE);
                 continue;
-            }
 
-            InterlockedOr(NodeDebugFlags[nodeID], DBG_BG_USED_IN_PASS2);
-
-            // BoxGrid visibility check
-            if (!BoxGridNodeIsVisible(
-                    node.BoundsMin,
-                    node.BoundsMax,
-                    ParticleToBoxGrid,
-                    roomCenter,
-                    roomDimensions,
-                    zoomRegion,
-                    viewerPosition,
-                    FaceLayoutInfo,
-                    crossLayoutInfo))
+            uint bgVisibility;
+            if (parentFullyInside != 0)
             {
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_OUTSIDE);
-                continue;
+                // Parent was fully inside — skip visibility test
+                bgVisibility = 2;
             }
-                InterlockedOr(NodeDebugFlags[nodeID], DBG_FRUSTUM_INSIDE);
+            else
+            {
+                // BoxGrid visibility check
+                bgVisibility = BoxGridNodeIsVisible(
+                        node.BoundsMin,
+                        node.BoundsMax,
+                        ParticleToBoxGrid,
+                        roomCenter,
+                        roomDimensions,
+                        zoomRegion,
+                        viewerPosition,
+                        FaceLayoutInfo,
+                        crossLayoutInfo);
+                if (bgVisibility == 0)
+                    continue;
+            }
 
             // LOD metric
             float screenSize = ComputeBoxGridScreenSize(
@@ -356,10 +383,15 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                 if (screenSize > LODScreenSpaceThreshold * 2.0f)
                 {
                     // go deeper
+                    int childInside = (bgVisibility == 2) ? 1 : 0;
                     for (int i = 0; i < 8; ++i)
                     {
                         if (stackTop < 511)
-                            nodeStack[stackTop++] = node.ChildStartIndex + i;
+                        {
+                            nodeStack[stackTop] = node.ChildStartIndex + i;
+                            insideStack[stackTop] = childInside;
+                            stackTop++;
+                        }
                     }
                 }
                 else
