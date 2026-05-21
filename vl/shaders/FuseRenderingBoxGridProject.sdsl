@@ -550,6 +550,97 @@ shader FuseRenderingBoxGridProject {
         return vertexPosition + vertexNormal * t_intersect;
     }
 
+    float3 convertRoundBevelToSharpBoxDominant(
+        float3 p,
+        float3 n,
+        float3 boxCenter,
+        float3 boxSize
+    )
+    {
+        float3 halfSize = abs(boxSize) * 0.5;
+        float3 boxMin = boxCenter - halfSize;
+        float3 boxMax = boxCenter + halfSize;
+
+        n = normalize(n);
+        float3 an = abs(n);
+
+        float3 q = p;
+
+        // Dominant normal axis decides which original hard-box face
+        // this bevel fragment belongs to.
+        if (an.x >= an.y && an.x >= an.z)
+        {
+            q.x = n.x > 0.0 ? boxMax.x : boxMin.x;
+        }
+        else if (an.y >= an.x && an.y >= an.z)
+        {
+            q.y = n.y > 0.0 ? boxMax.y : boxMin.y;
+        }
+        else
+        {
+            q.z = n.z > 0.0 ? boxMax.z : boxMin.z;
+        }
+
+        return q;
+    }
+
+    float3 convertRoundBevelToSharpCornerWarped(
+        float3 p,
+        float3 n,
+        float3 boxCenter,
+        float3 boxSize,
+        float squeezePower
+    )
+    {
+        float3 halfSize = abs(boxSize) * 0.5;
+        float3 boxMin = boxCenter - halfSize;
+        float3 boxMax = boxCenter + halfSize;
+
+        n = normalize(n);
+        float3 an = abs(n);
+
+        float3 q = p;
+
+        // Distance-to-corner weight.
+        // For a perfect 2-axis bevel, at 45° both normal components are equal.
+        float maxA = max(an.x, max(an.y, an.z));
+        float minA = min(an.x, min(an.y, an.z));
+        float midA = an.x + an.y + an.z - maxA - minA;
+
+        // 0 = flat face, 1 = balanced bevel/corner direction
+        float bevelBalance = midA / max(maxA, 1e-5);
+        bevelBalance = pow(saturate(bevelBalance), squeezePower);
+
+        // Snap strongest axis fully to its face
+        if (an.x >= an.y && an.x >= an.z)
+            q.x = n.x > 0.0 ? boxMax.x : boxMin.x;
+        else if (an.y >= an.x && an.y >= an.z)
+            q.y = n.y > 0.0 ? boxMax.y : boxMin.y;
+        else
+            q.z = n.z > 0.0 ? boxMax.z : boxMin.z;
+
+        // Pull secondary axes toward the sharp feature as we approach 45°
+        if (an.x > 0.05)
+        {
+            float target = n.x > 0.0 ? boxMax.x : boxMin.x;
+            q.x = lerp(q.x, target, bevelBalance);
+        }
+
+        if (an.y > 0.05)
+        {
+            float target = n.y > 0.0 ? boxMax.y : boxMin.y;
+            q.y = lerp(q.y, target, bevelBalance);
+        }
+
+        if (an.z > 0.05)
+        {
+            float target = n.z > 0.0 ? boxMax.z : boxMin.z;
+            q.z = lerp(q.z, target, bevelBalance);
+        }
+
+        return q;
+    }
+
     // --- helpers ---
     // LUT for branchless UV rotation: each row is [swapXY, flipX, flipY, unused]
     // rot 0: no swap, no flip          -> uv
