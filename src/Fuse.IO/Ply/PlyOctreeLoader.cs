@@ -562,6 +562,11 @@ public class PlyOctreeLoader : ProcessNodeBase
                 if (_octreeProgressInfo != null)
                     _progressInfo.UpdateFromOctreeProgress(_octreeProgressInfo, true);
                 break;
+
+            case CombinedProgressInfo.ProcessStage.Complete:
+                // Ensure 100% progress when complete
+                _progressInfo.OverallProgress = 100;
+                break;
         }
 
         Progress = (float)_progressInfo.OverallProgress / 100f;

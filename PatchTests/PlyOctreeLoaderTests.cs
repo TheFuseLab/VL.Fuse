@@ -81,6 +81,10 @@ public class PlyOctreeLoaderTests
             await Task.Delay(20);
         }
 
+        // Call Update one more time to get final state
+        loader.Update();
+        progressValues.Add(loader.Progress);
+
         // Assert
         Assert.That(loader.IsCompleted, Is.True, "Should complete");
 
@@ -383,6 +387,9 @@ public class PlyOctreeLoaderTests
             loader.Update();
             await Task.Delay(50);
         }
+
+        // Call Update one more time to ensure final state is read
+        loader.Update();
 
         if (!loader.IsCompleted)
         {

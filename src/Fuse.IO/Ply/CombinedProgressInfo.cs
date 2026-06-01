@@ -43,7 +43,7 @@ public class CombinedProgressInfo
     /// <summary>
     /// Overall progress across all stages (0-100).
     /// </summary>
-    public double OverallProgress { get; private set; }
+    public double OverallProgress { get; set; }
 
     // Stage-specific metrics
     public int VerticesLoaded { get; set; }
