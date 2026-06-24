@@ -11,10 +11,14 @@ using System.Threading.Tasks;
 using Fuse;
 using Fuse.compute;
 using Fuse.ShaderFX;
+using Stride.Core.IO;
 using Stride.Core.Shaders.Utility;
 using Stride.Engine;
+using Stride.Graphics;
 using Stride.Rendering.Materials;
 using Stride.Shaders;
+using Stride.Shaders.Compiler;
+using Stride.Shaders.Parser;
 using Stride.Shaders.Parser.Mixins;
 using VL.TestFramework;
 using VL.Core;
@@ -303,6 +307,27 @@ namespace Fuse.Tests
             }
         }
 
+        [Test]
+        [Category("FuseShaderTrace")]
+        public void CompileMinimalEmptyComputeShaderWithStandaloneEffectCompiler()
+        {
+            var host = GetProperty(testEnvironment, "Host");
+            var appHost = host as AppHost;
+            if (appHost == null)
+                Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
+
+            using var appHostScope = appHost.MakeCurrent();
+            var rootContext = NodeContext.Create(appHost).CreateSubContext("FuseShaderCompile", "Root");
+            var empty = new EmptyVoid(rootContext.CreateSubContext("FuseShaderCompile", "Empty"));
+
+            var computeFx = new ToComputeFx<GpuVoid>(empty);
+            var shaderSource = computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+
+            Assert.That(shaderSource, Is.InstanceOf<ShaderClassSource>());
+            AssertGeneratedShaderCanBeLoadedByStandaloneShaderLoader(computeFx);
+            AssertGeneratedShaderCompilesWithStandaloneEffectCompiler(computeFx);
+        }
+
         private sealed class NullGameProvider : IResourceProvider<Game>
         {
             public IResourceHandle<Game> GetHandle() => new NullGameHandle();
@@ -333,6 +358,46 @@ namespace Fuse.Tests
             Assert.That(loadedShader.SourcePath, Is.EqualTo(diagnostics.SourcePath));
         }
 
+        private static void AssertGeneratedShaderCompilesWithStandaloneEffectCompiler(ToComputeFx<GpuVoid> shaderFx)
+        {
+            var diagnostics = shaderFx.LastDiagnosticContext;
+            Assert.That(diagnostics, Is.Not.Null);
+            Assert.That(shaderFx.ShaderCode, Is.Not.Null.And.Not.Empty);
+
+            var fileProvider = new FileSystemProvider(
+                $"/fuse-compile-test-{Guid.NewGuid():N}",
+                Environment.CurrentDirectory);
+            var compiler = new EffectCompiler(fileProvider);
+            var sourceManager = GetShaderSourceManager(compiler);
+            RegisterShaderSourceFromFile(sourceManager, "ComputeVoid", FindComputeVoidSource());
+            RegisterShaderSourceFromFile(sourceManager, "ComputeShaderBase", FindComputeShaderBaseSource());
+            sourceManager.AddShaderSource(diagnostics.ShaderName, shaderFx.ShaderCode, diagnostics.SourcePath);
+
+            var mixin = new ShaderMixinSource { Name = diagnostics.ShaderName };
+            mixin.Mixins.Add(new ShaderClassSource(diagnostics.ShaderName));
+
+            var effectParameters = new EffectCompilerParameters
+            {
+                Platform = GraphicsPlatform.Direct3D11,
+                Profile = GraphicsProfile.Level_11_0,
+                Debug = true,
+                OptimizationLevel = 0
+            };
+            var compilerParameters = new CompilerParameters { EffectParameters = effectParameters };
+
+            var result = compiler.Compile(mixin, effectParameters, compilerParameters).WaitForResult();
+            var messages = result.CompilationLog?.Messages?.ToArray() ?? [];
+            var errors = messages
+                .Where(message => message.Type >= Stride.Core.Diagnostics.LogMessageType.Error)
+                .Select(message => message.ToString())
+                .ToArray();
+
+            Assert.That(errors, Is.Empty, string.Join(Environment.NewLine, errors));
+            Assert.That(result.Bytecode, Is.Not.Null);
+            Assert.That(result.Bytecode.Stages, Is.Not.Null.And.Not.Empty);
+            Assert.That(result.Bytecode.Reflection, Is.Not.Null);
+        }
+
         private static ShaderSourceManager GetStandaloneShaderSourceManager()
         {
             var method = typeof(ShaderNodesUtil).GetMethod(
@@ -342,6 +407,48 @@ namespace Fuse.Tests
 
             Assert.That((bool)method.Invoke(null, args), Is.True);
             return (ShaderSourceManager)args[0];
+        }
+
+        private static ShaderSourceManager GetShaderSourceManager(EffectCompiler compiler)
+        {
+            var method = typeof(EffectCompiler).GetMethod(
+                "GetMixinParser",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            return ((ShaderMixinParser)method.Invoke(compiler, null)).SourceManager;
+        }
+
+        private static void RegisterShaderSourceFromFile(
+            ShaderSourceManager sourceManager,
+            string shaderName,
+            string sourcePath)
+        {
+            Assert.That(sourcePath, Is.Not.Null, $"Could not locate {shaderName}.sdsl for standalone compile test.");
+            sourceManager.AddShaderSource(shaderName, File.ReadAllText(sourcePath), sourcePath);
+        }
+
+        private static string FindComputeVoidSource()
+        {
+            var configuredPath = Environment.GetEnvironmentVariable("FUSE_TEST_COMPUTE_VOID");
+            if (File.Exists(configuredPath))
+                return configuredPath;
+
+            var relativePath = Path.Combine(
+                "stride",
+                "Assets",
+                "Effects",
+                "ShaderFX",
+                "ComputeVoid",
+                "ComputeVoid.sdsl");
+            var packagePath = Path.Combine(NuGetPackagesPath, "vl.stride.runtime");
+            if (!Directory.Exists(packagePath))
+                return null;
+
+            return Directory.GetDirectories(packagePath)
+                .OrderByDescending(versionDirectory => Path.GetFileName(versionDirectory))
+                .Select(versionDirectory => Path.Combine(versionDirectory, relativePath))
+                .Where(File.Exists)
+                .FirstOrDefault();
         }
 
         private sealed class NullGameHandle : IResourceHandle<Game>
