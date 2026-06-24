@@ -7,6 +7,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Fuse;
 using NUnit.Framework;
+using Stride.Core.IO;
+using Stride.Shaders.Compiler;
+using Stride.Shaders.Parser;
 
 namespace PatchTests;
 
@@ -73,6 +76,32 @@ public class ShaderDiagnosticTests
         Assert.That(sourceManager.AddedSources, Has.Count.EqualTo(2));
         Assert.That(sourceManager.AddedSources[0], Is.EqualTo(("Shader_1", "code A", "shaders\\Shader_1.sdsl")));
         Assert.That(sourceManager.AddedSources[1], Is.EqualTo(("Shader_1", "code B", "shaders\\Shader_1.sdsl")));
+    }
+
+    [Test]
+    public void TryRegisterShaderSource_RegistersWithStrideShaderSourceManager()
+    {
+        var fileProvider = new FileSystemProvider("/", TestContext.CurrentContext.WorkDirectory);
+        var compiler = new EffectCompiler(fileProvider);
+        var parser = GetMixinParser(compiler);
+        var sourceManager = parser.SourceManager;
+        const string shaderName = "Shader_StrideRegistrationTest";
+        const string sourcePath = "shaders\\Shader_StrideRegistrationTest.sdsl";
+        const string sourceCodeA = "shader Shader_StrideRegistrationTest { }";
+        const string sourceCodeB = "shader Shader_StrideRegistrationTest { stage stream float4 Color; }";
+
+        Assert.That(sourceManager.IsClassExists(shaderName), Is.False);
+
+        Assert.That(TryRegisterShaderSource(sourceManager, shaderName, sourceCodeA, sourcePath), Is.True);
+        Assert.That(sourceManager.IsClassExists(shaderName), Is.True);
+        Assert.That(sourceManager.FindFilePath(shaderName), Is.EqualTo(sourcePath));
+        var hashA = sourceManager.GetShaderSourceHash(shaderName);
+
+        Assert.That(TryRegisterShaderSource(sourceManager, shaderName, sourceCodeA, sourcePath), Is.False);
+        Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.EqualTo(hashA));
+
+        Assert.That(TryRegisterShaderSource(sourceManager, shaderName, sourceCodeB, sourcePath), Is.True);
+        Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.Not.EqualTo(hashA));
     }
 
     [Test]
@@ -254,5 +283,14 @@ public class ShaderDiagnosticTests
             BindingFlags.Static | BindingFlags.NonPublic);
 
         return (bool)method.Invoke(null, new[] { sourceManager, type, sourceCode, sourcePath });
+    }
+
+    private static ShaderMixinParser GetMixinParser(EffectCompiler compiler)
+    {
+        var method = typeof(EffectCompiler).GetMethod(
+            "GetMixinParser",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        return (ShaderMixinParser)method.Invoke(compiler, null);
     }
 }
