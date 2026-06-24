@@ -135,7 +135,7 @@ public class ShaderDiagnosticTests
     }
 
     [Test]
-    public void PatchTests_ExternalCascadeClassifier_OnlyMatchesStrideCascadeErrors()
+    public void PatchTests_ExternalCascadeClassifier_OnlyMatchesKnownExternalCascadeErrors()
     {
         Assert.That(
             Fuse.Tests.PatchTests.IsKnownExternalPackageCascadeMessageText(
@@ -144,6 +144,10 @@ public class ShaderDiagnosticTests
         Assert.That(
             Fuse.Tests.PatchTests.IsKnownExternalPackageCascadeMessageText(
                 "Blend [Stride.Textures.Mixer] has errors."),
+            Is.True);
+        Assert.That(
+            Fuse.Tests.PatchTests.IsKnownExternalPackageCascadeMessageText(
+                "SortBuffer [Nvidia.CUDA] has errors."),
             Is.True);
         Assert.That(
             Fuse.Tests.PatchTests.IsKnownExternalPackageCascadeMessageText(

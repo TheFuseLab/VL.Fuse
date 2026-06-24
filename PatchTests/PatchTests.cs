@@ -444,7 +444,8 @@ namespace Fuse.Tests
                 return false;
 
             var category = text.Substring(categoryStart + 1, categoryEnd - categoryStart - 1);
-            return category.StartsWith("Stride.", StringComparison.OrdinalIgnoreCase);
+            return category.StartsWith("Stride.", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(category, "Nvidia.CUDA", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void AppendMessage(StringBuilder builder, object message, object host)
