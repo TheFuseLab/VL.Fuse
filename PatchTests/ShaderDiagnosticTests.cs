@@ -7,7 +7,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Fuse;
 using NUnit.Framework;
+using Stride.Core.Shaders.Utility;
 using Stride.Core.IO;
+using Stride.Shaders;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using Stride.Shaders.Parser.Mixins;
@@ -125,6 +127,31 @@ public class ShaderDiagnosticTests
         ShaderNodesUtil.AddShaderSource(shaderName, sourceCodeB, sourcePath);
 
         Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.Not.EqualTo(hashA));
+    }
+
+    [Test]
+    public void AddShaderSource_RegisteredStandaloneShaderCanBeLoadedByStrideShaderLoader()
+    {
+        var shaderName = $"Shader_StandaloneLoadTest_{Guid.NewGuid():N}";
+        var sourcePath = $"shaders\\{shaderName}.sdsl";
+        var sourceCode = $"shader {shaderName} {{ }};";
+
+        ShaderNodesUtil.AddShaderSource(shaderName, sourceCode, sourcePath);
+
+        var sourceManager = GetStandaloneShaderSourceManager();
+        var loader = new ShaderLoader(sourceManager);
+        var log = new LoggerResult();
+        var loadedShader = loader.LoadClassSource(
+            new ShaderClassSource(shaderName),
+            Array.Empty<Stride.Core.Shaders.Parser.ShaderMacro>(),
+            log,
+            autoGenericInstances: false);
+
+        Assert.That(log.HasErrors, Is.False, log.ToString());
+        Assert.That(loadedShader, Is.Not.Null);
+        Assert.That(loadedShader.Type, Is.Not.Null);
+        Assert.That(loadedShader.Type.Name.Text, Is.EqualTo(shaderName));
+        Assert.That(loadedShader.SourcePath, Is.EqualTo(sourcePath));
     }
 
     [Test]
