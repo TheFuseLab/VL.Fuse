@@ -216,6 +216,7 @@ namespace Fuse.Tests
                 if (appHost == null)
                     Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
 
+                using var appHostScope = appHost.MakeCurrent();
                 var rootContext = NodeContext.Create(appHost).CreateSubContext("FuseShaderTrace", "Root");
                 var target = new ValueInput<float>(
                     rootContext.CreateSubContext("FuseShaderTrace", "Target"),
@@ -230,6 +231,22 @@ namespace Fuse.Tests
 
                 var computeFx = new ToComputeFx<GpuVoid>(assign);
                 computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+
+                var addShaderSourceFailures = Directory.GetFiles(dumpDirectory, "*_addshadersource_exception.log");
+                foreach (var failureLog in addShaderSourceFailures)
+                {
+                    // VL.TestFramework provides an AppHost but does not start a Stride Game service.
+                    TestContext.AddTestAttachment(failureLog, "Fuse AddShaderSource diagnostics");
+                    var failureText = File.ReadAllText(failureLog);
+                    Assert.That(
+                        failureText,
+                        Does.Not.Contain("No app host is installed on the current thread"),
+                        $"AddShaderSource ran without a current AppHost. Failure log: {failureLog}");
+                    Assert.That(
+                        failureText,
+                        Does.Contain("IResourceProvider`1[Stride.Engine.Game]"),
+                        $"Unexpected AddShaderSource failure. Failure log: {failureLog}");
+                }
 
                 var diagnosticFiles = Directory.GetFiles(dumpDirectory, "*_diagnostics.log");
                 Assert.That(
