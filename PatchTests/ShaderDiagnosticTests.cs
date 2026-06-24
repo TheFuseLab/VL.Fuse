@@ -76,7 +76,8 @@ public class ShaderDiagnosticTests
                     new ShaderStageDiagnostic("FX", "assign_1", "Fuse.AssignValue"),
                     compilation)
             },
-            new[] { "Generated shader failed validation: dangling placeholder" });
+            new[] { "Generated shader failed validation: dangling placeholder" },
+            new[] { new ShaderTimingDiagnostic("Stage:FX:CompileProperties", 1.25) });
 
         Assert.That(diagnostics.IsCompute, Is.True);
         Assert.That(diagnostics.Phase, Is.EqualTo("compute"));
@@ -86,12 +87,14 @@ public class ShaderDiagnosticTests
         Assert.That(diagnostics.Stages[0].Key, Is.EqualTo("FX"));
         Assert.That(diagnostics.Declarations.Select(d => d.InputName), Is.EqualTo(new[] { "bufferA", "inputA" }));
         Assert.That(diagnostics.Declarations.Single(d => d.InputName == "bufferA").IsResource, Is.True);
+        Assert.That(diagnostics.Timings.Single().Name, Is.EqualTo("Stage:FX:CompileProperties"));
         Assert.That(diagnostics.Warnings.Single(), Does.Contain("dangling placeholder"));
 
         var log = diagnostics.ToDiagnosticLog();
         Assert.That(log, Does.Contain("Shader: Shader_123"));
         Assert.That(log, Does.Contain("Phase: compute"));
         Assert.That(log, Does.Contain("Name=bufferA; Resource=True"));
+        Assert.That(log, Does.Contain("Stage:FX:CompileProperties: 1.25 ms"));
     }
 
     [Test]

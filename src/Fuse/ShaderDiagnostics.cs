@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using StrideBuffer = Stride.Graphics.Buffer;
@@ -19,6 +20,7 @@ public sealed class ShaderDiagnosticContext
     public IReadOnlyList<string> Mixins { get; init; } = [];
     public IReadOnlyList<ShaderDeclarationDiagnostic> Declarations { get; init; } = [];
     public IReadOnlyList<ShaderInputDiagnostic> Inputs { get; init; } = [];
+    public IReadOnlyList<ShaderTimingDiagnostic> Timings { get; init; } = [];
     public IReadOnlyList<string> Warnings { get; init; } = [];
 
     public static ShaderDiagnosticContext Create(
@@ -28,7 +30,8 @@ public sealed class ShaderDiagnosticContext
         bool isCompute,
         string shaderCode,
         IEnumerable<ShaderStageCompilationDiagnostic> stageCompilations,
-        IEnumerable<string> warnings)
+        IEnumerable<string> warnings,
+        IEnumerable<ShaderTimingDiagnostic> timings = null)
     {
         var stages = stageCompilations?.ToList() ?? [];
         return new ShaderDiagnosticContext
@@ -51,6 +54,7 @@ public sealed class ShaderDiagnosticContext
                 .DistinctBy(i => i.Id)
                 .OrderBy(i => i.Id)
                 .ToList(),
+            Timings = timings?.ToList() ?? [],
             Warnings = warnings?.Where(w => !string.IsNullOrWhiteSpace(w)).ToList() ?? []
         };
     }
@@ -79,6 +83,10 @@ public sealed class ShaderDiagnosticContext
         AppendList(builder, Inputs,
             i => $"  - Id={i.Id}; Name={i.Name}; Type={i.NodeType}; Value={i.ValueDescription}");
 
+        builder.AppendLine("Timings:");
+        AppendList(builder, Timings,
+            t => $"  - {t.Name}: {t.ElapsedMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)} ms");
+
         builder.AppendLine("Warnings:");
         AppendList(builder, Warnings, w => $"  - {w}");
 
@@ -101,6 +109,8 @@ public sealed class ShaderDiagnosticContext
 public readonly record struct ShaderStageCompilationDiagnostic(
     ShaderStageDiagnostic Stage,
     ShaderCompilationResult Result);
+
+public sealed record ShaderTimingDiagnostic(string Name, double ElapsedMilliseconds);
 
 public sealed record ShaderStageDiagnostic(string Key, string RootNodeId, string RootNodeType)
 {

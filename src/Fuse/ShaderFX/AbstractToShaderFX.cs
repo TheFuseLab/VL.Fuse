@@ -118,6 +118,7 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         var sourceStream = new Dictionary<string, (string source, string stream)>();
         var streamDefinesBuilder = new StringBuilder();
         var stageDiagnostics = new List<ShaderStageCompilationDiagnostic>();
+        var timings = new List<ShaderTimingDiagnostic>();
 
 
         foreach (var kv in Inputs)
@@ -125,7 +126,7 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             var shaderInput = kv.Value;
             // Use unified compilation that does CheckHashCodes + CheckContext + property collection in one pass
             HandleShader(_isCompute, theContext, shaderInput, kv.Key, out var source, out var stream, out var streamDefines,
-                out var compiled);
+                out var compiled, timings);
             sourceStream.Add(kv.Key, (source, stream));
             streamDefinesBuilder.AppendLine(streamDefines);
             stageDiagnostics.Add(new ShaderStageCompilationDiagnostic(
@@ -134,6 +135,7 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         }
 
         _stopwatch.Restart();
+        var templateWatch = Stopwatch.StartNew();
         var templateMap = BuildTemplateMap();
         templateMap["streamDeclaration"] = streamDefinesBuilder.ToString();
         CustomTemplates().ForEach(kv => { templateMap.Add(kv.Key, kv.Value); });
@@ -143,17 +145,35 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             templateMap.Add("source" + kv.Key, kv.Value.source);
             templateMap.Add("streams" + kv.Key, kv.Value.stream);
         });
+        timings.Add(new ShaderTimingDiagnostic("BuildTemplateMap", templateWatch.Elapsed.TotalMilliseconds));
+
+        var evaluateWatch = Stopwatch.StartNew();
         ShaderCode = ShaderNodesUtil.Evaluate(_sourceTemplate, templateMap);
+        timings.Add(new ShaderTimingDiagnostic("EvaluateTemplate", evaluateWatch.Elapsed.TotalMilliseconds));
+
+        var checkCodeWatch = Stopwatch.StartNew();
         // ReSharper disable once VirtualMemberCallInConstructor
         ShaderCode = CheckCode(ShaderCode);
+        timings.Add(new ShaderTimingDiagnostic("CheckCode", checkCodeWatch.Elapsed.TotalMilliseconds));
+
+        var formatWatch = Stopwatch.StartNew();
         ShaderCode = ShaderNodesUtil.FormatShaderCode(ShaderCode);
+        timings.Add(new ShaderTimingDiagnostic("FormatShaderCode", formatWatch.Elapsed.TotalMilliseconds));
+
+        var nameWatch = Stopwatch.StartNew();
         ShaderName = "Shader_" + System.Math.Abs(ShaderCode.GetStableHashCode());
+        timings.Add(new ShaderTimingDiagnostic("CreateShaderName", nameWatch.Elapsed.TotalMilliseconds));
         //ShaderName = "Shader_" + ShaderNodesUtil.GetHashCode(_input.NodeContext);
+
+        var shaderIdWatch = Stopwatch.StartNew();
         ShaderCode =
             ShaderNodesUtil.Evaluate(ShaderCode, new Dictionary<string, string> { { "shaderID", ShaderName } });
+        timings.Add(new ShaderTimingDiagnostic("ApplyShaderId", shaderIdWatch.Elapsed.TotalMilliseconds));
 
+        var cleanupWatch = Stopwatch.StartNew();
         ShaderCode =
             ShaderNodesUtil.Evaluate(ShaderCode, m => m.Groups["key"].Value.StartsWith("stage") ? "" : m.Value);
+        timings.Add(new ShaderTimingDiagnostic("RemoveUnresolvedStagePlaceholders", cleanupWatch.Elapsed.TotalMilliseconds));
 
         var diagnosticWarnings = new List<string>();
         if (ShaderNodesUtil.ValidateGeneratedShaderSource &&
@@ -173,6 +193,19 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
         var shaderPhase = _isCompute ? "compute" : "draw";
         var sourcePath = "shaders\\" + ShaderName + ".sdsl";
+
+        foreach (var kv in Inputs) kv.Value.ShaderCode = ShaderCode;
+        if (ShaderNodesUtil.TimeShaderGeneration)
+            Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
+
+        _stopwatch.Restart();
+        var addSourceWatch = Stopwatch.StartNew();
+        ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, sourcePath);
+        timings.Add(new ShaderTimingDiagnostic("AddShaderSource", addSourceWatch.Elapsed.TotalMilliseconds));
+        timings.Add(new ShaderTimingDiagnostic("GenerateShaderSourceTotal", watch.Elapsed.TotalMilliseconds));
+        if (ShaderNodesUtil.TimeShaderGeneration)
+            Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
+
         LastDiagnosticContext = ShaderDiagnosticContext.Create(
             ShaderName,
             shaderPhase,
@@ -180,19 +213,11 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             _isCompute,
             ShaderCode,
             stageDiagnostics,
-            diagnosticWarnings);
+            diagnosticWarnings,
+            timings);
         ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, shaderPhase);
         ShaderNodesUtil.DumpShaderCompileAttempt(ShaderName, ShaderCode, shaderPhase, sourcePath);
         ShaderNodesUtil.DumpShaderDiagnostics(LastDiagnosticContext);
-
-        foreach (var kv in Inputs) kv.Value.ShaderCode = ShaderCode;
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"-> Evaluate: {_stopwatch.ElapsedMilliseconds} ms");
-
-        _stopwatch.Restart();
-        ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, sourcePath);
-        if (ShaderNodesUtil.TimeShaderGeneration)
-            Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");
         // _parameters = theContext.Parameters;
 
         // _input.InputList().ForEach(input => input.AddParameters(_parameters));
@@ -281,7 +306,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     private void HandleShader(bool theIsComputeShader, ShaderGeneratorContext theContext,
         AbstractShaderNode theShaderInput, string theKey,
         out string theSource, out string theStreams, out string theDefinedStreams,
-        out ShaderCompilationResult compiled)
+        out ShaderCompilationResult compiled,
+        List<ShaderTimingDiagnostic> timings)
     {
         var handleShaderWatch = new Stopwatch();
         handleShaderWatch.Start();
@@ -292,18 +318,22 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         // Single unified traversal that collects all properties, validates IDs, and passes context
         // This replaces 9 separate graph traversals with 1
         _stopwatch.Restart();
+        var compilePropertiesWatch = Stopwatch.StartNew();
         compiled = theShaderInput.CompileProperties(theContext);
+        timings.Add(new ShaderTimingDiagnostic($"Stage:{theKey}:CompileProperties", compilePropertiesWatch.Elapsed.TotalMilliseconds));
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     CompileProperties (unified): {_stopwatch.ElapsedMilliseconds} ms");
 
         // Process collected properties
         _stopwatch.Restart();
+        var processPropertiesWatch = Stopwatch.StartNew();
         compiled.Declarations.ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
         compiled.Structs.ForEach(value => _structs.Add(value));
         compiled.ConstantArrays.ForEach(value => _constantArrays.Add(value));
         compiled.Streams.ForEach(value => _streams.Add(value));
         compiled.Mixins.ForEach(value => _mixins.Add(value));
         compiled.Functions.ForEach(HandleFunction);
+        timings.Add(new ShaderTimingDiagnostic($"Stage:{theKey}:ProcessProperties", processPropertiesWatch.Elapsed.TotalMilliseconds));
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     Process properties: {_stopwatch.ElapsedMilliseconds} ms");
 
@@ -311,9 +341,12 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         streamBuilder.AppendLine("        streams. = " + theKey + theShaderInput.ID + ";");
         streamDeclareBuilder.AppendLine("    stream " + TypeHelpers.GetGpuType(theShaderInput) + " " + theKey + ";");
 
+        var buildSourceWatch = Stopwatch.StartNew();
         theSource = theShaderInput.BuildSourceCode();
+        timings.Add(new ShaderTimingDiagnostic($"Stage:{theKey}:BuildSourceCode", buildSourceWatch.Elapsed.TotalMilliseconds));
         theStreams = streamBuilder.ToString();
         theDefinedStreams = streamDeclareBuilder.ToString();
+        timings.Add(new ShaderTimingDiagnostic($"Stage:{theKey}:Total", handleShaderWatch.Elapsed.TotalMilliseconds));
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     Finish Stage: {handleShaderWatch.ElapsedMilliseconds} ms");
     }
