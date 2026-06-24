@@ -11,12 +11,14 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Fuse.ShaderFX;
 using Stride.Core;
+using Stride.Engine;
 using Stride.Core.Mathematics;
 using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
 using VL.Core;
+using VL.Lib.Basics.Resources;
 using VL.Stride;
 using VL.Stride.Rendering;
 using VL.Stride.Rendering.ComputeEffect;
@@ -493,8 +495,8 @@ public static class ShaderNodesUtil
     {
         try
         {
-            var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
-            if (game == null) return;
+            if (!TryGetCurrentGame(out var game))
+                return;
 
             var effectSystem = game.EffectSystem;
             var compiler = effectSystem.Compiler as EffectCompiler;
@@ -517,6 +519,25 @@ public static class ShaderNodesUtil
             DumpShaderException(type, "addshadersource", ex, sourcePath);
             Logging.FuseLogger.Warning($"AddShaderSource failed for {type} ({sourcePath}): {ex.Message}");
         }
+    }
+
+    private static bool TryGetCurrentGame(out Game game)
+    {
+        game = null;
+
+        IResourceProvider<Game> gameProvider;
+        try
+        {
+            gameProvider = AppHost.Current.Services.GetService(typeof(IResourceProvider<Game>)) as IResourceProvider<Game>;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+
+        var gameHandle = gameProvider?.GetHandle();
+        game = gameHandle?.Resource;
+        return game != null;
     }
 
     private static bool TryRegisterShaderSource(

@@ -11,9 +11,11 @@ using System.Threading.Tasks;
 using Fuse;
 using Fuse.compute;
 using Fuse.ShaderFX;
+using Stride.Engine;
 using Stride.Rendering.Materials;
 using VL.TestFramework;
 using VL.Core;
+using VL.Lib.Basics.Resources;
 
 namespace Fuse.Tests
 {
@@ -194,6 +196,42 @@ namespace Fuse.Tests
 
         [Test]
         [Category("FuseShaderTrace")]
+        public void AddShaderSource_WithRegisteredNullGameProvider_ReturnsWithoutServiceLookupFailure()
+        {
+            var previousTrace = ShaderNodesUtil.TraceShaderSource;
+            var previousDirectory = ShaderNodesUtil.ShaderDumpDirectory;
+            var dumpDirectory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "shader-source-service-test");
+
+            try
+            {
+                if (Directory.Exists(dumpDirectory))
+                    Directory.Delete(dumpDirectory, recursive: true);
+                Directory.CreateDirectory(dumpDirectory);
+
+                ShaderNodesUtil.TraceShaderSource = true;
+                ShaderNodesUtil.ShaderDumpDirectory = dumpDirectory;
+
+                var host = GetProperty(testEnvironment, "Host");
+                var appHost = host as AppHost;
+                if (appHost == null)
+                    Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
+
+                appHost.Services.RegisterService<IResourceProvider<Game>>(new NullGameProvider());
+                using (appHost.MakeCurrent())
+                    ShaderNodesUtil.AddShaderSource("Shader_1", "shader Shader_1 {}", "shaders\\Shader_1.sdsl");
+
+                var failureLogs = Directory.GetFiles(dumpDirectory, "*_addshadersource_exception.log");
+                Assert.That(failureLogs, Is.Empty);
+            }
+            finally
+            {
+                ShaderNodesUtil.TraceShaderSource = previousTrace;
+                ShaderNodesUtil.ShaderDumpDirectory = previousDirectory;
+            }
+        }
+
+        [Test]
+        [Category("FuseShaderTrace")]
         public void GenerateMinimalComputeShaderTrace()
         {
             var previousTrace = ShaderNodesUtil.TraceShaderSource;
@@ -233,20 +271,10 @@ namespace Fuse.Tests
                 computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
 
                 var addShaderSourceFailures = Directory.GetFiles(dumpDirectory, "*_addshadersource_exception.log");
-                foreach (var failureLog in addShaderSourceFailures)
-                {
-                    // VL.TestFramework provides an AppHost but does not start a Stride Game service.
-                    TestContext.AddTestAttachment(failureLog, "Fuse AddShaderSource diagnostics");
-                    var failureText = File.ReadAllText(failureLog);
-                    Assert.That(
-                        failureText,
-                        Does.Not.Contain("No app host is installed on the current thread"),
-                        $"AddShaderSource ran without a current AppHost. Failure log: {failureLog}");
-                    Assert.That(
-                        failureText,
-                        Does.Contain("IResourceProvider`1[Stride.Engine.Game]"),
-                        $"Unexpected AddShaderSource failure. Failure log: {failureLog}");
-                }
+                Assert.That(
+                    addShaderSourceFailures,
+                    Is.Empty,
+                    $"AddShaderSource should skip cleanly without a live Stride Game. Failure logs: {string.Join(", ", addShaderSourceFailures)}");
 
                 var diagnosticFiles = Directory.GetFiles(dumpDirectory, "*_diagnostics.log");
                 Assert.That(
@@ -267,6 +295,20 @@ namespace Fuse.Tests
                 ShaderNodesUtil.TraceShaderSource = previousTrace;
                 ShaderNodesUtil.ShaderDumpDirectory = previousDirectory;
                 ShaderNodesUtil.TimeShaderGeneration = previousTiming;
+            }
+        }
+
+        private sealed class NullGameProvider : IResourceProvider<Game>
+        {
+            public IResourceHandle<Game> GetHandle() => new NullGameHandle();
+        }
+
+        private sealed class NullGameHandle : IResourceHandle<Game>
+        {
+            public Game Resource => null;
+
+            public void Dispose()
+            {
             }
         }
 
