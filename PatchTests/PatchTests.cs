@@ -11,8 +11,11 @@ using System.Threading.Tasks;
 using Fuse;
 using Fuse.compute;
 using Fuse.ShaderFX;
+using Stride.Core.Shaders.Utility;
 using Stride.Engine;
 using Stride.Rendering.Materials;
+using Stride.Shaders;
+using Stride.Shaders.Parser.Mixins;
 using VL.TestFramework;
 using VL.Core;
 using VL.Lib.Basics.Resources;
@@ -268,7 +271,9 @@ namespace Fuse.Tests
                     source);
 
                 var computeFx = new ToComputeFx<GpuVoid>(assign);
-                computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+                var shaderSource = computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+                Assert.That(shaderSource, Is.InstanceOf<ShaderClassSource>());
+                AssertGeneratedShaderCanBeLoadedByStandaloneShaderLoader(computeFx);
 
                 var addShaderSourceFailures = Directory.GetFiles(dumpDirectory, "*_addshadersource_exception.log");
                 Assert.That(
@@ -301,6 +306,42 @@ namespace Fuse.Tests
         private sealed class NullGameProvider : IResourceProvider<Game>
         {
             public IResourceHandle<Game> GetHandle() => new NullGameHandle();
+        }
+
+        private static void AssertGeneratedShaderCanBeLoadedByStandaloneShaderLoader(ToComputeFx<GpuVoid> shaderFx)
+        {
+            var diagnostics = shaderFx.LastDiagnosticContext;
+            Assert.That(diagnostics, Is.Not.Null);
+            Assert.That(diagnostics.IsCompute, Is.True);
+
+            var sourceManager = GetStandaloneShaderSourceManager();
+            Assert.That(sourceManager.IsClassExists(diagnostics.ShaderName), Is.True);
+            Assert.That(sourceManager.FindFilePath(diagnostics.ShaderName), Is.EqualTo(diagnostics.SourcePath));
+
+            var loader = new ShaderLoader(sourceManager);
+            var log = new LoggerResult();
+            var loadedShader = loader.LoadClassSource(
+                new ShaderClassSource(diagnostics.ShaderName),
+                Array.Empty<Stride.Core.Shaders.Parser.ShaderMacro>(),
+                log,
+                autoGenericInstances: false);
+
+            Assert.That(log.HasErrors, Is.False, log.ToString());
+            Assert.That(loadedShader, Is.Not.Null);
+            Assert.That(loadedShader.Type, Is.Not.Null);
+            Assert.That(loadedShader.Type.Name.Text, Is.EqualTo(diagnostics.ShaderName));
+            Assert.That(loadedShader.SourcePath, Is.EqualTo(diagnostics.SourcePath));
+        }
+
+        private static ShaderSourceManager GetStandaloneShaderSourceManager()
+        {
+            var method = typeof(ShaderNodesUtil).GetMethod(
+                "TryGetStandaloneShaderSourceManager",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            var args = new object[] { null };
+
+            Assert.That((bool)method.Invoke(null, args), Is.True);
+            return (ShaderSourceManager)args[0];
         }
 
         private sealed class NullGameHandle : IResourceHandle<Game>
