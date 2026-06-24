@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Fuse.compute;
@@ -70,8 +69,6 @@ public class PropertyOfTypeAndIdVisitor<TPropertyType> : IShaderNodeVisitor
 
     public void Visit(AbstractShaderNode node, int recursionLevel)
     {
-        var stopWatch = new Stopwatch();
-        stopWatch.Start();
         if (node.Property.ContainsKey(_propertyId))
             EnumerableExtensions.ForEach<TPropertyType>(node.Property[_propertyId], i => Result.Add(i));
     }
@@ -115,7 +112,7 @@ public class PropertiesTypedVisitor<TProperty> : IShaderNodeVisitor
         foreach (var kv in node.Property)
         {
             var values = kv.Value.OfType<TProperty>();
-            if (values.IsEmpty()) return;
+            if (values.IsEmpty()) continue;
 
             if (!Result.ContainsKey(kv.Key))
             {

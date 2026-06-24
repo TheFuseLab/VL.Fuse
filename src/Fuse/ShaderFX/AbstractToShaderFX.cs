@@ -71,7 +71,6 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         _stages = theStages;
         _sourceTemplate = theSource;
 
-        _stages = theStages;
         Inputs = new Dictionary<string, AbstractShaderNode>();
         var stageCodeMap = new Dictionary<string, string>();
         foreach (var stage in _stages)

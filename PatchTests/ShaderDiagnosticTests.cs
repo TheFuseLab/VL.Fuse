@@ -1,6 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Fuse;
 using NUnit.Framework;
 
@@ -9,6 +12,19 @@ namespace PatchTests;
 [TestFixture]
 public class ShaderDiagnosticTests
 {
+    [Test]
+    public void PropertiesForTree_ContinuesAfterNonMatchingPropertyKey()
+    {
+        var node = CreateTestShaderNode();
+        node.SetProperty("Number", 123);
+        node.SetProperty("Text", "expected");
+
+        var result = node.PropertiesForTree<string>();
+
+        Assert.That(result.Keys, Does.Contain("Text"));
+        Assert.That(result["Text"], Is.EqualTo(new[] { "expected" }));
+    }
+
     [Test]
     public void ShaderDiagnosticContext_Create_CapturesStageDeclarationsAndWarnings()
     {
@@ -104,5 +120,33 @@ public class ShaderDiagnosticTests
             Fuse.Tests.PatchTests.IsKnownExternalPackageCascadeMessageText(
                 "BlendMixer doesn't have a pin called \"Input\"."),
             Is.False);
+    }
+
+    private sealed class TestShaderNode : AbstractShaderNode
+    {
+        private TestShaderNode()
+            : base(null, "Test")
+        {
+        }
+
+        public override AbstractShaderNode AbstractDefault => null;
+
+        public override string ID => "Test";
+
+        public override string TypeName() => "float";
+
+        public override int Dimension() => 1;
+
+        protected override string SourceTemplate() => "";
+    }
+
+    private static TestShaderNode CreateTestShaderNode()
+    {
+        var node = (TestShaderNode)RuntimeHelpers.GetUninitializedObject(typeof(TestShaderNode));
+        typeof(AbstractShaderNode)
+            .GetField("<Property>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?.SetValue(node, new Dictionary<string, IList>());
+        node.Ins = [];
+        return node;
     }
 }
