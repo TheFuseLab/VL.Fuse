@@ -365,6 +365,42 @@ namespace Fuse.Tests
                 string.Join(Environment.NewLine, errors));
         }
 
+        [Test]
+        [Category("FuseShaderTrace")]
+        public void CompileBufferSetComputeShaderWithStandaloneEffectCompiler()
+        {
+            var host = GetProperty(testEnvironment, "Host");
+            var appHost = host as AppHost;
+            if (appHost == null)
+                Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
+
+            using var appHostScope = appHost.MakeCurrent();
+            var rootContext = NodeContext.Create(appHost).CreateSubContext("FuseShaderCompile", "Root");
+            var buffer = new BufferInput<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Buffer"),
+                new BufferTypeTracker<float>(null),
+                null);
+            var index = new ValueInput<int>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Index"),
+                "bufferIndex");
+            var value = new ValueInput<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Value"),
+                "bufferValue");
+            var set = new BufferSet<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Set"),
+                buffer,
+                index,
+                value);
+
+            var computeFx = new ToComputeFx<GpuVoid>(set);
+            var shaderSource = computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+
+            Assert.That(shaderSource, Is.InstanceOf<ShaderClassSource>());
+            AssertGeneratedShaderCanBeLoadedByStandaloneShaderLoader(computeFx);
+            AssertGeneratedShaderCompilesWithStandaloneEffectCompiler(computeFx);
+            Assert.That(computeFx.LastDiagnosticContext.Declarations.Any(d => d.IsResource), Is.True);
+        }
+
         private sealed class NullGameProvider : IResourceProvider<Game>
         {
             public IResourceHandle<Game> GetHandle() => new NullGameHandle();
