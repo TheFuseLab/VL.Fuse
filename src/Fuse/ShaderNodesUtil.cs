@@ -364,6 +364,35 @@ public static class ShaderNodesUtil
         }
     }
 
+    public static void DumpShaderDiagnostics(ShaderDiagnosticContext diagnosticContext, bool force = false)
+    {
+        if (!force && !TraceShaderSource)
+            return;
+
+        if (diagnosticContext == null)
+            return;
+
+        try
+        {
+            var baseDirectory = ResolveShaderDumpDirectory();
+            var safeShaderName = string.Concat((diagnosticContext.ShaderName ?? "UnknownShader")
+                .Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var phase = string.IsNullOrWhiteSpace(diagnosticContext.Phase)
+                ? "unknown"
+                : diagnosticContext.Phase;
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var filePath = Path.Combine(baseDirectory, $"{timestamp}_{safeShaderName}_{phase}_diagnostics.log");
+
+            File.WriteAllText(filePath, diagnosticContext.ToDiagnosticLog());
+            Console.WriteLine($"[FUSE:SHADERTRACE] diagnostics -> {filePath}");
+        }
+        catch (Exception ex)
+        {
+            Logging.FuseLogger.Warning(
+                $"Failed to write shader diagnostics for {diagnosticContext.ShaderName}: {ex.Message}");
+        }
+    }
+
     private static string ResolveShaderDumpDirectory()
     {
         var baseDirectory = ShaderDumpDirectory;
@@ -494,13 +523,25 @@ public static class ShaderNodesUtil
     public static VLComputeEffectShader RegisterComputeShader<T>(ToComputeFx<T> theComputeFx,
         string effectName = "FuseComputeGraph")
     {
-        var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
-        if (game == null) return null;
+        try
+        {
+            var game = AppHost.Current.Services.GetGameProvider().GetHandle().Resource;
+            if (game == null) return null;
 
-        var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
-        var result = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
-        result.Name = effectName;
-        return result;
+            var shaderGraph = ShaderGraph.BuildFinalShaderGraph(theComputeFx);
+            var result = ShaderGraph.ComposeComputeShader(game.GraphicsDevice, game.Services, shaderGraph);
+            result.Name = effectName;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            var diagnosticContext = theComputeFx?.LastDiagnosticContext;
+            var shaderName = diagnosticContext?.ShaderName ?? theComputeFx?.ShaderName ?? effectName;
+            DumpShaderException(shaderName, "composecomputeshader", ex, diagnosticContext?.SourcePath);
+            DumpShaderDiagnostics(diagnosticContext, force: true);
+            Logging.FuseLogger.Error($"RegisterComputeShader failed for {shaderName}", ex);
+            throw;
+        }
     }
 
 

@@ -69,6 +69,10 @@ public class FieldDeclaration
 
     public string TypeName { get; private set; }
 
+    public string ComputeTypeName { get; private set; }
+
+    public string InputName { get; private set; }
+
     public bool IsResource { get; }
 
     private string BuildDeclaration(string theTypeName, string theID)
@@ -84,6 +88,8 @@ public class FieldDeclaration
 
     public void Set(string computeShaderTypeName, string typeName, string theID)
     {
+        InputName = theID;
+        ComputeTypeName = computeShaderTypeName;
         TypeName = typeName;
         _computeShaderDeclaration = BuildDeclaration(computeShaderTypeName, theID);
         _declaration = BuildDeclaration(typeName, theID);

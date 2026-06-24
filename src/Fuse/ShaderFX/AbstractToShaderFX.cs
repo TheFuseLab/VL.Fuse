@@ -88,6 +88,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
     public string ShaderName { get; private set; }
 
+    public ShaderDiagnosticContext LastDiagnosticContext { get; private set; }
+
     public Dictionary<string, AbstractShaderNode> Inputs { get; }
 
     // private ParameterCollection _parameters;
@@ -116,15 +118,20 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         if (ShaderNodesUtil.TimeShaderGeneration) Console.WriteLine($"-> Start Generating Shader {ShaderName}");
         var sourceStream = new Dictionary<string, (string source, string stream)>();
         var streamDefinesBuilder = new StringBuilder();
+        var stageDiagnostics = new List<ShaderStageCompilationDiagnostic>();
 
 
         foreach (var kv in Inputs)
         {
             var shaderInput = kv.Value;
             // Use unified compilation that does CheckHashCodes + CheckContext + property collection in one pass
-            HandleShader(_isCompute, theContext, shaderInput, kv.Key, out var source, out var stream, out var streamDefines);
+            HandleShader(_isCompute, theContext, shaderInput, kv.Key, out var source, out var stream, out var streamDefines,
+                out var compiled);
             sourceStream.Add(kv.Key, (source, stream));
             streamDefinesBuilder.AppendLine(streamDefines);
+            stageDiagnostics.Add(new ShaderStageCompilationDiagnostic(
+                ShaderStageDiagnostic.FromStage(kv.Key, shaderInput),
+                compiled));
         }
 
         _stopwatch.Restart();
@@ -149,9 +156,11 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         ShaderCode =
             ShaderNodesUtil.Evaluate(ShaderCode, m => m.Groups["key"].Value.StartsWith("stage") ? "" : m.Value);
 
+        var diagnosticWarnings = new List<string>();
         if (ShaderNodesUtil.ValidateGeneratedShaderSource &&
             !ShaderNodesUtil.ValidateGeneratedShaderCode(ShaderCode, out var validationReason))
         {
+            diagnosticWarnings.Add("Generated shader failed validation: " + validationReason);
             Logging.FuseLogger.Warning($"Generated shader {ShaderName} failed validation: {validationReason}");
             ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, "invalid");
             if (ShaderNodesUtil.ThrowOnInvalidGeneratedShader)
@@ -165,8 +174,17 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
         var shaderPhase = _isCompute ? "compute" : "draw";
         var sourcePath = "shaders\\" + ShaderName + ".sdsl";
+        LastDiagnosticContext = ShaderDiagnosticContext.Create(
+            ShaderName,
+            shaderPhase,
+            sourcePath,
+            _isCompute,
+            ShaderCode,
+            stageDiagnostics,
+            diagnosticWarnings);
         ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, shaderPhase);
         ShaderNodesUtil.DumpShaderCompileAttempt(ShaderName, ShaderCode, shaderPhase, sourcePath);
+        ShaderNodesUtil.DumpShaderDiagnostics(LastDiagnosticContext);
 
         foreach (var kv in Inputs) kv.Value.ShaderCode = ShaderCode;
         if (ShaderNodesUtil.TimeShaderGeneration)
@@ -263,7 +281,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
     private void HandleShader(bool theIsComputeShader, ShaderGeneratorContext theContext,
         AbstractShaderNode theShaderInput, string theKey,
-        out string theSource, out string theStreams, out string theDefinedStreams)
+        out string theSource, out string theStreams, out string theDefinedStreams,
+        out ShaderCompilationResult compiled)
     {
         var handleShaderWatch = new Stopwatch();
         handleShaderWatch.Start();
@@ -274,7 +293,7 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         // Single unified traversal that collects all properties, validates IDs, and passes context
         // This replaces 9 separate graph traversals with 1
         _stopwatch.Restart();
-        var compiled = theShaderInput.CompileProperties(theContext);
+        compiled = theShaderInput.CompileProperties(theContext);
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     CompileProperties (unified): {_stopwatch.ElapsedMilliseconds} ms");
 
