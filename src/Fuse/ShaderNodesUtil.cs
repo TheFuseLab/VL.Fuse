@@ -510,22 +510,43 @@ public static class ShaderNodesUtil
             if (getParserMethod == null) return;
             if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
 
-            var sourceManager = parser.SourceManager;
-            if (IsShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath))
-            {
-                if (TimeShaderGeneration)
-                    Console.WriteLine($"-> AddShaderSource skipped: {type}");
-                return;
-            }
-
-            sourceManager.AddShaderSource(type, sourceCode, sourcePath);
-            MarkShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath);
+            TryRegisterShaderSource(parser.SourceManager, type, sourceCode, sourcePath);
         }
         catch (Exception ex)
         {
             DumpShaderException(type, "addshadersource", ex, sourcePath);
             Logging.FuseLogger.Warning($"AddShaderSource failed for {type} ({sourcePath}): {ex.Message}");
         }
+    }
+
+    private static bool TryRegisterShaderSource(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        if (sourceManager == null)
+            return false;
+
+        if (IsShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath))
+        {
+            if (TimeShaderGeneration)
+                Console.WriteLine($"-> AddShaderSource skipped: {type}");
+            return false;
+        }
+
+        var addShaderSource = sourceManager.GetType().GetMethod(
+            "AddShaderSource",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            null,
+            [typeof(string), typeof(string), typeof(string)],
+            null);
+        if (addShaderSource == null)
+            return false;
+
+        addShaderSource.Invoke(sourceManager, [type, sourceCode, sourcePath]);
+        MarkShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath);
+        return true;
     }
 
     private static bool IsShaderSourceRegistered(

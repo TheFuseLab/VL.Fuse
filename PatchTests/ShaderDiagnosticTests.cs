@@ -56,6 +56,26 @@ public class ShaderDiagnosticTests
     }
 
     [Test]
+    public void TryRegisterShaderSource_AddsOnlyChangedShaderSource()
+    {
+        var sourceManager = new TestShaderSourceManager();
+
+        Assert.That(
+            TryRegisterShaderSource(sourceManager, "Shader_1", "code A", "shaders\\Shader_1.sdsl"),
+            Is.True);
+        Assert.That(
+            TryRegisterShaderSource(sourceManager, "Shader_1", "code A", "shaders\\Shader_1.sdsl"),
+            Is.False);
+        Assert.That(
+            TryRegisterShaderSource(sourceManager, "Shader_1", "code B", "shaders\\Shader_1.sdsl"),
+            Is.True);
+
+        Assert.That(sourceManager.AddedSources, Has.Count.EqualTo(2));
+        Assert.That(sourceManager.AddedSources[0], Is.EqualTo(("Shader_1", "code A", "shaders\\Shader_1.sdsl")));
+        Assert.That(sourceManager.AddedSources[1], Is.EqualTo(("Shader_1", "code B", "shaders\\Shader_1.sdsl")));
+    }
+
+    [Test]
     public void ShaderDiagnosticContext_Create_CapturesStageDeclarationsAndWarnings()
     {
         var compilation = new ShaderCompilationResult();
@@ -177,6 +197,16 @@ public class ShaderDiagnosticTests
         protected override string SourceTemplate() => "";
     }
 
+    private sealed class TestShaderSourceManager
+    {
+        public List<(string Type, string SourceCode, string SourcePath)> AddedSources { get; } = new();
+
+        public void AddShaderSource(string type, string sourceCode, string sourcePath)
+        {
+            AddedSources.Add((type, sourceCode, sourcePath));
+        }
+    }
+
     private static TestShaderNode CreateTestShaderNode()
     {
         var node = (TestShaderNode)RuntimeHelpers.GetUninitializedObject(typeof(TestShaderNode));
@@ -211,5 +241,18 @@ public class ShaderDiagnosticTests
             BindingFlags.Static | BindingFlags.NonPublic);
 
         method.Invoke(null, new[] { sourceManager, type, sourceCode, sourcePath });
+    }
+
+    private static bool TryRegisterShaderSource(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        var method = typeof(ShaderNodesUtil).GetMethod(
+            "TryRegisterShaderSource",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        return (bool)method.Invoke(null, new[] { sourceManager, type, sourceCode, sourcePath });
     }
 }
