@@ -10,6 +10,7 @@ using NUnit.Framework;
 using Stride.Core.IO;
 using Stride.Shaders.Compiler;
 using Stride.Shaders.Parser;
+using Stride.Shaders.Parser.Mixins;
 
 namespace PatchTests;
 
@@ -81,7 +82,9 @@ public class ShaderDiagnosticTests
     [Test]
     public void TryRegisterShaderSource_RegistersWithStrideShaderSourceManager()
     {
-        var fileProvider = new FileSystemProvider("/", TestContext.CurrentContext.WorkDirectory);
+        var fileProvider = new FileSystemProvider(
+            $"/fuse-test-{Guid.NewGuid():N}",
+            TestContext.CurrentContext.WorkDirectory);
         var compiler = new EffectCompiler(fileProvider);
         var parser = GetMixinParser(compiler);
         var sourceManager = parser.SourceManager;
@@ -101,6 +104,26 @@ public class ShaderDiagnosticTests
         Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.EqualTo(hashA));
 
         Assert.That(TryRegisterShaderSource(sourceManager, shaderName, sourceCodeB, sourcePath), Is.True);
+        Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.Not.EqualTo(hashA));
+    }
+
+    [Test]
+    public void AddShaderSource_RegistersWithStandaloneStrideShaderSourceManager()
+    {
+        var shaderName = $"Shader_StandaloneRegistrationTest_{Guid.NewGuid():N}";
+        var sourcePath = $"shaders\\{shaderName}.sdsl";
+        var sourceCodeA = $"shader {shaderName} {{ }}";
+        var sourceCodeB = $"shader {shaderName} {{ stage stream float4 Color; }}";
+
+        ShaderNodesUtil.AddShaderSource(shaderName, sourceCodeA, sourcePath);
+
+        var sourceManager = GetStandaloneShaderSourceManager();
+        Assert.That(sourceManager.IsClassExists(shaderName), Is.True);
+        Assert.That(sourceManager.FindFilePath(shaderName), Is.EqualTo(sourcePath));
+        var hashA = sourceManager.GetShaderSourceHash(shaderName);
+
+        ShaderNodesUtil.AddShaderSource(shaderName, sourceCodeB, sourcePath);
+
         Assert.That(sourceManager.GetShaderSourceHash(shaderName), Is.Not.EqualTo(hashA));
     }
 
@@ -292,5 +315,16 @@ public class ShaderDiagnosticTests
             BindingFlags.Instance | BindingFlags.NonPublic);
 
         return (ShaderMixinParser)method.Invoke(compiler, null);
+    }
+
+    private static ShaderSourceManager GetStandaloneShaderSourceManager()
+    {
+        var method = typeof(ShaderNodesUtil).GetMethod(
+            "TryGetStandaloneShaderSourceManager",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        var args = new object[] { null };
+
+        Assert.That((bool)method.Invoke(null, args), Is.True);
+        return (ShaderSourceManager)args[0];
     }
 }

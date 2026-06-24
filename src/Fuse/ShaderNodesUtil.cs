@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Fuse.ShaderFX;
 using Stride.Core;
+using Stride.Core.IO;
 using Stride.Engine;
 using Stride.Core.Mathematics;
 using Stride.Rendering;
@@ -100,6 +101,10 @@ public static class ShaderNodesUtil
     private static readonly PropertyKey<int> VarIDCounterKey =
         new("Fuse.FuseIDCounter", typeof(int), DefaultValueMetadata.Static(0, true));
     private static readonly ConditionalWeakTable<object, ShaderSourceRegistrationCache> ShaderSourceRegistrations = new();
+    private static readonly string StandaloneShaderSourceRootPath =
+        $"/fuse-standalone-shader-sources-{Guid.NewGuid():N}";
+    private static readonly object StandaloneShaderSourceManagerLock = new();
+    private static object StandaloneShaderSourceManager;
 
     public static int Id2;
 
@@ -495,30 +500,28 @@ public static class ShaderNodesUtil
     {
         try
         {
-            if (!TryGetCurrentGame(out var game))
+            if (!TryGetCurrentShaderSourceManager(out var sourceManager)
+                && !TryGetStandaloneShaderSourceManager(out sourceManager))
                 return;
 
-            var effectSystem = game.EffectSystem;
-            var compiler = effectSystem.Compiler as EffectCompiler;
-            if (compiler is null && effectSystem.Compiler is EffectCompilerCache effectCompilerCache)
-                compiler = typeof(EffectCompilerChain)
-                    .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
-                    ?.GetValue(effectCompilerCache) as EffectCompiler;
-
-            if (compiler == null) return;
-
-            var getParserMethod =
-                typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
-            if (getParserMethod == null) return;
-            if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
-
-            TryRegisterShaderSource(parser.SourceManager, type, sourceCode, sourcePath);
+            TryRegisterShaderSource(sourceManager, type, sourceCode, sourcePath);
         }
         catch (Exception ex)
         {
             DumpShaderException(type, "addshadersource", ex, sourcePath);
             Logging.FuseLogger.Warning($"AddShaderSource failed for {type} ({sourcePath}): {ex.Message}");
         }
+    }
+
+    private static bool TryGetCurrentShaderSourceManager(out object sourceManager)
+    {
+        sourceManager = null;
+
+        if (!TryGetCurrentGame(out var game))
+            return false;
+
+        var compiler = GetEffectCompiler(game.EffectSystem?.Compiler);
+        return TryGetShaderSourceManager(compiler, out sourceManager);
     }
 
     private static bool TryGetCurrentGame(out Game game)
@@ -538,6 +541,59 @@ public static class ShaderNodesUtil
         var gameHandle = gameProvider?.GetHandle();
         game = gameHandle?.Resource;
         return game != null;
+    }
+
+    private static bool TryGetStandaloneShaderSourceManager(out object sourceManager)
+    {
+        lock (StandaloneShaderSourceManagerLock)
+        {
+            if (StandaloneShaderSourceManager == null)
+                StandaloneShaderSourceManager = CreateStandaloneShaderSourceManager();
+
+            sourceManager = StandaloneShaderSourceManager;
+        }
+
+        return sourceManager != null;
+    }
+
+    private static object CreateStandaloneShaderSourceManager()
+    {
+        var fileProvider = new FileSystemProvider(StandaloneShaderSourceRootPath, Environment.CurrentDirectory);
+        var compiler = new EffectCompiler(fileProvider);
+        return TryGetShaderSourceManager(compiler, out var sourceManager)
+            ? sourceManager
+            : null;
+    }
+
+    private static EffectCompiler GetEffectCompiler(IEffectCompiler compiler)
+    {
+        if (compiler is EffectCompiler effectCompiler)
+            return effectCompiler;
+
+        if (compiler is EffectCompilerCache effectCompilerCache)
+            return typeof(EffectCompilerChain)
+                .GetProperty("Compiler", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.GetValue(effectCompilerCache) as EffectCompiler;
+
+        return null;
+    }
+
+    private static bool TryGetShaderSourceManager(EffectCompiler compiler, out object sourceManager)
+    {
+        sourceManager = null;
+        if (compiler == null)
+            return false;
+
+        var getParserMethod =
+            typeof(EffectCompiler).GetMethod("GetMixinParser", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (getParserMethod == null)
+            return false;
+
+        if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser))
+            return false;
+
+        sourceManager = parser.SourceManager;
+        return sourceManager != null;
     }
 
     private static bool TryRegisterShaderSource(
