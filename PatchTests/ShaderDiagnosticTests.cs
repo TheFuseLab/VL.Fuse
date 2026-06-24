@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -37,6 +38,21 @@ public class ShaderDiagnosticTests
 
         Assert.That(values, Is.EqualTo(new[] { "b", "a", "c" }));
         Assert.That(values.Count, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void ShaderSourceRegistrationCache_IsScopedToSourceManagerAndSourceText()
+    {
+        var sourceManagerA = new object();
+        var sourceManagerB = new object();
+
+        Assert.That(IsShaderSourceRegistered(sourceManagerA, "Shader_1", "code A", "shaders\\Shader_1.sdsl"), Is.False);
+
+        MarkShaderSourceRegistered(sourceManagerA, "Shader_1", "code A", "shaders\\Shader_1.sdsl");
+
+        Assert.That(IsShaderSourceRegistered(sourceManagerA, "Shader_1", "code A", "shaders\\Shader_1.sdsl"), Is.True);
+        Assert.That(IsShaderSourceRegistered(sourceManagerA, "Shader_1", "code B", "shaders\\Shader_1.sdsl"), Is.False);
+        Assert.That(IsShaderSourceRegistered(sourceManagerB, "Shader_1", "code A", "shaders\\Shader_1.sdsl"), Is.False);
     }
 
     [Test]
@@ -162,5 +178,31 @@ public class ShaderDiagnosticTests
             ?.SetValue(node, new Dictionary<string, IList>());
         node.Ins = [];
         return node;
+    }
+
+    private static bool IsShaderSourceRegistered(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        var method = typeof(ShaderNodesUtil).GetMethod(
+            "IsShaderSourceRegistered",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        return (bool)method.Invoke(null, new[] { sourceManager, type, sourceCode, sourcePath });
+    }
+
+    private static void MarkShaderSourceRegistered(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        var method = typeof(ShaderNodesUtil).GetMethod(
+            "MarkShaderSourceRegistered",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        method.Invoke(null, new[] { sourceManager, type, sourceCode, sourcePath });
     }
 }

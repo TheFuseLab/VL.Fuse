@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -96,6 +97,7 @@ public static class ShaderNodesUtil
 
     private static readonly PropertyKey<int> VarIDCounterKey =
         new("Fuse.FuseIDCounter", typeof(int), DefaultValueMetadata.Static(0, true));
+    private static readonly ConditionalWeakTable<object, ShaderSourceRegistrationCache> ShaderSourceRegistrations = new();
 
     public static int Id2;
 
@@ -509,7 +511,15 @@ public static class ShaderNodesUtil
             if (!(getParserMethod.Invoke(compiler, null) is ShaderMixinParser parser)) return;
 
             var sourceManager = parser.SourceManager;
+            if (IsShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath))
+            {
+                if (TimeShaderGeneration)
+                    Console.WriteLine($"-> AddShaderSource skipped: {type}");
+                return;
+            }
+
             sourceManager.AddShaderSource(type, sourceCode, sourcePath);
+            MarkShaderSourceRegistered(sourceManager, type, sourceCode, sourcePath);
         }
         catch (Exception ex)
         {
@@ -517,6 +527,59 @@ public static class ShaderNodesUtil
             Logging.FuseLogger.Warning($"AddShaderSource failed for {type} ({sourcePath}): {ex.Message}");
         }
     }
+
+    private static bool IsShaderSourceRegistered(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        if (sourceManager == null)
+            return false;
+
+        return ShaderSourceRegistrations.GetOrCreateValue(sourceManager)
+            .Contains(type, sourcePath, sourceCode);
+    }
+
+    private static void MarkShaderSourceRegistered(
+        object sourceManager,
+        string type,
+        string sourceCode,
+        string sourcePath)
+    {
+        if (sourceManager == null)
+            return;
+
+        ShaderSourceRegistrations.GetOrCreateValue(sourceManager)
+            .AddOrUpdate(type, sourcePath, sourceCode);
+    }
+
+    private sealed class ShaderSourceRegistrationCache
+    {
+        private readonly object _lock = new();
+        private readonly Dictionary<ShaderSourceRegistrationKey, string> _sources = new();
+
+        public bool Contains(string type, string sourcePath, string sourceCode)
+        {
+            var key = new ShaderSourceRegistrationKey(type ?? "", sourcePath ?? "");
+            lock (_lock)
+            {
+                return _sources.TryGetValue(key, out var registeredSourceCode)
+                    && string.Equals(registeredSourceCode, sourceCode ?? "", StringComparison.Ordinal);
+            }
+        }
+
+        public void AddOrUpdate(string type, string sourcePath, string sourceCode)
+        {
+            var key = new ShaderSourceRegistrationKey(type ?? "", sourcePath ?? "");
+            lock (_lock)
+            {
+                _sources[key] = sourceCode ?? "";
+            }
+        }
+    }
+
+    private readonly record struct ShaderSourceRegistrationKey(string Type, string SourcePath);
 
     // ReSharper disable once UnusedMember.Global
     // accessed from vl
