@@ -6,8 +6,14 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Fuse;
+using Fuse.compute;
+using Fuse.ShaderFX;
+using Stride.Rendering.Materials;
 using VL.TestFramework;
+using VL.Core;
 
 namespace Fuse.Tests
 {
@@ -183,6 +189,130 @@ namespace Fuse.Tests
                     Assert.Ignore(failure.Report);
 
                 throw new AssertionException(failure.Report, ex);
+            }
+        }
+
+        [Test]
+        [Category("FuseShaderTrace")]
+        public void GenerateMinimalComputeShaderTrace()
+        {
+            var previousTrace = ShaderNodesUtil.TraceShaderSource;
+            var previousDirectory = ShaderNodesUtil.ShaderDumpDirectory;
+            var previousTiming = ShaderNodesUtil.TimeShaderGeneration;
+            var dumpDirectory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "shader-trace");
+
+            try
+            {
+                if (Directory.Exists(dumpDirectory))
+                    Directory.Delete(dumpDirectory, recursive: true);
+                Directory.CreateDirectory(dumpDirectory);
+
+                ShaderNodesUtil.TraceShaderSource = true;
+                ShaderNodesUtil.ShaderDumpDirectory = dumpDirectory;
+                ShaderNodesUtil.TimeShaderGeneration = true;
+
+                var host = GetProperty(testEnvironment, "Host");
+                var appHost = host as AppHost;
+                if (appHost == null)
+                    Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
+
+                var rootContext = NodeContext.Create(appHost).CreateSubContext("FuseShaderTrace", "Root");
+                var target = new ValueInput<float>(
+                    rootContext.CreateSubContext("FuseShaderTrace", "Target"),
+                    "traceTarget");
+                var source = new ValueInput<float>(
+                    rootContext.CreateSubContext("FuseShaderTrace", "Source"),
+                    "traceSource");
+                var assign = new AssignValue<float>(
+                    rootContext.CreateSubContext("FuseShaderTrace", "Assign"),
+                    target,
+                    source);
+
+                var computeFx = new ToComputeFx<GpuVoid>(assign);
+                computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+
+                var diagnosticFiles = Directory.GetFiles(dumpDirectory, "*_diagnostics.log");
+                Assert.That(
+                    diagnosticFiles,
+                    Is.Not.Empty,
+                    $"No shader diagnostics were written to {dumpDirectory}.");
+
+                var summaryPath = Path.Combine(dumpDirectory, "shader-trace-summary.txt");
+                File.WriteAllText(summaryPath, BuildShaderTraceSummary(diagnosticFiles));
+                TestContext.AddTestAttachment(summaryPath, "Fuse shader trace timing summary");
+                foreach (var diagnosticFile in diagnosticFiles.Take(5))
+                    TestContext.AddTestAttachment(diagnosticFile, "Fuse shader diagnostics");
+
+                TestContext.WriteLine(File.ReadAllText(summaryPath));
+            }
+            finally
+            {
+                ShaderNodesUtil.TraceShaderSource = previousTrace;
+                ShaderNodesUtil.ShaderDumpDirectory = previousDirectory;
+                ShaderNodesUtil.TimeShaderGeneration = previousTiming;
+            }
+        }
+
+        private static string BuildShaderTraceSummary(IEnumerable<string> diagnosticFiles)
+        {
+            var builder = new StringBuilder();
+            var files = diagnosticFiles.OrderBy(path => path).ToList();
+            builder.AppendLine($"Shader diagnostic files: {files.Count}");
+
+            foreach (var file in files)
+            {
+                var lines = File.ReadAllLines(file);
+                var shader = lines.FirstOrDefault(line => line.StartsWith("Shader:", StringComparison.Ordinal))
+                    ?? $"Shader: {Path.GetFileName(file)}";
+                var phase = lines.FirstOrDefault(line => line.StartsWith("Phase:", StringComparison.Ordinal))
+                    ?? "Phase: <unknown>";
+                var timings = ParseTimingLines(lines).OrderByDescending(t => t.ElapsedMilliseconds).ToList();
+
+                builder.AppendLine();
+                builder.AppendLine(shader);
+                builder.AppendLine(phase);
+                builder.AppendLine("Top timings:");
+                foreach (var timing in timings.Take(10))
+                    builder.AppendLine($"  {timing.Name}: {timing.ElapsedMilliseconds:0.###} ms");
+
+                if (timings.Count == 0)
+                    builder.AppendLine("  <none>");
+            }
+
+            return builder.ToString();
+        }
+
+        private static IEnumerable<(string Name, double ElapsedMilliseconds)> ParseTimingLines(IEnumerable<string> lines)
+        {
+            var timingPattern = new Regex(@"^\s*-\s*(?<name>.+):\s*(?<elapsed>\d+(?:\.\d+)?)\s*ms\s*$");
+            var inTimingSection = false;
+
+            foreach (var line in lines)
+            {
+                if (line == "Timings:")
+                {
+                    inTimingSection = true;
+                    continue;
+                }
+
+                if (!inTimingSection)
+                    continue;
+
+                if (!line.StartsWith("  ", StringComparison.Ordinal))
+                    yield break;
+
+                var match = timingPattern.Match(line);
+                if (!match.Success)
+                    continue;
+
+                if (double.TryParse(
+                        match.Groups["elapsed"].Value,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var elapsedMilliseconds))
+                {
+                    yield return (match.Groups["name"].Value, elapsedMilliseconds);
+                }
             }
         }
 
