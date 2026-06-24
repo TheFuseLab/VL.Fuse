@@ -26,6 +26,20 @@ public class ShaderDiagnosticTests
     }
 
     [Test]
+    public void OrderedUniqueCollection_PreservesFirstSeenOrder()
+    {
+        var values = new OrderedUniqueCollection<string>();
+
+        values.Add("b");
+        values.Add("a");
+        values.Add("b");
+        values.Add("c");
+
+        Assert.That(values, Is.EqualTo(new[] { "b", "a", "c" }));
+        Assert.That(values.Count, Is.EqualTo(3));
+    }
+
+    [Test]
     public void ShaderDiagnosticContext_Create_CapturesStageDeclarationsAndWarnings()
     {
         var compilation = new ShaderCompilationResult();

@@ -39,25 +39,25 @@ public abstract class AbstractStage
 
 public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 {
-    private readonly HashSet<string> _compositions = [];
-    private readonly HashSet<string> _constantArrays = [];
+    private readonly OrderedUniqueCollection<string> _compositions = [];
+    private readonly OrderedUniqueCollection<string> _constantArrays = [];
 
     private readonly Dictionary<string, string> _customTemplate;
 
-    private readonly HashSet<string> _declarations = [];
+    private readonly OrderedUniqueCollection<string> _declarations = [];
     private readonly Dictionary<string, string> _functionMap = new();
-    private readonly HashSet<string> _groupDeclarations = [];
+    private readonly OrderedUniqueCollection<string> _groupDeclarations = [];
 
     private readonly bool _isCompute;
-    private readonly HashSet<string> _mixins = [];
+    private readonly OrderedUniqueCollection<string> _mixins = [];
 
     private readonly string _sourceTemplate;
 
     private readonly List<AbstractStage> _stages;
 
     private readonly Stopwatch _stopwatch = new();
-    private readonly HashSet<string> _streams = [];
-    private readonly HashSet<string> _structs = [];
+    private readonly OrderedUniqueCollection<string> _streams = [];
+    private readonly OrderedUniqueCollection<string> _structs = [];
 
     protected AbstractToShaderFX(
         List<AbstractStage> theStages,
