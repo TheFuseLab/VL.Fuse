@@ -328,6 +328,43 @@ namespace Fuse.Tests
             AssertGeneratedShaderCompilesWithStandaloneEffectCompiler(computeFx);
         }
 
+        [Test]
+        [Category("FuseShaderTrace")]
+        public void CompileAssigningToValueInputReportsImmutableCBufferDiagnostic()
+        {
+            var host = GetProperty(testEnvironment, "Host");
+            var appHost = host as AppHost;
+            if (appHost == null)
+                Assert.Fail($"TestEnvironment host is not a VL AppHost: {host?.GetType().FullName ?? "<null>"}");
+
+            using var appHostScope = appHost.MakeCurrent();
+            var rootContext = NodeContext.Create(appHost).CreateSubContext("FuseShaderCompile", "Root");
+            var target = new ValueInput<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Target"),
+                "compileTarget");
+            var source = new ValueInput<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Source"),
+                "compileSource");
+            var assign = new AssignValue<float>(
+                rootContext.CreateSubContext("FuseShaderCompile", "Assign"),
+                target,
+                source);
+
+            var computeFx = new ToComputeFx<GpuVoid>(assign);
+            var shaderSource = computeFx.GenerateShaderSource(new ShaderGeneratorContext(), null);
+
+            Assert.That(shaderSource, Is.InstanceOf<ShaderClassSource>());
+            AssertGeneratedShaderCanBeLoadedByStandaloneShaderLoader(computeFx);
+
+            var (_, errors) = CompileGeneratedShaderWithStandaloneEffectCompiler(computeFx);
+            Assert.That(
+                errors.Any(error =>
+                    error.Contains("X3025", StringComparison.OrdinalIgnoreCase) ||
+                    error.Contains("global variables are implicitly constant", StringComparison.OrdinalIgnoreCase)),
+                Is.True,
+                string.Join(Environment.NewLine, errors));
+        }
+
         private sealed class NullGameProvider : IResourceProvider<Game>
         {
             public IResourceHandle<Game> GetHandle() => new NullGameHandle();
@@ -359,6 +396,17 @@ namespace Fuse.Tests
         }
 
         private static void AssertGeneratedShaderCompilesWithStandaloneEffectCompiler(ToComputeFx<GpuVoid> shaderFx)
+        {
+            var (result, errors) = CompileGeneratedShaderWithStandaloneEffectCompiler(shaderFx);
+
+            Assert.That(errors, Is.Empty, string.Join(Environment.NewLine, errors));
+            Assert.That(result.Bytecode, Is.Not.Null);
+            Assert.That(result.Bytecode.Stages, Is.Not.Null.And.Not.Empty);
+            Assert.That(result.Bytecode.Reflection, Is.Not.Null);
+        }
+
+        private static (EffectBytecodeCompilerResult Result, string[] Errors)
+            CompileGeneratedShaderWithStandaloneEffectCompiler(ToComputeFx<GpuVoid> shaderFx)
         {
             var diagnostics = shaderFx.LastDiagnosticContext;
             Assert.That(diagnostics, Is.Not.Null);
@@ -392,10 +440,7 @@ namespace Fuse.Tests
                 .Select(message => message.ToString())
                 .ToArray();
 
-            Assert.That(errors, Is.Empty, string.Join(Environment.NewLine, errors));
-            Assert.That(result.Bytecode, Is.Not.Null);
-            Assert.That(result.Bytecode.Stages, Is.Not.Null.And.Not.Empty);
-            Assert.That(result.Bytecode.Reflection, Is.Not.Null);
+            return (result, errors);
         }
 
         private static ShaderSourceManager GetStandaloneShaderSourceManager()
