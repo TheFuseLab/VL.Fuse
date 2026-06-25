@@ -244,6 +244,7 @@ shader FuseRenderingBoxGridProject {
         float3 roomDimensions,
         float4 zoomRegion,
         float3 viewerPosition,
+        out float3 hitPoint,
         out int   hitSurfaceIndex,
         out float2 out_faceUV01,
         out float2 UV,
@@ -258,7 +259,6 @@ shader FuseRenderingBoxGridProject {
 
         float3 roomSpacePos = mul(float4(particlePos, 1.0), roomTransform).xyz;
         float3 rayDir = normalize(roomSpacePos - viewerPosition);
-        float3 hitPoint;
         
         bool hit = rayBoxIntersection(viewerPosition, rayDir, roomCenter, roomDimensions, hitPoint, hitSurfaceIndex);
 
@@ -282,6 +282,7 @@ shader FuseRenderingBoxGridProject {
         float3 roomDimensions,
         float4 zoomRegion,
         float3 viewerPosition,
+        out float3 hitPoint,
         out int   hitSurfaceIndex,
         out float2 out_faceUV01,
         out float2 UV,
@@ -292,7 +293,7 @@ shader FuseRenderingBoxGridProject {
     {
         float3 result = projectParticleRaw(
             particlePos, roomTransform, roomCenter, roomDimensions, zoomRegion,
-            viewerPosition, hitSurfaceIndex, out_faceUV01, UV,
+            viewerPosition, hitPoint, hitSurfaceIndex, out_faceUV01, UV,
             faceLayoutInfo, crossLayoutInfo
         );
 
