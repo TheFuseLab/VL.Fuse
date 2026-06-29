@@ -254,6 +254,8 @@ public abstract class ChangeableObjectInput<T> : ObjectInput<T> where T : class
 public class TextureTypeTracker : GpuTypeTracker<Texture>
 {
     private bool _useRw;
+    private TextureDimension? _expectedDimension;
+    private PixelFormat? _expectedFormat;
 
     public TextureTypeTracker(bool theUseRw)
     {
@@ -265,9 +267,25 @@ public class TextureTypeTracker : GpuTypeTracker<Texture>
         _useRw = theUseRw;
     }
 
+    public void SetExpectedType(TextureDimension dimension, PixelFormat format)
+    {
+        _expectedDimension = dimension;
+        _expectedFormat = format;
+    }
+
     protected override string DefineGpuType(Texture value)
     {
-        if (value == null) return "Texture2D";
+        if (value == null)
+        {
+            return _expectedDimension switch
+            {
+                TextureDimension.Texture1D => "Texture1D",
+                TextureDimension.Texture2D => "Texture2D",
+                TextureDimension.Texture3D => "Texture3D",
+                TextureDimension.TextureCube => "TextureCube",
+                _ => "Texture2D"
+            };
+        }
 
         return
             value.Dimension switch
@@ -282,19 +300,37 @@ public class TextureTypeTracker : GpuTypeTracker<Texture>
 
     protected override string DefineComputeGpuType(Texture value)
     {
-        return value == null ? "Texture2D<float4>" : TypeHelpers.TextureTypeName(value, _useRw);
+        if (value != null)
+            return TypeHelpers.TextureTypeName(value, _useRw);
+        if (_expectedDimension.HasValue && _expectedFormat.HasValue)
+            return TypeHelpers.TextureTypeName(_expectedDimension.Value, _expectedFormat.Value, _useRw);
+
+        return "Texture2D<float4>";
     }
 }
 
 public class TextureInput : ChangeableObjectInput<Texture>, ITextureInput, ITextureInputProvider
 {
-    public TextureInput(NodeContext nodeContext, TextureTypeTracker theTypeTracker) : base(nodeContext, theTypeTracker,
+    public TextureInput(NodeContext nodeContext, TextureTypeTracker theTypeTracker, string textureName = null) : base(nodeContext, theTypeTracker,
         "TextureInput")
     {
         TextureTypeTracker = theTypeTracker;
+        SetTextureName(textureName);
     }
 
     public TextureTypeTracker TextureTypeTracker { get; }
+
+    public string TextureName { get; private set; }
+
+    public TextureInput SetTextureName(string textureName)
+    {
+        TextureName = string.IsNullOrWhiteSpace(textureName)
+            ? null
+            : ShaderNodesUtil.FixName(textureName.Trim());
+        Name = string.IsNullOrWhiteSpace(TextureName) ? "TextureInput" : TextureName;
+        OnUpdateName();
+        return this;
+    }
 
     public string TextureID()
     {
@@ -314,6 +350,19 @@ public class TextureInput : ChangeableObjectInput<Texture>, ITextureInput, IText
     public void SetTexture(bool theUseRW, Texture theTexture)
     {
         TextureTypeTracker.SetUseRw(theUseRW);
+        TextureTypeTracker.CheckDeclaration(theTexture);
+        OnUpdateName();
+        Value = theTexture;
+    }
+
+    public void SetTexture(
+        bool theUseRW,
+        Texture theTexture,
+        PixelFormat expectedFormat,
+        TextureDimension expectedDimension)
+    {
+        TextureTypeTracker.SetUseRw(theUseRW);
+        TextureTypeTracker.SetExpectedType(expectedDimension, expectedFormat);
         TextureTypeTracker.CheckDeclaration(theTexture);
         OnUpdateName();
         Value = theTexture;

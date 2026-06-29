@@ -13,26 +13,22 @@ public static class ConstantHelper
     {
         if (typeof(T) == typeof(float)) return new ConstantValue<T>((T)Convert.ChangeType(theValue, typeof(float)));
         if (typeof(T) == typeof(Vector2))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Vector2(theValue, theValue), typeof(Vector2)));
+            return new ConstantValue<T>((T)(object)new Vector2(theValue, theValue));
         if (typeof(T) == typeof(Vector3))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Vector3(theValue, theValue, theValue),
-                typeof(Vector3)));
+            return new ConstantValue<T>((T)(object)new Vector3(theValue, theValue, theValue));
         if (typeof(T) == typeof(Vector4))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Vector4(theValue, theValue, theValue, theValue),
-                typeof(Vector4)));
+            return new ConstantValue<T>((T)(object)new Vector4(theValue, theValue, theValue, theValue));
         if (typeof(T) == typeof(Color4))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Color4(theValue, theValue, theValue, theValue),
-                typeof(Color4)));
+            return new ConstantValue<T>((T)(object)new Color4(theValue, theValue, theValue, theValue));
 
         var intValue = (int)theValue;
         if (typeof(T) == typeof(int)) return new ConstantValue<T>((T)Convert.ChangeType(intValue, typeof(int)));
         if (typeof(T) == typeof(Int2))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Int2(intValue, intValue), typeof(Int2)));
+            return new ConstantValue<T>((T)(object)new Int2(intValue, intValue));
         if (typeof(T) == typeof(Int3))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Int3(intValue, intValue, intValue), typeof(Int3)));
+            return new ConstantValue<T>((T)(object)new Int3(intValue, intValue, intValue));
         if (typeof(T) == typeof(Int4))
-            return new ConstantValue<T>((T)Convert.ChangeType(new Int4(intValue, intValue, intValue, intValue),
-                typeof(Int4)));
+            return new ConstantValue<T>((T)(object)new Int4(intValue, intValue, intValue, intValue));
 
         var boolValue = theValue > 0;
         if (typeof(T) == typeof(bool)) return new ConstantValue<T>((T)Convert.ChangeType(boolValue, typeof(bool)));
@@ -103,7 +99,7 @@ public interface IConstantValue
 
 public class ConstantValue<T> : ShaderNode<T>, IConstantValue
 {
-    public ConstantValue(T theValue) : base(NodeContext.CurrentRoot, "constant", null, false)
+    public ConstantValue(T theValue) : base(null, "constant", null, false)
     {
         Value = theValue;
         HasFixedName = true;

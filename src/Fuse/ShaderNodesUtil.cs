@@ -811,6 +811,9 @@ public static class ShaderNodesUtil
 
     public static uint GetHashCode(NodeContext nodeContext)
     {
+        if (nodeContext == null)
+            return (uint)GetStableHashCode("NullNodeContext");
+
         var s = nodeContext.Path.ToString();
         /*    if (_sCurrentParentContext != null)
                s += _sCurrentParentContext.Path.ToString();

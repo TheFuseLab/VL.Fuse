@@ -1,0 +1,22 @@
+using System.Runtime.CompilerServices;
+using Fuse.compute;
+using VL.Core.Import;
+
+[assembly: InternalsVisibleTo("PatchTests")]
+[assembly: ImportType(typeof(ComputeStage))]
+[assembly: ImportType(typeof(Buffer1DDispatchInfo))]
+[assembly: ImportType(typeof(ComputeGraph))]
+[assembly: ImportType(typeof(ComputeGraph1D))]
+[assembly: ImportType(typeof(ComputeGraph2D))]
+[assembly: ImportType(typeof(ComputeGraph3D))]
+[assembly: ImportType(typeof(ComputeStageGroupSpectral))]
+[assembly: ImportType(typeof(ComputeStageGroup))]
+[assembly: ImportType(typeof(ComputeSystemSpectral))]
+[assembly: ImportType(typeof(ComputeSystem))]
+[assembly: ImportType(typeof(StructuredBufferResourceDispatchInfo))]
+[assembly: ImportType(typeof(StructuredBufferResource))]
+[assembly: ImportType(typeof(TextureDispatchInfo))]
+[assembly: ImportType(typeof(TextureResource))]
+[assembly: ImportType(typeof(ToComputeStage))]
+[assembly: ImportType(typeof(Average<,>))]
+[assembly: ImportType(typeof(Laplace2DKarlSims<>))]

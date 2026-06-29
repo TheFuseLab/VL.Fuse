@@ -178,7 +178,31 @@ public static class TypeHelpers
             _ => "Texture2D"
         };
 
-        var textureDataType = theTexture.Format switch
+        var textureDataType = TextureDataTypeName(theTexture.Format);
+
+        if ((theTexture.Flags & TextureFlags.UnorderedAccess) == TextureFlags.UnorderedAccess && theUseRW)
+            return "RW" + textureType + "<" + textureDataType + ">";
+
+        return textureType + "<" + textureDataType + ">";
+    }
+
+    public static string TextureTypeName(TextureDimension dimension, PixelFormat format, bool useRw)
+    {
+        var textureType = dimension switch
+        {
+            TextureDimension.Texture1D => "Texture1D",
+            TextureDimension.Texture2D => "Texture2D",
+            TextureDimension.Texture3D => "Texture3D",
+            TextureDimension.TextureCube => "TextureCube",
+            _ => "Texture2D"
+        };
+
+        return (useRw ? "RW" : "") + textureType + "<" + TextureDataTypeName(format) + ">";
+    }
+
+    public static string TextureDataTypeName(PixelFormat format)
+    {
+        return format switch
         {
             PixelFormat.R32_UInt => "uint",
             PixelFormat.R32_SInt => "int",
@@ -194,11 +218,6 @@ public static class TypeHelpers
             PixelFormat.R32G32B32A32_Float => "float4",
             _ => "float4"
         };
-
-        if ((theTexture.Flags & TextureFlags.UnorderedAccess) == TextureFlags.UnorderedAccess && theUseRW)
-            return "RW" + textureType + "<" + textureDataType + ">";
-
-        return textureType + "<" + textureDataType + ">";
     }
 
     public static string BufferTypeName(Buffer theBuffer, string theType, BufferType theBufferType)

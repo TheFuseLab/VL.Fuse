@@ -89,6 +89,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
     public ShaderDiagnosticContext LastDiagnosticContext { get; private set; }
 
+    public bool RegisterGeneratedShaderSource { get; set; } = true;
+
     public Dictionary<string, AbstractShaderNode> Inputs { get; }
 
     // private ParameterCollection _parameters;
@@ -200,8 +202,11 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
         _stopwatch.Restart();
         var addSourceWatch = Stopwatch.StartNew();
-        ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, sourcePath);
-        timings.Add(new ShaderTimingDiagnostic("AddShaderSource", addSourceWatch.Elapsed.TotalMilliseconds));
+        if (RegisterGeneratedShaderSource)
+            ShaderNodesUtil.AddShaderSource(ShaderName, ShaderCode, sourcePath);
+        timings.Add(new ShaderTimingDiagnostic(
+            RegisterGeneratedShaderSource ? "AddShaderSource" : "AddShaderSourceSkipped",
+            addSourceWatch.Elapsed.TotalMilliseconds));
         timings.Add(new ShaderTimingDiagnostic("GenerateShaderSourceTotal", watch.Elapsed.TotalMilliseconds));
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"-> AddShaderSource: {_stopwatch.ElapsedMilliseconds} ms");

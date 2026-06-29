@@ -21,7 +21,7 @@ public class DispatchIdIndexProvider : IIndexProvider
 {
     public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
     {
-        theReadIndex = theWriteIndex = new Semantic<Int3>(nodeContext, "DispatchThreadId");
+        theReadIndex = theWriteIndex = new DispatchThreadId(nodeContext);
     }
 }
 
@@ -29,7 +29,7 @@ public class VertexIdIndexProvider : IIndexProvider
 {
     public void Index(NodeContext nodeContext, out ShaderNode<Int3> theReadIndex, out ShaderNode<Int3> theWriteIndex)
     {
-        var vertexId = new Semantic<int>(NodeContext.CurrentRoot, "VertexId");
+        var vertexId = new VertexId(nodeContext);
         var join = new Int3Join(nodeContext, vertexId, new ConstantValue<int>(0), new ConstantValue<int>(0));
         theReadIndex = theWriteIndex = join;
     }

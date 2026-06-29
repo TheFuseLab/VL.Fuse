@@ -9,16 +9,23 @@ namespace Fuse;
 
 public class PassThroughNode<T> : ShaderNode<T>
 {
-    public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough") : base(nodeContext, theName)
+    public PassThroughNode(NodeContext nodeContext, string theName = "PassThrough") : base(
+        nodeContext,
+        theName,
+        null,
+        false)
     {
-        Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(), "PassThroughDefault");
+        Default = new ShaderNode<T>(CreateDefaultContext(), "PassThroughDefault", theCreateDefault: false);
         // ReSharper disable once VirtualMemberCallInConstructor
     }
 
     public PassThroughNode(NodeContext nodeContext, AbstractShaderNode theValue, string theName = "PassThrough") : base(
-        nodeContext, theName)
+        nodeContext,
+        theName,
+        null,
+        false)
     {
-        Default = new ShaderNode<T>(new NodeSubContextFactory(NodeContext).NextSubContext(), "PassThroughDefault");
+        Default = new ShaderNode<T>(CreateDefaultContext(), "PassThroughDefault", theCreateDefault: false);
         // ReSharper disable once VirtualMemberCallInConstructor
         Input = theValue as ShaderNode<T>;
         SetInputs(new List<AbstractShaderNode> { Input });
@@ -41,6 +48,11 @@ public class PassThroughNode<T> : ShaderNode<T>
     public override string TypeName()
     {
         return Input != null ? Input.TypeName() : base.TypeName();
+    }
+
+    private NodeContext CreateDefaultContext()
+    {
+        return NodeContext == null ? null : new NodeSubContextFactory(NodeContext).NextSubContext();
     }
 }
 

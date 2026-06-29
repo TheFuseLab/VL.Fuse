@@ -8,7 +8,7 @@ public interface ITextureAttribute : IAttribute
 {
     public bool DoubleBuffered { get; }
 
-    public ShaderNode<Int3> Index { get; set; }
+    public AbstractShaderNode Index { get; set; }
 
     public TextureInput TextureInput { get; set; }
 }
@@ -44,7 +44,7 @@ public class TextureAttribute<T> : ITextureAttributeNode<T>, ITextureAttribute w
 
     public TextureInput TextureInput { get; set; }
 
-    public ShaderNode<Int3> Index { get; set; }
+    public AbstractShaderNode Index { get; set; }
 
     public bool DoubleBuffered { get; }
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.JavaScript;
 using Fuse.ComputeSystem;
 
 namespace Fuse.compute;
@@ -10,14 +9,20 @@ public class AttributeMap
     private Dictionary<string, IAttribute> _attributeSet = new();
     private Dictionary<string, List<IAttribute>> _attributeInstances = new();
     private HashSet<string> _attributesToRemove = [];
+    private readonly Func<IAttribute, int> _getAttributeSize;
     private bool _changedAttributes = false;
     
-    public AttributeMap(AttributeType theAttributeType)
+    public AttributeMap(AttributeType theAttributeType, Func<IAttribute, int> getAttributeSize = null)
     {
         AttributeType = theAttributeType;
+        _getAttributeSize = getAttributeSize ?? GetAttributeSize;
     }
     
     public AttributeType AttributeType { get; }
+
+    public IReadOnlyDictionary<string, IAttribute> AttributeSet => _attributeSet;
+
+    public bool ChangedAttributes => _changedAttributes;
     
     /// <summary>
     /// --- Patch: Prepare ---
@@ -112,6 +117,35 @@ public class AttributeMap
         return result;
     }
 
+    public int GetStructSize()
+    {
+        var totalBytes = 0;
+        foreach (var attribute in _attributeSet.Values)
+            totalBytes += _getAttributeSize(attribute);
+
+        return totalBytes;
+    }
+
+    public int GetPaddedStructSize()
+    {
+        var structSize = GetStructSizeWithoutPadding();
+        return structSize + GetPaddingByteCount(structSize);
+    }
+
+    public int GetStructSizeWithoutPadding()
+    {
+        var totalBytes = 0;
+        foreach (var attribute in _attributeSet.Values)
+        {
+            if (IsPaddingAttribute(attribute))
+                continue;
+
+            totalBytes += _getAttributeSize(attribute);
+        }
+
+        return totalBytes;
+    }
+
     /// <summary>
     /// --- Patch: ApplyPadding ---
     /// Computes total struct size in bytes (sum of CatSizeInBytes) and adds one of Padding1/2/3
@@ -121,38 +155,32 @@ public class AttributeMap
     /// </summary>
     public bool ApplyPadding()
     {
-        /*
-        int totalBytes = 0;
-        foreach (var a in _attributeSet.Values)
-            totalBytes += TypeHelpers.GetSizeInBytes(a.ShaderNode);
-
-        int padFloats = GetPaddingFloatCount(totalBytes); // 0..3
+        var padFloats = GetPaddingFloatCount(GetStructSizeWithoutPadding());
         if (padFloats == 0)
+        {
+            var removed = _attributeSet.Remove(PaddingAttribute.DefaultName);
+            if (removed)
+                _changedAttributes = true;
+
+            return removed;
+        }
+
+        var padAttr = PaddingAttribute.Create(padFloats);
+        if (padAttr == null)
             return false;
 
-        IAttribute? padAttr = padFloats switch
-        {
-            1 => new StructuredBufferAttribute<float>(),
-            2 => Padding2,
-            3 => Padding3,
-            _ => null
-        };
+        _attributesToRemove.Remove(padAttr.Name);
 
-        if (padAttr is null)
-            return false; // no padding attribute configured
+        var changed = !_attributeSet.TryGetValue(padAttr.Name, out var existing)
+                      || existing is not PaddingAttribute existingPadding
+                      || existingPadding.FloatCount != padAttr.FloatCount;
 
-        // Patch uses Name(Attribute) into Add(MutableDictionary)
-        // We'll add/replace by its own Name.
-        var key = padAttr.Name;
-
-        bool changed = !_attributeSet.TryGetValue(key, out var existing) || !ReferenceEquals(existing, padAttr);
-        _attributeSet[key] = padAttr;
+        _attributeSet[padAttr.Name] = padAttr;
 
         if (changed)
             _changedAttributes = true;
 
-        return changed;*/
-        return false;
+        return changed;
     }
 
     /// <summary>
@@ -210,6 +238,28 @@ public class AttributeMap
         if (rem == 0) return 0;
         int padBytes = 16 - rem;
         return padBytes / 4;
+    }
+
+    public static int GetPaddingByteCount(int structSizeBytes)
+    {
+        var rem = structSizeBytes % 16;
+        return rem == 0 ? 0 : 16 - rem;
+    }
+
+    private static int GetAttributeSize(IAttribute attribute)
+    {
+        if (attribute is IAttributeLayout layout)
+            return layout.SizeInBytes;
+
+        if (attribute?.ShaderNode == null)
+            return 0;
+
+        return TypeHelpers.GetSizeInBytes(attribute.ShaderNode);
+    }
+
+    private static bool IsPaddingAttribute(IAttribute attribute)
+    {
+        return attribute is PaddingAttribute || attribute?.Name == PaddingAttribute.DefaultName;
     }
 
 }
