@@ -30,8 +30,22 @@ the visible instance `Output` and should not be duplicated as process fragments.
 | `StructuredBufferResource` | constructor, resource lifecycle, binding, update-buffer, reset, `Output` | buffer/struct/resource getters |
 | `TextureResource` | constructor, resource lifecycle, binding, texture update/swap/reset, `Output` | texture/status/resource getters |
 | `ToComputeStage` | constructor, `Update`, `SetEnabled`, `Output` | stage interface getters |
+| `Average` | shader-node process surface only | implemented through `ShaderNode<T>` inputs/source generation |
+| `Laplace2D (8 Karl Sims)` | shader-node process surface only | implemented through `ShaderNode<T>` inputs/source generation |
 
 `GetResources` on `ComputeSystem (Spectral Advanced)` stays a fragment even
 though its name starts with `Get`, because the VL patch uses it as part of the
 compute-system resource collection lifecycle and the C# method records that
 lifecycle step and rebuilds resource state.
+
+`TextureNeighborhoodNode<TIndex,T>` is deliberately not imported as a VL node.
+It is a C# base class for texture-neighborhood operators, so the visible patch
+surface remains the concrete `Average` and `Laplace2D (8 Karl Sims)` nodes.
+
+## Audit Coverage
+
+`ComputeReplacementClasses_ArePreparedAsExplicitProcessNodes` now verifies the
+exact `Fuse.Compute` assembly import list, the expected explicit fragment
+methods/properties/constructors for lifecycle nodes, the texture-operator
+process-node names/categories, and the absence of the neighborhood base from
+the public import list.

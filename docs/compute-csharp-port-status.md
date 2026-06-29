@@ -100,6 +100,11 @@ The current headless lane covers:
   dimensionality, nested radius-loop emission, unrolled fixed-offset emission,
   and runtime offset-buffer loop emission. Public VL nodes stay concrete and
   patch-named; `Average` and `Laplace2D (8 Karl Sims)` derive from this base.
+- public `Fuse.Compute` import surface is now audited by reflection: only the
+  concrete patch-facing classes are imported, `TextureNeighborhoodNode<TIndex,T>`
+  stays internal to the C# design surface, and texture shader operators are
+  imported as concrete `Fuse.Compute.Texture` process nodes without extra
+  fragment clutter.
 - help-patch-derived texture compute fixtures for WriteToTexture, Average,
   GameOfLife, and ReactionDiffusion formula-backed shader generation.
   WriteToTexture now uses the patch's unnamed stage/resource shape for a 2D
@@ -110,7 +115,9 @@ The current headless lane covers:
   patch-shaped `NoiseData -> Average -> SampleData` shader. ReactionDiffusion
   now uses the production `Laplace2D (8 Karl Sims)` operator in its enabled
   20-iteration update stage while keeping the remaining reaction formula
-  test-local.
+  test-local. A dedicated shader-snapshot fixture keeps the generated
+  ReactionDiffusion seed/update shaders patch-shaped without requiring a brittle
+  full-text comparison.
 - compute-system port inventory in `docs/compute-system-port-inventory.md`,
   generated from `vl/Fuse.Compute.vl` and `help/Compute System/**/*.vl`
 - explicit ProcessNode annotations for the concrete patch-facing C# classes:
@@ -154,7 +161,7 @@ Latest result:
 - `ComputeSystemTests`: 56 passed
 - texture help-patch fixtures: 4 passed
 - `TextureNeighborhoodTests`: 5 passed
-- `FuseComputeCore`: 240 passed, 1 skipped
+- `FuseComputeCore`: 241 passed, 1 skipped
 
 Inventory:
 
@@ -224,16 +231,29 @@ Reason:
 6. Some C# names are deliberately non-identical where VL category names could
    collide, for example `IComputeChangeGraph` instead of `IChangeGraph`.
 
+## Latest Alignment Slice
+
+Completed after the first `ai_test` push:
+
+1. Audited the public `ImportType` list against the concrete patch-facing
+   C# replacement classes.
+2. Locked down that `Average` and `Laplace2D (8 Karl Sims)` are the public
+   texture operator nodes while `TextureNeighborhoodNode<TIndex,T>` remains
+   shared infrastructure only.
+3. Added a ReactionDiffusion shader snapshot fixture that checks readable A/B
+   texture names, seed/write-only shape, update read/write shape, Laplace
+   neighborhood terms, reaction formula structure, and absence of unresolved
+   shader placeholders.
+
 ## Next Recommended Slice
 
-The next slice should be a cleanup/alignment slice, not another feature slice:
+The next slice can now move in one of two directions:
 
-1. Audit public methods against the VL operation list and add missing no-op or
-   deterministic operations only when the VL patch exposes them.
-2. Add a small shader-snapshot fixture from one real help patch, preferably:
-   `help/Compute System/Texture/HowTo Reaction Diffusion.vl`.
-3. After that, add a real vvvv/runtime test lane for resource allocation and
+1. Add a real vvvv/runtime test lane for resource allocation and
    debug-layer-facing dispatch behavior.
+2. Or continue the C# conversion with one concrete help patch, preferably
+   `help/Compute System/Texture/HowTo Game of Life.vl` for the texture path or
+   `help/Compute System/Buffer/HowTo Use GetSlice.vl` for the buffer path.
 
 ## Immediate Review Checklist
 

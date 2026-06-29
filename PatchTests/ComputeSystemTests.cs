@@ -1124,48 +1124,16 @@ public class ComputeSystemTests
     [Test]
     public void ComputeTextureHelpFixture_ReactionDiffusionBuildsAndCompilesTwoStageTextureSystem()
     {
-        var resource = TextureResource
-            .Create("ReactionData", new Int3(1024, 1024, 1))
-            .SetThreadGroupSize(new ComputeDispatchSize(8, 8, 1));
-        var seedAttribute = new TextureAttribute<Vector2>(null, "ReactionData", theIsDoubleBuffered: true);
-        var updateAttribute = new TextureAttribute<Vector2>(null, "ReactionData", theIsDoubleBuffered: true);
-        seedAttribute.ShaderNode.WriteCounter = 1;
-        updateAttribute.ShaderNode.WriteCounter = 1;
-        var seedFormula = new ReactionDiffusionSeedFormulaNode(null, seedAttribute);
-        seedAttribute.SetInput(seedFormula);
-        var reactionTexture = resource.AddInput(null, "ReactionData");
-        var laplace = new Laplace2DKarlSims<Vector2>(
-            null,
-            reactionTexture,
-            new ConstantValue<float>(0.2f),
-            new ConstantValue<float>(0.05f),
-            new ConstantValue<float>(1f));
-        var updateFormula = new ReactionDiffusionFormulaNode(
-            null,
-            reactionTexture,
-            updateAttribute,
-            laplace);
-        updateAttribute.SetInput(updateFormula);
-        var seedStage = CreateTextureAttributeStage("Initialize", seedAttribute)
-            .SetEnabled(false);
-        var updateStage = CreateTextureAttributeStage("Update", updateAttribute)
-            .SetIterationCount(20)
-            .SetEnabled(true);
-        seedStage.RegisterGeneratedShaderSource = false;
-        updateStage.RegisterGeneratedShaderSource = false;
-        var seedDispatcher = new FakeComputeEffectDispatcher();
-        var updateDispatcher = new FakeComputeEffectDispatcher();
-        var group = ComputeStageGroup.Create(
-            resourceProvider: resource,
-            computeStageProviders: new[] { seedStage, updateStage });
-        seedStage.SetDispatchInfo(new TestDispatchInfo(resource.GetDispatchInfo(), null, seedDispatcher));
-        updateStage.SetDispatchInfo(new TestDispatchInfo(resource.GetDispatchInfo(), null, updateDispatcher));
-        var system = new ComputeSystemSpectral();
-
-        system.Update(computeStages: new[] { group }, enabled: true);
-        var drawResult = system
-            .BuildExecutionPlan(new ShaderGeneratorContext(), generateShaderSources: true)
-            .ToDrawResult();
+        var fixture = BuildReactionDiffusionFixture(generateShaderSources: true);
+        var resource = fixture.Resource;
+        var seedAttribute = fixture.SeedAttribute;
+        var updateAttribute = fixture.UpdateAttribute;
+        var seedStage = fixture.SeedStage;
+        var updateStage = fixture.UpdateStage;
+        var seedDispatcher = fixture.SeedDispatcher;
+        var updateDispatcher = fixture.UpdateDispatcher;
+        var group = fixture.Group;
+        var drawResult = fixture.DrawResult;
         var firstReadInput = resource.TextureAInputs["ReactionData"];
         var firstWriteInput = resource.TextureBInputs["ReactionData"];
         var renderDrawContext = (RenderDrawContext)RuntimeHelpers.GetUninitializedObject(typeof(RenderDrawContext));
@@ -1242,6 +1210,49 @@ public class ComputeSystemTests
         Assert.That(resource.TextureAInputs["ReactionData"], Is.SameAs(firstReadInput));
         Assert.That(resource.TextureBInputs["ReactionData"], Is.SameAs(firstWriteInput));
         Assert.That(updateAttribute.TextureInput, Is.SameAs(firstReadInput));
+    }
+
+    [Test]
+    public void ComputeTextureHelpFixture_ReactionDiffusionShaderSnapshotStaysPatchShaped()
+    {
+        var fixture = BuildReactionDiffusionFixture(generateShaderSources: true);
+        var seedStage = fixture.SeedStage;
+        var updateStage = fixture.UpdateStage;
+
+        seedStage.SetEnabled(true);
+        seedStage.GenerateShaderSource(new ShaderGeneratorContext(), null);
+        seedStage.SetEnabled(false);
+
+        Assert.That(fixture.DrawResult.CanDispatch, Is.True);
+        Assert.That(fixture.DrawResult.ShaderSources, Has.Count.EqualTo(1));
+        Assert.That(seedStage.ShaderCode, Does.Not.Contain("${"));
+        Assert.That(updateStage.ShaderCode, Does.Not.Contain("${"));
+        Assert.That(seedStage.ShaderCode, Does.Not.Contain("TextureInput_"));
+        Assert.That(updateStage.ShaderCode, Does.Not.Contain("TextureInput_"));
+        Assert.That(seedStage.ShaderCode, Does.Match(@"RWTexture2D<float2>\s+ReactionData_[AB]_"));
+        Assert.That(seedStage.ShaderCode, Does.Not.Match(@"(?<!RW)Texture2D<float2>\s+ReactionData_[AB]_"));
+        Assert.That(updateStage.ShaderCode, Does.Match(@"Texture2D<float2>\s+ReactionData_A_"));
+        Assert.That(updateStage.ShaderCode, Does.Match(@"RWTexture2D<float2>\s+ReactionData_B_"));
+        Assert.That(CountOccurrences(updateStage.ShaderCode, "ReactionData_A_"), Is.GreaterThanOrEqualTo(2));
+        Assert.That(CountOccurrences(updateStage.ShaderCode, "ReactionData_B_"), Is.GreaterThanOrEqualTo(1));
+        AssertShaderContainsInOrder(
+            seedStage.ShaderCode,
+            "reactionSeedMask_",
+            "step(400.0",
+            "step(reactionSeedIndex",
+            "float2(reactionSeedMask_");
+        Assert.That(updateStage.ShaderCode, Does.Contain("Laplace2DKarlSims_"));
+        AssertShaderContainsInOrder(
+            updateStage.ShaderCode,
+            "laplaceCenter_",
+            "int2(-1, 0)",
+            "int2(1, 1)");
+        AssertShaderContainsInOrder(
+            updateStage.ShaderCode,
+            "reactionCenter_",
+            "reactionLaplacian_",
+            "reactionRate_",
+            "float2(reactionNextA");
     }
 
     [Test]
@@ -1722,6 +1733,94 @@ public class ComputeSystemTests
             .Update(computeGraph: graph)
             .SetPreGraphRenderer(graph);
     }
+
+    private static ReactionDiffusionFixture BuildReactionDiffusionFixture(bool generateShaderSources)
+    {
+        var resource = TextureResource
+            .Create("ReactionData", new Int3(1024, 1024, 1))
+            .SetThreadGroupSize(new ComputeDispatchSize(8, 8, 1));
+        var seedAttribute = new TextureAttribute<Vector2>(null, "ReactionData", theIsDoubleBuffered: true);
+        var updateAttribute = new TextureAttribute<Vector2>(null, "ReactionData", theIsDoubleBuffered: true);
+        seedAttribute.ShaderNode.WriteCounter = 1;
+        updateAttribute.ShaderNode.WriteCounter = 1;
+        var seedFormula = new ReactionDiffusionSeedFormulaNode(null, seedAttribute);
+        seedAttribute.SetInput(seedFormula);
+        var reactionTexture = resource.AddInput(null, "ReactionData");
+        var laplace = new Laplace2DKarlSims<Vector2>(
+            null,
+            reactionTexture,
+            new ConstantValue<float>(0.2f),
+            new ConstantValue<float>(0.05f),
+            new ConstantValue<float>(1f));
+        var updateFormula = new ReactionDiffusionFormulaNode(
+            null,
+            reactionTexture,
+            updateAttribute,
+            laplace);
+        updateAttribute.SetInput(updateFormula);
+        var seedStage = CreateTextureAttributeStage("Initialize", seedAttribute)
+            .SetEnabled(false);
+        var updateStage = CreateTextureAttributeStage("Update", updateAttribute)
+            .SetIterationCount(20)
+            .SetEnabled(true);
+        seedStage.RegisterGeneratedShaderSource = false;
+        updateStage.RegisterGeneratedShaderSource = false;
+        var seedDispatcher = new FakeComputeEffectDispatcher();
+        var updateDispatcher = new FakeComputeEffectDispatcher();
+        var group = ComputeStageGroup.Create(
+            resourceProvider: resource,
+            computeStageProviders: new[] { seedStage, updateStage });
+        seedStage.SetDispatchInfo(new TestDispatchInfo(resource.GetDispatchInfo(), null, seedDispatcher));
+        updateStage.SetDispatchInfo(new TestDispatchInfo(resource.GetDispatchInfo(), null, updateDispatcher));
+        var system = new ComputeSystemSpectral();
+
+        system.Update(computeStages: new[] { group }, enabled: true);
+        var drawResult = system
+            .BuildExecutionPlan(new ShaderGeneratorContext(), generateShaderSources: generateShaderSources)
+            .ToDrawResult();
+
+        return new ReactionDiffusionFixture(
+            resource,
+            seedAttribute,
+            updateAttribute,
+            seedStage,
+            updateStage,
+            seedDispatcher,
+            updateDispatcher,
+            group,
+            system,
+            drawResult);
+    }
+
+    private static void AssertShaderContainsInOrder(string shaderCode, params string[] snippets)
+    {
+        var position = 0;
+        foreach (var snippet in snippets)
+        {
+            var nextPosition = shaderCode.IndexOf(snippet, position, StringComparison.Ordinal);
+            Assert.That(nextPosition, Is.GreaterThanOrEqualTo(0), snippet);
+            position = nextPosition + snippet.Length;
+        }
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        return System.Text.RegularExpressions.Regex.Matches(
+            text,
+            System.Text.RegularExpressions.Regex.Escape(value)).Count;
+    }
+
+    private sealed record ReactionDiffusionFixture(
+        TextureResource Resource,
+        TextureAttribute<Vector2> SeedAttribute,
+        TextureAttribute<Vector2> UpdateAttribute,
+        ComputeStage SeedStage,
+        ComputeStage UpdateStage,
+        FakeComputeEffectDispatcher SeedDispatcher,
+        FakeComputeEffectDispatcher UpdateDispatcher,
+        ComputeStageGroup Group,
+        ComputeSystemSpectral System,
+        ComputeDrawResult DrawResult);
 
     private sealed class ReactionDiffusionSeedFormulaNode : ShaderNode<Vector2>
     {

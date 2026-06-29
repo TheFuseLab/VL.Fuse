@@ -34,6 +34,27 @@ public class ComputeStageTests
             .ToArray();
 
         Assert.That(typeof(ComputeStage).Assembly.GetName().Name, Is.EqualTo("Fuse.Compute"));
+        Assert.That(importedTypes, Is.EquivalentTo(new[]
+        {
+            typeof(ComputeStage),
+            typeof(Buffer1DDispatchInfo),
+            typeof(ComputeGraph),
+            typeof(ComputeGraph1D),
+            typeof(ComputeGraph2D),
+            typeof(ComputeGraph3D),
+            typeof(ComputeStageGroupSpectral),
+            typeof(ComputeStageGroup),
+            typeof(ComputeSystemSpectral),
+            typeof(ComputeSystem),
+            typeof(StructuredBufferResourceDispatchInfo),
+            typeof(StructuredBufferResource),
+            typeof(TextureDispatchInfo),
+            typeof(TextureResource),
+            typeof(ToComputeStage),
+            typeof(Average<,>),
+            typeof(Laplace2DKarlSims<>)
+        }));
+        Assert.That(importedTypes, Does.Not.Contain(typeof(TextureNeighborhoodNode<,>)));
 
         var expectedNodes = new[]
         {
@@ -210,6 +231,8 @@ public class ComputeStageTests
         foreach (var expectedNode in expectedNodes)
             AssertExplicitProcessNode(expectedNode, importedTypes);
 
+        AssertShaderNodeProcessSurface(typeof(Average<,>), "Average", "Fuse.Compute.Texture");
+        AssertShaderNodeProcessSurface(typeof(Laplace2DKarlSims<>), "Laplace2D (8 Karl Sims)", "Fuse.Compute.Texture");
         AssertFragmentHasOutPins<StructuredBufferResource>(
             nameof(StructuredBufferResource.BindComputeStage),
             nameof(StructuredBufferResource.BindComputeStage),
@@ -319,6 +342,25 @@ public class ComputeStageTests
             .Where(constructor => constructor.GetCustomAttribute<FragmentAttribute>() != null)
             .ToArray();
         Assert.That(fragmentConstructors, Has.Length.EqualTo(1), expectedNode.Type.Name);
+    }
+
+    private static void AssertShaderNodeProcessSurface(
+        Type type,
+        string name,
+        string category)
+    {
+        var processNode = type.GetCustomAttribute<ProcessNodeAttribute>();
+        Assert.That(processNode, Is.Not.Null, type.Name);
+        Assert.That(processNode.Name, Is.EqualTo(name), type.Name);
+        Assert.That(processNode.Category, Is.EqualTo(category), type.Name);
+        Assert.That(processNode.FragmentSelection, Is.EqualTo(FragmentSelection.Explicit), type.Name);
+
+        var fragmentMembers = type
+            .GetMembers(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(member => member.GetCustomAttribute<FragmentAttribute>() != null)
+            .Select(member => member.Name)
+            .ToArray();
+        Assert.That(fragmentMembers, Is.Empty, type.Name);
     }
 
     private static void AssertFragmentHasOutPins<T>(
