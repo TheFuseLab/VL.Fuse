@@ -20,6 +20,15 @@ public class FastPlyFolderInterleaved
     private int _filesCompleted;
     private int _phase;
 
+    /// <summary>The snapshot published by the loader when a folder load completes.</summary>
+    private LoadedFolder _published = LoadedFolder.Empty;
+
+    /// <summary>
+    /// The snapshot latched once per <see cref="Update"/> call; every output pin is served from
+    /// this reference for the remainder of that frame.
+    /// </summary>
+    private LoadedFolder _current = LoadedFolder.Empty;
+
     // Inputs
     public string FolderPath { get; set; } = string.Empty;
     public string SearchPattern { get; set; } = "*.ply";
@@ -37,11 +46,14 @@ public class FastPlyFolderInterleaved
     public string CacheBasePath { get; set; } = string.Empty;
     public bool Debug { get; set; }
 
-    // Outputs - AoS data
-    public float[] Result { get; private set; } = Array.Empty<float>();
-    public int VertexCount { get; private set; }
-    public int FieldsPerVertex { get; private set; }
-    public string[] FieldOrder { get; private set; } = Array.Empty<string>();
+    // Outputs - AoS data.
+    // All four are served from one immutable snapshot (see LoadedFolder) and are never written
+    // individually, so a consumer can never combine a buffer from one load with a count, stride
+    // or field list from another - nor with zeroed placeholders while a load is still running.
+    public float[] Result => _current.Result;
+    public int VertexCount => _current.VertexCount;
+    public int FieldsPerVertex => _current.FieldsPerVertex;
+    public string[] FieldOrder => _current.FieldOrder;
 
     // Outputs - folder metadata
     public string[] LoadedFiles { get; private set; } = Array.Empty<string>();
@@ -64,6 +76,12 @@ public class FastPlyFolderInterleaved
 
         if (loadRisingEdge && !_isLoading && !string.IsNullOrWhiteSpace(FolderPath))
             StartLoading();
+
+        // Latch the published snapshot exactly once per frame. Downstream the four outputs are
+        // read several times per frame and combined with each other - Result.Length divided by
+        // FieldsPerVertex sizes the GPU buffer, FieldsPerVertex is its stride, FieldOrder names
+        // its fields - so they must all come from the same load.
+        _current = Volatile.Read(ref _published);
 
         if (!_isLoading || _phase != 1 || _fileCount <= 0)
             return;
@@ -90,10 +108,13 @@ public class FastPlyFolderInterleaved
         Status = "Loading";
         StageName = "Scanning folder";
 
-        Result = Array.Empty<float>();
-        VertexCount = 0;
-        FieldsPerVertex = 0;
-        FieldOrder = Array.Empty<string>();
+        // The loaded-data snapshot is deliberately NOT cleared here. Clearing it made Result,
+        // VertexCount, FieldsPerVertex and FieldOrder read as empty/zero for the entire duration
+        // of the load - hundreds of milliseconds spanning many frames - while the patch keeps
+        // sizing and binding GPU resources from them on every one of those frames
+        // (StructuredBufferResource.SetElementCount(Result.Length / FieldsPerVertex) == 0).
+        // The previous folder's data stays valid and self-consistent until the new one is
+        // complete; IsCompleted is the signal for "a load is in flight".
         LoadedFiles = Array.Empty<string>();
         CloudCount = 0;
 
@@ -167,10 +188,9 @@ public class FastPlyFolderInterleaved
                 ConvertSoAToInterleaved(composedSoA, composedFieldOrder);
             swConvert.Stop();
 
-            Result = interleaved;
-            VertexCount = vertexCount;
-            FieldsPerVertex = fieldsPerVertex;
-            FieldOrder = fieldOrder;
+            // One reference swap publishes all four values together.
+            Volatile.Write(ref _published,
+                new LoadedFolder(interleaved, vertexCount, fieldsPerVertex, fieldOrder));
 
             _phase = 3;
             StageName = "Complete";
@@ -573,15 +593,39 @@ public class FastPlyFolderInterleaved
 
     public void ReleaseCpuData()
     {
-        Result = Array.Empty<float>();
-        VertexCount = 0;
-        FieldsPerVertex = 0;
-        FieldOrder = Array.Empty<string>();
+        var empty = LoadedFolder.Empty;
+        Volatile.Write(ref _published, empty);
+        _current = empty;
     }
 
     private static void Log(bool debug, string message)
     {
         if (debug) Console.WriteLine(message);
+    }
+
+    /// <summary>
+    /// Immutable, self-consistent view of one completed folder load.
+    /// <c>Result.Length == VertexCount * FieldsPerVertex</c> and
+    /// <c>FieldOrder.Length == FieldsPerVertex</c> always hold, because the four values are only
+    /// ever produced together and only ever published together.
+    /// </summary>
+    private sealed class LoadedFolder
+    {
+        public static readonly LoadedFolder Empty =
+            new(Array.Empty<float>(), 0, 0, Array.Empty<string>());
+
+        public LoadedFolder(float[] result, int vertexCount, int fieldsPerVertex, string[] fieldOrder)
+        {
+            Result = result;
+            VertexCount = vertexCount;
+            FieldsPerVertex = fieldsPerVertex;
+            FieldOrder = fieldOrder;
+        }
+
+        public float[] Result { get; }
+        public int VertexCount { get; }
+        public int FieldsPerVertex { get; }
+        public string[] FieldOrder { get; }
     }
 
     private sealed class PlyHeaderInfo
