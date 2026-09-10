@@ -91,6 +91,8 @@ public sealed class TriangleAliasTable
 
 public static class FBXLoader
 {
+    private const string StaticRootBoneName = "StaticRoot";
+
     private static SkeletonBuildResult BuildRobustSkeleton(Scene scene)
     {
         var nodeByName = new Dictionary<string, Node>(StringComparer.Ordinal);
@@ -102,7 +104,22 @@ public static class FBXLoader
             weightedBoneNames.Add(bone.Name);
 
         if (weightedBoneNames.Count == 0)
-            throw new InvalidOperationException("No bones with vertex weights found in the scene.");
+        {
+            // Keep the public GPU model layout identical for static and skinned FBX files.
+            // A synthetic identity root lets existing consumers use the same buffers and
+            // shader path without mistaking a valid static mesh for the error fallback.
+            return new SkeletonBuildResult
+            {
+                OrderedBoneNames = [StaticRootBoneName],
+                IndexOf = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    [StaticRootBoneName] = 0
+                },
+                ParentIndices = [-1],
+                NodeByName = nodeByName,
+                IsSynthetic = true
+            };
+        }
 
         static List<Node> GetPathToRoot(Node node)
         {
@@ -166,7 +183,8 @@ public static class FBXLoader
             OrderedBoneNames = orderedBoneNames,
             IndexOf = indexOf,
             ParentIndices = parentIndices,
-            NodeByName = nodeByName
+            NodeByName = nodeByName,
+            IsSynthetic = false
         };
     }
 
@@ -247,7 +265,7 @@ public static class FBXLoader
                 BindLocal = bindLocal
             };
 
-            var meshGpu = BuildMesh(scene, indexOf, sceneScale);
+            var meshGpu = BuildMesh(scene, indexOf, sceneScale, skeletonBuild.IsSynthetic);
             // --- prepare anim bank ---
             var bindPoseDecomposed = new (Vector3 S, Quaternion R, Vector3 T)[bindLocal.Length];
             for (var i = 0; i < bindLocal.Length; i++)
@@ -259,9 +277,12 @@ public static class FBXLoader
             var finalClips = new List<ClipInfoRaster>();
             var finalClipNames = new List<string>();
 
-            // animations from this main file
-            BuildAnimationsInto(scene, orderedBones, bindPoseDecomposed, fpsIfNeeded, sceneScale, finalDqBuffer,
-                finalClips, finalClipNames);
+            if (skeletonBuild.IsSynthetic)
+                AddStaticClip(orderedBones.Count, fpsIfNeeded, finalDqBuffer, finalClips, finalClipNames);
+            else
+                // animations from this main file
+                BuildAnimationsInto(scene, orderedBones, bindPoseDecomposed, fpsIfNeeded, sceneScale, finalDqBuffer,
+                    finalClips, finalClipNames);
 
             var anim = new AnimBankGpu
             {
@@ -363,7 +384,7 @@ public static class FBXLoader
             };
 
             // Mesh from main file
-            var meshGpu = BuildMesh(sceneMain, indexOf, sceneScale);
+            var meshGpu = BuildMesh(sceneMain, indexOf, sceneScale, skeletonBuild.IsSynthetic);
 
             // Decomposed bind pose (shared across all animation FBX)
             var bindPoseDecomposed = new (Vector3 S, Quaternion R, Vector3 T)[bindLocal.Length];
@@ -377,19 +398,23 @@ public static class FBXLoader
             var finalClips = new List<ClipInfoRaster>();
             var finalClipNames = new List<string>();
 
-            // 2a) animations from main file
-            BuildAnimationsInto(
-                sceneMain,
-                orderedBones,
-                bindPoseDecomposed,
-                fpsIfNeeded,
-                sceneScale,
-                finalDqBuffer,
-                finalClips,
-                finalClipNames);
+            // 2a) animations from main file. Static meshes keep the established
+            // animation-bank shape through one identity clip.
+            if (skeletonBuild.IsSynthetic)
+                AddStaticClip(orderedBones.Count, fpsIfNeeded, finalDqBuffer, finalClips, finalClipNames);
+            else
+                BuildAnimationsInto(
+                    sceneMain,
+                    orderedBones,
+                    bindPoseDecomposed,
+                    fpsIfNeeded,
+                    sceneScale,
+                    finalDqBuffer,
+                    finalClips,
+                    finalClipNames);
 
             // 2b) animations from extra FBX files
-            if (extraAnimationPaths != null)
+            if (!skeletonBuild.IsSynthetic && extraAnimationPaths != null)
                 foreach (var animPath in extraAnimationPaths)
                 {
                     if (string.IsNullOrWhiteSpace(animPath))
@@ -453,14 +478,26 @@ public static class FBXLoader
     }
 
 
-    private static MeshGpu BuildMesh(Scene scene, Dictionary<string, int> indexOf, float sceneScale)
+    private static MeshGpu BuildMesh(
+        Scene scene,
+        Dictionary<string, int> indexOf,
+        float sceneScale,
+        bool useSyntheticRoot)
     {
-        var relevantMeshes = scene.Meshes.Where(m => m.HasBones && m.VertexCount > 0).ToList();
-        if (relevantMeshes.Count == 0)
-            throw new InvalidOperationException("No skinned mesh with vertices found.");
+        // Preserve the existing behavior for rigged scenes: only skinned meshes are
+        // combined. Static meshes additionally need their node transform baked into
+        // positions and normals because FBX stores axis/unit conversion there.
+        var meshInstances = useSyntheticRoot
+            ? BuildStaticMeshInstances(scene)
+            : scene.Meshes
+                .Where(mesh => mesh.HasBones && mesh.VertexCount > 0)
+                .Select(mesh => new MeshInstance(mesh, Matrix4x4.Identity))
+                .ToList();
+        if (meshInstances.Count == 0)
+            throw new InvalidOperationException("No mesh with vertices found.");
 
-        var totalVertices = relevantMeshes.Sum(m => m.VertexCount);
-        var totalIndices = relevantMeshes.Sum(m => m.FaceCount * 3);
+        var totalVertices = meshInstances.Sum(instance => instance.Mesh.VertexCount);
+        var totalIndices = meshInstances.Sum(instance => instance.Mesh.FaceCount * 3);
 
         var vertices = new GpuVertex[totalVertices];
         var indices = new int[totalIndices];
@@ -470,13 +507,29 @@ public static class FBXLoader
         var vertexOffset = 0;
         var indexOffset = 0;
 
-        foreach (var m in relevantMeshes)
+        foreach (var instance in meshInstances)
         {
+            var m = instance.Mesh;
+            var normalTransform = new Matrix3x3(instance.Transform);
+            normalTransform.Inverse();
+            normalTransform.Transpose();
+
             for (var v = 0; v < m.VertexCount; v++)
             {
-                vertices[vertexOffset + v].Position =
-                    m.HasVertices ? ToVector3(m.Vertices[v]) * sceneScale : Vector3.Zero;
-                vertices[vertexOffset + v].Normal = m.HasNormals ? ToVector3(m.Normals[v]) : Vector3.UnitY;
+                vertices[vertexOffset + v].Position = m.HasVertices
+                    ? ToVector3(instance.Transform * m.Vertices[v]) * sceneScale
+                    : Vector3.Zero;
+                if (m.HasNormals)
+                {
+                    var transformedNormal = normalTransform * m.Normals[v];
+                    transformedNormal.Normalize();
+                    vertices[vertexOffset + v].Normal = ToVector3(transformedNormal);
+                }
+                else
+                {
+                    vertices[vertexOffset + v].Normal = Vector3.UnitY;
+                }
+
                 if (m.HasTextureCoords(0))
                 {
                     var t = m.TextureCoordinateChannels[0][v];
@@ -496,8 +549,16 @@ public static class FBXLoader
                 if (f.IndexCount == 3)
                 {
                     indices[indexOffset++] = vertexOffset + f.Indices[0];
-                    indices[indexOffset++] = vertexOffset + f.Indices[1];
-                    indices[indexOffset++] = vertexOffset + f.Indices[2];
+                    if (instance.FlipWinding)
+                    {
+                        indices[indexOffset++] = vertexOffset + f.Indices[2];
+                        indices[indexOffset++] = vertexOffset + f.Indices[1];
+                    }
+                    else
+                    {
+                        indices[indexOffset++] = vertexOffset + f.Indices[1];
+                        indices[indexOffset++] = vertexOffset + f.Indices[2];
+                    }
                 }
 
             vertexOffset += m.VertexCount;
@@ -511,7 +572,11 @@ public static class FBXLoader
 
             var boneIds = new Int4(0);
             var ws = Vector4.Zero;
-            if (list.Count > 0)
+            if (useSyntheticRoot)
+            {
+                ws.X = 1.0f;
+            }
+            else if (list.Count > 0)
             {
                 boneIds.X = list[0].bone;
                 ws.X = list[0].w * inv;
@@ -545,6 +610,67 @@ public static class FBXLoader
             Indices = indices,
             BoneCount = indexOf.Count
         };
+    }
+
+    private static List<MeshInstance> BuildStaticMeshInstances(Scene scene)
+    {
+        var instances = new List<MeshInstance>();
+        var referencedMeshes = new bool[scene.MeshCount];
+
+        void Visit(Node node, Matrix4x4 parentTransform)
+        {
+            // Assimp's multiplication operator composes B x A, so local * parent
+            // produces the conventional parent-global * local transform.
+            var globalTransform = node.Transform * parentTransform;
+            foreach (var meshIndex in node.MeshIndices)
+            {
+                if (meshIndex < 0 || meshIndex >= scene.MeshCount)
+                    continue;
+
+                var mesh = scene.Meshes[meshIndex];
+                if (mesh.VertexCount <= 0)
+                    continue;
+
+                instances.Add(new MeshInstance(mesh, globalTransform));
+                referencedMeshes[meshIndex] = true;
+            }
+
+            foreach (var child in node.Children)
+                Visit(child, globalTransform);
+        }
+
+        Visit(scene.RootNode, Matrix4x4.Identity);
+
+        // Be permissive with malformed exporters that leave meshes unattached.
+        for (var meshIndex = 0; meshIndex < scene.MeshCount; meshIndex++)
+            if (!referencedMeshes[meshIndex] && scene.Meshes[meshIndex].VertexCount > 0)
+                instances.Add(new MeshInstance(scene.Meshes[meshIndex], Matrix4x4.Identity));
+
+        return instances;
+    }
+
+    private static void AddStaticClip(
+        int boneCount,
+        float fps,
+        List<DualQuat> finalDqBuffer,
+        List<ClipInfoRaster> finalClips,
+        List<string> finalClipNames)
+    {
+        var startIndex = finalDqBuffer.Count;
+        for (var bone = 0; bone < boneCount; bone++)
+            finalDqBuffer.Add(IdentityDQ());
+
+        finalClips.Add(new ClipInfoRaster
+        {
+            BoneCount = boneCount,
+            FrameCount = 1,
+            StartIndex = startIndex,
+            TicksPerSecond = fps,
+            StartTick = 0,
+            StepTick = 1,
+            DurationSeconds = 0
+        });
+        finalClipNames.Add("StaticPose");
     }
 
     private static void BuildAnimationsInto(
@@ -805,6 +931,21 @@ public static class FBXLoader
         public Dictionary<string, int> IndexOf;
         public int[] ParentIndices;
         public Dictionary<string, Node> NodeByName;
+        public bool IsSynthetic;
+    }
+
+    private readonly struct MeshInstance
+    {
+        public MeshInstance(Mesh mesh, Matrix4x4 transform)
+        {
+            Mesh = mesh;
+            Transform = transform;
+            FlipWinding = transform.Determinant() < 0;
+        }
+
+        public Mesh Mesh { get; }
+        public Matrix4x4 Transform { get; }
+        public bool FlipWinding { get; }
     }
 }
 
