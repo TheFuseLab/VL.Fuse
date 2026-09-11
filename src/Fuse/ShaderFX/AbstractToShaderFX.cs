@@ -344,6 +344,15 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             if (input is not AbstractShaderNode node) continue;
 
             var buffer = identity.BufferValue;
+
+            if (ShaderNodesUtil.TraceShaderSource)
+                Console.WriteLine(
+                    $"[FUSE:BUFDEDUPE] {node.ID} buffer=" +
+                    (buffer == null
+                        ? "null"
+                        : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(buffer).ToString()) +
+                    $" decl={identity.DeclarationTypeName}");
+
             if (buffer == null) continue;
 
             owners ??= new Dictionary<(Buffer, string), AbstractShaderNode>();
@@ -367,6 +376,9 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             // Rebuilds the ParameterKey and the FieldDeclaration from the shared ID. The declaration
             // text now matches the owner's, so the declaration HashSet folds them into one.
             input.OnUpdateName();
+
+            if (ShaderNodesUtil.TraceShaderSource)
+                Console.WriteLine($"[FUSE:BUFDEDUPE] merged -> {owner.ID}");
         }
     }
 

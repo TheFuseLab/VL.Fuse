@@ -213,7 +213,7 @@ public abstract class GpuTypeTracker<T>
     protected abstract string DefineGpuType(T value);
     protected abstract string DefineComputeGpuType(T value);
 
-    public bool CheckDeclaration(T value)
+    public virtual bool CheckDeclaration(T value)
     {
         var gpuType = DefineGpuType(value);
         var computeGpuType = DefineComputeGpuType(value);
@@ -332,6 +332,8 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
 {
     private readonly ShaderNode<T> _type;
 
+    private bool _hadBuffer;
+
     public BufferTypeTracker(ShaderNode<T> theType, BufferType theBufferType = BufferType.Auto)
     {
         _type = theType;
@@ -339,6 +341,32 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
     }
 
     public BufferType BufferType { get; set; }
+
+    /// <summary>
+    /// Also reports a change the first time the wrapped buffer actually exists, even when the
+    /// declaration text is unchanged (which it is whenever <see cref="BufferType"/> is pinned
+    /// rather than left at <see cref="BufferType.Auto"/>).
+    /// </summary>
+    /// <remarks>
+    /// The shader graph is built long before the first PLY folder has finished decoding, so at that
+    /// point a buffer input's value is still null. Anything that needs to reason about *which*
+    /// resource an input refers to - notably
+    /// AbstractToShaderFX.CollapseDuplicateBufferInputs, which folds several wrappers of one buffer
+    /// into a single declaration - cannot do so against a null. Treating "the resource I was
+    /// declared against has come into existence" as a declaration change gives the graph exactly one
+    /// rebuild at that moment, with real buffers in hand. It fires once per buffer input, on the
+    /// null -> non-null edge only.
+    /// </remarks>
+    public override bool CheckDeclaration(Buffer value)
+    {
+        var changed = base.CheckDeclaration(value);
+
+        var hasBuffer = value != null;
+        if (hasBuffer == _hadBuffer) return changed;
+
+        _hadBuffer = hasBuffer;
+        return true;
+    }
 
     protected override string DefineGpuType(Buffer value)
     {

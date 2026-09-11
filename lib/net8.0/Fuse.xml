@@ -77,6 +77,23 @@
             Creates a ConstantValue from an object value. Falls back to zero if value is null.
             </summary>
         </member>
+        <member name="M:Fuse.BufferTypeTracker`1.CheckDeclaration(Stride.Graphics.Buffer)">
+            <summary>
+            Also reports a change the first time the wrapped buffer actually exists, even when the
+            declaration text is unchanged (which it is whenever <see cref="P:Fuse.BufferTypeTracker`1.BufferType"/> is pinned
+            rather than left at <see cref="F:Fuse.BufferType.Auto"/>).
+            </summary>
+            <remarks>
+            The shader graph is built long before the first PLY folder has finished decoding, so at that
+            point a buffer input's value is still null. Anything that needs to reason about *which*
+            resource an input refers to - notably
+            AbstractToShaderFX.CollapseDuplicateBufferInputs, which folds several wrappers of one buffer
+            into a single declaration - cannot do so against a null. Treating "the resource I was
+            declared against has come into existence" as a declaration change gives the graph exactly one
+            rebuild at that moment, with real buffers in hand. It fires once per buffer input, on the
+            null -> non-null edge only.
+            </remarks>
+        </member>
         <member name="T:Fuse.IBufferInputIdentity">
             <summary>
             Non-generic view of a <see cref="T:Fuse.BufferInput`1"/>, used to recognise several shader inputs that
