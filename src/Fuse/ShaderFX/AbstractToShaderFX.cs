@@ -7,6 +7,7 @@ using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
 using Stride.Shaders;
 using VL.Stride.Shaders.ShaderFX;
+using Buffer = Stride.Graphics.Buffer;
 
 namespace Fuse.ShaderFX;
 
@@ -278,6 +279,10 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     CompileProperties (unified): {_stopwatch.ElapsedMilliseconds} ms");
 
+        // Must run before the declarations are collected below: it rewrites the duplicates' IDs,
+        // and the FieldDeclaration objects in compiled.Declarations are the very ones it mutates.
+        CollapseDuplicateBufferInputs(compiled.Inputs);
+
         // Process collected properties
         _stopwatch.Restart();
         compiled.Declarations.ForEach(declaration => HandleDeclaration(declaration, theIsComputeShader));
@@ -298,6 +303,71 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         theDefinedStreams = streamDeclareBuilder.ToString();
         if (ShaderNodesUtil.TimeShaderGeneration)
             Console.WriteLine($"     Finish Stage: {handleShaderWatch.ElapsedMilliseconds} ms");
+    }
+
+    /// <summary>
+    /// Makes every shader input that wraps the same GPU buffer with the same declaration share one
+    /// ID, so the buffer is declared once per shader instead of once per place it is consumed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A raw <c>Stride.Graphics.Buffer</c> is re-wrapped into a fresh <c>BufferInput</c> every time
+    /// it reaches the shader graph - once per <c>BufferIn</c> node and once per implicit monadic
+    /// conversion. Each wrapper takes its ID from its own node context, so a buffer that is both
+    /// written and read inside one compute shader is emitted as two independent declarations and
+    /// bound to two resource slots.
+    /// </para>
+    /// <para>
+    /// D3D11 rejects that: binding one resource to two UAV slots raises
+    /// <c>DEVICE_CSSETUNORDEREDACCESSVIEWS_HAZARD</c> and one of the two slots is forced to NULL. If
+    /// the slot that loses is the write, the buffer silently stops being updated while everything
+    /// else in the same dispatch keeps working - which is exactly what the Gaussian splat decode hit
+    /// (see RC-03.PRELOADER-PERFORMANCE-AND-COLOR-BUFFER.md 6.4a): the colour buffer's write binding
+    /// was force-NULLed on every frame, so splats kept the previous clip's colours.
+    /// </para>
+    /// <para>
+    /// Scope is deliberately narrow. Inputs are only merged when they wrap the *same buffer object*
+    /// and generate the *same declaration text*; a read-only and a read-write view of one buffer are
+    /// left alone, because merging those would silently change one of them. The map is rebuilt from
+    /// scratch on every generation and the graph traversal order is deterministic, so the winner is
+    /// stable across regenerations and the collapsed ID is already in place in the very first
+    /// generated shader - this adds no regeneration of its own.
+    /// </para>
+    /// </remarks>
+    private void CollapseDuplicateBufferInputs(IEnumerable<IGpuInput> theInputs)
+    {
+        Dictionary<(Buffer, string), AbstractShaderNode> owners = null;
+
+        foreach (var input in theInputs)
+        {
+            if (input is not IBufferInputIdentity identity) continue;
+            if (input is not AbstractShaderNode node) continue;
+
+            var buffer = identity.BufferValue;
+            if (buffer == null) continue;
+
+            owners ??= new Dictionary<(Buffer, string), AbstractShaderNode>();
+
+            var key = (buffer, identity.DeclarationTypeName);
+            if (!owners.TryGetValue(key, out var owner))
+            {
+                owners[key] = node;
+                continue;
+            }
+
+            if (ReferenceEquals(owner, node)) continue;
+            if (node.ID == owner.ID) continue; // already sharing the owner's identity
+
+            node.HashCode = owner.HashCode;
+            node.Name = owner.Name;
+            // Keeps ValidateNodeId from disambiguating the now-identical hash back apart on the
+            // next traversal.
+            node.HasFixedName = true;
+            node.InvalidateId();
+            // Rebuilds the ParameterKey and the FieldDeclaration from the shared ID. The declaration
+            // text now matches the owner's, so the declaration HashSet folds them into one.
+            input.OnUpdateName();
+        }
     }
 
     private string CheckCode(string theCode)

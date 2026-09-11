@@ -77,6 +77,30 @@
             Creates a ConstantValue from an object value. Falls back to zero if value is null.
             </summary>
         </member>
+        <member name="T:Fuse.IBufferInputIdentity">
+            <summary>
+            Non-generic view of a <see cref="T:Fuse.BufferInput`1"/>, used to recognise several shader inputs that
+            wrap one and the same GPU buffer with one and the same declaration.
+            </summary>
+            <remarks>
+            A raw <see cref="T:Stride.Graphics.Buffer"/> gets re-wrapped into a fresh <c>BufferInput</c> at every place it is
+            consumed (every <c>BufferIn</c> node, and <see cref="T:Fuse.DelegatingBufferInput`1"/> for implicit
+            conversions). Each wrapper has its own node-context-derived ID, so one buffer consumed twice in
+            the same shader produces two declarations and therefore two resource slots pointing at one
+            resource - which D3D11 refuses, forcing one of the two slots to NULL. See
+            AbstractToShaderFX.CollapseDuplicateBufferInputs.
+            </remarks>
+        </member>
+        <member name="P:Fuse.IBufferInputIdentity.BufferValue">
+            <summary>The GPU buffer this input currently wraps, or null.</summary>
+        </member>
+        <member name="P:Fuse.IBufferInputIdentity.DeclarationTypeName">
+            <summary>
+            The generated declaration type, e.g. <c>RWStructuredBuffer&lt;float3&gt;</c>. Two inputs may
+            only share an identity when this matches - a read-only and a read-write view of one buffer
+            are genuinely different declarations.
+            </summary>
+        </member>
         <member name="M:Fuse.ValueInput`1.#ctor(VL.Core.NodeContext)">
             <summary>
             Creates a value input with a default name.
@@ -942,6 +966,37 @@
             <param name="context">The context to get the children.</param>
             <returns>The list of children.</returns>
         </member>
+        <member name="M:Fuse.ShaderFX.AbstractToShaderFX`1.CollapseDuplicateBufferInputs(System.Collections.Generic.IEnumerable{Fuse.IGpuInput})">
+            <summary>
+            Makes every shader input that wraps the same GPU buffer with the same declaration share one
+            ID, so the buffer is declared once per shader instead of once per place it is consumed.
+            </summary>
+            <remarks>
+            <para>
+            A raw <c>Stride.Graphics.Buffer</c> is re-wrapped into a fresh <c>BufferInput</c> every time
+            it reaches the shader graph - once per <c>BufferIn</c> node and once per implicit monadic
+            conversion. Each wrapper takes its ID from its own node context, so a buffer that is both
+            written and read inside one compute shader is emitted as two independent declarations and
+            bound to two resource slots.
+            </para>
+            <para>
+            D3D11 rejects that: binding one resource to two UAV slots raises
+            <c>DEVICE_CSSETUNORDEREDACCESSVIEWS_HAZARD</c> and one of the two slots is forced to NULL. If
+            the slot that loses is the write, the buffer silently stops being updated while everything
+            else in the same dispatch keeps working - which is exactly what the Gaussian splat decode hit
+            (see RC-03.PRELOADER-PERFORMANCE-AND-COLOR-BUFFER.md 6.4a): the colour buffer's write binding
+            was force-NULLed on every frame, so splats kept the previous clip's colours.
+            </para>
+            <para>
+            Scope is deliberately narrow. Inputs are only merged when they wrap the *same buffer object*
+            and generate the *same declaration text*; a read-only and a read-write view of one buffer are
+            left alone, because merging those would silently change one of them. The map is rebuilt from
+            scratch on every generation and the graph traversal order is deterministic, so the winner is
+            stable across regenerations and the collapsed ID is already in place in the very first
+            generated shader - this adds no regeneration of its own.
+            </para>
+            </remarks>
+        </member>
         <member name="T:Fuse.ShaderFX.GenerationUtil">
             <summary>
             Utility class for shader generation operations.
@@ -1179,6 +1234,13 @@
             <example>
             Setting SemanticName = "boxSize" will generate "boxSize_123456" instead of "input_123456"
             </example>
+        </member>
+        <member name="M:Fuse.AbstractShaderNode.InvalidateId">
+            <summary>
+            Drops any cached form of <see cref="P:Fuse.AbstractShaderNode.ID"/>. Call after changing <see cref="P:Fuse.AbstractShaderNode.HashCode"/>
+            without also changing <see cref="P:Fuse.AbstractShaderNode.Name"/> - the cache in <see cref="T:Fuse.ShaderNode`1"/> keys on
+            the name only, so a hash-only change would otherwise not be picked up.
+            </summary>
         </member>
         <member name="M:Fuse.AbstractShaderNode.ResetBuildSourceCodeCache">
             <summary>

@@ -361,7 +361,32 @@ public enum BufferType
     Auto
 }
 
-public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
+/// <summary>
+/// Non-generic view of a <see cref="BufferInput{T}"/>, used to recognise several shader inputs that
+/// wrap one and the same GPU buffer with one and the same declaration.
+/// </summary>
+/// <remarks>
+/// A raw <see cref="Buffer"/> gets re-wrapped into a fresh <c>BufferInput</c> at every place it is
+/// consumed (every <c>BufferIn</c> node, and <see cref="DelegatingBufferInput{T}"/> for implicit
+/// conversions). Each wrapper has its own node-context-derived ID, so one buffer consumed twice in
+/// the same shader produces two declarations and therefore two resource slots pointing at one
+/// resource - which D3D11 refuses, forcing one of the two slots to NULL. See
+/// AbstractToShaderFX.CollapseDuplicateBufferInputs.
+/// </remarks>
+public interface IBufferInputIdentity
+{
+    /// <summary>The GPU buffer this input currently wraps, or null.</summary>
+    Buffer BufferValue { get; }
+
+    /// <summary>
+    /// The generated declaration type, e.g. <c>RWStructuredBuffer&lt;float3&gt;</c>. Two inputs may
+    /// only share an identity when this matches - a read-only and a read-write view of one buffer
+    /// are genuinely different declarations.
+    /// </summary>
+    string DeclarationTypeName { get; }
+}
+
+public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IBufferInputIdentity
 {
     private readonly BufferTypeTracker<T> _typeTracker;
 
@@ -377,6 +402,10 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
 
 
     public ShaderNode<T> Type { get; }
+
+    public Buffer BufferValue => _value;
+
+    public string DeclarationTypeName => _typeTracker.GpuType + "|" + _typeTracker.ComputeGpuType;
 
     public BufferType BufferType
     {
