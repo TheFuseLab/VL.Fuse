@@ -143,17 +143,30 @@ shader FuseIOGaussianUtils{
         float3x3 W = transpose((float3x3)viewMatrix);
         float3x3 T = mul(J,W);
         float3x3 cov = mul(mul(T, transpose(cov3D)),transpose( T));
-       
+
+        // Determinant before the antialiasing dilation below, used to detect how much that
+        // dilation inflates this splat's footprint. Grazing/near-degenerate splats project to a
+        // thin ellipse, so the flat dilation floor dominates their thin axis and inflates them
+        // into a much rounder, larger shape than their true footprint (visible as brightness
+        // bleeding past the silhouette on foreground/background edges).
+        float detOrig = cov._m00 * cov._m11 - cov._m01 * cov._m01;
+
         // Apply low-pass filter
         cov._m00 += 0.3f;
         cov._m11 += 0.3f;
 
+        float detDilated = cov._m00 * cov._m11 - cov._m01 * cov._m01;
+        // 1 = dilation barely changed this splat's area, -> 0 = heavily inflated. Used below to
+        // pull the render trim back in for heavily-inflated splats, so they don't paint a much
+        // larger area past their true silhouette than their real shape would.
+        float dilationCompensation = sqrt(saturate(detOrig / max(detDilated, 1e-6f)));
+
         // Calculate trim factor based on visibility threshold and opacity
         float trimFactor = ComputeThresholdDistance(opacity, visibilityThreshold);
-        
+
         // Standard multiplier for Gaussian size is typically 3σ (covers 99.7% of distribution)
         // We'll scale this based on our trim factor, which is typically less than 3
-        float scaleFactor = trimFactor / 3.0f;
+        float scaleFactor = (trimFactor / 3.0f) * dilationCompensation;
         
         // Apply scaling to the covariance matrix (scale^2 because covariance scales with square of coordinates)
         cov._m00 *= scaleFactor * scaleFactor;
