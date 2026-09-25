@@ -63,6 +63,11 @@ public sealed class MeshGpu
     public int BoneCount;
     public int[] Indices = []; // 32-bit for simplicity
     public GpuVertex[] Vertices = [];
+    public MeshCustomChannel[] CustomData = [];
+    public MeshCustomChannel[] GetCustomData() => CustomData;
+    public MeshCustomChannel GetCustomData(string name) =>
+        CustomData.FirstOrDefault(c => c.Name == name)
+        ?? throw new KeyNotFoundException($"Mesh has no custom channel '{name}'.");
 }
 
 public sealed class ModelGpu
@@ -211,10 +216,25 @@ public static class FBXLoader
 
 
     public static ModelGpu LoadFbx(string path, float sceneScale = 0.01f, float fpsIfNeeded = 30f)
+        => LoadFbxWithBackend(path, sceneScale, fpsIfNeeded);
+
+    /// <summary>Prefer ufbx for supported static meshes; Assimp remains the explicit and compatibility backend.</summary>
+    public static ModelGpu LoadFbxWithBackend(string path, float sceneScale = 0.01f, float fpsIfNeeded = 30f, FbxImportBackend backend = FbxImportBackend.Ufbx)
+    {
+        if(backend == FbxImportBackend.Ufbx)
+        {
+            try { if(UfbxNative.TryLoad(path,sceneScale,fpsIfNeeded,out var model)) return model; }
+            catch(IOException) { } catch(UnauthorizedAccessException) { }
+        }
+        return LoadFbxAssimp(path,sceneScale,fpsIfNeeded);
+    }
+
+    /// <summary>Original Assimp import path, including skeleton and animation support.</summary>
+    public static ModelGpu LoadFbxAssimp(string path, float sceneScale = 0.01f, float fpsIfNeeded = 30f)
     {
         try
         {
-            var ctx = new AssimpContext();
+            using var ctx = new AssimpContext();
             var pps = PostProcessSteps.Triangulate
                       | PostProcessSteps.JoinIdenticalVertices
                       | PostProcessSteps.LimitBoneWeights
@@ -326,7 +346,7 @@ public static class FBXLoader
     {
         try
         {
-            var ctx = new AssimpContext();
+            using var ctx = new AssimpContext();
             var pps = PostProcessSteps.Triangulate
                       | PostProcessSteps.JoinIdenticalVertices
                       | PostProcessSteps.LimitBoneWeights
@@ -500,9 +520,11 @@ public static class FBXLoader
         var totalIndices = meshInstances.Sum(instance => instance.Mesh.FaceCount * 3);
 
         var vertices = new GpuVertex[totalVertices];
+        var customData = MeshCustomDataPacking.Pack(meshInstances.Select(i => i.Mesh).ToArray());
         var indices = new int[totalIndices];
-        var vertexWeights = new List<(int bone, float w)>[totalVertices];
-        for (var i = 0; i < totalVertices; i++) vertexWeights[i] = new List<(int, float)>();
+        var vertexWeights = useSyntheticRoot ? null : new List<(int bone, float w)>[totalVertices];
+        if (vertexWeights is not null)
+            for (var i = 0; i < totalVertices; i++) vertexWeights[i] = new List<(int, float)>();
 
         var vertexOffset = 0;
         var indexOffset = 0;
@@ -542,7 +564,7 @@ public static class FBXLoader
                 if (!indexOf.TryGetValue(b.Name, out var bi)) continue;
                 foreach (var w in b.VertexWeights)
                     if (w.VertexID < m.VertexCount)
-                        vertexWeights[vertexOffset + w.VertexID].Add((bi, w.Weight));
+                        vertexWeights![vertexOffset + w.VertexID].Add((bi, w.Weight));
             }
 
             foreach (var f in m.Faces)
@@ -566,7 +588,13 @@ public static class FBXLoader
 
         for (var v = 0; v < totalVertices; v++)
         {
-            var list = vertexWeights[v].OrderByDescending(w => w.w).Take(4).ToList();
+            if (useSyntheticRoot)
+            {
+                vertices[v].Bone = new Int4(0);
+                vertices[v].Weights = new Vector4(1, 0, 0, 0);
+                continue;
+            }
+            var list = vertexWeights![v].OrderByDescending(w => w.w).Take(4).ToList();
             var sum = list.Sum(w => w.w);
             var inv = sum > 1e-8f ? 1f / sum : 0f;
 
@@ -608,7 +636,8 @@ public static class FBXLoader
         {
             Vertices = vertices,
             Indices = indices,
-            BoneCount = indexOf.Count
+            BoneCount = indexOf.Count,
+            CustomData = customData
         };
     }
 
@@ -975,7 +1004,7 @@ public static class GpuPacking
 
     #region TriangleAliasTable
 
-    private static TriangleAliasTable BuildTriangleAliasTable(float[] weights)
+    internal static TriangleAliasTable BuildTriangleAliasTable(float[] weights)
     {
         var n = weights.Length;
         var table = new TriangleAliasTable

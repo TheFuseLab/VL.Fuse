@@ -4,6 +4,10 @@
         <name>Fuse.IO</name>
     </assembly>
     <members>
+        <member name="T:Fuse.IO.Fbx.AssetAliasTable">
+            <summary>Weighted selection of library assets. Weight = source surface area * uniform scale squared.
+            Selected table index is AssetId. Empty scales means one for every asset; otherwise supply one per asset.</summary>
+        </member>
         <member name="T:Fuse.IO.Fbx.GpuVertex">
             <summary>
                 Vertex layout for GPU (StructuredBuffer); tightly packed / sequential.
@@ -18,6 +22,12 @@
         <member name="P:Fuse.IO.Fbx.TriangleAliasTable.TriangleCount">
             <summary>Number of triangles this table was built for.</summary>
         </member>
+        <member name="M:Fuse.IO.Fbx.FBXLoader.LoadFbxWithBackend(System.String,System.Single,System.Single,Fuse.IO.Fbx.FbxImportBackend)">
+            <summary>Prefer ufbx for supported static meshes; Assimp remains the explicit and compatibility backend.</summary>
+        </member>
+        <member name="M:Fuse.IO.Fbx.FBXLoader.LoadFbxAssimp(System.String,System.Single,System.Single)">
+            <summary>Original Assimp import path, including skeleton and animation support.</summary>
+        </member>
         <member name="M:Fuse.IO.Fbx.FBXLoader.BuildDefault">
             <summary>
                 Creates a minimal, 1x1 unit-sized, valid ModelGpu object to prevent downstream failures.
@@ -30,6 +40,78 @@
         </member>
         <member name="M:Fuse.IO.Fbx.GpuPacking.DQIndex(System.Int32,System.Int32,System.Int32,System.Int32)">
             Convert a frame selection (frame, boneIndex) to the packed float4 index.
+        </member>
+        <member name="T:Fuse.IO.Fbx.InstanceAliasTable">
+            <summary>Area-weighted selection among visible scaffold instances. Table slots map back to original
+            instance indices. Empty visibility means nothing visible, not all instances. Uniform scales only.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.LibraryTriangleAliasTable">
+            <summary>Shared alias arrays and GPU-ready int4 ranges. X=alias offset, Y=triangle count,
+            Z=global triangle offset, W=valid (0/1). Aliases contain LOCAL triangle indices.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.TriangleAliasTableForLibrary">
+            <summary>Expose existing library tables without rebuilding or duplicating triangles.
+            Instance asset IDs must be in the same order as instance transforms. Invalid IDs retain an empty slot.</summary>
+        </member>
+        <member name="M:Fuse.IO.Fbx.TriangleAliasTableForLibrary.BuildTriangleAliasTableForLibrary(Fuse.IO.Fbx.MeshLibrary)">
+            <summary>One buffer containing independent per-asset distributions, NOT one globally normalized distribution.
+            Empty instance IDs yields no instances; AssetRanges still exposes every library asset.</summary>
+        </member>
+        <member name="M:Fuse.IO.Fbx.TriangleAliasTableForLibrary.BuildTriangleAliasTableForLibrary(Fuse.IO.Fbx.MeshLibrary,System.Collections.Generic.IEnumerable{System.Int32})">
+            <summary>Compatibility overload with optional instance mapping.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.TriangleAliasTableForAssets">
+            <summary>Asset-only table node: one library input, shared alias arrays and per-asset ranges.
+            Existing instance-mapping node remains available for patch compatibility.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshCustomChannel">
+            <summary>A named parallel vertex stream. Values always use a 16-byte float4 GPU stride.</summary>
+        </member>
+        <member name="P:Fuse.IO.Fbx.MeshCustomChannel.Name">
+            <summary>Stable semantic name TEXCOORD1.. or COLOR0..; not the original authoring-layer name.</summary>
+        </member>
+        <member name="P:Fuse.IO.Fbx.MeshCustomChannel.ComponentCount">
+            <summary>Maximum source component count across mesh instances; storage is always float4.</summary>
+        </member>
+        <member name="P:Fuse.IO.Fbx.MeshCustomChannel.Present">
+            <summary>False means this channel was absent in that vertex's source mesh; Values then contains zero.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshCustomDataPacking">
+            <summary>Packs Assimp channels in exactly the same mesh-instance/vertex order as the geometry stream.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibraryAsset">
+            <summary>GPU metadata, 32 bytes. Indices are global; aliases remain asset-local.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibrary">
+            <summary>Owned CPU snapshot. Upload arrays with ImmutableBuffer or MeshLibraryBuffers.
+            Treat published arrays as immutable. Skeleton/clip banks are not combined.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshView">
+            <summary>Non-owning selection into a library, without copying geometry.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibraryBuilder">
+            <summary>Additive multi-model builder. Reference changes rebuild; pulse Reload after in-place edits.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.SingleMeshLibrary">
+            <summary>Single-input convenience node, using exactly the same library builder.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibrarySampling">
+            <summary>CPU reference for the GPU algorithm. Random values must be independent in [0,1).
+            Returned indices address shared vertices/custom channels, not the original mesh.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibraryBuffers">
+            <summary>Uploads a library snapshot once per device/library change. This node owns its buffers.
+            Execute on the graphics thread, like ImmutableBuffer. Empty libraries use one dummy element.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.MeshLibraryFile">
+            <summary>Optional static FBX library loader with an exact-content disk cache. Input order defines asset IDs.
+            Pulse Reload after editing source files. Cache misses use the established FBX loader.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.FbxImportBackend">
+            <summary>Select Assimp explicitly for legacy import, or prefer ufbx with compatibility fallback.</summary>
+        </member>
+        <member name="T:Fuse.IO.Fbx.UfbxNative">
+            <summary>Windows x64 native static-mesh adapter. Unsupported features are delegated to Assimp.</summary>
         </member>
         <member name="T:Fuse.IO.Ply.CombinedProgressInfo">
             <summary>

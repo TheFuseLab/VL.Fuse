@@ -1,0 +1,42 @@
+shader FuseMeshLibrarySampling
+{
+    // @export
+    // @namespace Fuse.IO.FBX.Library
+    // @summary Sample a local-space surface from shared library buffers; random must be in [0,1).
+    float3 LibrarySurfaceSample(
+        StructuredBuffer<float3> positions, StructuredBuffer<float3> normals,
+        StructuredBuffer<float2> uvs, StructuredBuffer<int> indices,
+        StructuredBuffer<float> probabilities, StructuredBuffer<int> aliases,
+        StructuredBuffer<int4> ranges, int assetCount, int assetId, float4 random,
+        out float3 normal, out float2 uv, out int3 vertexIndices, out float3 barycentric, out bool valid)
+    {
+        normal=0; uv=0; vertexIndices=0; barycentric=0; valid=false;
+        if(assetId<0 || assetId>=assetCount)return float3(0,0,0);
+        int4 asset=ranges[assetId];
+        if(asset.w<=0)return float3(0,0,0);
+        float4 r=clamp(random,0.0,0.99999994);
+        int bucket=min((int)(r.x*asset.w),asset.w-1);
+        int triangle=r.y<probabilities[asset.z+bucket]?bucket:aliases[asset.z+bucket];
+        int offset=3*(asset.z+triangle);
+        vertexIndices=int3(indices[offset],indices[offset+1],indices[offset+2]);
+        float root=sqrt(r.z);
+        barycentric=float3(1-root,root*(1-r.w),root*r.w);
+        normal=normals[vertexIndices.x]*barycentric.x+normals[vertexIndices.y]*barycentric.y+normals[vertexIndices.z]*barycentric.z;
+        normal=normal*rsqrt(max(dot(normal,normal),1e-20));
+        uv=uvs[vertexIndices.x]*barycentric.x+uvs[vertexIndices.y]*barycentric.y+uvs[vertexIndices.z]*barycentric.z;
+        valid=true;
+        return positions[vertexIndices.x]*barycentric.x+positions[vertexIndices.y]*barycentric.y+positions[vertexIndices.z]*barycentric.z;
+    }
+
+    // @export
+    // @namespace Fuse.IO.FBX.Library
+    // @summary Interpolate a custom float4 stream with the same sampled triangle; call with sample validity.
+    float4 LibraryCustomSample(StructuredBuffer<float4> values, StructuredBuffer<int> presence,
+        int3 vertexIndices, float3 barycentric, bool sampleValid, out bool present)
+    {
+        present=false;
+        if(!sampleValid)return float4(0,0,0,0);
+        present=presence[vertexIndices.x]!=0 && presence[vertexIndices.y]!=0 && presence[vertexIndices.z]!=0;
+        return values[vertexIndices.x]*barycentric.x+values[vertexIndices.y]*barycentric.y+values[vertexIndices.z]*barycentric.z;
+    }
+};
