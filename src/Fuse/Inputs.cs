@@ -213,7 +213,7 @@ public abstract class GpuTypeTracker<T>
     protected abstract string DefineGpuType(T value);
     protected abstract string DefineComputeGpuType(T value);
 
-    public bool CheckDeclaration(T value)
+    public virtual bool CheckDeclaration(T value)
     {
         var gpuType = DefineGpuType(value);
         var computeGpuType = DefineComputeGpuType(value);
@@ -332,6 +332,8 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
 {
     private readonly ShaderNode<T> _type;
 
+    private bool _hadBuffer;
+
     public BufferTypeTracker(ShaderNode<T> theType, BufferType theBufferType = BufferType.Auto)
     {
         _type = theType;
@@ -339,6 +341,32 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
     }
 
     public BufferType BufferType { get; set; }
+
+    /// <summary>
+    /// Also reports a change the first time the wrapped buffer actually exists, even when the
+    /// declaration text is unchanged (which it is whenever <see cref="BufferType"/> is pinned
+    /// rather than left at <see cref="BufferType.Auto"/>).
+    /// </summary>
+    /// <remarks>
+    /// The shader graph is built long before the first PLY folder has finished decoding, so at that
+    /// point a buffer input's value is still null. Anything that needs to reason about *which*
+    /// resource an input refers to - notably
+    /// AbstractToShaderFX.CollapseDuplicateBufferInputs, which folds several wrappers of one buffer
+    /// into a single declaration - cannot do so against a null. Treating "the resource I was
+    /// declared against has come into existence" as a declaration change gives the graph exactly one
+    /// rebuild at that moment, with real buffers in hand. It fires once per buffer input, on the
+    /// null -> non-null edge only.
+    /// </remarks>
+    public override bool CheckDeclaration(Buffer value)
+    {
+        var changed = base.CheckDeclaration(value);
+
+        var hasBuffer = value != null;
+        if (hasBuffer == _hadBuffer) return changed;
+
+        _hadBuffer = hasBuffer;
+        return true;
+    }
 
     protected override string DefineGpuType(Buffer value)
     {
@@ -361,7 +389,32 @@ public enum BufferType
     Auto
 }
 
-public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
+/// <summary>
+/// Non-generic view of a <see cref="BufferInput{T}"/>, used to recognise several shader inputs that
+/// wrap one and the same GPU buffer with one and the same declaration.
+/// </summary>
+/// <remarks>
+/// A raw <see cref="Buffer"/> gets re-wrapped into a fresh <c>BufferInput</c> at every place it is
+/// consumed (every <c>BufferIn</c> node, and <see cref="DelegatingBufferInput{T}"/> for implicit
+/// conversions). Each wrapper has its own node-context-derived ID, so one buffer consumed twice in
+/// the same shader produces two declarations and therefore two resource slots pointing at one
+/// resource - which D3D11 refuses, forcing one of the two slots to NULL. See
+/// AbstractToShaderFX.CollapseDuplicateBufferInputs.
+/// </remarks>
+public interface IBufferInputIdentity
+{
+    /// <summary>The GPU buffer this input currently wraps, or null.</summary>
+    Buffer BufferValue { get; }
+
+    /// <summary>
+    /// The generated declaration type, e.g. <c>RWStructuredBuffer&lt;float3&gt;</c>. Two inputs may
+    /// only share an identity when this matches - a read-only and a read-write view of one buffer
+    /// are genuinely different declarations.
+    /// </summary>
+    string DeclarationTypeName { get; }
+}
+
+public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IBufferInputIdentity
 {
     private readonly BufferTypeTracker<T> _typeTracker;
 
@@ -377,6 +430,10 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>
 
 
     public ShaderNode<T> Type { get; }
+
+    public Buffer BufferValue => _value;
+
+    public string DeclarationTypeName => _typeTracker.GpuType + "|" + _typeTracker.ComputeGpuType;
 
     public BufferType BufferType
     {

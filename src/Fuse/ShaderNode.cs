@@ -591,6 +591,15 @@ public abstract class AbstractShaderNode : IComputeNode
 
     public abstract string ID { get; }
 
+    /// <summary>
+    /// Drops any cached form of <see cref="ID"/>. Call after changing <see cref="HashCode"/>
+    /// without also changing <see cref="Name"/> - the cache in <see cref="ShaderNode{T}"/> keys on
+    /// the name only, so a hash-only change would otherwise not be picked up.
+    /// </summary>
+    public virtual void InvalidateId()
+    {
+    }
+
     public virtual string DelegateID => ID;
 
     public virtual IDictionary<string, string> Functions
@@ -1027,6 +1036,13 @@ public class ShaderNode<T> : AbstractShaderNode, IComputeValue<T>, IMonadicValue
             }
             return _cachedId;
         }
+    }
+
+    public override void InvalidateId()
+    {
+        _cachedId = null;
+        _cachedIdName = null;
+        _cachedIdSemantic = null;
     }
 
     public override ShaderSource GenerateShaderSource(ShaderGeneratorContext context, MaterialComputeColorKeys baseKeys)
