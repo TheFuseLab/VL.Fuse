@@ -1,0 +1,15 @@
+// Inputs and output use premultiplied RGBA in linear color space.
+shader TextureTrailComposite_TextureFX : TextureFX
+{
+    [Default(0.996)]
+    compose ComputeFloat Decay;
+
+    stage override float4 Shading()
+    {
+        float4 current = InTex0();
+        float4 history = InTex1() * saturate(Decay.Compute());
+
+        // Decay only the history. Fresh particles retain their full color.
+        return current + history * (1.0 - saturate(current.a));
+    }
+};
