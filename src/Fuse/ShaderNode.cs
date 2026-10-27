@@ -446,6 +446,7 @@ public class ViewerID
 public abstract class AbstractShaderNode : IComputeNode
 {
     private const string DefaultShaderCode = "${resultType} ${resultName};";
+    private const string DefaultShaderCodeInitialized = "${resultType} ${resultName} = ${default};";
 
     /// <summary>Property key for required shader mixins.</summary>
     protected const string Mixins = "Mixins";
@@ -692,6 +693,16 @@ public abstract class AbstractShaderNode : IComputeNode
         var resultType = TypeName();
         if (resultType == "struct")
             return "";
+
+        // Initialise with the node's constant default (0 for numeric types): a bare declaration fails with X4000 as
+        // soon as the value is read, e.g. while an input is still unset during the first build.
+        if (AbstractDefault is IConstantValue constant && constant.GetValueAsObject() is ValueType)
+            return ShaderNodesUtil.Evaluate(DefaultShaderCodeInitialized, new Dictionary<string, string>
+            {
+                { "resultName", ID },
+                { "resultType", resultType },
+                { "default", AbstractDefault.ID }
+            });
 
         return ShaderNodesUtil.Evaluate(DefaultShaderCode, new Dictionary<string, string>
         {
