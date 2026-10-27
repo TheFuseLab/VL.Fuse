@@ -164,6 +164,20 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
             }
         }
 
+        // The first graph build often runs before the resources behind it are complete (struct not built yet,
+        // attributes not bound to their resource, buffer not created). Compiling that code fails ("struct" as type,
+        // E0227 streams.<Attribute>, X3549 Interlocked on a read-only buffer) and is retried after the rebuild that
+        // follows anyway. Hand Stride a trivial placeholder instead, so nothing fails; the rebuild brings the real one.
+        var incomplete = IncompleteReason(ShaderCode);
+        if (incomplete != null && DeferredShaderCode("Deferred_" + ShaderName) is { } placeholder)
+        {
+            Logging.FuseLogger.Info($"Shader {ShaderName} deferred until its graph is complete: {incomplete}");
+            ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, "deferred");
+            ShaderName = "Deferred_" + ShaderName;
+            ShaderNodesUtil.AddShaderSource(ShaderName, placeholder, "shaders\\" + ShaderName + ".sdsl");
+            return new ShaderClassSource(ShaderName);
+        }
+
         var shaderPhase = _isCompute ? "compute" : "draw";
         var sourcePath = "shaders\\" + ShaderName + ".sdsl";
         ShaderNodesUtil.DumpShaderSource(ShaderName, ShaderCode, shaderPhase);
@@ -385,5 +399,80 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     private string CheckCode(string theCode)
     {
         return _isCompute ? theCode : theCode.Replace("RWStructuredBuffer", "StructuredBuffer");
+    }
+
+    /// <summary>
+    /// Minimal valid shader class used while the graph is incomplete (see <see cref="IncompleteReason"/>);
+    /// null = this shader kind is never deferred.
+    /// </summary>
+    protected virtual string DeferredShaderCode(string theShaderName) => null;
+
+    private static readonly System.Text.RegularExpressions.Regex UnresolvedStructRegex =
+        new(@"<\s*struct\s*>|\bstruct\s+[A-Za-z_]\w*\s*[=;,)]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex StreamUseRegex =
+        new(@"\bstreams\.(\w+)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Streams ComputeShaderBase provides.
+    private static readonly HashSet<string> ComputeSystemStreams =
+        ["DispatchThreadId", "GroupId", "GroupThreadId", "GroupIndex", "ThreadGroupCount", "ThreadCountPerGroup"];
+
+    private static readonly System.Text.RegularExpressions.Regex ReadOnlyBufferRegex =
+        new(@"(?<![\w])StructuredBuffer<[^>]+>\s+(\w+)\s*;", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>Why the generated code cannot compile yet, or null when it is complete.</summary>
+    private string IncompleteReason(string theCode)
+    {
+        // GpuStruct types are named "struct" until the struct (e.g. a resource's) has been built.
+        if (UnresolvedStructRegex.IsMatch(theCode))
+            return "unresolved struct type";
+
+        if (!_isCompute)
+            return null;
+
+        // An attribute that is not bound to its resource yet still reads its Semantic stream; compute shaders have no
+        // stream section, so streams.<Name> is undeclared (E0227).
+        var unbound = UnboundAttributes().FirstOrDefault();
+        if (unbound != null)
+            return $"attribute {unbound} not bound to a resource yet";
+        // Same, for attribute instances the graph walk does not reach (e.g. inside a Tuple): an undeclared stream that
+        // is a member of a resource struct in this very code.
+        foreach (System.Text.RegularExpressions.Match m in StreamUseRegex.Matches(theCode))
+        {
+            var name = m.Groups[1].Value;
+            if (ComputeSystemStreams.Contains(name)) continue;
+            var escaped = System.Text.RegularExpressions.Regex.Escape(name);
+            if (!System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\bstream\s+\w+\s+{escaped}\b") &&
+                System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\bstruct\s+\w+\s*\{{[^}}]*\b\w+\s+{escaped}\s*;"))
+                return $"attribute {name} not bound to a resource yet";
+        }
+
+        // A buffer that does not exist yet is declared read-only; writing it fails (X3549 / X3025).
+        foreach (System.Text.RegularExpressions.Match m in ReadOnlyBufferRegex.Matches(theCode))
+        {
+            var name = System.Text.RegularExpressions.Regex.Escape(m.Groups[1].Value);
+            if (System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"Interlocked\w*\(\s*{name}\s*\[") ||
+                System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\b{name}\s*\[[^\]]*\](\.\w+)?\s*=[^=]"))
+                return $"read-only buffer {m.Groups[1].Value} is written";
+        }
+
+        return null;
+    }
+
+    private IEnumerable<string> UnboundAttributes()
+    {
+        var visited = new HashSet<AbstractShaderNode>();
+        var stack = new Stack<AbstractShaderNode>(Inputs.Values.Where(n => n != null));
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (!visited.Add(node)) continue;
+            if (node is ComputeSystem.IAttribute { IsOverridden: false } attribute &&
+                attribute.InputAbstract?.GetType().IsGenericType == true &&
+                attribute.InputAbstract.GetType().GetGenericTypeDefinition() == typeof(Semantic<>))
+                yield return attribute.Name;
+            foreach (var input in node.Ins)
+                if (input != null) stack.Push(input);
+        }
     }
 }

@@ -95,4 +95,13 @@ ${stagePS}
         theTemplate)
     {
     }
+
+    /// <summary>
+    /// Draws nothing until the graph is complete (see AbstractToShaderFX.IncompleteReason). No vertex inputs, so any
+    /// mesh layout is accepted (Stride builds the input layout from the mesh, not from the shader).
+    /// </summary>
+    protected override string DeferredShaderCode(string theShaderName) =>
+        $"shader {theShaderName} : ShaderBase\n{{\n" +
+        "    stage override void VSMain()\n    {\n        streams.ShadingPosition = float4(0, 0, 0, 1);\n    }\n" +
+        "    stage override void PSMain()\n    {\n        discard;\n    }\n};";
 }

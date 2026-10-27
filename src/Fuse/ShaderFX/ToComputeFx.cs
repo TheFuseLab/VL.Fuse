@@ -53,4 +53,8 @@ ${stageFX}
         ShaderSource)
     {
     }
+
+    /// <summary>Does nothing until the graph is complete (see AbstractToShaderFX.IncompleteReason).</summary>
+    protected override string DeferredShaderCode(string theShaderName) =>
+        $"shader {theShaderName} : ComputeVoid, ComputeShaderBase\n{{\n    override void Compute()\n    {{\n    }}\n}};";
 }
