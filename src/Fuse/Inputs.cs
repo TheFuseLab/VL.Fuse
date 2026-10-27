@@ -443,7 +443,7 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IB
             _typeTracker.BufferType = value;
             // Recalculate the type strings with the new BufferType
             _typeTracker.CheckDeclaration(Value);
-            SetFieldDeclaration(_typeTracker.ComputeGpuType, _typeTracker.GpuType);
+            SetFieldDeclaration(_typeTracker.GpuType, _typeTracker.ComputeGpuType);
         }
     }
 
