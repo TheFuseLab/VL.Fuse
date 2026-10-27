@@ -77,6 +77,18 @@
             Creates a ConstantValue from an object value. Falls back to zero if value is null.
             </summary>
         </member>
+        <member name="T:Fuse.Compute.ResourceIndexSource">
+            <summary>Which element of a structured resource a draw shader vertex reads (variant A draw path).</summary>
+        </member>
+        <member name="F:Fuse.Compute.ResourceIndexSource.VertexID">
+            <summary>SV_VertexID: one vertex per element (points, sprites, quads expanded in the geometry stage).</summary>
+        </member>
+        <member name="F:Fuse.Compute.ResourceIndexSource.InstanceID">
+            <summary>SV_InstanceID: one instance per element (instanced meshes).</summary>
+        </member>
+        <member name="F:Fuse.Compute.ResourceIndexSource.IndicesVertexID">
+            <summary>Indices[SV_VertexID]: indexed draws (lines/strips) drawn non-indexed, the index read in the shader.</summary>
+        </member>
         <member name="M:Fuse.BufferTypeTracker`1.CheckDeclaration(Stride.Graphics.Buffer)">
             <summary>
             Also reports a change the first time the wrapped buffer actually exists, even when the
@@ -852,6 +864,22 @@
              - QuadMin/QuadMax bounds (if drawable)
             </summary>
         </member>
+        <member name="T:Fuse.Rendering.VertexIdMesh">
+            <summary>
+            Mesh for drawing a structured resource per SV_VertexID / SV_InstanceID: the draw shader reads its attributes from
+            the StructuredBuffer, so no resource data goes through the input assembler.
+            </summary>
+            <remarks>
+            D3D11 needs at least one input element, otherwise CreateInputLayout fails and Stride binds against a stale
+            pipeline state (NRE in ResourceBinder.BindResources). The mesh therefore carries one dummy vertex buffer with
+            stride 0 (every vertex reads element 0, filled with zeros). Its declaration is PositionNormalTexture plus the
+            optional <paramref name="extraDeclaration"/> (e.g. the resource's vertex declaration), so a draw shader that
+            still reads resource attributes as vertex streams gets a valid layout and reads zeros instead of failing.
+            With <c>drawArgs</c> the draw is non-indexed indirect (VL.Stride issues DrawInstancedIndirect when a
+            MeshDrawIndirect has DrawArgs and no index buffer; a DrawIndexed argument layout works as long as StartIndex and
+            BaseVertex are 0).
+            </remarks>
+        </member>
         <member name="T:Fuse.ShaderConstants">
             <summary>
             Constants used throughout the shader generation system.
@@ -1014,6 +1042,15 @@
             </para>
             </remarks>
         </member>
+        <member name="M:Fuse.ShaderFX.AbstractToShaderFX`1.DeferredShaderCode(System.String)">
+            <summary>
+            Minimal valid shader class used while the graph is incomplete (see <see cref="M:Fuse.ShaderFX.AbstractToShaderFX`1.IncompleteReason(System.String)"/>);
+            null = this shader kind is never deferred.
+            </summary>
+        </member>
+        <member name="M:Fuse.ShaderFX.AbstractToShaderFX`1.IncompleteReason(System.String)">
+            <summary>Why the generated code cannot compile yet, or null when it is complete.</summary>
+        </member>
         <member name="T:Fuse.ShaderFX.GenerationUtil">
             <summary>
             Utility class for shader generation operations.
@@ -1022,6 +1059,15 @@
             This class is currently a placeholder. Future shader generation utilities
             should be added here or this class should be removed if not needed.
             </remarks>
+        </member>
+        <member name="M:Fuse.ShaderFX.ToComputeFx`1.DeferredShaderCode(System.String)">
+            <summary>Does nothing until the graph is complete (see AbstractToShaderFX.IncompleteReason).</summary>
+        </member>
+        <member name="M:Fuse.ShaderFX.ToDrawFX.DeferredShaderCode(System.String)">
+            <summary>
+            Draws nothing until the graph is complete (see AbstractToShaderFX.IncompleteReason). No vertex inputs, so any
+            mesh layout is accepted (Stride builds the input layout from the mesh, not from the shader).
+            </summary>
         </member>
         <member name="T:Fuse.IPrepareGraph">
             <summary>
