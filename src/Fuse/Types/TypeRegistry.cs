@@ -90,7 +90,7 @@ public static class TypeRegistry
         // Matrix types
         [typeof(Matrix)] = new TypeMapping(
             GpuType: "float4x4",
-            DefaultValue: "float4x4()",
+            DefaultValue: "(float4x4)0", // HLSL has no float4x4(); zero matrix = C# default(Matrix)
             Signature: "Matrix",
             CompositionType: "ComputeMatrix",
             Dimension: 16,
@@ -98,7 +98,7 @@ public static class TypeRegistry
         ),
         [typeof(Matrix3)] = new TypeMapping(
             GpuType: "float3x3",
-            DefaultValue: "float3x3()",
+            DefaultValue: "(float3x3)0",
             Signature: "Matrix3",
             CompositionType: "ComputeMatrix",
             Dimension: 9,
@@ -106,7 +106,7 @@ public static class TypeRegistry
         ),
         [typeof(Matrix2)] = new TypeMapping(
             GpuType: "float2x2",
-            DefaultValue: "float2x2()",
+            DefaultValue: "(float2x2)0",
             Signature: "Matrix2",
             CompositionType: "ComputeMatrix",
             Dimension: 4,
