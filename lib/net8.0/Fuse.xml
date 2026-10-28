@@ -89,6 +89,10 @@
         <member name="F:Fuse.Compute.ResourceIndexSource.IndicesVertexID">
             <summary>Indices[SV_VertexID]: indexed draws (lines/strips) drawn non-indexed, the index read in the shader.</summary>
         </member>
+        <member name="M:Fuse.Compute.ResourceIndexSourceUtil.SelectIndex``1(Fuse.Compute.ResourceIndexSource,Fuse.ShaderNode{``0},Fuse.ShaderNode{``0},Fuse.ShaderNode{``0})">
+            <summary>Picks the element index for <paramref name="source"/>; falls back to the vertex id when the
+            chosen source is not connected (e.g. Indices unset).</summary>
+        </member>
         <member name="M:Fuse.BufferTypeTracker`1.CheckDeclaration(Stride.Graphics.Buffer)">
             <summary>
             Also reports a change the first time the wrapped buffer actually exists, even when the
@@ -879,6 +883,12 @@
             MeshDrawIndirect has DrawArgs and no index buffer; a DrawIndexed argument layout works as long as StartIndex and
             BaseVertex are 0).
             </remarks>
+        </member>
+        <member name="M:Fuse.Rendering.VertexIdMesh.ForOwner(System.Object,Stride.Graphics.GraphicsDevice,System.Int32,Stride.Graphics.PrimitiveType,Stride.Core.Mathematics.BoundingBox,Stride.Graphics.VertexDeclaration,Stride.Graphics.Buffer)">
+            <summary>
+            Stateless entry for VL (Fuse imports this class without a process node): one mesh per <paramref name="owner"/>
+            (the drawn resource) and topology, kept alive as long as the owner is. Null owner or device gives null.
+            </summary>
         </member>
         <member name="T:Fuse.ShaderConstants">
             <summary>
