@@ -69,10 +69,28 @@ public static class ShaderNodesUtil
     public static bool DebugShaderGeneration = false;
     public static bool DebugVisit = false;
     public static bool TimeShaderGeneration = false;
-    public static bool TraceShaderSource { get; set; } =
+    // The environment variables win over the setters: app patches set TraceShaderSource / ShaderDumpDirectory every
+    // frame (e.g. from an IOBox = False), which would otherwise switch an env-requested trace off after the first frame.
+    private static readonly bool TraceShaderSourceFromEnvironment =
         string.Equals(Environment.GetEnvironmentVariable("FUSE_TRACE_SHADER_SOURCE"), "1", StringComparison.Ordinal);
-    public static string ShaderDumpDirectory { get; set; } =
+    private static readonly string ShaderDumpDirectoryFromEnvironment =
         Environment.GetEnvironmentVariable("FUSE_SHADER_DUMP_DIR");
+    private static bool _traceShaderSource;
+    private static string _shaderDumpDirectory;
+
+    public static bool TraceShaderSource
+    {
+        get => TraceShaderSourceFromEnvironment || _traceShaderSource;
+        set => _traceShaderSource = value;
+    }
+
+    public static string ShaderDumpDirectory
+    {
+        get => string.IsNullOrWhiteSpace(ShaderDumpDirectoryFromEnvironment)
+            ? _shaderDumpDirectory
+            : ShaderDumpDirectoryFromEnvironment;
+        set => _shaderDumpDirectory = value;
+    }
     public static bool ValidateGeneratedShaderSource { get; set; } = false;
     public static bool ThrowOnInvalidGeneratedShader { get; set; } = false;
 

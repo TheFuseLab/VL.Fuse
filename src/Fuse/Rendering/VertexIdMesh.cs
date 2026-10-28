@@ -30,6 +30,30 @@ public sealed class VertexIdMesh : IDisposable
     private VertexDeclaration _declaration;
     private Buffer _dummy;
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, Dictionary<PrimitiveType, VertexIdMesh>>
+        PerOwner = new();
+
+    /// <summary>
+    /// Stateless entry for VL (Fuse imports this class without a process node): one mesh per <paramref name="owner"/>
+    /// (the drawn resource) and topology, kept alive as long as the owner is. Null owner or device gives null.
+    /// </summary>
+    public static Mesh ForOwner(
+        object owner,
+        GraphicsDevice graphicsDevice,
+        int vertexCount = 1,
+        PrimitiveType topology = PrimitiveType.PointList,
+        BoundingBox boundingBox = default,
+        VertexDeclaration extraDeclaration = null,
+        Buffer drawArgs = null)
+    {
+        if (owner == null || graphicsDevice == null)
+            return null;
+        var meshes = PerOwner.GetOrCreateValue(owner);
+        if (!meshes.TryGetValue(topology, out var mesh))
+            meshes[topology] = mesh = new VertexIdMesh();
+        return mesh.Update(graphicsDevice, vertexCount, topology, boundingBox, extraDeclaration, drawArgs);
+    }
+
     public Mesh Update(
         GraphicsDevice graphicsDevice,
         int vertexCount = 1,
