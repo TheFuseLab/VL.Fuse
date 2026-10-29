@@ -72,6 +72,34 @@
             padFloats = padBytes / 4   // 0..3
             </summary>
         </member>
+        <member name="P:Fuse.compute.IBufferInput`1.IsByteAddressBuffer">
+            <summary>
+            True while the buffer is declared as (RW)ByteAddressBuffer because a raw buffer is bound, see
+            <see cref="M:Fuse.TypeHelpers.UseByteAddressBuffer(Stride.Graphics.Buffer,System.String)"/>. Access nodes then emit Load/Store instead of indexing.
+            </summary>
+        </member>
+        <member name="T:Fuse.compute.IBufferDeclaration">
+            <summary>
+            A buffer input whose declaration can be forced to stay structured. Function-call nodes (mixin, custom, intrinsic,
+            region and delegate calls) request this for every buffer they pass on, because hand-written shader functions
+            declare their parameters as StructuredBuffer and cannot take a ByteAddressBuffer.
+            </summary>
+        </member>
+        <member name="T:Fuse.compute.ByteAddressAccess">
+            <summary>
+            Shader code for element access on a raw (ByteAddressBuffer) binding. Elements are addressed by byte offset
+            (index * 4 * components); Load/Store work on uint, so int and float go through asint/asuint/asfloat.
+            </summary>
+        </member>
+        <member name="M:Fuse.compute.ByteAddressAccess.Offset(System.String,System.String,System.Int32)">
+            <summary>Byte offset of element <paramref name="theIndex"/>, optionally of one of its components.</summary>
+        </member>
+        <member name="M:Fuse.compute.ByteAddressAccess.Interlocked(System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Interlocked on a raw buffer: the ByteAddressBuffer method takes a byte offset and uint values, one component
+            at a time. Only int and uint elements are meaningful, as for the structured variant.
+            </summary>
+        </member>
         <member name="M:Fuse.ConstantHelper.AbstractFromObject(System.Type,System.Object)">
             <summary>
             Creates a ConstantValue from an object value. Falls back to zero if value is null.
@@ -92,6 +120,11 @@
         <member name="M:Fuse.Compute.ResourceIndexSourceUtil.SelectIndex``1(Fuse.Compute.ResourceIndexSource,Fuse.ShaderNode{``0},Fuse.ShaderNode{``0},Fuse.ShaderNode{``0})">
             <summary>Picks the element index for <paramref name="source"/>; falls back to the vertex id when the
             chosen source is not connected (e.g. Indices unset).</summary>
+        </member>
+        <member name="P:Fuse.BufferTypeTracker`1.RequireStructured">
+            <summary>
+            Keeps a raw buffer declared as StructuredBuffer, see <see cref="T:Fuse.compute.IBufferDeclaration"/>.
+            </summary>
         </member>
         <member name="M:Fuse.BufferTypeTracker`1.CheckDeclaration(Stride.Graphics.Buffer)">
             <summary>
@@ -132,6 +165,12 @@
             The generated declaration type, e.g. <c>RWStructuredBuffer&lt;float3&gt;</c>. Two inputs may
             only share an identity when this matches - a read-only and a read-write view of one buffer
             are genuinely different declarations.
+            </summary>
+        </member>
+        <member name="P:Fuse.BufferInput`1.IsByteAddressBuffer">
+            <summary>
+            Derived from the current declaration so access nodes and declaration never disagree: true while a raw
+            buffer is bound and the element type allows Load/Store, see <see cref="M:Fuse.TypeHelpers.UseByteAddressBuffer(Stride.Graphics.Buffer,System.String)"/>.
             </summary>
         </member>
         <member name="M:Fuse.ValueInput`1.#ctor(VL.Core.NodeContext)">
@@ -1432,6 +1471,19 @@
             Pattern-matching overloads for <see cref="T:Fuse.AbstractShaderNode"/> are provided
             for runtime type resolution.
             </remarks>
+        </member>
+        <member name="M:Fuse.TypeHelpers.IsRawBuffer(Stride.Graphics.Buffer)">
+            <summary>
+            True for a buffer created with raw views and without the structured flag, e.g. the VL.Stride
+            DynamicDrawArgsBuffer and DispatchArgsBuffer.
+            </summary>
+        </member>
+        <member name="M:Fuse.TypeHelpers.UseByteAddressBuffer(Stride.Graphics.Buffer,System.String)">
+            <summary>
+            True when <paramref name="theBuffer"/> is raw and <paramref name="theType"/> can be read and written through
+            ByteAddressBuffer Load/Store: int, uint, float and their 2 to 4 component vectors, scalar bool. Other element
+            types (structs, matrices) keep the structured declaration.
+            </summary>
         </member>
         <member name="M:Fuse.TypeHelpers.IsTypedReadOnlyBuffer(Stride.Graphics.Buffer,System.String)">
             <summary>
