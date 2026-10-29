@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Fuse.compute;
 using Fuse.function;
 using Fuse.Types;
@@ -215,11 +216,48 @@ public static class TypeHelpers
                 return "RWStructuredBuffer<" + theType + ">";
         }
 
+        // Auto: a read-only buffer with a typed view (e.g. VL.Stride DynamicBuffer of Vector3, view R32G32B32_Float) is
+        // a typed buffer for D3D; declaring it StructuredBuffer gives "not a Structured Buffer" on every draw/dispatch.
+        if (IsTypedReadOnlyBuffer(theBuffer, theType))
+            return "Buffer<" + theType + ">";
+
         // Auto: detect from buffer flags
         if (theBuffer != null && (theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess)
             return "RWStructuredBuffer<" + theType + ">";
 
         return "StructuredBuffer<" + theType + ">";
+    }
+
+    /// <summary>
+    /// True for a shader-resource-only buffer without structured/raw flags whose view format matches
+    /// <paramref name="theType"/> in base type and component count (R32G32B32_Float ↔ float3, R32_UInt ↔ uint).
+    /// </summary>
+    private static bool IsTypedReadOnlyBuffer(Buffer theBuffer, string theType)
+    {
+        if (theBuffer == null || theBuffer.ViewFormat == PixelFormat.None)
+            return false;
+        const BufferFlags notTyped = BufferFlags.StructuredBuffer | BufferFlags.RawBuffer | BufferFlags.UnorderedAccess;
+        if ((theBuffer.Flags & notTyped) != 0 || (theBuffer.Flags & BufferFlags.ShaderResource) == 0)
+            return false;
+
+        var format = theBuffer.ViewFormat.ToString();
+        var underscore = format.IndexOf('_');
+        if (underscore < 0) return false;
+        var channels = format.Substring(0, underscore);
+        var formatBase = format.Substring(underscore + 1) switch
+        {
+            "Float" => "float",
+            "UInt" => "uint",
+            "SInt" => "int",
+            _ => null
+        };
+        if (formatBase == null || channels.Any(char.IsDigit) == false) return false;
+        var count = channels.Count(c => c is 'R' or 'G' or 'B' or 'A');
+        if (channels.Replace("32", "").Length != count) return false;   // 32-bit components only
+
+        var typeBase = theType.TrimEnd('1', '2', '3', '4');
+        var typeCount = theType.Length > typeBase.Length ? theType[^1] - '0' : 1;
+        return typeBase == formatBase && typeCount == count;
     }
 
     #endregion
