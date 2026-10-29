@@ -41,6 +41,10 @@ public abstract class AbstractFunction<T> : ShaderNode<T>
     {
         var abstractGpuValues = theArguments.ToList();
 
+        // Hand-written function parameters are StructuredBuffers, a raw buffer must not become a ByteAddressBuffer.
+        foreach (var argument in abstractGpuValues)
+            (argument as compute.IBufferDeclaration)?.RequireStructuredDeclaration();
+
         if (_modifiers == null || _modifiers.Count() != abstractGpuValues.Count())
         {
             SetInputs(abstractGpuValues);

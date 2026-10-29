@@ -36,6 +36,10 @@ public class Invoke<T> : ShaderNode<T>
         var myValues = theValues.ToList();
         var countIns = 0;
 
+        // Delegate parameters are declared StructuredBuffer, a raw buffer must not become a ByteAddressBuffer.
+        foreach (var value in myValues)
+            (value as compute.IBufferDeclaration)?.RequireStructuredDeclaration();
+
         foreach (var myParameter in theDelegate.Parameters)
         {
             var myModifier = myParameter.Modifier;
