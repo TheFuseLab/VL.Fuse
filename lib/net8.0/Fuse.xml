@@ -1413,6 +1413,13 @@
         <member name="M:Fuse.ResultNode`1.GetInlineExpression(System.Int32)">
             <inheritdoc />
         </member>
+        <member name="M:Fuse.ShaderNodesUtil.DumpRawBufferBinding(Stride.Graphics.Buffer,VL.Core.NodeContext,System.String)">
+            <summary>
+            Trace aid for D3D "not a Structured Buffer" mismatches: logs once per (node path, stride, flags) when a buffer
+            without the StructuredBuffer flag is bound to a BufferInput (whose declaration is always a StructuredBuffer).
+            The path holds the VL element IDs of the consuming node, so it can be looked up in the .vl documents.
+            </summary>
+        </member>
         <member name="M:Fuse.ShaderNodesUtil.GetStableHashCode(System.String)">
             To be checked if hashes are persistent and individual
         </member>
@@ -1425,6 +1432,12 @@
             Pattern-matching overloads for <see cref="T:Fuse.AbstractShaderNode"/> are provided
             for runtime type resolution.
             </remarks>
+        </member>
+        <member name="M:Fuse.TypeHelpers.IsTypedReadOnlyBuffer(Stride.Graphics.Buffer,System.String)">
+            <summary>
+            True for a shader-resource-only buffer without structured/raw flags whose view format matches
+            <paramref name="theType"/> in base type and component count (R32G32B32_Float ↔ float3, R32_UInt ↔ uint).
+            </summary>
         </member>
         <member name="M:Fuse.TypeHelpers.GetDefaultForType``1(``0)">
             <summary>
