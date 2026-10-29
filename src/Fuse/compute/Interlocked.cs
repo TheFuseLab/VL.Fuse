@@ -39,6 +39,10 @@ public class InterlockedBuffer<T> : ShaderNode<GpuVoid>, IComputeVoid
 
     protected override string SourceTemplate()
     {
+        if (_buffer.IsByteAddressBuffer)
+            return ByteAddressAccess.Interlocked(_function, _buffer.ID, _index.ID, _buffer.TypeName(), _value.ID,
+                _lastValue.ID);
+
         if (TypeHelpers.GetDimension<T>() == 1)
         {
             const string shaderCode = "${function}(${bufferName}[${index}], ${value}, ${lastValue});";

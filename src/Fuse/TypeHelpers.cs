@@ -202,8 +202,22 @@ public static class TypeHelpers
         return textureType + "<" + textureDataType + ">";
     }
 
-    public static string BufferTypeName(Buffer theBuffer, string theType, BufferType theBufferType)
+    public static string BufferTypeName(Buffer theBuffer, string theType, BufferType theBufferType,
+        bool theAllowByteAddress = true)
     {
+        // A raw buffer (VL.Stride DynamicDrawArgsBuffer, DispatchArgs) cannot be structured: D3D11 refuses
+        // D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS together with D3D11_RESOURCE_MISC_BUFFER_STRUCTURED. Declaring it
+        // StructuredBuffer gives DEVICE_*VIEW_BUFFER_TYPE_MISMATCH on every draw and dispatch, so it is declared as
+        // ByteAddressBuffer and the access nodes switch to Load/Store (see ByteAddressAccess). Not when the buffer is
+        // handed to a shader function, whose parameter is a StructuredBuffer (IBufferDeclaration).
+        if (theAllowByteAddress && theBufferType is BufferType.Auto or BufferType.Normal or BufferType.RW &&
+            UseByteAddressBuffer(theBuffer, theType))
+        {
+            var readWrite = theBufferType == BufferType.RW ||
+                            (theBuffer.Flags & BufferFlags.UnorderedAccess) == BufferFlags.UnorderedAccess;
+            return readWrite ? "RWByteAddressBuffer" : "ByteAddressBuffer";
+        }
+
         switch (theBufferType)
         {
             case BufferType.Append:
@@ -226,6 +240,26 @@ public static class TypeHelpers
             return "RWStructuredBuffer<" + theType + ">";
 
         return "StructuredBuffer<" + theType + ">";
+    }
+
+    /// <summary>
+    /// True for a buffer created with raw views and without the structured flag, e.g. the VL.Stride
+    /// DynamicDrawArgsBuffer and DispatchArgsBuffer.
+    /// </summary>
+    public static bool IsRawBuffer(Buffer theBuffer)
+    {
+        return theBuffer != null && (theBuffer.Flags & BufferFlags.RawBuffer) != 0 &&
+               (theBuffer.Flags & BufferFlags.StructuredBuffer) == 0;
+    }
+
+    /// <summary>
+    /// True when <paramref name="theBuffer"/> is raw and <paramref name="theType"/> can be read and written through
+    /// ByteAddressBuffer Load/Store: int, uint, float and their 2 to 4 component vectors, scalar bool. Other element
+    /// types (structs, matrices) keep the structured declaration.
+    /// </summary>
+    public static bool UseByteAddressBuffer(Buffer theBuffer, string theType)
+    {
+        return IsRawBuffer(theBuffer) && compute.ByteAddressAccess.Supports(theType);
     }
 
     /// <summary>

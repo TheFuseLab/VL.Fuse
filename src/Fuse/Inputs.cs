@@ -343,6 +343,11 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
     public BufferType BufferType { get; set; }
 
     /// <summary>
+    /// Keeps a raw buffer declared as StructuredBuffer, see <see cref="compute.IBufferDeclaration"/>.
+    /// </summary>
+    public bool RequireStructured { get; set; }
+
+    /// <summary>
     /// Also reports a change the first time the wrapped buffer actually exists, even when the
     /// declaration text is unchanged (which it is whenever <see cref="BufferType"/> is pinned
     /// rather than left at <see cref="BufferType.Auto"/>).
@@ -371,7 +376,7 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
     protected override string DefineGpuType(Buffer value)
     {
         return TypeHelpers.BufferTypeName(value, _type == null ? TypeHelpers.GetGpuType<T>() : _type.TypeName(),
-            BufferType);
+            BufferType, !RequireStructured);
     }
 
     protected override string DefineComputeGpuType(Buffer value)
@@ -414,7 +419,7 @@ public interface IBufferInputIdentity
     string DeclarationTypeName { get; }
 }
 
-public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IBufferInputIdentity
+public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IBufferInputIdentity, IBufferDeclaration
 {
     private readonly BufferTypeTracker<T> _typeTracker;
 
@@ -445,6 +450,20 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IB
     public Buffer BufferValue => _value;
 
     public string DeclarationTypeName => _typeTracker.GpuType + "|" + _typeTracker.ComputeGpuType;
+
+    /// <summary>
+    /// Derived from the current declaration so access nodes and declaration never disagree: true while a raw
+    /// buffer is bound and the element type allows Load/Store, see <see cref="TypeHelpers.UseByteAddressBuffer"/>.
+    /// </summary>
+    public bool IsByteAddressBuffer => _typeTracker.GpuType is "ByteAddressBuffer" or "RWByteAddressBuffer";
+
+    public void RequireStructuredDeclaration()
+    {
+        if (_typeTracker.RequireStructured) return;
+        _typeTracker.RequireStructured = true;
+        _typeTracker.CheckDeclaration(Value);
+        SetFieldDeclaration(_typeTracker.GpuType, _typeTracker.ComputeGpuType);
+    }
 
     public BufferType BufferType
     {

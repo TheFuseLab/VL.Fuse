@@ -418,7 +418,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         ["DispatchThreadId", "GroupId", "GroupThreadId", "GroupIndex", "ThreadGroupCount", "ThreadCountPerGroup"];
 
     private static readonly System.Text.RegularExpressions.Regex ReadOnlyBufferRegex =
-        new(@"(?<![\w])StructuredBuffer<[^>]+>\s+(\w+)\s*;", System.Text.RegularExpressions.RegexOptions.Compiled);
+        new(@"(?<![\w])(?:StructuredBuffer<[^>]+>|ByteAddressBuffer)\s+(\w+)\s*;",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>Why the generated code cannot compile yet, or null when it is complete.</summary>
     private string IncompleteReason(string theCode)
@@ -452,7 +453,8 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         {
             var name = System.Text.RegularExpressions.Regex.Escape(m.Groups[1].Value);
             if (System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"Interlocked\w*\(\s*{name}\s*\[") ||
-                System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\b{name}\s*\[[^\]]*\](\.\w+)?\s*=[^=]"))
+                System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\b{name}\s*\[[^\]]*\](\.\w+)?\s*=[^=]") ||
+                System.Text.RegularExpressions.Regex.IsMatch(theCode, $@"\b{name}\.(Store\d?|Interlocked\w*)\("))
                 return $"read-only buffer {m.Groups[1].Value} is written";
         }
 
