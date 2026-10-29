@@ -105,6 +105,50 @@
             Creates a ConstantValue from an object value. Falls back to zero if value is null.
             </summary>
         </member>
+        <member name="T:Fuse.Diagnostics.D3D11DebugMessages">
+            <summary>
+            Counts the D3D11 debug layer messages of a graphics device in-process through ID3D11InfoQueue, so a test run does
+            not depend on OutputDebugString listeners (DebugView, dbwin) that can be taken over by other tools.
+            </summary>
+            <remarks>
+            The debug layer must be active for the process (dxcpl "Force On" for the executable, or a device created with the
+            debug flag); without it the device has no InfoQueue and <see cref="P:Fuse.Diagnostics.D3D11DebugMessages.IsAvailable"/> stays false, which a test can
+            report instead of counting zero. Call <see cref="M:Fuse.Diagnostics.D3D11DebugMessages.Attach(Stride.Graphics.GraphicsDevice)"/> once with the app's device and <see cref="M:Fuse.Diagnostics.D3D11DebugMessages.Drain"/>
+            every frame from the main loop: the queue keeps at most <see cref="F:Fuse.Diagnostics.D3D11DebugMessages.MessageCountLimit"/> messages, everything
+            beyond that is discarded and counted in <c>Discarded</c>. Messages are grouped as the dbwin log reader does,
+            "SEVERITY MESSAGE_ID" (e.g. "ERROR DEVICE_SHADERRESOURCEVIEW_BUFFER_TYPE_MISMATCH"), with one sample text per
+            group. <see cref="P:Fuse.Diagnostics.D3D11DebugMessages.MuteDebugOutput"/> stops the layer's OutputDebugString output, which costs frame time when
+            thousands of messages are written per frame.
+            </remarks>
+        </member>
+        <member name="P:Fuse.Diagnostics.D3D11DebugMessages.IsAvailable">
+            <summary>True while the debug layer is active and the queue is attached.</summary>
+        </member>
+        <member name="P:Fuse.Diagnostics.D3D11DebugMessages.State">
+            <summary>"on", or why no messages can be counted.</summary>
+        </member>
+        <member name="M:Fuse.Diagnostics.D3D11DebugMessages.Attach(Stride.Graphics.GraphicsDevice)">
+            <summary>
+            Attaches to the device's InfoQueue. Returns false when the debug layer is not active for this process.
+            Attaching the same device again is a no-op.
+            </summary>
+        </member>
+        <member name="M:Fuse.Diagnostics.D3D11DebugMessages.Drain">
+            <summary>Reads and clears the stored messages; call once per frame on the main loop.</summary>
+        </member>
+        <member name="M:Fuse.Diagnostics.D3D11DebugMessages.Snapshot(System.Boolean)">
+            <summary>Counts since the last reset (or attach). With <paramref name="theReset"/> the counters start over.</summary>
+        </member>
+        <member name="P:Fuse.Diagnostics.D3D11DebugMessages.MuteDebugOutput">
+            <summary>Stops or restores the debug layer's OutputDebugString output (the InfoQueue keeps counting).</summary>
+        </member>
+        <member name="M:Fuse.Diagnostics.D3D11DebugMessages.MacroName(System.String)">
+            <summary>
+            SharpDX enum name to the D3D11_MESSAGE_ macro spelling as far as it can be derived: "MessageIdDeviceDrawSamplerNotSet"
+            becomes "DEVICE_DRAW_SAMPLER_NOT_SET". Words the macro writes without underscore (UNORDEREDACCESSVIEW) come out
+            separated (UNORDERED_ACCESS_VIEW); compare keys with underscores removed when matching dbwin log output.
+            </summary>
+        </member>
         <member name="T:Fuse.Compute.ResourceIndexSource">
             <summary>Which element of a structured resource a draw shader vertex reads (variant A draw path).</summary>
         </member>
