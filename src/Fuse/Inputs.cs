@@ -431,6 +431,17 @@ public class BufferInput<T> : ChangeableObjectInput<Buffer>, IBufferInput<T>, IB
 
     public ShaderNode<T> Type { get; }
 
+    public override Buffer Value
+    {
+        get => base.Value;
+        set
+        {
+            if (ShaderNodesUtil.TraceShaderSource && value != null && !ReferenceEquals(value, _value))
+                ShaderNodesUtil.DumpRawBufferBinding(value, NodeContext, _typeTracker.GpuType);
+            base.Value = value;
+        }
+    }
+
     public Buffer BufferValue => _value;
 
     public string DeclarationTypeName => _typeTracker.GpuType + "|" + _typeTracker.ComputeGpuType;

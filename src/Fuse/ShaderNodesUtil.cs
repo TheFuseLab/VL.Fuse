@@ -296,6 +296,36 @@ public static class ShaderNodesUtil
         }
     }
 
+    private static readonly HashSet<string> RawBindingsSeen = new();
+
+    /// <summary>
+    /// Trace aid for D3D "not a Structured Buffer" mismatches: logs once per (node path, stride, flags) when a buffer
+    /// without the StructuredBuffer flag is bound to a BufferInput (whose declaration is always a StructuredBuffer).
+    /// The path holds the VL element IDs of the consuming node, so it can be looked up in the .vl documents.
+    /// </summary>
+    public static void DumpRawBufferBinding(Stride.Graphics.Buffer buffer, NodeContext nodeContext, string declaration)
+    {
+        if ((buffer.Flags & Stride.Graphics.BufferFlags.StructuredBuffer) != 0)
+            return;
+        try
+        {
+            var path = nodeContext?.Path.ToString() ?? "?";
+            var line = $"stride={buffer.StructureByteStride} size={buffer.SizeInBytes} flags={buffer.Flags} " +
+                       $"view={buffer.ViewFormat} decl={declaration} path={path}";
+            lock (RawBindingsSeen)
+            {
+                if (!RawBindingsSeen.Add($"{path}|{buffer.StructureByteStride}|{buffer.Flags}"))
+                    return;
+                File.AppendAllText(Path.Combine(ResolveShaderDumpDirectory(), "raw_buffer_bindings.log"),
+                    $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.FuseLogger.Warning($"Failed to log raw buffer binding: {ex.Message}");
+        }
+    }
+
     public static void DumpShaderException(string shaderName, string phase, Exception ex, string sourcePath = null)
     {
         try
