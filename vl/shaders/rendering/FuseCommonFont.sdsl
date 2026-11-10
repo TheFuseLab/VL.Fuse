@@ -277,10 +277,14 @@ shader FuseCommonFont{
 
     // UV-only pFloat: ####.####
     // Same spacing model as your shadertoy (pInt4 + '.' + pInt4).
-    float2 Ascii_pFloat4_4_AtlasUV(
+    // Outputs: same as Ascii_pInt4_AtlasUV.
+    void Ascii_pFloat4_4_AtlasUV(
         StructuredBuffer<float4> asciiRects256,
         float2 U,
-        float n
+        float n,
+        out float2 atlasUV,
+        out bool hit,
+        out int asciiOut
     )
     {
         atlasUV = float2(0,0);
@@ -323,6 +327,5 @@ shader FuseCommonFont{
             Ascii_pInt4_AtlasUV(asciiRects256, U2, lower, uv, h, a);
             if (h) { atlasUV = uv; hit = true; asciiOut = a; return; }
         }
-        return atlasUV;
     }
 };
