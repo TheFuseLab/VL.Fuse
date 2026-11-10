@@ -223,8 +223,12 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
 
 
     // PASS 1: Generate work items from the node atlas UVs.
-    // Same traversal and LOD rules as GenerateWorkItems in FuseCommonOctreeCulling,
-    // with the frustum test replaced by BoxGridNodeVisibility.
+    // Runs in a single thread, so it only distributes the visible subtrees at MinWorkItemDepth (at most 8^depth
+    // work items) and leaves LOD selection to the parallel pass 2, which applies the same visibility and LOD rules.
+    // It used to keep descending while a node was larger than 2 * LODScreenSpaceThreshold, down to
+    // MinWorkItemDepth + 3. With the BoxGrid screen size (UV extent * viewport height, 7138eaa7) almost every node is
+    // "large" and few are outside, so that single thread visited nearly the whole tree to depth 6:
+    // ~17 ms per run in ForestReferenceScene (Forest/Occtree BoxGrid/Generate Work Items), now ~0.2 ms.
     void GenerateWorkItems_BoxGrid(
         RWStructuredBuffer<float3> NodeUVs,
         float  uvMargin,
@@ -237,8 +241,9 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         RWStructuredBuffer<int> WorkItemCounter,
         RWStructuredBuffer<int> NodeDebugFlags
     ){
-        int nodeStack[1024];
-        int insideStack[1024];
+        // Depth-first down to MinWorkItemDepth needs at most 7 * depth + 1 entries (128 covers depth 18).
+        int nodeStack[128];
+        int insideStack[128];
         int stackTop = 0;
 
         if (startID >= 0)
@@ -248,7 +253,7 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
             stackTop++;
         }
 
-        while (stackTop > 0 && stackTop < 1024)
+        while (stackTop > 0 && stackTop < 128)
         {
             --stackTop;
             int nodeID = nodeStack[stackTop];
@@ -277,21 +282,13 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
                 continue;
             }
 
-            bool shouldTraverseDeeper =
-                (screenSize > LODScreenSpaceThreshold * 2.0f) &&
-                (node.LODLevel < MinWorkItemDepth + 3);
-
-            bool canCreateWorkItem =
-                (node.LODLevel >= MinWorkItemDepth) &&
-                (bgVisibility == 2 || screenSize <= LODScreenSpaceThreshold * 4.0f);
-
             int childInside = (bgVisibility == 2) ? 1 : 0;
 
-            if (shouldTraverseDeeper || !canCreateWorkItem)
+            if ((int)node.LODLevel < MinWorkItemDepth)
             {
                 for (uint i = 0; i < 8; ++i)
                 {
-                    if (stackTop < 1023)
+                    if (stackTop < 127)
                     {
                         nodeStack[stackTop] = node.ChildStartIndex + i;
                         insideStack[stackTop] = childInside;
