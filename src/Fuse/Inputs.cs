@@ -505,6 +505,8 @@ public class ValueInput<T> : AbstractInput<T, ValueParameterKey<T>, ValueParamet
             SemanticName = ShaderNodesUtil.FixName(semanticName);
         ParameterKey = new ValueParameterKey<T>(ID);
         SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
+        if (ShaderNodesUtil.TraceShaderSource && ShaderNodesUtil.ValueInputTraceMatches(ID, nodeContext))
+            ShaderNodesUtil.TraceValueInput($"create {typeof(T).Name} id={ID} path={nodeContext?.Path}");
     }
 
     public void SetAbstractValue(object Value)
@@ -517,6 +519,21 @@ public class ValueInput<T> : AbstractInput<T, ValueParameterKey<T>, ValueParamet
         return new ValueParameterUpdater<T>();
     }
 
+    // Trace only (FUSE_TRACE_SHADER_SOURCE=1): the parameter collections this input was attached to, so the value a
+    // shader really holds can be read back and compared with the CPU value.
+    private List<WeakReference<ParameterCollection>> _traceCollections;
+    private long _traceLastReadback;
+
+    public override T Value
+    {
+        get => base.Value;
+        set
+        {
+            base.Value = value;
+            if (ShaderNodesUtil.TraceShaderSource) TraceReadback(false);
+        }
+    }
+
     public override void OnPassContext(ShaderGeneratorContext nodeContext)
     {
         try
@@ -524,9 +541,61 @@ public class ValueInput<T> : AbstractInput<T, ValueParameterKey<T>, ValueParamet
             Updater.Track(nodeContext, ParameterKey);
             Updater.Value = _value;
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            // Console.WriteLine(e);
+            if (ShaderNodesUtil.TraceShaderSource)
+                ShaderNodesUtil.TraceValueInput($"track-FAILED id={ID} key={ParameterKey?.Name} " +
+                                                $"coll={ShaderNodesUtil.CollectionTag(nodeContext?.Parameters)} {e.GetType().Name}: {e.Message}");
+        }
+
+        if (!ShaderNodesUtil.TraceShaderSource || !ShaderNodesUtil.ValueInputTraceMatches(ID, NodeContext)) return;
+        var parameters = nodeContext?.Parameters;
+        if (parameters != null)
+        {
+            _traceCollections ??= new List<WeakReference<ParameterCollection>>();
+            if (!_traceCollections.Exists(w => w.TryGetTarget(out var c) && ReferenceEquals(c, parameters)))
+                _traceCollections.Add(new WeakReference<ParameterCollection>(parameters));
+        }
+
+        ShaderNodesUtil.TraceValueInput($"track id={ID} key={ParameterKey?.Name} coll={ShaderNodesUtil.CollectionTag(parameters)} " +
+                                        $"cpu={_value} param={ReadParameter(parameters)} " +
+                                        $"trackedByUpdater={IsTracked(parameters)} trackedCount={Updater.GetTrackedCollections().Length}");
+    }
+
+    private string ReadParameter(ParameterCollection parameters)
+    {
+        try
+        {
+            if (parameters == null) return "no-collection";
+            return parameters.ContainsKey(ParameterKey) ? parameters.Get(ParameterKey).ToString() : "ABSENT";
+        }
+        catch (Exception e)
+        {
+            return "read-failed:" + e.GetType().Name;
+        }
+    }
+
+    private bool IsTracked(ParameterCollection parameters)
+    {
+        if (parameters == null) return false;
+        foreach (var c in Updater.GetTrackedCollections())
+            if (ReferenceEquals(c, parameters)) return true;
+        return false;
+    }
+
+    // Logs, at most every 3 s per input, what every collection this input was attached to holds for its key.
+    private void TraceReadback(bool force)
+    {
+        if (_traceCollections == null || _traceCollections.Count == 0) return;
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!force && now - _traceLastReadback < 3 * System.Diagnostics.Stopwatch.Frequency) return;
+        _traceLastReadback = now;
+        _traceCollections.RemoveAll(w => !w.TryGetTarget(out _));
+        foreach (var w in _traceCollections)
+        {
+            if (!w.TryGetTarget(out var c)) continue;
+            ShaderNodesUtil.TraceValueInput($"readback id={ID} key={ParameterKey?.Name} coll={ShaderNodesUtil.CollectionTag(c)} " +
+                                            $"cpu={_value} param={ReadParameter(c)} trackedByUpdater={IsTracked(c)}");
         }
     }
 
@@ -537,8 +606,11 @@ public class ValueInput<T> : AbstractInput<T, ValueParameterKey<T>, ValueParamet
 
     public override void OnUpdateName()
     {
+        var oldKey = ParameterKey?.Name;
         ParameterKey = new ValueParameterKey<T>(ID);
         SetFieldDeclaration(TypeHelpers.GetGpuType<T>());
+        if (ShaderNodesUtil.TraceShaderSource && oldKey != ParameterKey.Name)
+            ShaderNodesUtil.TraceValueInput($"rename old={oldKey} new={ParameterKey.Name}");
     }
 
     // Called by IMonadicValue

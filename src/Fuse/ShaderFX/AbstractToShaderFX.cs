@@ -60,6 +60,9 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
     private readonly HashSet<string> _streams = [];
     private readonly HashSet<string> _structs = [];
 
+    // Trace only (FUSE_TRACE_SHADER_SOURCE=1): ValueInput IDs collected while generating the current shader.
+    private readonly List<string> _traceInputIds = [];
+
     protected AbstractToShaderFX(
         List<AbstractStage> theStages,
         Dictionary<string, string> theCustomTemplate,
@@ -149,6 +152,12 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
 
         ShaderCode =
             ShaderNodesUtil.Evaluate(ShaderCode, m => m.Groups["key"].Value.StartsWith("stage") ? "" : m.Value);
+
+        if (ShaderNodesUtil.TraceShaderSource)
+            ShaderNodesUtil.TraceValueInput(
+                $"shader {ShaderName} ({(_isCompute ? "compute" : "draw")}) fx={System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this):X8} " +
+                $"coll={ShaderNodesUtil.CollectionTag(theContext?.Parameters)} inputs={string.Join(",", _traceInputIds)}");
+        _traceInputIds.Clear();
 
         if (ShaderNodesUtil.ValidateGeneratedShaderSource &&
             !ShaderNodesUtil.ValidateGeneratedShaderCode(ShaderCode, out var validationReason))
@@ -296,6 +305,11 @@ public abstract class AbstractToShaderFX<T> : IComputeValue<T>
         // Must run before the declarations are collected below: it rewrites the duplicates' IDs,
         // and the FieldDeclaration objects in compiled.Declarations are the very ones it mutates.
         CollapseDuplicateBufferInputs(compiled.Inputs);
+        if (ShaderNodesUtil.TraceShaderSource)
+            foreach (var input in compiled.Inputs)
+                if (input is AbstractShaderNode node && input.GetType().IsGenericType &&
+                    input.GetType().GetGenericTypeDefinition() == typeof(ValueInput<>))
+                    _traceInputIds.Add(node.ID);
 
         // Process collected properties
         _stopwatch.Restart();

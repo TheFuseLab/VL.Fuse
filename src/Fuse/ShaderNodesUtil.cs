@@ -296,6 +296,37 @@ public static class ShaderNodesUtil
         }
     }
 
+    // ValueInput trace (FUSE_TRACE_SHADER_SOURCE=1): writes <dump dir>\value_inputs.log. FUSE_TRACE_INPUT_FILTER limits
+    // the per-input lines to inputs whose ID or node path contains the given text (the per-shader lines are always written).
+    private static readonly string ValueInputTraceFilter = Environment.GetEnvironmentVariable("FUSE_TRACE_INPUT_FILTER");
+    private static readonly object ValueInputTraceLock = new();
+
+    internal static bool ValueInputTraceMatches(string id, NodeContext nodeContext)
+    {
+        if (string.IsNullOrEmpty(ValueInputTraceFilter)) return true;
+        if (id != null && id.Contains(ValueInputTraceFilter, StringComparison.Ordinal)) return true;
+        return nodeContext != null && nodeContext.Path.ToString().Contains(ValueInputTraceFilter, StringComparison.Ordinal);
+    }
+
+    internal static string CollectionTag(ParameterCollection parameters) =>
+        parameters == null ? "null" : "P" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(parameters).ToString("X8");
+
+    internal static void TraceValueInput(string line)
+    {
+        try
+        {
+            lock (ValueInputTraceLock)
+            {
+                File.AppendAllText(Path.Combine(ResolveShaderDumpDirectory(), "value_inputs.log"),
+                    $"{DateTime.Now:HH:mm:ss.fff} T{Environment.CurrentManagedThreadId} {line}{Environment.NewLine}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.FuseLogger.Warning($"Failed to write value input trace: {ex.Message}");
+        }
+    }
+
     private static readonly HashSet<string> RawBindingsSeen = new();
 
     /// <summary>
