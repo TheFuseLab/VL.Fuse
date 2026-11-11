@@ -970,7 +970,10 @@
         <member name="M:Fuse.Rendering.VertexIdMesh.ForOwner(System.Object,Stride.Graphics.GraphicsDevice,System.Int32,Stride.Graphics.PrimitiveType,Stride.Core.Mathematics.BoundingBox,Stride.Graphics.VertexDeclaration,Stride.Graphics.Buffer)">
             <summary>
             Stateless entry for VL (Fuse imports this class without a process node): one mesh per <paramref name="owner"/>
-            (the drawn resource) and topology, kept alive as long as the owner is. Null owner or device gives null.
+            (the drawn resource), topology and <paramref name="drawArgs"/>, kept alive as long as the owner is. The draw
+            args are part of the key because one resource can be drawn through several index lists (e.g. a sprite and a
+            point list): with one shared mesh the last list would set the count of every draw. Null owner or device
+            gives null.
             </summary>
         </member>
         <member name="T:Fuse.ShaderConstants">
