@@ -83,33 +83,79 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
     // Node atlas UVs
     // --------------------------------------------------------------------------------------
     // Culling does not project here. A separate pass (OctreePlyCullBoxGrid, "Project Node Points")
-    // projects every node's centre and 8 corners with ProjectPosition (360 To BoxGrid), the same
-    // node the particles use, including their View Warp. It writes one float3 per point:
-    // xy = UV inside the crop (0..1), z = 1 if the ray hit a wall, else 0.
-    // Layout: NodeUVs[nodeID * 9 + 0] = centre, NodeUVs[nodeID * 9 + 1 + i] = corner i.
+    // projects 17 points of every node with ProjectPosition (360 To BoxGrid), the same node the particles
+    // use, including their View Warp. It writes one float3 per point:
+    // xy = UV in the crop (0..1 inside, also written outside), z = face index the ray leaves the room
+    // through (0 floor .. 5, -1 = none). It projects with a huge UV margin so the face is kept outside the crop.
+    // Layout per node (NODE_POINT_COUNT entries from nodeID * NODE_POINT_COUNT):
+    //   0      centre
+    //   1..8   corners of the node (BoundsMin..BoundsMax): its size, for the LOD
+    //   9..16  corners of the widened node (BoundsMin - expandMin .. BoundsMax + expandMax): its reach, for the
+    //          in/out test (the consumer moves points by up to that much after the cull)
+    // Without expansion both corner sets are the same and the result is that of the plain node.
 
-    static const int NODE_POINT_COUNT = 9;
+    static const int NODE_POINT_COUNT = 17;
+    static const int NODE_CORNERS = 1;
+    static const int NODE_REACH_CORNERS = 9;
 
-    // Point k of a node in octree space (0 = centre, 1..8 = corners), for the projection pass.
-    float3 OctreeNodePoint(StructuredBuffer<GPUOctreeNode> GpuOctreeNodes, int pointIndex)
+    float3 OctreeNodeCorner(float3 bmin, float3 bmax, int i)
+    {
+        return float3(
+            (i & 1) != 0 ? bmax.x : bmin.x,
+            (i & 2) != 0 ? bmax.y : bmin.y,
+            (i & 4) != 0 ? bmax.z : bmin.z);
+    }
+
+    // Point k of a node in octree space (layout above), for the projection pass.
+    float3 OctreeNodePoint(StructuredBuffer<GPUOctreeNode> GpuOctreeNodes, int pointIndex, float3 expandMin, float3 expandMax)
     {
         GPUOctreeNode node = GpuOctreeNodes[pointIndex / NODE_POINT_COUNT];
         int k = pointIndex % NODE_POINT_COUNT;
         if (k == 0)
             return (node.BoundsMin + node.BoundsMax) * 0.5f;
+        if (k < NODE_REACH_CORNERS)
+            return OctreeNodeCorner(node.BoundsMin, node.BoundsMax, k - NODE_CORNERS);
+        return OctreeNodeCorner(node.BoundsMin - max(expandMin, 0.0f), node.BoundsMax + max(expandMax, 0.0f), k - NODE_REACH_CORNERS);
+    }
 
-        int i = k - 1;
-        return float3(
-            (i & 1) != 0 ? node.BoundsMax.x : node.BoundsMin.x,
-            (i & 2) != 0 ? node.BoundsMax.y : node.BoundsMin.y,
-            (i & 4) != 0 ? node.BoundsMax.z : node.BoundsMin.z);
+    // UV rectangle of the centre and 8 corners starting at `first`; false when they leave through different faces.
+    bool NodeRect(int nodeID, RWStructuredBuffer<float3> NodeUVs, int first, out float2 minUV, out float2 maxUV)
+    {
+        float3 c = NodeUVs[nodeID * NODE_POINT_COUNT];
+        int face = (int)round(c.z);
+        bool oneFace = face >= 0;
+        minUV = c.xy;
+        maxUV = c.xy;
+        [unroll]
+        for (int i = 0; i < 8; ++i)
+        {
+            float3 p = NodeUVs[nodeID * NODE_POINT_COUNT + first + i];
+            oneFace = oneFace && ((int)round(p.z) == face);
+            minUV = min(minUV, p.xy);
+            maxUV = max(maxUV, p.xy);
+        }
+        return oneFace;
     }
 
     // Visibility of a node in the crop from its projected points.
     // Returns 0 = outside, 1 = intersecting, 2 = fully inside.
-    // screenSize: larger side of the UV rectangle in crop pixels (uv extent * viewportHeight),
-    // the same unit as ApproxScreenSpaceSize in the frustum path.
-    // A point whose ray missed every wall makes the node "intersecting" so it is never dropped.
+    // screenSize: larger side of the node's UV rectangle in crop pixels (uv extent * viewportHeight), the same unit
+    // as ApproxScreenSpaceSize in the frustum path; from the node itself, so the expansion does not change the LOD.
+    //
+    // NodeUVs z holds the face the ray from the viewer leaves the room through (0..5, -1 = no face),
+    // xy the crop UV of that hit, also outside 0..1 (ProjectOctreeNodePoints projects with a UV margin
+    // so large that the face index is never cleared).
+    // All nine points of a box on one face: for a fixed viewer every ray to the box leaves through that face (the box
+    // lies in the convex pyramid viewer -> face) and the map to the crop is a perspective projection followed by an
+    // affine one, so the box's image is the convex hull of its corner UVs. If the rectangle of the widened box misses
+    // the crop, the node is outside and dropped (e.g. nodes towards the ceiling or the open end of the room).
+    // Points on different faces: the box spans a room edge, the atlas is not continuous there, so the node is kept
+    // and always refined; its children end up on one face.
+    // A View Warp that moves the viewer per point breaks the hull argument a little (Forest Reference: walls
+    // <= 0.03 m, floor <= 0.36 m, ceiling more; work/fps_drift/cullcheck.py); the expansion covers that too.
+    // Until 2026-11 z was the face index read as a hit flag: floor hits (0) and every point outside the
+    // crop counted as "no hit", such nodes were kept at full size, and over budget they thinned the
+    // whole visible cloud.
     uint BoxGridNodeVisibility(
         int nodeID,
         RWStructuredBuffer<float3> NodeUVs,
@@ -117,36 +163,18 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         float viewportHeight,
         out float screenSize)
     {
-        float2 minUV = float2(1e20, 1e20);
-        float2 maxUV = float2(-1e20, -1e20);
-        int hits = 0;
-
-        [unroll]
-        for (int k = 0; k < NODE_POINT_COUNT; ++k)
-        {
-            float3 p = NodeUVs[nodeID * NODE_POINT_COUNT + k];
-            if (p.z > 0.5f)
-            {
-                minUV = min(minUV, p.xy);
-                maxUV = max(maxUV, p.xy);
-                hits++;
-            }
-        }
-
-        if (hits == 0)
-        {
-            screenSize = viewportHeight;
-            return 1;
-        }
-
+        float2 minUV, maxUV;
+        bool oneFace = NodeRect(nodeID, NodeUVs, NODE_CORNERS, minUV, maxUV);
         float2 extent = maxUV - minUV;
-        screenSize = max(extent.x, extent.y) * viewportHeight;
+        screenSize = oneFace ? max(extent.x, extent.y) * viewportHeight : viewportHeight;
+
+        if (!NodeRect(nodeID, NodeUVs, NODE_REACH_CORNERS, minUV, maxUV))
+            return 1;
 
         if (!RectsOverlap(minUV, maxUV, float2(-uvMargin, -uvMargin), float2(1.0f + uvMargin, 1.0f + uvMargin)))
             return 0;
 
-        bool allInside = hits == NODE_POINT_COUNT &&
-            minUV.x >= 0.0f && minUV.y >= 0.0f && maxUV.x <= 1.0f && maxUV.y <= 1.0f;
+        bool allInside = minUV.x >= 0.0f && minUV.y >= 0.0f && maxUV.x <= 1.0f && maxUV.y <= 1.0f;
         return allInside ? 2 : 1;
     }
 
