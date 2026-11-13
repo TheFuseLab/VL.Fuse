@@ -360,16 +360,21 @@ public class BufferTypeTracker<T> : GpuTypeTracker<Buffer>
     /// into a single declaration - cannot do so against a null. Treating "the resource I was
     /// declared against has come into existence" as a declaration change gives the graph exactly one
     /// rebuild at that moment, with real buffers in hand. It fires once per buffer input, on the
-    /// null -> non-null edge only.
+    /// first null -> non-null edge only.
+    /// A buffer that goes away afterwards keeps its declaration, and its return is no change unless
+    /// the declaration differs from the one before. A buffer made from data whose count drops to 0
+    /// (tracked visitors, hands, culled instances) is null in between; reporting those edges built
+    /// every shader that reads the buffer again, each time adding a parameter collection to every
+    /// input that is never removed, so the main thread got slower with every edge.
     /// </remarks>
     public override bool CheckDeclaration(Buffer value)
     {
+        if (value == null && _hadBuffer) return false;
+
         var changed = base.CheckDeclaration(value);
+        if (value == null || _hadBuffer) return changed;
 
-        var hasBuffer = value != null;
-        if (hasBuffer == _hadBuffer) return changed;
-
-        _hadBuffer = hasBuffer;
+        _hadBuffer = true;
         return true;
     }
 
