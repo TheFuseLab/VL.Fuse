@@ -45,6 +45,7 @@ public static class OctreeLodHelper
 
         var targetCells = Math.Max(4, leafTargetCellsOnLongestAxis);
         var leafCount = 0;
+        var restoredLeaves = 0;
 
         Parallel.For(0, nodeCount, i =>
         {
@@ -69,8 +70,13 @@ public static class OctreeLodHelper
             var baseCell = longest > 0 ? longest / targetCells : 1e-4f;
 
             var slice = indicesSpan.Slice(start, count);
-            ProgressiveOrderLeaf(slice, posVec, in b, baseCell);
+            if (!ProgressiveOrderLeaf(slice, posVec, in b, baseCell))
+                Interlocked.Increment(ref restoredLeaves);
         });
+
+        if (restoredLeaves > 0)
+            Console.WriteLine(
+                $"[OctreeLodHelper] WARNING: {restoredLeaves} of {leafCount} leaves failed the ordering check and keep a complete, unordered list.");
 
         if (debug)
         {
@@ -98,23 +104,41 @@ public static class OctreeLodHelper
 
     /// <summary>
     /// Reorders indices within a single leaf node for progressive LOD rendering.
-    /// Uses multi-level grid cells to select coarse points first, then finer ones.
+    /// Pass 0 takes one point per finest grid cell, every further pass one point per cell of twice the size
+    /// from what is left; the rest follows in shuffled order.
+    /// Reads from a copy of the list: writing the result into the list it was still reading overwrote entries that
+    /// had not been picked yet, so points vanished from the leaf and others appeared several times (until 2026-11).
     /// </summary>
-    private static void ProgressiveOrderLeaf(
+    /// <returns>False when the result did not hold exactly the points it started with; the leaf then keeps its
+    /// complete (shuffled) list.</returns>
+    private static bool ProgressiveOrderLeaf(
         Span<int> indices,
         ReadOnlySpan<Vector3> positions,
         in Bounds b,
         float baseCellSize)
     {
-        if (indices.Length <= 1) return;
+        if (indices.Length <= 1) return true;
 
-        var used = ArrayPool<byte>.Shared.Rent(indices.Length);
+        var count = indices.Length;
+        var used = ArrayPool<byte>.Shared.Rent(count);
+        var sourceArray = ArrayPool<int>.Shared.Rent(count);
         try
         {
-            Array.Clear(used, 0, indices.Length);
+            Array.Clear(used, 0, count);
 
             // Deterministic shuffle based on bounds to ensure consistency
             ShuffleDeterministic(indices, BoundsKeySeed.FromBounds(in b));
+
+            // The picks below are written to `indices`, so they are read from a copy.
+            var source = sourceArray.AsSpan(0, count);
+            indices.CopyTo(source);
+            long sumBefore = 0;
+            var xorBefore = 0;
+            for (var i = 0; i < count; i++)
+            {
+                sumBefore += source[i];
+                xorBefore ^= source[i];
+            }
 
             var size = b.Size;
             var longest = MathF.Max(size.X, MathF.Max(size.Y, size.Z));
@@ -133,7 +157,7 @@ public static class OctreeLodHelper
                 {
                     if (used[i] != 0) continue;
 
-                    var id = indices[i];
+                    var id = source[i];
                     var p = positions[id];
 
                     var gx = (int)MathF.Floor((p.X - b.Min.X) / cell);
@@ -154,14 +178,76 @@ public static class OctreeLodHelper
             }
 
             // Add remaining points that weren't selected at any level
-            for (var i = 0; i < indices.Length; i++)
+            for (var i = 0; i < count; i++)
                 if (used[i] == 0)
-                    indices[w++] = indices[i];
+                    indices[w++] = source[i];
+
+            // Guard: the result must hold exactly the points the leaf started with.
+            long sumAfter = 0;
+            var xorAfter = 0;
+            for (var i = 0; i < count; i++)
+            {
+                sumAfter += indices[i];
+                xorAfter ^= indices[i];
+            }
+
+            if (w != count || sumAfter != sumBefore || xorAfter != xorBefore)
+            {
+                source.CopyTo(indices);
+                return false;
+            }
+
+            return true;
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(used);
+            ArrayPool<int>.Shared.Return(sourceArray);
         }
+    }
+
+    /// <summary>
+    /// Checks that an octree index buffer names every point exactly once.
+    /// </summary>
+    /// <param name="indexBufferData">The point index buffer (int array as bytes)</param>
+    /// <param name="indexCount">Number of indices in the buffer</param>
+    /// <param name="pointCount">Number of points of the cloud</param>
+    /// <param name="message">What is wrong; empty when the buffer is valid</param>
+    /// <returns>True when every point id in 0..pointCount-1 appears exactly once</returns>
+    public static bool ValidateIndexBuffer(byte[]? indexBufferData, int indexCount, int pointCount, out string message)
+    {
+        message = string.Empty;
+        if (indexBufferData == null || indexCount < 0 || (long)indexCount * sizeof(int) > indexBufferData.LongLength)
+        {
+            message = "index buffer is missing or shorter than its index count";
+            return false;
+        }
+
+        if (indexCount != pointCount)
+        {
+            message = $"index count {indexCount} differs from point count {pointCount}";
+            return false;
+        }
+
+        var indices = MemoryMarshal.Cast<byte, int>(indexBufferData.AsSpan()).Slice(0, indexCount);
+        var seen = new System.Collections.BitArray(pointCount);
+        long repeats = 0, outOfRange = 0;
+        foreach (var id in indices)
+        {
+            if ((uint)id >= (uint)pointCount)
+            {
+                outOfRange++;
+                continue;
+            }
+
+            if (seen[id]) repeats++;
+            else seen[id] = true;
+        }
+
+        if (repeats == 0 && outOfRange == 0) return true;
+        message =
+            $"{repeats} repeated and {outOfRange} out-of-range entries in {indexCount} indices ({repeats + outOfRange} points are in no leaf list)";
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

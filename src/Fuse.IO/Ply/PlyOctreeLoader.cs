@@ -342,7 +342,8 @@ public class PlyOctreeLoader : ProcessNodeBase
             {
                 // Use file path as base for octree cache key (more stable than PLYData hash)
                 var plyKey = DiskCacheKey.ForPly(currentPath, currentStrategy, currentFactor);
-                var octreeKey = DiskCacheKey.ForOctree(plyKey, currentMaxDepth, currentMaxPointsPerLeaf, 0f, config.OptimizeForSpeed, config.EnableDetailedValidation);
+                var octreeKey = DiskCacheKey.ForOctree(plyKey, currentMaxDepth, currentMaxPointsPerLeaf, 0f, config.OptimizeForSpeed, config.EnableDetailedValidation,
+                    currentEnableLODs, currentLeafTargetCells);
 
                 if (ForceReload)
                 {
@@ -375,6 +376,11 @@ public class PlyOctreeLoader : ProcessNodeBase
                             currentLeafTargetCells,
                             Debug);
                     }
+
+                    // Never cache an index buffer that does not name every point exactly once.
+                    if (!OctreeLodHelper.ValidateIndexBuffer(_octreeProgressInfo.IndexBufferData,
+                            _octreeProgressInfo.IndexCount, _octreeProgressInfo.TotalPoints, out var indexProblem))
+                        throw new InvalidOperationException($"Octree index buffer is invalid: {indexProblem}");
 
                     return new OctreeCacheSerializer.Payload(
                         _octreeProgressInfo.NodeBufferData,

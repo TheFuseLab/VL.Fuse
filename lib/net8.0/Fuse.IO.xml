@@ -181,6 +181,19 @@
             Different decimation strategies/factors will produce different cache entries.
             </summary>
         </member>
+        <member name="F:Fuse.IO.Ply.DiskCacheKey.OctreeFormatVersion">
+            <summary>
+            Version of what an octree cache entry holds. Raise it whenever the content written for the same settings
+            changes, so that entries of older builds are not reused.
+            2 (2026-11): leaf lists are a permutation of the leaf's points (the leaf LOD ordering used to lose points).
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.DiskCacheKey.ForOctree(System.String,System.Int32,System.Int32,System.Single,System.Boolean,System.Boolean,System.Boolean,System.Int32)">
+            <summary>
+            Creates a cache key for an octree. The leaf LOD settings are part of it: they decide the order of the cached
+            index buffer.
+            </summary>
+        </member>
         <member name="T:Fuse.IO.Ply.FastPly">
              <summary>
              Process node that loads PLY files into a Struct-of-Arrays (SoA) layout.
@@ -368,8 +381,23 @@
         <member name="M:Fuse.IO.Ply.OctreeLodHelper.ProgressiveOrderLeaf(System.Span{System.Int32},System.ReadOnlySpan{Stride.Core.Mathematics.Vector3},Fuse.IO.Ply.OctreeLodHelper.Bounds@,System.Single)">
             <summary>
             Reorders indices within a single leaf node for progressive LOD rendering.
-            Uses multi-level grid cells to select coarse points first, then finer ones.
+            Pass 0 takes one point per finest grid cell, every further pass one point per cell of twice the size
+            from what is left; the rest follows in shuffled order.
+            Reads from a copy of the list: writing the result into the list it was still reading overwrote entries that
+            had not been picked yet, so points vanished from the leaf and others appeared several times (until 2026-11).
             </summary>
+            <returns>False when the result did not hold exactly the points it started with; the leaf then keeps its
+            complete (shuffled) list.</returns>
+        </member>
+        <member name="M:Fuse.IO.Ply.OctreeLodHelper.ValidateIndexBuffer(System.Byte[],System.Int32,System.Int32,System.String@)">
+            <summary>
+            Checks that an octree index buffer names every point exactly once.
+            </summary>
+            <param name="indexBufferData">The point index buffer (int array as bytes)</param>
+            <param name="indexCount">Number of indices in the buffer</param>
+            <param name="pointCount">Number of points of the cloud</param>
+            <param name="message">What is wrong; empty when the buffer is valid</param>
+            <returns>True when every point id in 0..pointCount-1 appears exactly once</returns>
         </member>
         <member name="T:Fuse.IO.Ply.PlyDiagnosticLog">
             <summary>

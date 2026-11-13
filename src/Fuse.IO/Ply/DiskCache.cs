@@ -820,11 +820,24 @@ public static class DiskCacheKey
         return baseKey;
     }
 
+    /// <summary>
+    /// Version of what an octree cache entry holds. Raise it whenever the content written for the same settings
+    /// changes, so that entries of older builds are not reused.
+    /// 2 (2026-11): leaf lists are a permutation of the leaf's points (the leaf LOD ordering used to lose points).
+    /// </summary>
+    public const int OctreeFormatVersion = 2;
+
+    /// <summary>
+    /// Creates a cache key for an octree. The leaf LOD settings are part of it: they decide the order of the cached
+    /// index buffer.
+    /// </summary>
     public static string ForOctree(string pointCloudKey, int maxDepth, int maxPointsPerLeaf, float subdivisionEpsilon,
-        bool optimizeForSpeed, bool enableDetailedValidation)
+        bool optimizeForSpeed, bool enableDetailedValidation, bool precomputedLeafLODs = false,
+        int leafTargetCellsOnLongestAxis = 0)
     {
+        var cells = precomputedLeafLODs ? leafTargetCellsOnLongestAxis : 0;
         var s =
-            $"pc={pointCloudKey}|md={maxDepth}|mpl={maxPointsPerLeaf}|eps={subdivisionEpsilon}|opt={optimizeForSpeed}|veri={enableDetailedValidation}";
+            $"pc={pointCloudKey}|md={maxDepth}|mpl={maxPointsPerLeaf}|eps={subdivisionEpsilon}|opt={optimizeForSpeed}|veri={enableDetailedValidation}|lod={precomputedLeafLODs}|cells={cells}|fmt={OctreeFormatVersion}";
         return s;
     }
 }

@@ -156,7 +156,7 @@ public class OctreeBuilder : ProcessNodeBase
                 }
                 
                 var octreeKey = DiskCacheKey.ForOctree(pcKey, MaxDepth, MaxPointsPerLeaf, 0f, config.OptimizeForSpeed,
-                    config.EnableDetailedValidation);
+                    config.EnableDetailedValidation, EnablePrecomputedLeafLODs, LeafTargetCellsOnLongestAxis);
                 if (ForceCacheUpdate)
                 {
                     Log("[OctreeBuilder] ForceCacheUpdate=true, invalidating octree cache");
@@ -194,6 +194,11 @@ public class OctreeBuilder : ProcessNodeBase
                             Debug);
                         StageSafe("Precompute LODs (Leaves, caching) - done", 1.0);
                     }
+
+                    // Never cache an index buffer that does not name every point exactly once.
+                    if (!OctreeLodHelper.ValidateIndexBuffer(_progressInfo.IndexBufferData, _progressInfo.IndexCount,
+                            _progressInfo.TotalPoints, out var indexProblem))
+                        throw new InvalidOperationException($"Octree index buffer is invalid: {indexProblem}");
 
                     return new OctreeCacheSerializer.Payload(
                         _progressInfo.NodeBufferData,
