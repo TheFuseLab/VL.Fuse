@@ -149,13 +149,99 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
     // lies in the convex pyramid viewer -> face) and the map to the crop is a perspective projection followed by an
     // affine one, so the box's image is the convex hull of its corner UVs. If the rectangle of the widened box misses
     // the crop, the node is outside and dropped (e.g. nodes towards the ceiling or the open end of the room).
-    // Points on different faces: the box spans a room edge, the atlas is not continuous there, so the node is kept
-    // and always refined; its children end up on one face.
+    // Points on different faces: the box spans a room edge and the atlas is not continuous there. Its own points
+    // (LOD) then count as "large", so the node is refined. Its reach is tested per face, see ReachMeetsCropPerFace.
+    // Until 2026-11 such a node was kept without a test: with 6 m of expansion that was 36.7 of 50.5 million forest
+    // points on every machine, whatever its crop.
     // A View Warp that moves the viewer per point breaks the hull argument a little (Forest Reference: walls
     // <= 0.03 m, floor <= 0.36 m, ceiling more; work/fps_drift/cullcheck.py); the expansion covers that too.
     // Until 2026-11 z was the face index read as a hit flag: floor hits (0) and every point outside the
     // crop counted as "no hit", such nodes were kept at full size, and over budget they thinned the
     // whole visible cloud.
+    // Point k (0 = centre, 1..8 = widened corners) of a node's reach.
+    float3 ReachPoint(int nodeID, RWStructuredBuffer<float3> NodeUVs, int k)
+    {
+        int pointIndex = (k == 0) ? 0 : (NODE_REACH_CORNERS + k - 1);
+        return NodeUVs[nodeID * NODE_POINT_COUNT + pointIndex];
+    }
+
+    int ReachPointFace(int nodeID, RWStructuredBuffer<float3> NodeUVs, int k)
+    {
+        return (int)round(ReachPoint(nodeID, NodeUVs, k).z);
+    }
+
+    // In/out test for a widened node whose nine points (centre, 8 widened corners) leave through several faces.
+    // Per face that holds some of the points: the UV rectangle of those points, stretched without limit towards
+    // every other face that holds points too (the box image crosses that room edge somewhere between them).
+    // The node is in when one of these rectangles meets the crop. Kept without a test: a point without a face, or
+    // points on two opposite faces (the box wraps around the viewer).
+    // Directions: face u grows with UV.x, face v with -UV.y (ProjectOctreeNodePoints flips y like projectParticleRaw).
+    // Not exact: where the box image reaches a face that holds none of the nine points, or is wider along a room
+    // edge than the points on that face, a part of it is missed. Measured on the Gallery A forest with 6 m of
+    // expansion: nothing lost at rest, at most 0.9 % of a crop's points after 5 m of random movement
+    // (work/forest_cull_budget/perface3.py).
+    bool ReachMeetsCropPerFace(int nodeID, RWStructuredBuffer<float3> NodeUVs, float uvMargin)
+    {
+        int present = 0;
+        bool noFace = false;
+        [unroll]
+        for (int i = 0; i < 9; ++i)
+        {
+            int face = ReachPointFace(nodeID, NodeUVs, i);
+            if (face < 0 || face > 5)
+                noFace = true;
+            else
+                present = present | (1 << face);
+        }
+
+        // opposite pairs: floor/ceiling (0, 1), right/left (2, 4), back/front (3, 5)
+        bool wraps = ((present & 3) == 3) || ((present & 20) == 20) || ((present & 40) == 40);
+        bool meets = noFace || wraps;
+
+        float2 cropMin = float2(-uvMargin, -uvMargin);
+        float2 cropMax = float2(1.0f + uvMargin, 1.0f + uvMargin);
+        const float UNBOUNDED = 1000000000.0f;
+
+        [unroll]
+        for (int f = 0; f < 6; ++f)
+        {
+            float2 lo = float2(UNBOUNDED, UNBOUNDED);
+            float2 hi = float2(-UNBOUNDED, -UNBOUNDED);
+            [unroll]
+            for (int k = 0; k < 9; ++k)
+            {
+                if (ReachPointFace(nodeID, NodeUVs, k) == f)
+                {
+                    float2 uv = ReachPoint(nodeID, NodeUVs, k).xy;
+                    lo = min(lo, uv);
+                    hi = max(hi, uv);
+                }
+            }
+
+            [unroll]
+            for (int g = 0; g < 6; ++g)
+            {
+                if (g != f && (present & (1 << g)) != 0)
+                {
+                    int axis = FaceFixedAxis[g];
+                    float axisSign = FaceAxisSign[g];
+                    float3 towards = float3(axis == 0 ? axisSign : 0.0f, axis == 1 ? axisSign : 0.0f, axis == 2 ? axisSign : 0.0f);
+                    float alongU = dot(FaceTangents[f], towards);
+                    float alongV = dot(FaceBitangents[f], towards);
+                    if (alongU > 0.5f) hi.x = UNBOUNDED;
+                    if (alongU < -0.5f) lo.x = -UNBOUNDED;
+                    if (alongV > 0.5f) lo.y = -UNBOUNDED;
+                    if (alongV < -0.5f) hi.y = UNBOUNDED;
+                }
+            }
+
+            if ((present & (1 << f)) != 0 && RectsOverlap(lo, hi, cropMin, cropMax))
+                meets = true;
+        }
+
+        return meets;
+    }
+
     uint BoxGridNodeVisibility(
         int nodeID,
         RWStructuredBuffer<float3> NodeUVs,
@@ -168,14 +254,22 @@ shader FuseCommonOctreeCullingBoxGrid : FuseRenderingBoxGridProject,FuseCommonOc
         float2 extent = maxUV - minUV;
         screenSize = oneFace ? max(extent.x, extent.y) * viewportHeight : viewportHeight;
 
+        uint visibility;
         if (!NodeRect(nodeID, NodeUVs, NODE_REACH_CORNERS, minUV, maxUV))
-            return 1;
+        {
+            visibility = ReachMeetsCropPerFace(nodeID, NodeUVs, uvMargin) ? 1 : 0;
+        }
+        else if (!RectsOverlap(minUV, maxUV, float2(-uvMargin, -uvMargin), float2(1.0f + uvMargin, 1.0f + uvMargin)))
+        {
+            visibility = 0;
+        }
+        else
+        {
+            bool allInside = minUV.x >= 0.0f && minUV.y >= 0.0f && maxUV.x <= 1.0f && maxUV.y <= 1.0f;
+            visibility = allInside ? 2 : 1;
+        }
 
-        if (!RectsOverlap(minUV, maxUV, float2(-uvMargin, -uvMargin), float2(1.0f + uvMargin, 1.0f + uvMargin)))
-            return 0;
-
-        bool allInside = minUV.x >= 0.0f && minUV.y >= 0.0f && maxUV.x <= 1.0f && maxUV.y <= 1.0f;
-        return allInside ? 2 : 1;
+        return visibility;
     }
 
 
