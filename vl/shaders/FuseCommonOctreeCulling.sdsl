@@ -495,6 +495,47 @@ shader FuseCommonOctreeCulling{
         }
     }
 
+    // Fills all `budget` slots of finalIndices from the kept leaves when they hold fewer points than the budget.
+    // First region [0, totalPoints): every kept point once, without gaps (base from TotalPointCounter[1], which
+    // nothing else uses; TotalPointCounter[0] holds the total from pass 2). Slot k in [totalPoints, budget) gets the
+    // entry of slot k mod totalPoints. The counter ends at exactly `budget`, so the list is as long as a full one.
+    // Why: the Forest pairs particle i with entry i of two culled lists (ground and canopy position); a list shorter
+    // than the other left particles with a stale or missing partner (2026-11).
+    void FillFromKeptPoints(
+        GPUOctreeNode node,
+        int budget,
+        int totalPoints,
+        StructuredBuffer<int> allLodIndices,
+        int allLodIndicesLength,
+        RWStructuredBuffer<int> finalIndices,
+        int finalIndicesLength,
+        RWStructuredBuffer<int> finalCounter,
+        RWStructuredBuffer<int> TotalPointCounter)
+    {
+        int nodeCount = (int)node.IndexCount;
+        int start = (int)node.IndexStartIndex;
+        int slots = min(budget, finalIndicesLength);
+
+        uint firstBase;
+        InterlockedAdd(TotalPointCounter[1], nodeCount, firstBase);
+
+        int written = 0;
+        [loop]
+        for (int m = 0; m < nodeCount; ++m)
+        {
+            int addr = clamp(start + m, 0, allLodIndicesLength - 1);
+            int pointID = allLodIndices[addr];
+            [loop]
+            for (int slot = (int)firstBase + m; slot < slots; slot += totalPoints)
+            {
+                finalIndices[slot] = pointID;
+                written++;
+            }
+        }
+
+        InterlockedAdd(finalCounter[0], written);
+    }
+
     //======================================================================================
     // PASS 3 FUNCTION: COLLECT POINT INDICES (unchanged)
     //======================================================================================
@@ -534,6 +575,16 @@ shader FuseCommonOctreeCulling{
 
         if (targetPointsForThisNode <= 0) return;
 
+        // Fewer kept points than the budget: fill the whole budget by repeating the list (see FillFromKeptPoints).
+        uint counterSlots, counterStride;
+        TotalPointCounter.GetDimensions(counterSlots, counterStride);
+        if (MaxPointBudget > 0 && totalPoints > 0 && totalPoints < MaxPointBudget && counterSlots >= 2)
+        {
+            FillFromKeptPoints(node, MaxPointBudget, totalPoints, allLodIndices, allLodIndicesLength,
+                finalIndices, finalIndicesLength, finalCounter, TotalPointCounter);
+            return;
+        }
+
         int capacity = (MaxPointBudget > 0) ? MaxPointBudget : finalIndicesLength;
 
         // Reserve slots atomically. targetPointsForThisNode is deterministic
@@ -551,20 +602,15 @@ shader FuseCommonOctreeCulling{
         int start     = (int)node.IndexStartIndex;
         int maxSrc    = min(start + nodeCount, allLodIndicesLength);
 
-        // Golden-ratio quasi-random sampling for temporal stability.
-        // Unlike stride+hash, changing writable by ±N only adds/removes
-        // the last N points in the sequence — earlier selections don't shift.
-        float invPhi    = 0.6180339887; // 1 / golden ratio
-        float nodePhase = frac((float)Hash32i(nodeID) * 0.0000076534);
-
+        // The first `writable` entries of the leaf's list. The loader orders every leaf list so that a prefix is
+        // spread over the leaf (OctreeLodHelper), and a prefix names no point twice. Changing writable by ±N only
+        // adds or removes the last N entries, earlier selections do not shift.
+        // Until 2026-11 this picked by a golden ratio sequence over the whole list: 15 % of the picks repeated an
+        // entry when a leaf drew everything, far more in leaves above 20 000 points (float precision).
         [loop]
         for (int k = 0; k < writable; ++k)
         {
-            float t = frac(nodePhase + (float)(k + 1) * invPhi);
-            int   i = (int)(t * (float)nodeCount);
-            i = clamp(i, 0, nodeCount - 1);
-
-            int addr = start + i;
+            int addr = start + k;
             if (addr >= 0 && addr < maxSrc)
             {
                 int pointID = allLodIndices[addr];
