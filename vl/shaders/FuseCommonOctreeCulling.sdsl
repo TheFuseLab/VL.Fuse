@@ -536,6 +536,60 @@ shader FuseCommonOctreeCulling{
         InterlockedAdd(finalCounter[0], written);
     }
 
+    // Count of a culled list = the longer of two lists (Forest, 2026-11-15).
+    // The Forest pairs particle k with slot k of two culled lists (ground and canopy position) and takes the
+    // particle count from one of them. Both lists are filled to the budget by repeating their entries
+    // (FillFromKeptPoints), so every slot is a real point; the count is only cut to
+    //     N = min(budget, max(kept here, kept by the other list))
+    // instead of always drawing the whole budget. Slots k < N of both lists are then valid partners.
+    // Two one-thread passes, both after CollectPointIndices:
+    // StoreKeptCount runs only when the cull runs (same gate as the cull passes) and copies the kept count
+    // (TotalPointCounter[0], valid right after pass 2) into KeptCount, a buffer nothing clears. ClampDrawCountToFloor
+    // runs every frame before IndicesToCount and reads only KeptCount buffers (its own and the other cull's,
+    // CountFloor), so it never sees a counter that was cleared for a new run or is only valid while the cull runs.
+    // KeptCount[0] = kept entries, KeptCount[1] = the count CollectPointIndices left (budget when it filled the list,
+    // the budget share when it kept more).
+    void StoreKeptCount(
+        int threadID,
+        RWStructuredBuffer<int> TotalPointCounter,
+        RWStructuredBuffer<int> KeptCount,
+        RWStructuredBuffer<int> finalCounter)
+    {
+        if (threadID != 0) return;
+        KeptCount[0] = TotalPointCounter[0];
+        KeptCount[1] = finalCounter[0];
+    }
+
+    // Runs every frame (never disabled: a Fuse graph that is disabled from the start may never get a dispatcher) and
+    // computes the count from stored values only, so a re-run of either cull or a cap change acts in the same frame.
+    // CountFloor = the other cull's KeptCount (2 ints) or, when "Count Floor" is not connected, a stand-in (3 ints):
+    // then no floor. MaxDrawCount > 0 caps the count (per machine, e.g. floor machines), but only when the projection
+    // shows a crop of the room (zoom region smaller than 0.75 of the atlas in x or y), never for the whole room.
+    void ClampDrawCountToFloor(
+        int threadID,
+        RWStructuredBuffer<int> finalCounter,
+        RWStructuredBuffer<int> KeptCount,
+        RWStructuredBuffer<int> CountFloor,
+        int MaxPointBudget,
+        int MaxDrawCount,
+        float4 zoomRegion)
+    {
+        if (threadID != 0) return;
+        int kept = KeptCount[0];
+        int filled = KeptCount[1];
+        if (filled <= 0)
+            return;
+        int n = (MaxPointBudget > 0) ? min(filled, MaxPointBudget) : filled;
+        uint floorSlots, floorStride;
+        CountFloor.GetDimensions(floorSlots, floorStride);
+        if (floorSlots == 2 && MaxPointBudget > 0 && kept > 0 && kept < MaxPointBudget)
+            n = min(n, max(kept, CountFloor[0]));
+        bool crop = (zoomRegion.z - zoomRegion.x) < 0.75f || (zoomRegion.w - zoomRegion.y) < 0.75f;
+        if (MaxDrawCount > 0 && crop)
+            n = min(n, MaxDrawCount);
+        finalCounter[0] = n;
+    }
+
     //======================================================================================
     // PASS 3 FUNCTION: COLLECT POINT INDICES (unchanged)
     //======================================================================================
