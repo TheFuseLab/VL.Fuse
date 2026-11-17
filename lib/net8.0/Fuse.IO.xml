@@ -347,6 +347,30 @@
             This preserves the original property order for AoS interleaving.
             </summary>
         </member>
+        <member name="T:Fuse.IO.Ply.FieldBufferLifecycle">
+             <summary>
+             When the PLY field buffers of a <see cref="T:Fuse.IO.Ply.PlyOctreeLoader"/> in GpuOnly mode are on the GPU, when the consumer
+             has to (re)initialise from them, and when they may be released. Kept apart from the loader so the rules can be
+             checked without a graphics device.
+            
+             Every frame the caller passes the release switch, the init request (in the Gallery A forest: preheating) and the
+             time. The answer says whether the consumer should read the fields now (<see cref="P:Fuse.IO.Ply.FieldBufferLifecycle.InitFields"/>) and whether the
+             loader has to release or reload them.
+            
+             - Init pending: set by a new file load and by the rising edge of the init request. While it is set, the consumer
+               reads the fields as soon as they are on the GPU (also outside a preheat). It is cleared only after the fields
+               were read for <see cref="P:Fuse.IO.Ply.FieldBufferLifecycle.MinInitSeconds"/> and the init request is off. So a load that finishes after the
+               preheat, or a preheat shorter than a reload, still initialises once the data is there.
+             - InitFields = fields on the GPU AND (init request OR init pending). Never true without the fields.
+             - Release: only with the switch on, no init request, nothing pending, and after one completed init since the
+               file was loaded.
+             - Reload: when released and the fields are needed (switch off, init request, or init pending). A failed reload is
+               tried again after <see cref="P:Fuse.IO.Ply.FieldBufferLifecycle.RetrySeconds"/>.
+             </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.FieldBufferLifecycle.Reset">
+            <summary>A new load of the file: buffers resident, the consumer has not read them yet.</summary>
+        </member>
         <member name="P:Fuse.IO.Ply.OctreeBuilder.EnablePrecomputedLeafLODs">
             <summary>
                 Aktiviert die CPU-seitige Progressive-LOD-Permutation für Leaf-Nodes.
@@ -415,6 +439,22 @@
             <summary>
             Generates a short instance ID from the object's hash code, useful to
             distinguish different node instances (e.g., after recompile).
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyGpuData.ReleasedPlyBufferCount">
+            <summary>Number of field buffers taken away by <see cref="M:Fuse.IO.Ply.PlyGpuData.ReleasePlyBuffers"/> (their keys stay with null).</summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyGpuData.ReleasePlyBuffers">
+            <summary>
+            Disposes the field buffers and keeps their keys in <see cref="P:Fuse.IO.Ply.PlyGpuData.PlyBuffers"/> with null values, so a patch that
+            takes a field by name gets null instead of a missing key (a Fuse BufferIn keeps its declaration on null). The
+            infos are dropped, so <see cref="M:Fuse.IO.Ply.PlyGpuData.EnsureBuffers(Stride.Graphics.GraphicsDevice)"/> does not create them again. Returns the bytes released.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyGpuData.RestorePlyBuffers(System.Collections.Generic.Dictionary{System.String,Fuse.IO.Ply.GpuBufferInfo})">
+            <summary>
+            Puts field buffers created elsewhere (a reload) in place of released ones. The infos must already hold their
+            buffers (GpuBufferInfo.EnsureBuffer). Returns true when every field has a buffer again.
             </summary>
         </member>
         <member name="T:Fuse.IO.Ply.PlyLayoutUtils">
@@ -519,6 +559,20 @@
             Larger = more coarse structure first. 24-48 are good starting values.
             </summary>
         </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.ReleaseFieldBuffers">
+            <summary>
+            GpuOnly only. True = the PLY field buffers may be released; false = they must be on the GPU. They are released
+            on a frame with true after at least one frame with false since their upload, and loaded again (disk cache, then
+            upload on a worker thread) on a frame with false. The octree node and index buffers always stay. While released,
+            PlyGpuData.PlyBuffers holds the field names with null. Default false: nothing changes.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.InitRequest">
+            <summary>
+            The consumer wants to (re)initialise from the fields now (in the Gallery A forest: preheating). Its rising edge
+            marks an init as pending; see <see cref="P:Fuse.IO.Ply.PlyOctreeLoader.InitFields"/>.
+            </summary>
+        </member>
         <member name="P:Fuse.IO.Ply.PlyOctreeLoader.PlyData">
             <summary>
             Dictionary of field name to float array. Each field is stored separately (SoA layout).
@@ -604,6 +658,20 @@
         <member name="P:Fuse.IO.Ply.PlyOctreeLoader.ErrorMessage">
             <summary>
             Error message if HasError is true.
+            </summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.FieldBuffersState">
+            <summary>Resident, Released or Reloading (see <see cref="P:Fuse.IO.Ply.PlyOctreeLoader.ReleaseFieldBuffers"/>).</summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.FieldsReady">
+            <summary>True when the loaded fields are on the GPU (always false while loading).</summary>
+        </member>
+        <member name="P:Fuse.IO.Ply.PlyOctreeLoader.InitFields">
+            <summary>
+            True while the consumer should read the fields: they are on the GPU AND (init request OR an init is pending).
+            An init is pending after every file load and after every rising edge of the init request, until the fields
+            were read for 2 s with no request. So a load that ends after the preheat, or a preheat shorter than a reload,
+            still initialises once. Never true without the fields.
             </summary>
         </member>
         <member name="P:Fuse.IO.Ply.PlyOctreeLoader.Output">

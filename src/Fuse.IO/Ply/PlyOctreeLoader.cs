@@ -34,6 +34,14 @@ public class PlyOctreeLoader : ProcessNodeBase
     private bool _hasPrecomputedLODs;
     private bool _octreeCpuReleasedForRun;
 
+    // Field buffers released after use (ReleaseFieldBuffers), reloaded on demand
+    private readonly FieldBufferLifecycle _fieldLifecycle = new();
+    private PlyReloadSource? _fieldSource;
+    private CancellationTokenSource? _fieldReloadCts;
+    private Task<Dictionary<string, GpuBufferInfo>>? _fieldReload;
+
+    private sealed record PlyReloadSource(string Path, PlyDecimationStrategy Strategy, int Factor, bool UseDiskCache, string CacheBasePath, string[] FieldOrder);
+
     // Diagnostic logging
     private int _updateCount;
     private int _triggerCount;
@@ -77,6 +85,20 @@ public class PlyOctreeLoader : ProcessNodeBase
     public PlyBoundingBoxMode BoundingBoxMode { private get; set; } = PlyBoundingBoxMode.Auto;
     public GraphicsDevice? GraphicsDevice { private get; set; }
     public bool Debug { private get; set; }
+
+    /// <summary>
+    /// GpuOnly only. True = the PLY field buffers may be released; false = they must be on the GPU. They are released
+    /// on a frame with true after at least one frame with false since their upload, and loaded again (disk cache, then
+    /// upload on a worker thread) on a frame with false. The octree node and index buffers always stay. While released,
+    /// PlyGpuData.PlyBuffers holds the field names with null. Default false: nothing changes.
+    /// </summary>
+    public bool ReleaseFieldBuffers { private get; set; }
+
+    /// <summary>
+    /// The consumer wants to (re)initialise from the fields now (in the Gallery A forest: preheating). Its rising edge
+    /// marks an init as pending; see <see cref="InitFields"/>.
+    /// </summary>
+    public bool InitRequest { private get; set; }
 
     #endregion
 
@@ -188,6 +210,22 @@ public class PlyOctreeLoader : ProcessNodeBase
     public BoundingBox BoundingBox { get; private set; }
     public bool HasBoundingBox { get; private set; }
 
+    /// <summary>Resident, Released or Reloading (see <see cref="ReleaseFieldBuffers"/>).</summary>
+    public string FieldBuffersState => _fieldLifecycle.Current.ToString();
+
+    /// <summary>True when the loaded fields are on the GPU (always false while loading).</summary>
+    public bool FieldsReady => IsCompleted && !HasError && !_isProcessing && (DataMode != PlyDataMode.GpuOnly || _fieldLifecycle.FieldsReady);
+
+    /// <summary>
+    /// True while the consumer should read the fields: they are on the GPU AND (init request OR an init is pending).
+    /// An init is pending after every file load and after every rising edge of the init request, until the fields
+    /// were read for 2 s with no request. So a load that ends after the preheat, or a preheat shorter than a reload,
+    /// still initialises once. Never true without the fields.
+    /// </summary>
+    public bool InitFields => DataMode == PlyDataMode.GpuOnly ? FieldsReady && _fieldLifecycle.InitFields : FieldsReady && InitRequest;
+
+    private static readonly Stopwatch _fieldClock = Stopwatch.StartNew();
+
     #endregion
 
     /// <summary>
@@ -241,6 +279,9 @@ public class PlyOctreeLoader : ProcessNodeBase
         _plyProgressInfo = new FastPlyReader.ProgressInfo();
         _octreeProgressInfo = new GPUOctree.OctreeProgressInfo();
         _octreeCpuReleasedForRun = false;
+        CancelFieldReload();
+        _fieldLifecycle.Reset();
+        _fieldSource = null;
 
         // Clear outputs
         PlyData = new Dictionary<string, float[]>(0);
@@ -297,6 +338,7 @@ public class PlyOctreeLoader : ProcessNodeBase
             PlyData = loadResult.Arrays;
             VertexCount = loadResult.VertexCount;
             FieldOrder = loadResult.FieldOrder;
+            _fieldSource = new PlyReloadSource(currentPath, currentStrategy, currentFactor, UseDiskCache, CacheBasePath, loadResult.FieldOrder);
             VertexStrideFloats = FieldOrder.Length;
             ScalarValueCount = VertexCount * VertexStrideFloats;
             TotalPoints = loadResult.VertexCount;
@@ -588,6 +630,95 @@ public class PlyOctreeLoader : ProcessNodeBase
             PlyGpuData.EnsureBuffers(GraphicsDevice);
             TryReleaseOctreeCpuDataForGpuOnly("update GpuOnly buffers-ready");
         }
+
+        if (IsCompleted && !HasError && !_isProcessing && DataMode == PlyDataMode.GpuOnly && _fieldSource != null)
+            StepFieldBuffers();
+    }
+
+    private void StepFieldBuffers()
+    {
+        if (_fieldReload is { IsCompleted: true } done)
+        {
+            _fieldReload = null;
+            var ok = false;
+            if (done.IsCompletedSuccessfully)
+            {
+                ok = PlyGpuData.RestorePlyBuffers(done.Result);
+                Console.WriteLine($"[PlyOctreeLoader] field buffers reloaded: {done.Result.Count} fields, ok={ok}, file={Path.GetFileName(_fieldSource!.Path)}");
+            }
+            else
+            {
+                Console.WriteLine($"[PlyOctreeLoader] field buffer reload failed: {done.Exception?.GetBaseException().Message ?? "cancelled"}");
+            }
+            _fieldLifecycle.ReloadFinished(ok, _fieldClock.Elapsed.TotalSeconds);
+        }
+
+        switch (_fieldLifecycle.Step(ReleaseFieldBuffers, InitRequest, _fieldClock.Elapsed.TotalSeconds))
+        {
+            case FieldBufferLifecycle.Action.Release:
+            {
+                var bytes = PlyGpuData.ReleasePlyBuffers();
+                TrackExplicitRelease("ReleaseFieldBuffers", bytes);
+                Console.WriteLine($"[PlyOctreeLoader] field buffers released: {PlyGpuData.ReleasedPlyBufferCount} fields, {bytes / (1024.0 * 1024 * 1024):F2} GiB, file={Path.GetFileName(_fieldSource!.Path)}");
+                break;
+            }
+            case FieldBufferLifecycle.Action.StartReload:
+                StartFieldReload();
+                break;
+        }
+    }
+
+    private void StartFieldReload()
+    {
+        var source = _fieldSource!;
+        var device = GraphicsDevice;
+        var debug = Debug;
+        CancelFieldReload();
+        var cts = new CancellationTokenSource();
+        _fieldReloadCts = cts;
+        var ct = cts.Token;
+        Console.WriteLine($"[PlyOctreeLoader] field buffer reload started, file={Path.GetFileName(source.Path)}");
+        _fieldReload = Task.Run(async () =>
+        {
+            var result = await PlyLoadCore.LoadSoAAsync(source.Path, new FastPlyReader.ProgressInfo(), source.Strategy, source.Factor,
+                source.UseDiskCache, false, source.CacheBasePath, debug, ct);
+            ct.ThrowIfCancellationRequested();
+            var order = source.FieldOrder.Length > 0 ? source.FieldOrder : result.FieldOrder;
+            var infos = PlyGpuDataFactory.CreatePlyFieldBuffers(result.Arrays, order);
+            try
+            {
+                foreach (var info in infos.Values)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (info.EnsureBuffer(device) == null)
+                        throw new InvalidOperationException($"field {info.Name}: {info.LastBufferStatus}");
+                }
+            }
+            catch
+            {
+                foreach (var info in infos.Values) info.DisposeBuffer();
+                throw;
+            }
+            return infos;   // the CPU arrays go out of scope here; the infos keep only the buffers
+        }, ct);
+    }
+
+    private void CancelFieldReload()
+    {
+        if (_fieldReloadCts != null)
+        {
+            _fieldReloadCts.Cancel();
+            _fieldReloadCts.Dispose();
+            _fieldReloadCts = null;
+        }
+        var pending = _fieldReload;
+        _fieldReload = null;
+        // a reload that completes after it was cancelled may still hold buffers: dispose them
+        pending?.ContinueWith(t =>
+        {
+            if (t.IsCompletedSuccessfully)
+                foreach (var info in t.Result.Values) info.DisposeBuffer();
+        }, TaskScheduler.Default);
     }
 
     private void CalculateStatistics()
@@ -740,6 +871,7 @@ public class PlyOctreeLoader : ProcessNodeBase
         IsProcessing = false;
         PlyDiagnosticLog.TryForceFullGc($"PlyOctreeLoader#{InstanceId:X4} dispose");
         CancelAndDisposeCts(ref _processCts);
+        CancelFieldReload();
         ClearAllRetainedData("Dispose");
         _progressInfo = null;
         _plyProgressInfo = null;

@@ -143,7 +143,7 @@ public sealed class PlyGpuData
         FieldOrder = fieldOrder ?? Array.Empty<string>();
     }
 
-    private readonly Dictionary<string, GpuBufferInfo> _plyInfos;
+    private Dictionary<string, GpuBufferInfo> _plyInfos;
     private Dictionary<string, GpuBufferInfo> _octreeInfos;
 
     public Dictionary<string, Buffer> PlyBuffers { get; }
@@ -153,6 +153,45 @@ public sealed class PlyGpuData
     public int PlyBufferDefinitionCount => _plyInfos.Count;
     public int OctreeBufferDefinitionCount => _octreeInfos.Count;
     public bool AreAllPlyBuffersCreated => _plyInfos.Count > 0 && PlyBuffers.Count == _plyInfos.Count;
+
+    /// <summary>Number of field buffers taken away by <see cref="ReleasePlyBuffers"/> (their keys stay with null).</summary>
+    public int ReleasedPlyBufferCount { get; private set; }
+
+    /// <summary>
+    /// Disposes the field buffers and keeps their keys in <see cref="PlyBuffers"/> with null values, so a patch that
+    /// takes a field by name gets null instead of a missing key (a Fuse BufferIn keeps its declaration on null). The
+    /// infos are dropped, so <see cref="EnsureBuffers"/> does not create them again. Returns the bytes released.
+    /// </summary>
+    internal long ReleasePlyBuffers()
+    {
+        long bytes = 0;
+        foreach (var info in _plyInfos.Values)
+        {
+            if (info == null) continue;
+            if (info.Buffer != null) bytes += info.SizeInBytes;
+            info.DisposeBuffer();
+        }
+        foreach (var key in PlyBuffers.Keys.ToArray())
+            PlyBuffers[key] = null!;
+        ReleasedPlyBufferCount = _plyInfos.Count;
+        _plyInfos = new Dictionary<string, GpuBufferInfo>(0);
+        return bytes;
+    }
+
+    /// <summary>
+    /// Puts field buffers created elsewhere (a reload) in place of released ones. The infos must already hold their
+    /// buffers (GpuBufferInfo.EnsureBuffer). Returns true when every field has a buffer again.
+    /// </summary>
+    internal bool RestorePlyBuffers(Dictionary<string, GpuBufferInfo> infos)
+    {
+        foreach (var info in _plyInfos.Values)
+            info?.DisposeBuffer();
+        _plyInfos = infos ?? new Dictionary<string, GpuBufferInfo>(0);
+        foreach (var kv in _plyInfos)
+            PlyBuffers[kv.Key] = kv.Value?.Buffer!;
+        ReleasedPlyBufferCount = 0;
+        return _plyInfos.Count > 0 && _plyInfos.Values.All(i => i?.Buffer != null);
+    }
 
     public void EnsureBuffers(GraphicsDevice? device)
     {
