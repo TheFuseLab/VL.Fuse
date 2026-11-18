@@ -113,6 +113,27 @@ internal sealed class GpuBufferInfo
         return Buffer;
     }
 
+    /// <summary>Creates the buffer from raw data (a reload streams the fields through one unmanaged buffer).</summary>
+    public Buffer? CreateBufferFrom(GraphicsDevice device, IntPtr data)
+    {
+        if (Buffer != null)
+            return Buffer;
+        var effectiveView = ViewDescription;
+        if (effectiveView.Flags == BufferFlags.None)
+            effectiveView.Flags = Description.BufferFlags;
+        try
+        {
+            Buffer = BufferExtensions.New(device, Description, effectiveView, data);
+            LastBufferStatus = Buffer != null ? "Created:Stream:Size=" + Description.SizeInBytes : "Failed:BufferExtensions.New returned null";
+        }
+        catch (Exception ex)
+        {
+            Buffer = null;
+            LastBufferStatus = "Exception:" + ex.GetType().Name + ":" + ex.Message;
+        }
+        return Buffer;
+    }
+
     public void DisposeBuffer()
     {
         Buffer?.Dispose();
@@ -277,6 +298,15 @@ public struct OctreeGpuBuffers
 
 internal static class PlyGpuDataFactory
 {
+    /// <summary>A field buffer description without data (filled by GpuBufferInfo.CreateBufferFrom).</summary>
+    public static GpuBufferInfo CreatePlyFieldBufferInfo(string name, int floatCount)
+    {
+        var (description, viewDescription) = CreateBufferDescriptions(floatCount, sizeof(float), isStructuredBuffer: true,
+            isVertexBuffer: false, isIndexBuffer: false, allowRawViews: false);
+        return new GpuBufferInfo(name, null, description, viewDescription, floatCount, sizeof(float),
+            isStructuredBuffer: true, isVertexBuffer: false, isIndexBuffer: false, allowRawViews: false);
+    }
+
     public static Dictionary<string, GpuBufferInfo> CreateInterleavedFloatBuffer(
         float[] interleaved,
         string bufferName = "interleaved")

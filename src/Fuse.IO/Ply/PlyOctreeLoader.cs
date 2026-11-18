@@ -680,6 +680,9 @@ public class PlyOctreeLoader : ProcessNodeBase
         Console.WriteLine($"[PlyOctreeLoader] field buffer reload started, file={Path.GetFileName(source.Path)}");
         _fieldReload = Task.Run(async () =>
         {
+            var streamed = StreamFieldsFromCache(source, device, ct);
+            if (streamed != null)
+                return streamed;
             var result = await PlyLoadCore.LoadSoAAsync(source.Path, new FastPlyReader.ProgressInfo(), source.Strategy, source.Factor,
                 source.UseDiskCache, false, source.CacheBasePath, debug, ct);
             ct.ThrowIfCancellationRequested();
@@ -701,6 +704,42 @@ public class PlyOctreeLoader : ProcessNodeBase
             }
             return infos;   // the CPU arrays go out of scope here; the infos keep only the buffers
         }, ct);
+    }
+
+    /// <summary>
+    /// The reload's normal path: the fields come straight from the PLY disk cache entry, one by one through one
+    /// unmanaged buffer of the largest field (0.75 GiB for the forest), each uploaded before the next is read. Null when
+    /// there is no matching cache entry (then the reload reads the arrays as the first load did).
+    /// </summary>
+    private static Dictionary<string, GpuBufferInfo>? StreamFieldsFromCache(PlyReloadSource source, GraphicsDevice? device, CancellationToken ct)
+    {
+        if (!source.UseDiskCache || device == null)
+            return null;
+        if (!string.IsNullOrWhiteSpace(source.CacheBasePath))
+            DiskCachePaths.BasePath = source.CacheBasePath;
+        var key = DiskCacheKey.ForPly(source.Path, source.Strategy, source.Factor);
+        var entry = DiskCache.TryGetEntryDir("ply", key, new PlyArraysCacheSerializer().PayloadType);
+        if (entry == null)
+            return null;
+        var watch = Stopwatch.StartNew();
+        var infos = new Dictionary<string, GpuBufferInfo>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            PlyArraysCacheSerializer.StreamFields(entry, (name, data, count) =>
+            {
+                var info = PlyGpuDataFactory.CreatePlyFieldBufferInfo(name, checked((int)count));
+                infos[name] = info;
+                if (info.CreateBufferFrom(device, data) == null)
+                    throw new InvalidOperationException("field " + name + ": " + info.LastBufferStatus);
+            }, ct);
+        }
+        catch
+        {
+            foreach (var info in infos.Values) info.DisposeBuffer();
+            throw;
+        }
+        Console.WriteLine("[PlyOctreeLoader] field buffers streamed from the disk cache: " + infos.Count + " fields in " + watch.ElapsedMilliseconds + " ms");
+        return infos.Count > 0 ? infos : null;
     }
 
     private void CancelFieldReload()

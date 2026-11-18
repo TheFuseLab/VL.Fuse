@@ -284,6 +284,24 @@ public sealed class DiskCache
         }
     }
 
+    /// <summary>The folder of a cache entry whose manifest matches key and payload type, else null.</summary>
+    internal static string? TryGetEntryDir(string cacheNamespace, string key, string payloadType)
+    {
+        var entry = GetEntryDir(cacheNamespace, key);
+        var manifestPath = Path.Combine(entry, "manifest.json");
+        if (!File.Exists(manifestPath))
+            return null;
+        try
+        {
+            var man = ReadManifestSync(manifestPath);
+            return man != null && man.Key == key && man.PayloadType == payloadType ? entry : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string GetEntryDir(string cacheNamespace, string key)
     {
         using var sha = SHA256.Create();
@@ -390,6 +408,47 @@ public sealed class PlyArraysCacheSerializer : DiskCache.ICacheSerializer<Dictio
 {
     private const string DataFile = "arrays.bin";
     private const string TocFile = "arrays.toc.json";
+
+    /// <summary>
+    /// Reads the fields of a cache entry one after another into one unmanaged buffer of the largest field and hands
+    /// each to the callback (name, pointer, float count) before reading the next. Nothing lands on the .NET heap; the
+    /// buffer is freed at the end. Returns the number of fields.
+    /// </summary>
+    internal static unsafe int StreamFields(string entryDir, Action<string, IntPtr, long> field, CancellationToken ct)
+    {
+        List<TocEntry>? toc;
+        using (var fs = new FileStream(Path.Combine(entryDir, TocFile), FileMode.Open, FileAccess.Read, FileShare.Read, 4096, false))
+            toc = JsonSerializer.Deserialize<List<TocEntry>>(fs);
+        if (toc == null || toc.Count == 0)
+            return 0;
+        var maxBytes = toc.Max(t => t.LengthFloats) * sizeof(float);
+        var ptr = (byte*)NativeMemory.Alloc((nuint)maxBytes);
+        try
+        {
+            using var handle = File.OpenHandle(Path.Combine(entryDir, DataFile), FileMode.Open, FileAccess.Read,
+                FileShare.Read, FileOptions.SequentialScan);
+            var length = RandomAccess.GetLength(handle);
+            foreach (var entry in toc)
+            {
+                ct.ThrowIfCancellationRequested();
+                var bytes = entry.LengthFloats * sizeof(float);
+                if (entry.Offset + bytes > length)
+                    throw new InvalidDataException("cache field " + entry.Name + " ends after the end of " + DataFile);
+                for (long done = 0; done < bytes;)
+                {
+                    var chunk = (int)Math.Min(bytes - done, 1 << 30);
+                    DiskCache.ReadAtExactly(handle, new Span<byte>(ptr + done, chunk), entry.Offset + done, ct);
+                    done += chunk;
+                }
+                field(entry.Name ?? "values", (IntPtr)ptr, entry.LengthFloats);
+            }
+            return toc.Count;
+        }
+        finally
+        {
+            NativeMemory.Free(ptr);
+        }
+    }
     public string PayloadType => "ply_arrays_v1";
 
     public async Task WriteAsync(string entryDir, Dictionary<string, float[]> payload, CancellationToken ct)

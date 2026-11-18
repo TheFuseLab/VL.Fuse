@@ -175,6 +175,16 @@
             Simple logger for disk cache operations to avoid silent failures.
             </summary>
         </member>
+        <member name="M:Fuse.IO.Ply.DiskCache.TryGetEntryDir(System.String,System.String,System.String)">
+            <summary>The folder of a cache entry whose manifest matches key and payload type, else null.</summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyArraysCacheSerializer.StreamFields(System.String,System.Action{System.String,System.IntPtr,System.Int64},System.Threading.CancellationToken)">
+            <summary>
+            Reads the fields of a cache entry one after another into one unmanaged buffer of the largest field and hands
+            each to the callback (name, pointer, float count) before reading the next. Nothing lands on the .NET heap; the
+            buffer is freed at the end. Returns the number of fields.
+            </summary>
+        </member>
         <member name="M:Fuse.IO.Ply.DiskCacheKey.ForPly(System.String,Fuse.IO.Ply.PlyDecimationStrategy,System.Int32)">
             <summary>
             Creates a cache key for PLY files that includes decimation settings.
@@ -441,6 +451,9 @@
             distinguish different node instances (e.g., after recompile).
             </summary>
         </member>
+        <member name="M:Fuse.IO.Ply.GpuBufferInfo.CreateBufferFrom(Stride.Graphics.GraphicsDevice,System.IntPtr)">
+            <summary>Creates the buffer from raw data (a reload streams the fields through one unmanaged buffer).</summary>
+        </member>
         <member name="P:Fuse.IO.Ply.PlyGpuData.ReleasedPlyBufferCount">
             <summary>Number of field buffers taken away by <see cref="M:Fuse.IO.Ply.PlyGpuData.ReleasePlyBuffers"/> (their keys stay with null).</summary>
         </member>
@@ -456,6 +469,9 @@
             Puts field buffers created elsewhere (a reload) in place of released ones. The infos must already hold their
             buffers (GpuBufferInfo.EnsureBuffer). Returns true when every field has a buffer again.
             </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyGpuDataFactory.CreatePlyFieldBufferInfo(System.String,System.Int32)">
+            <summary>A field buffer description without data (filled by GpuBufferInfo.CreateBufferFrom).</summary>
         </member>
         <member name="T:Fuse.IO.Ply.PlyLayoutUtils">
             <summary>
@@ -677,6 +693,13 @@
         <member name="P:Fuse.IO.Ply.PlyOctreeLoader.Output">
             <summary>
             Returns this instance for chaining or downstream reference.
+            </summary>
+        </member>
+        <member name="M:Fuse.IO.Ply.PlyOctreeLoader.StreamFieldsFromCache(Fuse.IO.Ply.PlyOctreeLoader.PlyReloadSource,Stride.Graphics.GraphicsDevice,System.Threading.CancellationToken)">
+            <summary>
+            The reload's normal path: the fields come straight from the PLY disk cache entry, one by one through one
+            unmanaged buffer of the largest field (0.75 GiB for the forest), each uploaded before the next is read. Null when
+            there is no matching cache entry (then the reload reads the arrays as the first load did).
             </summary>
         </member>
     </members>
