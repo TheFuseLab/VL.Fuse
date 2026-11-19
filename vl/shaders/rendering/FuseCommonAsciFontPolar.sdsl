@@ -70,6 +70,15 @@ shader FuseCommonAsciFontPolar{
         return -charWidth / max(radius, 0.0001);  // arc length → angle delta
     }
 
+    // pen start of a glyph centred on the arc point at angle mid: half an advance back along the clockwise
+    // tangent (sin, -cos). The glyph box lies right of its pen origin, so this centres it on its radial line
+    // and keeps it tangent at any radius (halfAngle = PolarAdvance(advance / 2, radius), negative).
+    float2 PolarPenStart(float radius, float mid, float halfAngle, float2 circleCenter)
+    {
+        float halfAdv = -halfAngle * max(radius, 0.0001);
+        return PolarToWorld(radius, mid, circleCenter) - float2(sin(mid), -cos(mid)) * halfAdv;
+    }
+
     // ════════════════════════════════════════════
     //  CIRCULAR EMITTERS
     //  origin.x = radius, origin.y = start angle (radians)
@@ -100,8 +109,8 @@ shader FuseCommonAsciFontPolar{
 
         // place glyph at center of its arc span
         float mid = angle + halfAngle;
-        float2 pos = PolarToWorld(radius, mid, circleCenter);
-        float rot = 3.1415927 - mid;  // tangent = angle - PI/2
+        float2 pos = PolarPenStart(radius, mid, halfAngle, circleCenter);
+        float rot = 3.1415927 - mid;  // TextQuad (Effect,Rotation) turns this into the clockwise tangent
 
         EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
                   baseID, maxGlyphs, charIndex, pos, rot);
@@ -137,7 +146,7 @@ shader FuseCommonAsciFontPolar{
             float halfAngle = PolarAdvance(adv * 0.5, radius);
 
             float mid = angle + halfAngle;
-            float2 pos = PolarToWorld(radius, mid, circleCenter);
+            float2 pos = PolarPenStart(radius, mid, halfAngle, circleCenter);
             float rot = 3.1415927 - mid;
 
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
@@ -180,7 +189,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, 45, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, 45, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
 
@@ -202,7 +211,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, ascii, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
         angleOut = angle;
@@ -243,7 +252,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, 45, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, 45, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
 
@@ -255,7 +264,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, ascii, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
 
@@ -265,7 +274,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, 46, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, 46, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
 
@@ -276,7 +285,7 @@ shader FuseCommonAsciFontPolar{
             float ha = PolarAdvance(adv * 0.5, radius);
             float mid = angle + ha;
             EmitGlyph(Counters, OutIndices, OutCenters, OutRotations, OutGlyphIds, BaseIDs,
-                      baseID, maxGlyphs, ascii, PolarToWorld(radius, mid, circleCenter), 3.1415927 - mid);
+                      baseID, maxGlyphs, ascii, PolarPenStart(radius, mid, ha, circleCenter), 3.1415927 - mid);
             angle += ha * 2.0;
         }
         angleOut = angle;
